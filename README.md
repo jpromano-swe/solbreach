@@ -68,7 +68,7 @@ Execute the exploit against the Mainnet/Devnet program.
 
 Verify the hack on the dashboard to trigger the Agentic Auditor and claim your cNFT Flag.
 
-⚙️ Tech Stack
+## ⚙️ Tech Stack
 
 Smart Contracts: Rust, Anchor Framework
 
