@@ -78,8 +78,6 @@ Web3 Integration: @solana/web3.js, Wallet Adapter
 
 Gamification: Metaplex Umi / Bubblegum SDK
 
-Automation: SendAI / Claude Max (Agentic Engineering)
-
 ## 🚀 Roadmap
 
 [x] Phase 1: Architecture Blueprint & Smart Contract Design
