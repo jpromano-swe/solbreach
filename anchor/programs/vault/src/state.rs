@@ -1,3 +1,7 @@
+use anchor_lang::prelude::*;
+
+pub const LEVEL_COUNT: usize = 4;
+
 #[account]
 #[derive(InitSpace)]
 pub struct UserStats {
@@ -8,8 +12,7 @@ pub struct UserStats {
 
 #[account]
 #[derive(InitSpace)]
-pub struct UserStats {
-    pub tree_authority: Pubkey,
-    pub tree_capacity: u64,
+pub struct Level0State {
+    pub player: Pubkey,
     pub bump: u8,
 }

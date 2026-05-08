@@ -1,11 +1,16 @@
 use anchor_lang::prelude::*;
 
+pub mod errors;
+pub mod instructions;
+pub mod state;
+
 #[cfg(test)]
 mod tests;
 
 declare_id!("aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2");
 
-pub const LEVEL_COUNT: usize = 4;
+use crate::instructions::level0::*;
+pub use crate::state::{Level0State, UserStats, LEVEL_COUNT};
 
 #[program]
 pub mod vault {
@@ -19,6 +24,12 @@ pub mod vault {
         user_stats.bump = ctx.bumps.user_stats;
 
         Ok(())
+    }
+    pub fn init_level_0(ctx: Context<InitLevel0>) -> Result<()> {
+        instructions::level0::init_level_0(ctx)
+    }
+    pub fn verify_and_close_level_0(ctx: Context<VerifyAndCloseLevel0>) -> Result<()> {
+        instructions::level0::verify_and_close_level_0(ctx)
     }
 }
 
@@ -34,5 +45,6 @@ pub struct InitUserStats<'info> {
         bump,
     )]
     pub user_stats: Account<'info, UserStats>,
+
     pub system_program: Program<'info, System>,
 }
