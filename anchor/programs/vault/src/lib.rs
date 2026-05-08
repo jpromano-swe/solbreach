@@ -1,75 +1,46 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
 
 #[cfg(test)]
 mod tests;
 
 declare_id!("aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2");
 
+pub const LEVEL_COUNT: usize = 4;
+
 #[program]
 pub mod vault {
     use super::*;
 
-    pub fn deposit(ctx: Context<VaultAction>, amount: u64) -> Result<()> {
-        require!(ctx.accounts.vault.lamports() == 0, VaultError::VaultAlreadyExists);
+    pub fn init_user_stats(ctx: Context<InitUserStats>) -> Result<()> {
+        let user_stats = &mut ctx.accounts.user_stats;
 
-        let rent = Rent::get()?.minimum_balance(0);
-        require!(amount > rent, VaultError::InvalidAmount);
-
-        transfer(
-            CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.signer.to_account_info(),
-                    to: ctx.accounts.vault.to_account_info(),
-                },
-            ),
-            amount,
-        )?;
-
-        Ok(())
-    }
-
-    pub fn withdraw(ctx: Context<VaultAction>) -> Result<()> {
-        require!(ctx.accounts.vault.lamports() > 0, VaultError::InvalidAmount);
-
-        let bump = ctx.bumps.vault;
-        let signer_key = ctx.accounts.signer.key();
-        let signer_seeds: &[&[&[u8]]] = &[&[b"vault", signer_key.as_ref(), &[bump]]];
-
-        transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.vault.to_account_info(),
-                    to: ctx.accounts.signer.to_account_info(),
-                },
-                signer_seeds,
-            ),
-            ctx.accounts.vault.lamports(),
-        )?;
+        user_stats.player = ctx.accounts.user.key();
+        user_stats.completed_levels = [false; LEVEL_COUNT];
+        user_stats.bump = ctx.bumps.user_stats;
 
         Ok(())
     }
 }
 
 #[derive(Accounts)]
-pub struct VaultAction<'info> {
+pub struct InitUserStats<'info> {
     #[account(mut)]
-    pub signer: Signer<'info>,
+    pub user: Signer<'info>,
     #[account(
-        mut,
-        seeds = [b"vault", signer.key().as_ref()],
+        init,
+        payer = user,
+        space = 8 + UserStats::INIT_SPACE,
+        seeds = [b"stats", user.key().as_ref()],
         bump,
     )]
-    pub vault: SystemAccount<'info>,
+    pub user_stats: Account<'info, UserStats>,
     pub system_program: Program<'info, System>,
 }
 
-#[error_code]
-pub enum VaultError {
-    #[msg("Vault already exists")]
-    VaultAlreadyExists,
-    #[msg("Invalid amount")]
-    InvalidAmount,
+#[account]
+#[derive(InitSpace)]
+pub struct UserStats {
+    pub player: Pubkey,
+    pub completed_levels: [bool; LEVEL_COUNT],
+    pub bump: u8,
 }

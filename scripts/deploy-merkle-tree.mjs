@@ -45,6 +45,30 @@ Environment:
   SOLANA_RPC_URL / RPC_URL  Fallback RPC endpoint.
 `;
 
+loadEnvFile(".env.local");
+loadEnvFile(".env");
+
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+
+  const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const value = rawValue.replace(/^['"]|['"]$/g, "");
+
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
 function parseArgs(argv) {
   const options = {
     allowNonDevnet: false,
@@ -242,10 +266,14 @@ async function main() {
     return;
   }
 
-  const [{ signature, result }] = await builder.sendAndConfirm(umi, {
+  const { signature, result } = await builder.sendAndConfirm(umi, {
     confirm: { commitment: "confirmed" },
     send: { preflightCommitment: "confirmed", skipPreflight: false },
   });
+  const signatureBase58 =
+    typeof signature === "string"
+      ? signature
+      : base58.deserialize(signature)[0];
 
   if (result.value.err) {
     console.error("Transaction confirmed with error:");
@@ -261,9 +289,9 @@ async function main() {
   );
 
   console.log("Merkle tree deployed");
-  console.log(`  Signature: ${signature}`);
+  console.log(`  Signature: ${signatureBase58}`);
   console.log(
-    `  Explorer: https://explorer.solana.com/tx/${signature}?cluster=devnet`
+    `  Explorer: https://explorer.solana.com/tx/${signatureBase58}?cluster=devnet`
   );
   console.log(`  MERKLE_TREE_ADDRESS=${merkleTree.publicKey}`);
   console.log(`  TREE_CONFIG_ADDRESS=${treeConfig.publicKey}`);
