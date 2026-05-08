@@ -1,165 +1,93 @@
-# Rustopia
+# SolBreach ⚡️
 
-Next.js starter with Tailwind CSS, `@solana/kit`, and an Anchor vault program example.
+## Gamified Web3 security training natively designed for the Solana Virtual Machine (SVM). Learn to exploit, learn to secure.
 
-## Getting Started
+Note: This repository houses the core architectural blueprint and smart contract designs for SolBreach. Active code scaffolding is commencing as part of the Dev3pack Hackathon and the Superteam Agentic Engineering Grant.
 
-```shell
-npx -y create-solana-dapp@latest -t solana-foundation/templates/kit/Rustopia
-```
+## The Problem
 
-```shell
-npm install
-npm run setup   # Builds the Anchor program and generates the TypeScript client
-npm run dev
-```
+As the Solana ecosystem scales, the complexity of its protocols has skyrocketed. However, developer security education has failed to keep pace. The SVM utilizes a fundamentally different architecture than the EVM, rendering Ethereum-based security training (like Ethernaut) obsolete.
 
-Open [http://localhost:3000](http://localhost:3000), connect your wallet, and interact with the vault.
+Currently, developers lack a persistent, interactive environment to practice offensive security natively on Solana. This results in the continuous deployment of smart contracts with critical, preventable logic flaws—such as Anchor constraint omissions, unchecked Cross-Program Invocations (CPIs), and Program Derived Address (PDA) authority bypasses.
 
-## What's Included
+## The Solution: SolBreach
 
-- **Wallet connection** via wallet-standard with auto-discovery and dropdown UI
-- **Cluster switching** — devnet, testnet, mainnet, and localnet from the header
-- **Wallet balance** display with airdrop button (devnet/testnet/localnet)
-- **SOL Vault program** — deposit and withdraw SOL from a personal PDA vault
-- **Toast notifications** with explorer links for every transaction
-- **Error handling** — human-readable messages for common Solana and program errors
-- **Codama-generated client** — type-safe program interactions using `@solana/kit`
-- **Tailwind CSS v4** with light/dark mode toggle
+SolBreach is an open-source, interactive Capture The Flag (CTF) environment where developers learn to secure smart contracts by actively exploiting them. We transform dry security documentation into an immersive, hands-on hacker workflow.
 
-## Stack
+Core Architectural Innovations
 
-| Layer          | Technology                       |
-| -------------- | -------------------------------- |
-| Frontend       | Next.js 16, React 19, TypeScript |
-| Styling        | Tailwind CSS v4                  |
-| Solana Client  | `@solana/kit`, wallet-standard   |
-| Program Client | Codama-generated, `@solana/kit`  |
-| Program        | Anchor (Rust)                    |
+To achieve a seamless UX without the prohibitive costs of deploying individual smart contracts for every user, SolBreach utilizes a highly optimized, Solana-native architecture:
 
-## Project Structure
+Zero-Cost Execution (Rent-Refund PDAs): Instead of deploying a new program per user, SolBreach operates via a single monolithic Anchor registry. Players lock a micro-fraction of SOL to initialize a PDA for their specific level instance. Upon successfully "hacking" the level, the final instruction closes the PDA, instantly refunding the rent and creating a zero-cost Mainnet experience.
 
-```
-├── app/
-│   ├── components/
-│   │   ├── cluster-context.tsx  # Cluster state (React context + localStorage)
-│   │   ├── cluster-select.tsx   # Cluster switcher dropdown
-│   │   ├── grid-background.tsx  # Solana-branded decorative grid
-│   │   ├── providers.tsx        # Wallet + theme providers
-│   │   ├── theme-toggle.tsx     # Light/dark mode toggle
-│   │   ├── vault-card.tsx       # Vault deposit/withdraw UI
-│   │   └── wallet-button.tsx    # Wallet connect/disconnect dropdown
-│   ├── generated/vault/        # Codama-generated program client
-│   ├── lib/
-│   │   ├── wallet/             # Wallet-standard connection layer
-│   │   │   ├── types.ts        # Wallet types
-│   │   │   ├── standard.ts     # Wallet discovery + session creation
-│   │   │   ├── signer.ts       # WalletSession → TransactionSigner
-│   │   │   └── context.tsx     # WalletProvider + useWallet() hook
-│   │   ├── hooks/
-│   │   │   ├── use-balance.ts  # SWR-based balance fetching
-│   │   │   └── use-send-transaction.ts  # Transaction send with loading state
-│   │   ├── cluster.ts          # Cluster endpoints + RPC factory
-│   │   ├── lamports.ts         # SOL/lamports conversion
-│   │   ├── send-transaction.ts # Transaction build + sign + send pipeline
-│   │   ├── errors.ts           # Transaction error parsing
-│   │   └── explorer.ts         # Explorer URL builder + address helpers
-│   └── page.tsx                # Main page
-├── anchor/                     # Anchor workspace
-│   └── programs/vault/         # Vault program (Rust)
-└── codama.json                 # Codama client generation config
-```
+Proof-of-Hack (Metaplex cNFTs): Progress is tracked immutably on-chain. When a developer completes a level, our serverless API issues a Metaplex Compressed NFT (cNFT) "Flag" via Bubblegum, costing fractions of a cent while providing a verifiable credential for auditing firms.
 
-## Local Development
+Agentic Auditor (AI Integration): We integrate an autonomous agent into the core game loop. When a developer submits an exploit, the agent autonomously parses the transaction simulation, verifies if the on-chain state (PDA) was successfully manipulated according to the level's win-condition, and triggers the cNFT reward.
 
-To test against a local validator instead of devnet:
+##  MVP Curriculum (Dev3pack Build)
 
-1. **Start a local validator**
+The initial hackathon build focuses on 3 foundational Anchor anti-patterns:
 
-   ```bash
-   solana-test-validator
-   ```
+Level
 
-2. **Deploy the program locally**
+Concept
 
-   ```bash
-   solana config set --url localhost
-   cd anchor
-   anchor build
-   anchor deploy
-   cd ..
-   npm run codama:js   # Regenerate client with local program ID
-   ```
+The Vulnerability
 
-3. **Switch to localnet** in the app using the cluster selector in the header.
+### 1. The Illusionist
 
-## Deploy Your Own Vault
+Account Substitution
 
-The included vault program is already deployed to devnet. To deploy your own:
+Missing #[account(constraint = ...)] allowing users to pass counterfeit SPL tokens.
 
-### Prerequisites
+### 2. Identity Thief
 
-- [Rust](https://rustup.rs/)
-- [Solana CLI](https://solana.com/docs/intro/installation)
-- [Anchor](https://www.anchor-lang.com/docs/installation)
+PDA Authority Bypass
 
-### Steps
+Static seeds allowing any signer to overwrite the global state PDA.
 
-1. **Configure Solana CLI for devnet**
+### 3. Trojan Horse
 
-   ```bash
-   solana config set --url devnet
-   ```
+Arbitrary CPI
 
-2. **Create a wallet (if needed) and fund it**
+Invoking unchecked external programs via malicious user input data.
 
-   ```bash
-   solana-keygen new
-   solana airdrop 2
-   ```
+#### 💻 The Hacker Workflow
 
-3. **Build and deploy the program**
+Players do not just click buttons on a web UI; they use real developer tools.
 
-   ```bash
-   cd anchor
-   anchor build
-   anchor keys sync    # Updates program ID in source
-   anchor build        # Rebuild with new ID
-   anchor deploy
-   cd ..
-   ```
+Connect wallet to the SolBreach web dashboard.
 
-4. **Regenerate the client and restart**
-   ```bash
-   npm run setup   # Rebuilds program and regenerates client
-   npm run dev
-   ```
+Initialize a level instance (Creates your unique vulnerable PDA).
 
-## Testing
+Clone the local "Hacker Playground" repository.
 
-Tests use [LiteSVM](https://github.com/LiteSVM/litesvm), a fast lightweight Solana VM for testing.
+Write the exploit in Rust/TypeScript using Anchor.
 
-```bash
-npm run anchor-build   # Build the program first
-npm run anchor-test    # Run tests
-```
+Execute the exploit against the Mainnet/Devnet program.
 
-The tests are in `anchor/programs/vault/src/tests.rs` and automatically use the program ID from `declare_id!`.
+Verify the hack on the dashboard to trigger the Agentic Auditor and claim your cNFT Flag.
 
-## Regenerating the Client
+## ⚙️ Tech Stack
 
-If you modify the program, regenerate the TypeScript client:
+Smart Contracts: Rust, Anchor Framework
 
-```bash
-npm run setup   # Or: npm run anchor-build && npm run codama:js
-```
+Frontend: Next.js, React, Tailwind CSS
 
-This uses [Codama](https://github.com/codama-idl/codama) to generate a type-safe client from the Anchor IDL.
+Web3 Integration: @solana/web3.js, Wallet Adapter
 
-## Learn More
+Gamification: Metaplex Umi / Bubblegum SDK
 
-- [Solana Docs](https://solana.com/docs) — core concepts and guides
-- [Anchor Docs](https://www.anchor-lang.com/docs/introduction) — program development framework
-- [Deploying Programs](https://solana.com/docs/programs/deploying) — deployment guide
-- [@solana/kit](https://github.com/anza-xyz/kit) — Solana JavaScript SDK
-- [Codama](https://github.com/codama-idl/codama) — client generation from IDL
+## 🚀 Roadmap
+
+[x] Phase 1: Architecture Blueprint & Smart Contract Design
+
+[x] Phase 2: UI/UX Wireframing & Pitch Deck
+
+[ ] Phase 3: Dev3pack Hackathon (Scaffold Next.js & Anchor Registry)
+
+[ ] Phase 4: Metaplex cNFT Integration & Localnet Testing
+
+[ ] Phase 5: Mainnet Deployment & Community Launch
+
+Built with ❤️ for the Solana Ecosystem.
