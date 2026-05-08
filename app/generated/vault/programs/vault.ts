@@ -17,18 +17,129 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
-  parseDepositInstruction,
-  parseWithdrawInstruction,
-  type ParsedDepositInstruction,
-  type ParsedWithdrawInstruction,
+  parseDepositTokensInstruction,
+  parseInitBankInstruction,
+  parseInitGlobalProfileInstruction,
+  parseInitLevel0Instruction,
+  parseInitLevel1Instruction,
+  parseInitLevel2Instruction,
+  parseInitUserStatsInstruction,
+  parseUpdateProfileInstruction,
+  parseVerifyAndCloseLevel0Instruction,
+  parseVerifyAndCloseLevel1Instruction,
+  parseVerifyAndCloseLevel2Instruction,
+  type ParsedDepositTokensInstruction,
+  type ParsedInitBankInstruction,
+  type ParsedInitGlobalProfileInstruction,
+  type ParsedInitLevel0Instruction,
+  type ParsedInitLevel1Instruction,
+  type ParsedInitLevel2Instruction,
+  type ParsedInitUserStatsInstruction,
+  type ParsedUpdateProfileInstruction,
+  type ParsedVerifyAndCloseLevel0Instruction,
+  type ParsedVerifyAndCloseLevel1Instruction,
+  type ParsedVerifyAndCloseLevel2Instruction,
 } from "../instructions";
 
 export const VAULT_PROGRAM_ADDRESS =
   "aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2" as Address<"aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2">;
 
+export enum VaultAccount {
+  BankConfig,
+  Level0State,
+  Level1State,
+  Level2State,
+  UserProfile,
+  UserStats,
+}
+
+export function identifyVaultAccount(
+  account: { data: ReadonlyUint8Array } | ReadonlyUint8Array,
+): VaultAccount {
+  const data = "data" in account ? account.data : account;
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([118, 28, 101, 88, 239, 66, 19, 8]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.BankConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([39, 141, 209, 205, 82, 211, 187, 152]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.Level0State;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([219, 21, 134, 98, 26, 144, 187, 8]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.Level1State;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([245, 18, 191, 12, 114, 239, 7, 228]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.Level2State;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([32, 37, 119, 205, 179, 180, 13, 194]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.UserProfile;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([176, 223, 136, 27, 122, 79, 32, 227]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.UserStats;
+  }
+  throw new Error(
+    "The provided account could not be identified as a vault account.",
+  );
+}
+
 export enum VaultInstruction {
-  Deposit,
-  Withdraw,
+  DepositTokens,
+  InitBank,
+  InitGlobalProfile,
+  InitLevel0,
+  InitLevel1,
+  InitLevel2,
+  InitUserStats,
+  UpdateProfile,
+  VerifyAndCloseLevel0,
+  VerifyAndCloseLevel1,
+  VerifyAndCloseLevel2,
 }
 
 export function identifyVaultInstruction(
@@ -39,23 +150,122 @@ export function identifyVaultInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([242, 35, 198, 137, 82, 225, 242, 182]),
+        new Uint8Array([176, 83, 229, 18, 191, 143, 176, 150]),
       ),
       0,
     )
   ) {
-    return VaultInstruction.Deposit;
+    return VaultInstruction.DepositTokens;
   }
   if (
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([183, 18, 70, 156, 148, 109, 161, 34]),
+        new Uint8Array([73, 111, 27, 243, 202, 129, 159, 80]),
       ),
       0,
     )
   ) {
-    return VaultInstruction.Withdraw;
+    return VaultInstruction.InitBank;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([58, 62, 122, 41, 39, 80, 228, 178]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitGlobalProfile;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([251, 245, 62, 63, 138, 203, 254, 44]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitLevel0;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([250, 112, 168, 131, 246, 44, 13, 80]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitLevel1;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([176, 62, 169, 146, 12, 173, 203, 149]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitLevel2;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([177, 113, 20, 232, 181, 87, 120, 62]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitUserStats;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([98, 67, 99, 206, 86, 115, 175, 1]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.UpdateProfile;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([88, 24, 131, 11, 54, 23, 3, 18]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.VerifyAndCloseLevel0;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([148, 124, 192, 9, 124, 227, 175, 140]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.VerifyAndCloseLevel1;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([91, 176, 147, 203, 107, 214, 51, 62]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.VerifyAndCloseLevel2;
   }
   throw new Error(
     "The provided instruction could not be identified as a vault instruction.",
@@ -66,29 +276,119 @@ export type ParsedVaultInstruction<
   TProgram extends string = "aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2",
 > =
   | ({
-      instructionType: VaultInstruction.Deposit;
-    } & ParsedDepositInstruction<TProgram>)
+      instructionType: VaultInstruction.DepositTokens;
+    } & ParsedDepositTokensInstruction<TProgram>)
   | ({
-      instructionType: VaultInstruction.Withdraw;
-    } & ParsedWithdrawInstruction<TProgram>);
+      instructionType: VaultInstruction.InitBank;
+    } & ParsedInitBankInstruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.InitGlobalProfile;
+    } & ParsedInitGlobalProfileInstruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.InitLevel0;
+    } & ParsedInitLevel0Instruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.InitLevel1;
+    } & ParsedInitLevel1Instruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.InitLevel2;
+    } & ParsedInitLevel2Instruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.InitUserStats;
+    } & ParsedInitUserStatsInstruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.UpdateProfile;
+    } & ParsedUpdateProfileInstruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.VerifyAndCloseLevel0;
+    } & ParsedVerifyAndCloseLevel0Instruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.VerifyAndCloseLevel1;
+    } & ParsedVerifyAndCloseLevel1Instruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.VerifyAndCloseLevel2;
+    } & ParsedVerifyAndCloseLevel2Instruction<TProgram>);
 
 export function parseVaultInstruction<TProgram extends string>(
   instruction: Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array>,
 ): ParsedVaultInstruction<TProgram> {
   const instructionType = identifyVaultInstruction(instruction);
   switch (instructionType) {
-    case VaultInstruction.Deposit: {
+    case VaultInstruction.DepositTokens: {
       assertIsInstructionWithAccounts(instruction);
       return {
-        instructionType: VaultInstruction.Deposit,
-        ...parseDepositInstruction(instruction),
+        instructionType: VaultInstruction.DepositTokens,
+        ...parseDepositTokensInstruction(instruction),
       };
     }
-    case VaultInstruction.Withdraw: {
+    case VaultInstruction.InitBank: {
       assertIsInstructionWithAccounts(instruction);
       return {
-        instructionType: VaultInstruction.Withdraw,
-        ...parseWithdrawInstruction(instruction),
+        instructionType: VaultInstruction.InitBank,
+        ...parseInitBankInstruction(instruction),
+      };
+    }
+    case VaultInstruction.InitGlobalProfile: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitGlobalProfile,
+        ...parseInitGlobalProfileInstruction(instruction),
+      };
+    }
+    case VaultInstruction.InitLevel0: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitLevel0,
+        ...parseInitLevel0Instruction(instruction),
+      };
+    }
+    case VaultInstruction.InitLevel1: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitLevel1,
+        ...parseInitLevel1Instruction(instruction),
+      };
+    }
+    case VaultInstruction.InitLevel2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitLevel2,
+        ...parseInitLevel2Instruction(instruction),
+      };
+    }
+    case VaultInstruction.InitUserStats: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitUserStats,
+        ...parseInitUserStatsInstruction(instruction),
+      };
+    }
+    case VaultInstruction.UpdateProfile: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.UpdateProfile,
+        ...parseUpdateProfileInstruction(instruction),
+      };
+    }
+    case VaultInstruction.VerifyAndCloseLevel0: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.VerifyAndCloseLevel0,
+        ...parseVerifyAndCloseLevel0Instruction(instruction),
+      };
+    }
+    case VaultInstruction.VerifyAndCloseLevel1: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.VerifyAndCloseLevel1,
+        ...parseVerifyAndCloseLevel1Instruction(instruction),
+      };
+    }
+    case VaultInstruction.VerifyAndCloseLevel2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.VerifyAndCloseLevel2,
+        ...parseVerifyAndCloseLevel2Instruction(instruction),
       };
     }
     default:

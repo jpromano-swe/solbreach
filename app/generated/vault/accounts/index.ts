@@ -6,9 +6,9 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from "./bank";
+export * from "./bankConfig";
 export * from "./level0State";
 export * from "./level1State";
 export * from "./level2State";
-export * from "./profile";
+export * from "./userProfile";
 export * from "./userStats";

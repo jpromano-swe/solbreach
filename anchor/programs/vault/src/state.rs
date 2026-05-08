@@ -16,3 +16,32 @@ pub struct Level0State {
     pub player: Pubkey,
     pub bump: u8,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct Level1State {
+    pub player: Pubkey,
+    pub deposited_amount: u64,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct BankConfig {
+    pub expected_mint: Pubkey,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Level2State {
+    pub player: Pubkey,
+    pub bump: u8,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct UserProfile {
+    pub commander: Pubkey,
+    pub bump: u8,
+}

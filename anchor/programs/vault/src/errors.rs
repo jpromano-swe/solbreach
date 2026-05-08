@@ -6,4 +6,8 @@ pub enum VaultError {
     LevelAlreadyCompleted,
     #[msg("he provided level account does not belong to this user")]
     InvalidLevelOwner,
+    #[msg("The deposit target has not been reached")]
+    DepositGoalNotReached,
+    #[msg("The commander registry has not been hijacked by this player")]
+    CommanderNotHijacked,
 }

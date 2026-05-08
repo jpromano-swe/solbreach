@@ -14,20 +14,28 @@ import {
 } from "@solana/kit";
 import { VAULT_PROGRAM_ADDRESS } from "../programs";
 
-/** VaultAlreadyExists: Vault already exists */
-export const VAULT_ERROR__VAULT_ALREADY_EXISTS = 0x1770; // 6000
-/** InvalidAmount: Invalid amount */
-export const VAULT_ERROR__INVALID_AMOUNT = 0x1771; // 6001
+/** LevelAlreadyCompleted: This level has already been completed */
+export const VAULT_ERROR__LEVEL_ALREADY_COMPLETED = 0x1770; // 6000
+/** InvalidLevelOwner: he provided level account does not belong to this user */
+export const VAULT_ERROR__INVALID_LEVEL_OWNER = 0x1771; // 6001
+/** DepositGoalNotReached: The deposit target has not been reached */
+export const VAULT_ERROR__DEPOSIT_GOAL_NOT_REACHED = 0x1772; // 6002
+/** CommanderNotHijacked: The commander registry has not been hijacked by this player */
+export const VAULT_ERROR__COMMANDER_NOT_HIJACKED = 0x1773; // 6003
 
 export type VaultError =
-  | typeof VAULT_ERROR__INVALID_AMOUNT
-  | typeof VAULT_ERROR__VAULT_ALREADY_EXISTS;
+  | typeof VAULT_ERROR__COMMANDER_NOT_HIJACKED
+  | typeof VAULT_ERROR__DEPOSIT_GOAL_NOT_REACHED
+  | typeof VAULT_ERROR__INVALID_LEVEL_OWNER
+  | typeof VAULT_ERROR__LEVEL_ALREADY_COMPLETED;
 
 let vaultErrorMessages: Record<VaultError, string> | undefined;
 if (process.env.NODE_ENV !== "production") {
   vaultErrorMessages = {
-    [VAULT_ERROR__INVALID_AMOUNT]: `Invalid amount`,
-    [VAULT_ERROR__VAULT_ALREADY_EXISTS]: `Vault already exists`,
+    [VAULT_ERROR__COMMANDER_NOT_HIJACKED]: `The commander registry has not been hijacked by this player`,
+    [VAULT_ERROR__DEPOSIT_GOAL_NOT_REACHED]: `The deposit target has not been reached`,
+    [VAULT_ERROR__INVALID_LEVEL_OWNER]: `he provided level account does not belong to this user`,
+    [VAULT_ERROR__LEVEL_ALREADY_COMPLETED]: `This level has already been completed`,
   };
 }
 
