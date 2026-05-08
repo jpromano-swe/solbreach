@@ -78,23 +78,6 @@ Web3 Integration: @solana/web3.js, Wallet Adapter
 
 Gamification: Metaplex Umi / Bubblegum SDK
 
-## cNFT Merkle Tree Deployment
-
-Use this once before minting SolBreach flag cNFTs. The script creates a V1-compatible Metaplex Bubblegum tree for `mintV1()` usage and defaults to devnet.
-
-```bash
-# Uses ADMIN_PRIVATE_KEY from the shell/.env.local if set,
-# otherwise ~/.config/solana/id.json.
-npm run deploy:merkle-tree -- --confirm
-```
-
-The defaults create a private tree with `maxDepth=14`, `maxBufferSize=64`, and `canopyDepth=10`, giving capacity for 16,384 cNFTs. Save the emitted `MERKLE_TREE_ADDRESS` in the Next.js API environment and use that address when calling Bubblegum `mintV1()`.
-
-For a dry run/config check, omit `--confirm`:
-
-```bash
-npm run deploy:merkle-tree
-```
 
 ## 🚀 Roadmap
 

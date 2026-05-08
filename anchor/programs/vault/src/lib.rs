@@ -36,11 +36,3 @@ pub struct InitUserStats<'info> {
     pub user_stats: Account<'info, UserStats>,
     pub system_program: Program<'info, System>,
 }
-
-#[account]
-#[derive(InitSpace)]
-pub struct UserStats {
-    pub player: Pubkey,
-    pub completed_levels: [bool; LEVEL_COUNT],
-    pub bump: u8,
-}
