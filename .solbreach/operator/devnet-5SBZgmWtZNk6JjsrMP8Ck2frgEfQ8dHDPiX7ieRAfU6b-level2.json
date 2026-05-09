@@ -1,0 +1,13 @@
+{
+  "cluster": "devnet",
+  "generatedAt": "2026-05-09T13:25:34.194Z",
+  "kind": "level2",
+  "operator": "5SBZgmWtZNk6JjsrMP8Ck2frgEfQ8dHDPiX7ieRAfU6b",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "addresses": {
+    "level2State": "GDenJhojf21QZvtRHtP1NZ4AUZsgtsEQ84w1z3ucvLwR",
+    "profile": "8C1pCTgi1mDSc56aPajiYEJ8k2H4c53RKQzAPKyvY6E1",
+    "userStats": "9yP3xomEzfGCXgAXsigUyvKLkHJnPPsHEQWPiEf5SRjb"
+  },
+  "initialCommander": "EmJXYd33btvWFXHWNWm96ZZpyh9y2GKjRJQNLhA2LnDD"
+}

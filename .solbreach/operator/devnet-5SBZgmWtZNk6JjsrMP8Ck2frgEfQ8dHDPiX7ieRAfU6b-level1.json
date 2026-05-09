@@ -1,0 +1,18 @@
+{
+  "cluster": "devnet",
+  "generatedAt": "2026-05-09T13:22:29.849Z",
+  "kind": "level1",
+  "operator": "5SBZgmWtZNk6JjsrMP8Ck2frgEfQ8dHDPiX7ieRAfU6b",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "addresses": {
+    "bank": "81jei7LwBYBahtvZ5CuYPF8S5ELGGo9htqdZFPWX7oNq",
+    "expectedMint": "BvS2K2uXKSWZCnpqj7GpNThuXy65mN9SPAgjTLzx9zra",
+    "fakeMint": "D5Yiugtnx9uPF3WqEb7LHNG75qzjzWNQTwu71nVb3uj6",
+    "fakeVault": "BvFXEawpPSMTD95BDsRW1mLi9RXq1xWodQzcahxBzorp",
+    "fakeVaultOwner": "9iuvWiGvcinz9f6gRH4EDiTbXjCfA1Kf74jAAEaVFjai",
+    "level1State": "89ApX3aXJAVZ6DH5wen6jdWZGiboxuBFZJwi3c8f7rKy",
+    "userStats": "9yP3xomEzfGCXgAXsigUyvKLkHJnPPsHEQWPiEf5SRjb",
+    "fakeUserTokenAccount": "8pPpetvW6P1g71ukqv3EN82L5JunbQREMyLFq58pZdN5"
+  },
+  "amount": "1000000"
+}
