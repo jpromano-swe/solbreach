@@ -2,7 +2,7 @@
 
 ## Gamified Web3 security training natively designed for the Solana Virtual Machine (SVM). Learn to exploit, learn to secure.
 
-Note: This repository houses the core architectural blueprint and smart contract designs for SolBreach. Active code scaffolding is commencing as part of the Dev3pack Hackathon and the Superteam Agentic Engineering Grant.
+This repository now contains the live SolBreach web app, the Anchor challenge programs, the cNFT certification flow, and the internal tooling used to run and verify levels on devnet.
 
 ## The Problem
 
@@ -56,17 +56,15 @@ Invoking unchecked external programs via malicious user input data.
 
 Players do not just click buttons on a web UI; they use real developer tools.
 
-Connect wallet to the SolBreach web dashboard.
+Connect wallet to the SolBreach web app.
 
-Initialize a level instance (Creates your unique vulnerable PDA).
+Open the level page and inspect the lore, hints, and vulnerable snippet.
 
-Clone the local "Hacker Playground" repository.
+Clone the external SolBreach Playground repository.
 
-Write the exploit in Rust/TypeScript using Anchor.
+Run the exploit locally from the playground against the devnet program.
 
-Execute the exploit against the Mainnet/Devnet program.
-
-Verify the hack on the dashboard to trigger the Agentic Auditor and claim your cNFT Flag.
+Return to the web app to verify progress and mint the cNFT certification.
 
 ## ⚙️ Tech Stack
 
@@ -79,16 +77,21 @@ Web3 Integration: @solana/web3.js, Wallet Adapter
 Gamification: Metaplex Umi / Bubblegum SDK
 
 
-## 🚀 Roadmap
+## 🚀 Current Status
 
-[x] Phase 1: Architecture Blueprint & Smart Contract Design
+[x] Anchor challenge program live on devnet
 
-[x] Phase 2: UI/UX Wireframing & Pitch Deck
+[x] Levels 0–3 implemented and tested
 
-[ ] Phase 3: Dev3pack Hackathon (Scaffold Next.js & Anchor Registry)
+[x] Web board, level pages, and profile gallery shipped
 
-[ ] Phase 4: Metaplex cNFT Integration & Localnet Testing
+[x] Metaplex Bubblegum cNFT certifications working on devnet
 
-[ ] Phase 5: Mainnet Deployment & Community Launch
+[x] External playground repo ready for player exploit flow
 
-Built with ❤️ for the Solana Ecosystem.
+## Repositories
+
+- Web app + contracts: `https://github.com/jpromano-swe/solbreach`
+- Player playground: `https://github.com/jpronano-swe/solbreach-playground`
+
+Built for Solana by Rustopia.

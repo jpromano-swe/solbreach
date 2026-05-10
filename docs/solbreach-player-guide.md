@@ -17,8 +17,8 @@ They solve levels by:
 The product is split into three surfaces:
 
 - **Challenge source**: the vulnerable Anchor program
-- **Player workspace**: runnable `.mjs` scripts for each level
-- **Web board**: a UI for state inspection, guided actions, and verification
+- **Playground repo**: the external exploit workspace used by players
+- **Web app**: the board, profile, and certificate surface
 
 ---
 
@@ -34,15 +34,11 @@ Read the vulnerable logic here:
 - `anchor/programs/vault/src/instructions/level3.rs`
 - `anchor/programs/vault/src/state.rs`
 
-### Player workspace
+### Playground repo
 
-This is where the player should start:
+This is where the player should start writing and running exploits:
 
-- `players/README.md`
-- `players/level0/level0.mjs`
-- `players/level1/level1.mjs`
-- `players/level2/level2.mjs`
-- `players/level3/level3.mjs`
+- `https://github.com/jpronano-swe/solbreach-playground`
 
 ### Operator CLI
 
@@ -50,9 +46,9 @@ The internal helper CLI lives here:
 
 - `scripts/solbreach-operator.mjs`
 
-### UI board
+### Web app
 
-The browser control surface lives here:
+The browser board lives here:
 
 - `app/page.tsx`
 
@@ -143,17 +139,16 @@ solana balance
 
 ### Use the UI when you want to
 
-- inspect level state
-- see PDA addresses
-- trigger guided actions
-- verify that on-chain completion happened
-- monitor progress visually
+- browse the levels and read the lore/code snippets
+- inspect mission status and certificate state
+- connect your wallet and view your profile
+- mint cNFT certifications after a level is already cleared
 
-### Use the player scripts when you want to
+### Use the playground when you want to
 
 - solve the level as a player
 - run the exploit from your terminal
-- keep your work inside the player workspace
+- keep your work inside the external exploit workspace
 
 ### Use the operator CLI when you want to
 
@@ -168,12 +163,26 @@ solana balance
 
 For every level, use this order:
 
-1. Read the vulnerable program source
-2. Read the level README in `players/levelX/`
-3. Run the setup step
-4. Run the exploit step
-5. Run the verify step
-6. Inspect the result in the UI
+1. Open the web app and choose a level
+2. Read the vulnerable program source
+3. Open the matching level in the playground repo
+4. Run the setup, exploit, and verify steps locally
+5. Refresh the web app and confirm the level is cleared
+6. Mint the wallet-bound cNFT certification from the UI
+
+---
+
+## Demo Flow
+
+This is the cleanest devnet recording flow:
+
+1. Open the SolBreach web app
+2. Show the landing page and profile section
+3. Open a level page and explain the lore, hints, and vulnerable snippet
+4. Switch to the playground repo and run the exploit flow for that level
+5. Return to the web app and show the level marked as cleared
+6. Mint the certification cNFT from the level page or profile page
+7. Open the profile gallery and show the updated certificate state
 
 ---
 
@@ -203,9 +212,11 @@ Complete the PDA lifecycle:
 ### Commands
 
 ```bash
-node players/level0/level0.mjs setup
-node players/level0/level0.mjs verify
-node players/level0/level0.mjs status
+git clone https://github.com/jpronano-swe/solbreach-playground
+cd solbreach-playground/levels/00-hello-solbreach
+npx tsx exploit.template.ts setup
+npx tsx exploit.template.ts verify
+npx tsx exploit.template.ts status
 ```
 
 ### Win condition
@@ -240,10 +251,12 @@ Credit the internal ledger with `1_000_000` token units without depositing the e
 ### Commands
 
 ```bash
-node players/level1/level1.mjs setup
-node players/level1/level1.mjs exploit
-node players/level1/level1.mjs verify
-node players/level1/level1.mjs status
+git clone https://github.com/jpronano-swe/solbreach-playground
+cd solbreach-playground/levels/01-illusionist
+npx tsx exploit.template.ts setup
+npx tsx exploit.template.ts exploit
+npx tsx exploit.template.ts verify
+npx tsx exploit.template.ts status
 ```
 
 ### What setup does
@@ -284,10 +297,12 @@ Replace the global `commander` field with your own wallet address.
 ### Commands
 
 ```bash
-node players/level2/level2.mjs setup
-node players/level2/level2.mjs exploit
-node players/level2/level2.mjs verify
-node players/level2/level2.mjs status
+git clone https://github.com/jpronano-swe/solbreach-playground
+cd solbreach-playground/levels/02-identity-thief
+npx tsx exploit.template.ts setup
+npx tsx exploit.template.ts exploit
+npx tsx exploit.template.ts verify
+npx tsx exploit.template.ts status
 ```
 
 ### What setup does
@@ -331,10 +346,12 @@ Drain the guild’s bounty vault by supplying a malicious external program that 
 ### Commands
 
 ```bash
-node players/level3/level3.mjs setup
-node players/level3/level3.mjs exploit --external-program <program-id>
-node players/level3/level3.mjs verify
-node players/level3/level3.mjs status
+git clone https://github.com/jpronano-swe/solbreach-playground
+cd solbreach-playground/levels/03-trojan-horse
+npx tsx exploit.template.ts setup
+npx tsx exploit.template.ts exploit --external-program <program-id>
+npx tsx exploit.template.ts verify
+npx tsx exploit.template.ts status
 ```
 
 ### What setup does
@@ -597,4 +614,3 @@ SolBreach is designed so the player learns the real exploit workflow:
 The browser is the board.  
 The script is the attack surface.  
 The chain is the source of truth.
-

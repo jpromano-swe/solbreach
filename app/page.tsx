@@ -1892,11 +1892,17 @@ export default function Home() {
                   setActiveSection("levels");
                   setActiveLevelsView("landing");
                 }}
-                className="text-left transition hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-[18px] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label="Open SolBreach landing page"
               >
-                <p className="text-xl font-semibold tracking-[-0.05em] sm:text-2xl">
-                  SolBreach
-                </p>
+                <Image
+                  src="/logo_crop.png"
+                  alt="SolBreach"
+                  width={1480}
+                  height={304}
+                  className="h-20 w-auto sm:h-20 lg:h-20"
+                  priority
+                />
               </button>
             </div>
 
