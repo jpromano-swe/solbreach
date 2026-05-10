@@ -19,7 +19,6 @@ import { useCluster } from "./components/cluster-context";
 import { parseTransactionError } from "./lib/errors";
 import { useBalance } from "./lib/hooks/use-balance";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
-import { lamportsToSolString } from "./lib/lamports";
 import { getClusterUrl } from "./lib/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
@@ -1150,6 +1149,7 @@ export default function Home() {
 
     if (!level0State?.hasUserStats) {
       return {
+        badge: "Step 1",
         title: "Create the player registry PDA.",
         description:
           "This wallet does not have a `UserStats` account yet. Initialize it first so later levels have a persistent completion record.",
@@ -1172,6 +1172,7 @@ export default function Home() {
 
     if (!level0State.hasLevel0State) {
       return {
+        badge: "Step 2",
         title: "Open the temporary Level 0 PDA.",
         description:
           "This creates the per-wallet level instance that will be closed and refunded after successful verification.",
@@ -1182,6 +1183,7 @@ export default function Home() {
     }
 
     return {
+      badge: "Step 3",
       title: "Mark completion and reclaim rent.",
       description:
         "Level 0 is ready to verify. Completing it flips `completed_levels[0]` and closes the instance account.",
@@ -1263,6 +1265,7 @@ export default function Home() {
 
     if (!level1State?.hasBank) {
       return {
+        badge: "Step 1",
         title: "Configure the bank's expected mint.",
         description:
           "Bootstrap the global bank PDA with the legit mint first. The exploit only matters once that expectation exists on-chain.",
@@ -1274,6 +1277,7 @@ export default function Home() {
 
     if (!level1State.hasLevel1State) {
       return {
+        badge: "Step 2",
         title: "Open the per-player Level 1 state.",
         description:
           "Create the wallet-specific level PDA that will accumulate the fake deposit amount and later close on verification.",
@@ -1382,6 +1386,7 @@ export default function Home() {
 
     if (!level2State?.hasProfile) {
       return {
+        badge: "Step 1",
         title: "Bootstrap the global commander profile.",
         description:
           "Initialize the static profile PDA with any non-player commander. That creates the single global registry the exploit will later overwrite.",
@@ -1393,6 +1398,7 @@ export default function Home() {
 
     if (!level2State.hasLevel2State) {
       return {
+        badge: "Step 2",
         title: "Open the per-player Level 2 state.",
         description:
           "Create the wallet-specific Level 2 PDA so the verifier can later tie the hijack back to the connected player.",
@@ -1501,6 +1507,7 @@ export default function Home() {
 
     if (!level3State?.hasGuildAuthority) {
       return {
+        badge: "Step 1",
         title: "Bootstrap the guild authority and bounty vault.",
         description:
           "Provide the pre-created reward mint and bounty vault addresses, then initialize the shared guild authority PDA so the vulnerable delegation path has something valuable to sign for.",
@@ -1512,6 +1519,7 @@ export default function Home() {
 
     if (!level3State.hasLevel3State) {
       return {
+        badge: "Step 2",
         title: "Open the per-player Level 3 state.",
         description:
           "Create the wallet-specific Level 3 PDA so the verifier can later tie the delegated exploit back to the connected player.",
@@ -1567,11 +1575,6 @@ export default function Home() {
     if (level0State.isCompleted) return 100;
     return 92;
   }, [address, isLevel0Loading, level0Error, level0State, status]);
-
-  const walletBalanceLabel =
-    walletBalance.lamports != null
-      ? `${lamportsToSolString(walletBalance.lamports)} SOL`
-      : "Loading";
 
   const levelTiles = useMemo<LevelTileConfig[]>(() => {
     const level0Status: LevelStatus = level0State?.isCompleted
@@ -1658,8 +1661,6 @@ export default function Home() {
   ]);
 
   const operatorLevelsUnlocked = Boolean(level0State?.isCompleted);
-  const clusterModeLabel =
-    cluster === "localnet" ? "operator mode" : "browser mode";
   const activeLevel =
     activeLevelsView === "landing" ? null : activeLevelsView;
   const activeGuide = activeLevel ? LEVEL_GUIDES[activeLevel] : null;
@@ -1927,12 +1928,8 @@ export default function Home() {
             <div className="space-y-8">
               {activeLevelsView === "landing" ? (
                 <LandingPageSection
-                  cluster={cluster}
-                  clusterModeLabel={clusterModeLabel}
                   levelTiles={levelTiles}
                   operatorLevelsUnlocked={operatorLevelsUnlocked}
-                  status={status}
-                  walletBalanceLabel={walletBalanceLabel}
                   onOpenLevel={(level) => setActiveLevelsView(level)}
                 />
               ) : activeGuide && activeLevelStatus ? (
@@ -1958,17 +1955,12 @@ export default function Home() {
           ) : (
             <section className="space-y-8">
               <div className="max-w-3xl space-y-4">
-                <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-                  Profile
-                </p>
                 <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
                   Wallet-bound certificates.
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
                   Every SolBreach certificate is tied back to the wallet that
-                  cleared the level. This gallery is the profile surface for
-                  claimed certificates, minted cNFTs, and the progression
-                  history that powers later utility.
+                  cleared the level. 
                 </p>
               </div>
 
@@ -2022,20 +2014,12 @@ function HeaderNavButton({
 }
 
 function LandingPageSection({
-  cluster,
-  clusterModeLabel,
   levelTiles,
   operatorLevelsUnlocked,
-  status,
-  walletBalanceLabel,
   onOpenLevel,
 }: {
-  cluster: string;
-  clusterModeLabel: string;
   levelTiles: LevelTileConfig[];
   operatorLevelsUnlocked: boolean;
-  status: string;
-  walletBalanceLabel: string;
   onOpenLevel: (level: LevelId) => void;
 }) {
   return (
@@ -4006,14 +3990,11 @@ function ProfileCertificatesSection({
     <div className="rounded-[34px] border border-border bg-card/95 p-5 shadow-[0_32px_100px_-70px_rgba(0,0,0,0.45)] sm:p-7">
       <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-            Profile
-          </p>
           <h2 className="mt-3 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-            SolBreach certificates
+            Hackers's Achievements
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            This wallet gallery shows which level certificates are still locked,
+            This gallery shows which level certificates are still locked,
             which ones are claimed on-chain, and which cNFTs have already been
             minted and bound back to the original hacker wallet.
           </p>
@@ -4158,7 +4139,7 @@ function CertificateCard({
             label="Asset"
             value={
               certificate?.minted && certificate.assetId
-                ? compactAddress(certificate.assetId)
+                ? compactAddress(certificate.assetId, 4, 4)
                 : "Not minted"
             }
           />
@@ -4464,9 +4445,10 @@ function SkeletonLine({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-[20px] bg-accent ${className}`} />;
 }
 
-function compactAddress(address: string) {
-  if (address.length <= 18) return address;
-  return `${address.slice(0, 8)}...${address.slice(-8)}`;
+function compactAddress(address: string, start = 8, end = 8) {
+  const minLength = start + end + 3;
+  if (address.length <= minLength) return address;
+  return `${address.slice(0, start)}...${address.slice(-end)}`;
 }
 
 function statusLabel(status: LevelStatus) {
