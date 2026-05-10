@@ -3996,23 +3996,23 @@ function LevelTile({
     ? "border-foreground bg-foreground text-background"
     : "border-border bg-card/90 text-foreground hover:border-foreground/25 hover:bg-card";
 
-  const statusTone = selected
-    ? "bg-background/12 text-background"
-    : "bg-accent text-muted";
+  const statusTone = getLevelStatusTone(tile.status, selected);
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`min-h-[170px] rounded-[22px] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tone}`}
+      className={`min-h-[170px] w-full rounded-[22px] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tone}`}
     >
       <div className="flex items-start justify-between gap-3">
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${statusTone}`}
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${selected ? "bg-background/12 text-background" : "bg-accent text-muted"}`}
         >
           {tile.index}
         </span>
-        <span className="text-[11px] uppercase tracking-[0.24em] opacity-70">
+        <span
+          className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${statusTone}`}
+        >
           {statusLabel(tile.status)}
         </span>
       </div>
@@ -4028,6 +4028,27 @@ function LevelTile({
       </div>
     </button>
   );
+}
+
+function getLevelStatusTone(status: LevelStatus, selected: boolean) {
+  if (selected) {
+    return "bg-background/12 text-background";
+  }
+
+  switch (status) {
+    case "cleared":
+      return "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+    case "ready":
+      return "border border-sky-400/20 bg-sky-400/10 text-sky-300";
+    case "live":
+      return "border border-violet-400/20 bg-violet-400/10 text-violet-300";
+    case "locked":
+      return "border border-border bg-accent text-muted";
+    case "armed":
+      return "border border-amber-400/20 bg-amber-400/10 text-amber-300";
+    case "mint":
+      return "border border-cyan-400/20 bg-cyan-400/10 text-cyan-300";
+  }
 }
 
 function ProfileCertificatesSection({
