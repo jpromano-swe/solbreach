@@ -9,9 +9,10 @@ mod tests;
 
 declare_id!("aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2");
 
-use crate::instructions::{level0::*, level1::*, level2::*};
+use crate::instructions::{certification::*, level0::*, level1::*, level2::*, level3::*};
 pub use crate::state::{
-    BankConfig, Level0State, Level1State, Level2State, UserProfile, UserStats, LEVEL_COUNT,
+    BankConfig, CertificationAuthority, GuildAuthority, Level0State, Level1State, Level2State,
+    Level3State, LevelCertificate, UserProfile, UserStats, LEVEL_COUNT,
 };
 
 #[program]
@@ -67,6 +68,52 @@ pub mod vault {
 
     pub fn verify_and_close_level_2(ctx: Context<VerifyAndCloseLevel2>) -> Result<()> {
         instructions::level2::verify_and_close_level_2(ctx)
+    }
+
+    pub fn init_guild_authority(
+        ctx: Context<InitGuildAuthority>,
+        bounty_amount: u64,
+    ) -> Result<()> {
+        instructions::level3::init_guild_authority(ctx, bounty_amount)
+    }
+
+    pub fn init_level_3(ctx: Context<InitLevel3>) -> Result<()> {
+        instructions::level3::init_level_3(ctx)
+    }
+
+    pub fn delegate_task(ctx: Context<DelegateTask>, task_data: Vec<u8>) -> Result<()> {
+        instructions::level3::delegate_task(ctx, task_data)
+    }
+
+    pub fn verify_and_close_level_3(ctx: Context<VerifyAndCloseLevel3>) -> Result<()> {
+        instructions::level3::verify_and_close_level_3(ctx)
+    }
+
+    pub fn init_certification_authority(
+        ctx: Context<InitCertificationAuthority>,
+        authority: Pubkey,
+    ) -> Result<()> {
+        instructions::certification::init_certification_authority(ctx, authority)
+    }
+
+    pub fn claim_level_certificate(ctx: Context<ClaimLevelCertificate>, level: u8) -> Result<()> {
+        instructions::certification::claim_level_certificate(ctx, level)
+    }
+
+    pub fn record_certificate_asset(
+        ctx: Context<RecordCertificateAsset>,
+        merkle_tree: Pubkey,
+        asset_id: Pubkey,
+        leaf_index: u32,
+        leaf_nonce: u64,
+    ) -> Result<()> {
+        instructions::certification::record_certificate_asset(
+            ctx,
+            merkle_tree,
+            asset_id,
+            leaf_index,
+            leaf_nonce,
+        )
     }
 }
 

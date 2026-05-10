@@ -1,0 +1,16 @@
+{
+  "cluster": "devnet",
+  "generatedAt": "2026-05-09T14:36:54.753Z",
+  "kind": "level3",
+  "operator": "5SBZgmWtZNk6JjsrMP8Ck2frgEfQ8dHDPiX7ieRAfU6b",
+  "rpcUrl": "https://api.devnet.solana.com",
+  "amount": "1000000",
+  "addresses": {
+    "guildAuthority": "3rczMkC947nUprr81kYCVHfLJq9profhGdWyhb2N7zrd",
+    "rewardMint": "Hjb8Svkpbp8THtJy6SZXV54VxmFCsKaNK3widkNddMMp",
+    "bountyVault": "85cMDgMTcPEG5DCRZfAcwKc66nLhx8XGwiHFbSBrytXg",
+    "userRewardAccount": "547UryXfoZTeNY3wo3KQSrbh6w7yEug4RRsBznb7xt7d",
+    "level3State": "3GRA9PWmxSsYZQgvc5K22sRfD64gPgDyzrmHguLcoD8L",
+    "userStats": "9yP3xomEzfGCXgAXsigUyvKLkHJnPPsHEQWPiEf5SRjb"
+  }
+}

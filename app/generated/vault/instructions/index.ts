@@ -6,14 +6,21 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from "./claimLevelCertificate";
+export * from "./delegateTask";
 export * from "./depositTokens";
 export * from "./initBank";
+export * from "./initCertificationAuthority";
 export * from "./initGlobalProfile";
+export * from "./initGuildAuthority";
 export * from "./initLevel0";
 export * from "./initLevel1";
 export * from "./initLevel2";
+export * from "./initLevel3";
 export * from "./initUserStats";
+export * from "./recordCertificateAsset";
 export * from "./updateProfile";
 export * from "./verifyAndCloseLevel0";
 export * from "./verifyAndCloseLevel1";
 export * from "./verifyAndCloseLevel2";
+export * from "./verifyAndCloseLevel3";

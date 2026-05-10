@@ -17,28 +17,42 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
+  parseClaimLevelCertificateInstruction,
+  parseDelegateTaskInstruction,
   parseDepositTokensInstruction,
   parseInitBankInstruction,
+  parseInitCertificationAuthorityInstruction,
   parseInitGlobalProfileInstruction,
+  parseInitGuildAuthorityInstruction,
   parseInitLevel0Instruction,
   parseInitLevel1Instruction,
   parseInitLevel2Instruction,
+  parseInitLevel3Instruction,
   parseInitUserStatsInstruction,
+  parseRecordCertificateAssetInstruction,
   parseUpdateProfileInstruction,
   parseVerifyAndCloseLevel0Instruction,
   parseVerifyAndCloseLevel1Instruction,
   parseVerifyAndCloseLevel2Instruction,
+  parseVerifyAndCloseLevel3Instruction,
+  type ParsedClaimLevelCertificateInstruction,
+  type ParsedDelegateTaskInstruction,
   type ParsedDepositTokensInstruction,
   type ParsedInitBankInstruction,
+  type ParsedInitCertificationAuthorityInstruction,
   type ParsedInitGlobalProfileInstruction,
+  type ParsedInitGuildAuthorityInstruction,
   type ParsedInitLevel0Instruction,
   type ParsedInitLevel1Instruction,
   type ParsedInitLevel2Instruction,
+  type ParsedInitLevel3Instruction,
   type ParsedInitUserStatsInstruction,
+  type ParsedRecordCertificateAssetInstruction,
   type ParsedUpdateProfileInstruction,
   type ParsedVerifyAndCloseLevel0Instruction,
   type ParsedVerifyAndCloseLevel1Instruction,
   type ParsedVerifyAndCloseLevel2Instruction,
+  type ParsedVerifyAndCloseLevel3Instruction,
 } from "../instructions";
 
 export const VAULT_PROGRAM_ADDRESS =
@@ -46,9 +60,13 @@ export const VAULT_PROGRAM_ADDRESS =
 
 export enum VaultAccount {
   BankConfig,
+  CertificationAuthority,
+  GuildAuthority,
   Level0State,
   Level1State,
   Level2State,
+  Level3State,
+  LevelCertificate,
   UserProfile,
   UserStats,
 }
@@ -67,6 +85,28 @@ export function identifyVaultAccount(
     )
   ) {
     return VaultAccount.BankConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([90, 105, 68, 133, 190, 41, 253, 212]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.CertificationAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([172, 133, 223, 121, 81, 175, 165, 136]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.GuildAuthority;
   }
   if (
     containsBytes(
@@ -105,6 +145,28 @@ export function identifyVaultAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([174, 197, 147, 96, 224, 221, 79, 166]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.Level3State;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([155, 15, 12, 227, 149, 59, 158, 239]),
+      ),
+      0,
+    )
+  ) {
+    return VaultAccount.LevelCertificate;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([32, 37, 119, 205, 179, 180, 13, 194]),
       ),
       0,
@@ -129,23 +191,52 @@ export function identifyVaultAccount(
 }
 
 export enum VaultInstruction {
+  ClaimLevelCertificate,
+  DelegateTask,
   DepositTokens,
   InitBank,
+  InitCertificationAuthority,
   InitGlobalProfile,
+  InitGuildAuthority,
   InitLevel0,
   InitLevel1,
   InitLevel2,
+  InitLevel3,
   InitUserStats,
+  RecordCertificateAsset,
   UpdateProfile,
   VerifyAndCloseLevel0,
   VerifyAndCloseLevel1,
   VerifyAndCloseLevel2,
+  VerifyAndCloseLevel3,
 }
 
 export function identifyVaultInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array,
 ): VaultInstruction {
   const data = "data" in instruction ? instruction.data : instruction;
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([71, 62, 234, 114, 76, 122, 16, 127]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.ClaimLevelCertificate;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([204, 242, 231, 107, 78, 130, 187, 57]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.DelegateTask;
+  }
   if (
     containsBytes(
       data,
@@ -172,12 +263,34 @@ export function identifyVaultInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([224, 38, 6, 184, 79, 23, 71, 85]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitCertificationAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([58, 62, 122, 41, 39, 80, 228, 178]),
       ),
       0,
     )
   ) {
     return VaultInstruction.InitGlobalProfile;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([241, 234, 227, 188, 99, 147, 131, 208]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitGuildAuthority;
   }
   if (
     containsBytes(
@@ -216,12 +329,34 @@ export function identifyVaultInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([155, 8, 157, 98, 203, 185, 90, 129]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.InitLevel3;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([177, 113, 20, 232, 181, 87, 120, 62]),
       ),
       0,
     )
   ) {
     return VaultInstruction.InitUserStats;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([54, 247, 228, 199, 151, 255, 129, 246]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.RecordCertificateAsset;
   }
   if (
     containsBytes(
@@ -267,6 +402,17 @@ export function identifyVaultInstruction(
   ) {
     return VaultInstruction.VerifyAndCloseLevel2;
   }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([42, 44, 43, 77, 76, 239, 178, 180]),
+      ),
+      0,
+    )
+  ) {
+    return VaultInstruction.VerifyAndCloseLevel3;
+  }
   throw new Error(
     "The provided instruction could not be identified as a vault instruction.",
   );
@@ -276,14 +422,26 @@ export type ParsedVaultInstruction<
   TProgram extends string = "aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2",
 > =
   | ({
+      instructionType: VaultInstruction.ClaimLevelCertificate;
+    } & ParsedClaimLevelCertificateInstruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.DelegateTask;
+    } & ParsedDelegateTaskInstruction<TProgram>)
+  | ({
       instructionType: VaultInstruction.DepositTokens;
     } & ParsedDepositTokensInstruction<TProgram>)
   | ({
       instructionType: VaultInstruction.InitBank;
     } & ParsedInitBankInstruction<TProgram>)
   | ({
+      instructionType: VaultInstruction.InitCertificationAuthority;
+    } & ParsedInitCertificationAuthorityInstruction<TProgram>)
+  | ({
       instructionType: VaultInstruction.InitGlobalProfile;
     } & ParsedInitGlobalProfileInstruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.InitGuildAuthority;
+    } & ParsedInitGuildAuthorityInstruction<TProgram>)
   | ({
       instructionType: VaultInstruction.InitLevel0;
     } & ParsedInitLevel0Instruction<TProgram>)
@@ -294,8 +452,14 @@ export type ParsedVaultInstruction<
       instructionType: VaultInstruction.InitLevel2;
     } & ParsedInitLevel2Instruction<TProgram>)
   | ({
+      instructionType: VaultInstruction.InitLevel3;
+    } & ParsedInitLevel3Instruction<TProgram>)
+  | ({
       instructionType: VaultInstruction.InitUserStats;
     } & ParsedInitUserStatsInstruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.RecordCertificateAsset;
+    } & ParsedRecordCertificateAssetInstruction<TProgram>)
   | ({
       instructionType: VaultInstruction.UpdateProfile;
     } & ParsedUpdateProfileInstruction<TProgram>)
@@ -307,13 +471,30 @@ export type ParsedVaultInstruction<
     } & ParsedVerifyAndCloseLevel1Instruction<TProgram>)
   | ({
       instructionType: VaultInstruction.VerifyAndCloseLevel2;
-    } & ParsedVerifyAndCloseLevel2Instruction<TProgram>);
+    } & ParsedVerifyAndCloseLevel2Instruction<TProgram>)
+  | ({
+      instructionType: VaultInstruction.VerifyAndCloseLevel3;
+    } & ParsedVerifyAndCloseLevel3Instruction<TProgram>);
 
 export function parseVaultInstruction<TProgram extends string>(
   instruction: Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array>,
 ): ParsedVaultInstruction<TProgram> {
   const instructionType = identifyVaultInstruction(instruction);
   switch (instructionType) {
+    case VaultInstruction.ClaimLevelCertificate: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.ClaimLevelCertificate,
+        ...parseClaimLevelCertificateInstruction(instruction),
+      };
+    }
+    case VaultInstruction.DelegateTask: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.DelegateTask,
+        ...parseDelegateTaskInstruction(instruction),
+      };
+    }
     case VaultInstruction.DepositTokens: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -328,11 +509,25 @@ export function parseVaultInstruction<TProgram extends string>(
         ...parseInitBankInstruction(instruction),
       };
     }
+    case VaultInstruction.InitCertificationAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitCertificationAuthority,
+        ...parseInitCertificationAuthorityInstruction(instruction),
+      };
+    }
     case VaultInstruction.InitGlobalProfile: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: VaultInstruction.InitGlobalProfile,
         ...parseInitGlobalProfileInstruction(instruction),
+      };
+    }
+    case VaultInstruction.InitGuildAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitGuildAuthority,
+        ...parseInitGuildAuthorityInstruction(instruction),
       };
     }
     case VaultInstruction.InitLevel0: {
@@ -356,11 +551,25 @@ export function parseVaultInstruction<TProgram extends string>(
         ...parseInitLevel2Instruction(instruction),
       };
     }
+    case VaultInstruction.InitLevel3: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.InitLevel3,
+        ...parseInitLevel3Instruction(instruction),
+      };
+    }
     case VaultInstruction.InitUserStats: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: VaultInstruction.InitUserStats,
         ...parseInitUserStatsInstruction(instruction),
+      };
+    }
+    case VaultInstruction.RecordCertificateAsset: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.RecordCertificateAsset,
+        ...parseRecordCertificateAssetInstruction(instruction),
       };
     }
     case VaultInstruction.UpdateProfile: {
@@ -389,6 +598,13 @@ export function parseVaultInstruction<TProgram extends string>(
       return {
         instructionType: VaultInstruction.VerifyAndCloseLevel2,
         ...parseVerifyAndCloseLevel2Instruction(instruction),
+      };
+    }
+    case VaultInstruction.VerifyAndCloseLevel3: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: VaultInstruction.VerifyAndCloseLevel3,
+        ...parseVerifyAndCloseLevel3Instruction(instruction),
       };
     }
     default:

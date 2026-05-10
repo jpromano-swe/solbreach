@@ -1,13 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import {
   address as toAddress,
   isAddress,
-  lamports as sol,
   type Address,
   type Instruction,
 } from "@solana/kit";
+import { PublicKey as Web3PublicKey } from "@solana/web3.js";
 import useSWR from "swr";
 import { toast } from "sonner";
 import { GridBackground } from "./components/grid-background";
@@ -19,33 +20,47 @@ import { parseTransactionError } from "./lib/errors";
 import { useBalance } from "./lib/hooks/use-balance";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
 import { lamportsToSolString } from "./lib/lamports";
+import { getClusterUrl } from "./lib/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import {
+  fetchMaybeLevelCertificate,
   fetchMaybeBankConfig,
+  VAULT_PROGRAM_ADDRESS,
+  fetchMaybeGuildAuthority,
   fetchMaybeLevel0State,
   fetchMaybeLevel1State,
   fetchMaybeLevel2State,
+  fetchMaybeLevel3State,
   fetchMaybeUserProfile,
   fetchMaybeUserStats,
   findBankPda,
+  findGuildAuthorityPda,
   findLevel1StatePda,
   findLevel2StatePda,
+  findLevel3StatePda,
   findProfilePda,
+  getClaimLevelCertificateInstructionAsync,
+  getDelegateTaskInstructionAsync,
   getDepositTokensInstructionAsync,
   getInitBankInstructionAsync,
+  getInitGuildAuthorityInstructionAsync,
   getInitGlobalProfileInstructionAsync,
   getInitLevel0InstructionAsync,
   getInitLevel1InstructionAsync,
   getInitLevel2InstructionAsync,
+  getInitLevel3InstructionAsync,
   getInitUserStatsInstructionAsync,
   getUpdateProfileInstructionAsync,
   getVerifyAndCloseLevel0InstructionAsync,
   getVerifyAndCloseLevel1InstructionAsync,
   getVerifyAndCloseLevel2InstructionAsync,
+  getVerifyAndCloseLevel3InstructionAsync,
 } from "./generated/vault";
 
 type LevelId = "level0" | "level1" | "level2" | "level3";
+type RootSection = "levels" | "profile";
+type LevelsView = "landing" | LevelId;
 type LevelStatus = "ready" | "live" | "cleared" | "armed" | "mint" | "locked";
 
 type Level0Snapshot = {
@@ -74,6 +89,31 @@ type Level2Snapshot = {
   hasLevel2State: boolean;
 };
 
+type Level3Snapshot = {
+  guildAuthorityPda: Address;
+  level3StatePda: Address;
+  hasGuildAuthority: boolean;
+  rewardMint: Address | null;
+  bountyVault: Address | null;
+  bountyAmount: bigint;
+  hasLevel3State: boolean;
+  rewardAccount: Address | null;
+  rewardAmount: bigint;
+};
+
+type LevelCertificateSnapshot = {
+  assetId: Address | null;
+  certificatePda: Address;
+  exists: boolean;
+  leafIndex: number | null;
+  leafNonce: bigint | null;
+  level: 0 | 1 | 2 | 3;
+  merkleTree: Address | null;
+  minted: boolean;
+};
+
+type CertificateCollection = Record<0 | 1 | 2 | 3, LevelCertificateSnapshot>;
+
 type StageConfig = {
   badge: string;
   title: string;
@@ -94,27 +134,303 @@ type LevelTileConfig = {
   summary: string;
 };
 
+type CertificateDetails = {
+  image: string;
+  lockedImage?: string;
+  levelLabel: string;
+  title: string;
+};
+
+type LevelGuideContent = {
+  cloneCommand: string;
+  codeSnippet: string;
+  hints: string[];
+  lore: string[];
+  missionTitle: string;
+  subtitle: string;
+  title: string;
+  winCondition: string;
+};
+
+type MissionStatusData = {
+  badge: string;
+  chipLabel: string;
+  mintDisabled: boolean;
+  mintLabel: string;
+  onMint: () => void;
+  progressValue: number;
+  rows: Array<{ label: string; value: string }>;
+};
+
 const LEVEL_1_TARGET = 1_000_000n;
+const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
+const LEVEL_NUMBERS = [0, 1, 2, 3] as const;
+const LEVEL_CERTIFICATE_DETAILS: Record<0 | 1 | 2 | 3, CertificateDetails> = {
+  0: {
+    image: "/nfts/solbreach-level-0-hello-solbreach.png",
+    lockedImage: "/nfts/locked-certification.png",
+    levelLabel: "Level 0",
+    title: "Hello SolBreach",
+  },
+  1: {
+    image: "/nfts/solbreach-level-1-illusionist.png",
+    lockedImage: "/nfts/locked-certification.png",
+    levelLabel: "Level 1",
+    title: "The Illusionist",
+  },
+  2: {
+    image: "/nfts/solbreach-level-2-identity-thief.png",
+    lockedImage: "/nfts/locked-certification.png",
+    levelLabel: "Level 2",
+    title: "Identity Thief",
+  },
+  3: {
+    image: "/nfts/solbreach-level-3-trojan-horse.png",
+    lockedImage: "/nfts/locked-certification.png",
+    levelLabel: "Level 3",
+    title: "The Trojan Horse",
+  },
+};
 const DEFAULT_LEVEL_2_COMMANDER =
   "11111111111111111111111111111111" as Address;
+const PLAYGROUND_REPOSITORY =
+  "git clone https://github.com/jpronano-swe/solbreach-playground";
+const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
+  222, 50, 96, 140, 105, 24, 81, 44,
+]);
+const LEVEL_GUIDES: Record<LevelId, LevelGuideContent> = {
+  level0: {
+    cloneCommand: `${PLAYGROUND_REPOSITORY} && cd solbreach-playground/levels/00-hello-solbreach`,
+    codeSnippet: `#[derive(Accounts)]
+pub struct InitLevel0<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"stats", user.key().as_ref()],
+        bump = user_stats.bump,
+    )]
+    pub user_stats: Account<'info, UserStats>,
+
+    #[account(
+        init,
+        payer = user,
+        space = 8 + Level0State::INIT_SPACE,
+        seeds = [b"level_0", user.key().as_ref()],
+        bump,
+    )]
+    pub level_0_state: Account<'info, Level0State>,
+}
+
+pub fn verify_and_close_level_0(ctx: Context<VerifyAndCloseLevel0>) -> Result<()> {
+    let user_stats = &mut ctx.accounts.user_stats;
+    user_stats.completed_levels[0] = true;
+    Ok(())
+}`,
+    hints: [
+      "Program Derived Addresses are deterministic. Trace the stats PDA and the per-level PDA separately.",
+      "The win condition is not a trick exploit. It is understanding the account lifecycle the rest of the wargame depends on.",
+      "The verifier closes the temporary level PDA, so completion is proven by both state and account cleanup.",
+    ],
+    lore: [
+      "Before the vault can be attacked, the Guild wants proof that you understand how its world is stitched together. Level 0 is that handshake: derive the player registry, open the temporary level PDA, then close it correctly.",
+      "This first checkpoint is intentionally honest. It exists so every later exploit can assume the same player-bound registry and completion flow without having to teach those mechanics again.",
+      "Your objective is to prove you can operate inside SolBreach's account model and leave no temporary state behind.",
+    ],
+    missionTitle: "Level 0: Hello SolBreach",
+    subtitle: "Wallet handshake and PDA closeout warmup",
+    title: "Hello SolBreach",
+    winCondition:
+      "Set completed_levels[0] = true and close the temporary Level 0 PDA.",
+  },
+  level1: {
+    cloneCommand: `${PLAYGROUND_REPOSITORY} && cd solbreach-playground/levels/01-illusionist`,
+    codeSnippet: `#[derive(Accounts)]
+pub struct DepositTokens<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    
+    // VULNERABILITY: Missing #[account(constraint = vault.mint == expected_mint.key())]
+    // Anchor checks that this is a valid TokenAccount, but NOT which token it holds!
+    #[account(mut)]
+    pub vault: Account<'info, TokenAccount>,
+    
+    #[account(mut)]
+    pub user_token_account: Account<'info, TokenAccount>,
+    
+    pub token_program: Program<'info, Token>,
+}
+
+pub fn deposit(ctx: Context<DepositTokens>, amount: u64) -> Result<()> {
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token::Transfer {
+                from: ctx.accounts.user_token_account.to_account_info(),
+                to: ctx.accounts.vault.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        amount,
+    )?;
+
+    msg!("Successfully deposited {} tokens!", amount);
+    Ok(())
+}`,
+    hints: [
+      "Not all SPL tokens are created equal.",
+      "Who determines the mint address of a TokenAccount?",
+      "Anchor is smart, but it can't read your mind if you don't constrain your thoughts.",
+    ],
+    lore: [
+      "Welcome to the Grand Sol Bank. The vault claims to be highly secure, only accepting deposits of the realm's most precious stablecoin. The guards check if you have a bag of coins, but are they checking what's inside the bag?",
+      "Your objective is to trick the bank into crediting your internal ledger with 1,000,000 tokens without spending a single real dime.",
+    ],
+    missionTitle: "Level 1: The Illusionist",
+    subtitle: "Account substitution and forged ledger credit",
+    title: "The Illusionist",
+    winCondition:
+      "Push deposited_amount to 1,000,000 using fake token accounts, then verify and close the level.",
+  },
+  level2: {
+    cloneCommand: `${PLAYGROUND_REPOSITORY} && cd solbreach-playground/levels/02-identity-thief`,
+    codeSnippet: `#[derive(Accounts)]
+pub struct UpdateProfile<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    
+    // VULNERABILITY: The seeds are static! 
+    // It should be seeds = [b"profile", user.key().as_ref()]
+    // Because it's static, there is only ONE global profile PDA.
+    #[account(
+        mut,
+        seeds = [b"profile"], 
+        bump
+    )]
+    pub profile: Account<'info, UserProfile>,
+}
+
+#[account]
+pub struct UserProfile {
+    pub commander: Pubkey,
+}
+
+pub fn update_profile(ctx: Context<UpdateProfile>) -> Result<()> {
+    let profile = &mut ctx.accounts.profile;
+    profile.commander = ctx.accounts.user.key();
+    Ok(())
+}`,
+    hints: [
+      "Program Derived Addresses are like deterministic lockers.",
+      "What happens if a locker doesn't include the owner's name on it?",
+      "Validating a bump doesn't mean you are validating the user.",
+    ],
+    lore: [
+      "The Citadel issues a unique, immutable ledger to every citizen to store their personal records. Or so they thought. It seems the architect used a single blueprint for everyone's safe, and left the master key in the door.",
+      'The system has currently registered a "Commander". Your objective is to overwrite the Citadel\'s registry and declare yourself the new Commander.',
+    ],
+    missionTitle: "Level 2: The Identity Thief",
+    subtitle: "Static PDA authority bypass",
+    title: "Identity Thief",
+    winCondition:
+      "Overwrite the global commander with your wallet, then verify and close the level instance.",
+  },
+  level3: {
+    cloneCommand: `${PLAYGROUND_REPOSITORY} && cd solbreach-playground/levels/03-trojan-horse`,
+    codeSnippet: `#[derive(Accounts)]
+pub struct DelegateTask<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+    
+    // VULNERABILITY: The developer failed to verify the program ID.
+    // Missing: #[account(address = known_mercenary_program::ID)]
+    /// CHECK: We trust the external mercenary program to do its job.
+    pub external_program: UncheckedAccount<'info>,
+    
+    pub system_program: Program<'info, System>,
+}
+
+pub fn delegate(ctx: Context<DelegateTask>, task_data: Vec<u8>) -> Result<()> {
+    let ix = Instruction {
+        program_id: *ctx.accounts.external_program.key,
+        accounts: vec![AccountMeta::new(ctx.accounts.user.key(), true)],
+        data: task_data,
+    };
+
+    solana_program::program::invoke(
+        &ix,
+        &[
+            ctx.accounts.external_program.to_account_info(),
+            ctx.accounts.user.to_account_info(),
+        ],
+    )?;
+    
+    Ok(())
+}`,
+    hints: [
+      "Cross-Program Invocations (CPIs) are powerful, but who are you really calling?",
+      "UncheckedAccount is exactly what it sounds like. It turns off Anchor's safety nets.",
+      "Sometimes, the only way to beat a contract is to deploy your own contract to fight it.",
+    ],
+    lore: [
+      "The Guild frequently outsources its heavy lifting to external mercenaries. They trust the uniforms of the mercenaries, but they rarely ask for identification.",
+      "Your objective is to hijack the delegation process and force the Guild to execute your own malicious orders.",
+    ],
+    missionTitle: "Level 3: The Trojan Horse",
+    subtitle: "Arbitrary CPI and delegated signer abuse",
+    title: "The Trojan Horse",
+    winCondition:
+      "Drain the guild bounty through arbitrary CPI, then verify and close the per-player level PDA.",
+  },
+};
+const LEVEL_PAGE_OPTIONS: Array<{ id: LevelsView; label: string }> = [
+  { id: "level0", label: "Level 0" },
+  { id: "level1", label: "Level 1" },
+  { id: "level2", label: "Level 2" },
+  { id: "level3", label: "Level 3" },
+];
+
+function findCertificatePdaForUser(
+  playerAddress: string,
+  level: 0 | 1 | 2 | 3
+): Address {
+  const [pda] = Web3PublicKey.findProgramAddressSync(
+    [
+      new TextEncoder().encode("certificate"),
+      new Web3PublicKey(playerAddress).toBuffer(),
+      Uint8Array.of(level),
+    ],
+    new Web3PublicKey(VAULT_PROGRAM_ADDRESS)
+  );
+
+  return toAddress(pda.toBase58());
+}
 
 export default function Home() {
   const { wallet, signer, status } = useWallet();
   const { cluster, getExplorerUrl } = useCluster();
   const client = useSolanaClient();
-  const { send, isSending } = useSendTransaction();
+  const { send } = useSendTransaction();
 
   const address = wallet?.account.address;
   const walletBalance = useBalance(address);
-  const [copied, setCopied] = useState<string | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<LevelId>("level0");
-  const [level1ExpectedMint, setLevel1ExpectedMint] = useState("");
-  const [level1Vault, setLevel1Vault] = useState("");
-  const [level1UserTokenAccount, setLevel1UserTokenAccount] = useState("");
-  const [level1Amount, setLevel1Amount] = useState("1000000");
-  const [level2InitialCommander, setLevel2InitialCommander] = useState<string>(
+  const [activeSection, setActiveSection] = useState<RootSection>("levels");
+  const [activeLevelsView, setActiveLevelsView] =
+    useState<LevelsView>("landing");
+  const [level1ExpectedMint] = useState("");
+  const [level1Vault] = useState("");
+  const [level1UserTokenAccount] = useState("");
+  const [level1Amount] = useState("1000000");
+  const [level2InitialCommander] = useState<string>(
     DEFAULT_LEVEL_2_COMMANDER
   );
+  const [level3RewardMint] = useState("");
+  const [level3BountyVault] = useState("");
+  const [level3UserRewardAccount] = useState("");
+  const [level3ExternalProgram] = useState("");
+  const [level3Amount] = useState("1000000");
+  const [mintingLevel, setMintingLevel] = useState<LevelId | null>(null);
 
   const {
     data: level0State,
@@ -217,20 +533,132 @@ export default function Home() {
     { revalidateOnFocus: true }
   );
 
-  const copyText = useCallback(async (label: string, value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 1400);
-  }, []);
+  const {
+    data: level3State,
+    error: level3Error,
+    isLoading: isLevel3Loading,
+    mutate: mutateLevel3State,
+  } = useSWR(
+    signer && address
+      ? ([
+          "level3-state",
+          cluster,
+          address,
+          level3UserRewardAccount.trim(),
+        ] as const)
+      : null,
+    async (): Promise<Level3Snapshot> => {
+      const [[guildAuthorityPda], [level3StatePda]] = await Promise.all([
+        findGuildAuthorityPda(),
+        findLevel3StatePda({ user: toAddress(address!) }),
+      ]);
+
+      const [guildAuthorityAccount, level3Account] = await Promise.all([
+        fetchMaybeGuildAuthority(client.rpc, guildAuthorityPda),
+        fetchMaybeLevel3State(client.rpc, level3StatePda),
+      ]);
+
+      const rewardAccountInput = level3UserRewardAccount.trim();
+      const rewardAccount = isAddress(rewardAccountInput)
+        ? toAddress(rewardAccountInput)
+        : null;
+
+      let rewardAmount = 0n;
+      if (rewardAccount) {
+        try {
+          const { value } = await client.rpc
+            .getTokenAccountBalance(rewardAccount)
+            .send();
+          rewardAmount = BigInt(value.amount);
+        } catch {
+          rewardAmount = 0n;
+        }
+      }
+
+      return {
+        guildAuthorityPda,
+        level3StatePda,
+        hasGuildAuthority: guildAuthorityAccount.exists,
+        rewardMint: guildAuthorityAccount.exists
+          ? guildAuthorityAccount.data.rewardMint
+          : null,
+        bountyVault: guildAuthorityAccount.exists
+          ? guildAuthorityAccount.data.bountyVault
+          : null,
+        bountyAmount: guildAuthorityAccount.exists
+          ? guildAuthorityAccount.data.bountyAmount
+          : 0n,
+        hasLevel3State: level3Account.exists,
+        rewardAccount,
+        rewardAmount,
+      };
+    },
+    { revalidateOnFocus: true }
+  );
+
+  const {
+    data: certificateState,
+    isLoading: isCertificateLoading,
+    mutate: mutateCertificateState,
+  } = useSWR(
+    address ? (["certificate-state", cluster, address] as const) : null,
+    async (): Promise<CertificateCollection> => {
+      const snapshots = await Promise.all(
+        LEVEL_NUMBERS.map(async (level) => {
+          const certificatePda = findCertificatePdaForUser(address!, level);
+          const certificateAccount = await fetchMaybeLevelCertificate(
+            client.rpc,
+            certificatePda
+          );
+
+          return [
+            level,
+            {
+              assetId: certificateAccount.exists
+                ? certificateAccount.data.assetId
+                : null,
+              certificatePda,
+              exists: certificateAccount.exists,
+              leafIndex: certificateAccount.exists
+                ? certificateAccount.data.leafIndex
+                : null,
+              leafNonce: certificateAccount.exists
+                ? certificateAccount.data.leafNonce
+                : null,
+              level,
+              merkleTree: certificateAccount.exists
+                ? certificateAccount.data.merkleTree
+                : null,
+              minted: certificateAccount.exists
+                ? certificateAccount.data.minted
+                : false,
+            } satisfies LevelCertificateSnapshot,
+          ] as const;
+        })
+      );
+
+      return Object.fromEntries(snapshots) as CertificateCollection;
+    },
+    { revalidateOnFocus: true }
+  );
 
   const refreshState = useCallback(async () => {
     await Promise.all([
       mutateLevel0State(),
       mutateLevel1State(),
       mutateLevel2State(),
+      mutateLevel3State(),
+      mutateCertificateState(),
       walletBalance.mutate(),
     ]);
-  }, [mutateLevel0State, mutateLevel1State, mutateLevel2State, walletBalance]);
+  }, [
+    mutateCertificateState,
+    mutateLevel0State,
+    mutateLevel1State,
+    mutateLevel2State,
+    mutateLevel3State,
+    walletBalance,
+  ]);
 
   const parseAddressInput = useCallback((value: string, label: string) => {
     const trimmed = value.trim();
@@ -284,54 +712,6 @@ export default function Home() {
     },
     [getExplorerUrl, refreshState, send, signer]
   );
-
-  const handleAirdrop = useCallback(async () => {
-    if (!address) return;
-
-    try {
-      toast.info("Requesting 1 SOL on devnet/localnet...");
-      const signature = await client.airdrop(address, sol(1_000_000_000n));
-      await walletBalance.mutate();
-
-      toast.success("Wallet funded.", {
-        description: signature ? (
-          <a
-            href={getExplorerUrl(`/tx/${signature}`)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2"
-          >
-            View funding transaction
-          </a>
-        ) : undefined,
-      });
-    } catch (err) {
-      console.error("Airdrop failed:", err);
-      const message = err instanceof Error ? err.message : String(err);
-      const rateLimited =
-        message.includes("429") || message.includes("Internal JSON-RPC error");
-
-      toast.error(
-        rateLimited
-          ? "Devnet faucet is rate-limited right now."
-          : "Could not fund the wallet.",
-        rateLimited
-          ? {
-              description: (
-                <a
-                  href="https://faucet.solana.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  Open faucet.solana.com
-                </a>
-              ),
-            }
-          : undefined
-      );
-    }
-  }, [address, client, getExplorerUrl, walletBalance]);
 
   const handleInitStats = useCallback(async () => {
     await runInstruction(
@@ -463,19 +843,273 @@ export default function Home() {
     );
   }, [runInstruction, signer]);
 
-  const handleMintLevel1Flag = useCallback(() => {
-    toast.success("Level 1 mint unlocked.", {
-      description:
-        "Completion is on-chain now. The real cNFT mint is the next backend step.",
-    });
-  }, []);
+  const handleInitGuildAuthority = useCallback(async () => {
+    await runInstruction(
+      () =>
+        getInitGuildAuthorityInstructionAsync({
+          admin: signer!,
+          rewardMint: parseAddressInput(level3RewardMint, "Reward mint"),
+          bountyVault: parseAddressInput(level3BountyVault, "Bounty vault"),
+          bountyAmount: parseAmountInput(level3Amount),
+        }),
+      "Guild authority bootstrapped.",
+      "View init_guild_authority transaction"
+    );
+  }, [
+    level3Amount,
+    level3BountyVault,
+    level3RewardMint,
+    parseAddressInput,
+    parseAmountInput,
+    runInstruction,
+    signer,
+  ]);
 
-  const handleMintLevel2Flag = useCallback(() => {
-    toast.success("Level 2 mint unlocked.", {
-      description:
-        "Completion is on-chain now. The real cNFT mint is the next backend step.",
+  const handleInitLevel3 = useCallback(async () => {
+    await runInstruction(
+      () => getInitLevel3InstructionAsync({ user: signer! }),
+      "Level 3 initialized.",
+      "View init_level_3 transaction"
+    );
+  }, [runInstruction, signer]);
+
+  const handleDelegateTask = useCallback(async () => {
+    await runInstruction(
+      async () => {
+        const amount = level3State?.bountyAmount || parseAmountInput(level3Amount);
+        const taskData = new Uint8Array(16);
+        taskData.set(MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR, 0);
+        new DataView(taskData.buffer).setBigUint64(8, amount, true);
+
+        return getDelegateTaskInstructionAsync({
+          user: signer!,
+          bountyVault:
+            level3State?.bountyVault ??
+            parseAddressInput(level3BountyVault, "Bounty vault"),
+          userRewardAccount: parseAddressInput(
+            level3UserRewardAccount,
+            "User reward account"
+          ),
+          externalProgram: parseAddressInput(
+            level3ExternalProgram,
+            "External program"
+          ),
+          taskData,
+        });
+      },
+      "Delegated CPI submitted.",
+      "View delegate_task transaction"
+    );
+  }, [
+    level3Amount,
+    level3BountyVault,
+    level3ExternalProgram,
+    level3State,
+    level3UserRewardAccount,
+    parseAddressInput,
+    parseAmountInput,
+    runInstruction,
+    signer,
+  ]);
+
+  const handleVerifyLevel3 = useCallback(async () => {
+    await runInstruction(
+      () =>
+        getVerifyAndCloseLevel3InstructionAsync({
+          user: signer!,
+          userRewardAccount: parseAddressInput(
+            level3UserRewardAccount,
+            "User reward account"
+          ),
+        }),
+      "Level 3 completed.",
+      "View verify_and_close_level_3 transaction"
+    );
+  }, [level3UserRewardAccount, parseAddressInput, runInstruction, signer]);
+
+  const level1Completed = Boolean(level0State?.completedLevels[1]);
+  const level2Completed = Boolean(level0State?.completedLevels[2]);
+  const level3Completed = Boolean(level0State?.completedLevels[3]);
+  const level0Certificate = certificateState?.[0];
+  const level1Certificate = certificateState?.[1];
+  const level2Certificate = certificateState?.[2];
+  const level3Certificate = certificateState?.[3];
+  const level1DepositReady =
+    (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET;
+  const level2Hijacked = Boolean(address && level2State?.commander === address);
+  const level3DelegationReady =
+    (level3State?.rewardAmount ?? 0n) >=
+    (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET);
+
+  const mintLevelCertificate = useCallback(
+    async ({
+      level,
+      levelId,
+      existingCertificate,
+      title,
+    }: {
+      level: 0 | 1 | 2 | 3;
+      levelId: LevelId;
+      existingCertificate?: LevelCertificateSnapshot;
+      title: string;
+    }) => {
+      if (!signer || !address) {
+        toast.error("Connect the wallet that cleared this level first.");
+        return;
+      }
+
+      if (cluster === "testnet") {
+        toast.error(
+          "Certificate minting is only configured for devnet, localnet, or mainnet-beta."
+        );
+        return;
+      }
+
+      if (existingCertificate?.minted) {
+        toast.success(`${title} cNFT already minted.`, {
+          description: existingCertificate.assetId ? (
+            <a
+              href={getExplorerUrl(`/address/${existingCertificate.assetId}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+            >
+              View recorded asset
+            </a>
+          ) : "The certificate PDA already has a recorded compressed asset.",
+        });
+        return;
+      }
+
+      setMintingLevel(levelId);
+
+      try {
+        if (!existingCertificate?.exists) {
+          const claimInstruction =
+            await getClaimLevelCertificateInstructionAsync({
+              user: signer,
+              certificate: findCertificatePdaForUser(address, level),
+              level,
+            });
+
+          const claimSignature = await send({ instructions: [claimInstruction] });
+          toast.success(`${title} certificate claimed.`, {
+            description: (
+              <a
+                href={getExplorerUrl(`/tx/${claimSignature}`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                View claim transaction
+              </a>
+            ),
+          });
+        }
+
+        const response = await fetch("/api/nfts/certifications/mint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cluster: cluster === "mainnet" ? "mainnet-beta" : cluster,
+            level,
+            player: address,
+            rpcUrl: getClusterUrl(cluster),
+          }),
+        });
+
+        const payload = (await response.json()) as
+          | {
+              error?: string;
+            }
+          | {
+              alreadyMinted: boolean;
+              assetId: string;
+              certificatePda: string;
+              mintSignature?: string;
+              recordSignature?: string;
+            };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : "Mint route failed."
+          );
+        }
+
+        await refreshState();
+
+        const assetId = "assetId" in payload ? payload.assetId : undefined;
+        const mintSignature =
+          "mintSignature" in payload ? payload.mintSignature : undefined;
+        const alreadyMinted =
+          "alreadyMinted" in payload ? payload.alreadyMinted : false;
+
+        toast.success(
+          alreadyMinted
+            ? `${title} cNFT already existed.`
+            : `${title} cNFT minted.`,
+          {
+            description: assetId ? (
+              <a
+                href={getExplorerUrl(`/address/${assetId}`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                {mintSignature
+                  ? "View compressed asset record"
+                  : "View recorded asset"}
+              </a>
+            ) : undefined,
+          }
+        );
+      } catch (err) {
+        console.error("Certificate mint failed:", err);
+        toast.error(err instanceof Error ? err.message : String(err));
+      } finally {
+        setMintingLevel(null);
+      }
+    },
+    [address, cluster, getExplorerUrl, refreshState, send, signer]
+  );
+
+  const handleMintLevel0Flag = useCallback(async () => {
+    await mintLevelCertificate({
+      level: 0,
+      levelId: "level0",
+      existingCertificate: level0Certificate,
+      title: "Hello SolBreach",
     });
-  }, []);
+  }, [level0Certificate, mintLevelCertificate]);
+
+  const handleMintLevel1Flag = useCallback(async () => {
+    await mintLevelCertificate({
+      level: 1,
+      levelId: "level1",
+      existingCertificate: level1Certificate,
+      title: "Level 1",
+    });
+  }, [level1Certificate, mintLevelCertificate]);
+
+  const handleMintLevel2Flag = useCallback(async () => {
+    await mintLevelCertificate({
+      level: 2,
+      levelId: "level2",
+      existingCertificate: level2Certificate,
+      title: "Level 2",
+    });
+  }, [level2Certificate, mintLevelCertificate]);
+
+  const handleMintLevel3Flag = useCallback(async () => {
+    await mintLevelCertificate({
+      level: 3,
+      levelId: "level3",
+      existingCertificate: level3Certificate,
+      title: "Level 3",
+    });
+  }, [level3Certificate, mintLevelCertificate]);
 
   const stage = useMemo<StageConfig>(() => {
     if (status !== "connected" || !address || !signer) {
@@ -516,7 +1150,6 @@ export default function Home() {
 
     if (!level0State?.hasUserStats) {
       return {
-        badge: "Step 1",
         title: "Create the player registry PDA.",
         description:
           "This wallet does not have a `UserStats` account yet. Initialize it first so later levels have a persistent completion record.",
@@ -539,7 +1172,6 @@ export default function Home() {
 
     if (!level0State.hasLevel0State) {
       return {
-        badge: "Step 2",
         title: "Open the temporary Level 0 PDA.",
         description:
           "This creates the per-wallet level instance that will be closed and refunded after successful verification.",
@@ -550,7 +1182,6 @@ export default function Home() {
     }
 
     return {
-      badge: "Step 3",
       title: "Mark completion and reclaim rent.",
       description:
         "Level 0 is ready to verify. Completing it flips `completed_levels[0]` and closes the instance account.",
@@ -571,12 +1202,6 @@ export default function Home() {
     status,
   ]);
 
-  const level1Completed = Boolean(level0State?.completedLevels[1]);
-  const level2Completed = Boolean(level0State?.completedLevels[2]);
-  const level1DepositReady =
-    (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET;
-  const level2Hijacked = Boolean(address && level2State?.commander === address);
-
   const level1Stage = useMemo<StageConfig>(() => {
     if (status !== "connected" || !address || !signer) {
       return {
@@ -584,6 +1209,17 @@ export default function Home() {
         title: "Attach the operator wallet first.",
         description:
           "Level 1 needs a connected signer so the board can derive the per-player PDA and submit the vulnerable deposit instruction.",
+        actionLabel: null,
+        actionKind: "secondary",
+      };
+    }
+
+    if (!level0State?.isCompleted) {
+      return {
+        badge: "Locked",
+        title: "Finish Level 0 before entering the exploit board.",
+        description:
+          "The operator levels stay viewable, but their actions remain locked until the warmup registry and closeout loop are proven on-chain.",
         actionLabel: null,
         actionKind: "secondary",
       };
@@ -627,7 +1263,6 @@ export default function Home() {
 
     if (!level1State?.hasBank) {
       return {
-        badge: "Step 1",
         title: "Configure the bank's expected mint.",
         description:
           "Bootstrap the global bank PDA with the legit mint first. The exploit only matters once that expectation exists on-chain.",
@@ -639,7 +1274,6 @@ export default function Home() {
 
     if (!level1State.hasLevel1State) {
       return {
-        badge: "Step 2",
         title: "Open the per-player Level 1 state.",
         description:
           "Create the wallet-specific level PDA that will accumulate the fake deposit amount and later close on verification.",
@@ -684,6 +1318,7 @@ export default function Home() {
     mutateLevel1State,
     signer,
     status,
+    level0State,
   ]);
 
   const level2Stage = useMemo<StageConfig>(() => {
@@ -693,6 +1328,17 @@ export default function Home() {
         title: "Attach the operator wallet first.",
         description:
           "Level 2 needs a connected signer so the board can derive the static profile PDA and verify the commander overwrite.",
+        actionLabel: null,
+        actionKind: "secondary",
+      };
+    }
+
+    if (!level0State?.isCompleted) {
+      return {
+        badge: "Locked",
+        title: "Finish Level 0 before entering the exploit board.",
+        description:
+          "The operator levels stay viewable, but their actions remain locked until the warmup registry and closeout loop are proven on-chain.",
         actionLabel: null,
         actionKind: "secondary",
       };
@@ -736,7 +1382,6 @@ export default function Home() {
 
     if (!level2State?.hasProfile) {
       return {
-        badge: "Step 1",
         title: "Bootstrap the global commander profile.",
         description:
           "Initialize the static profile PDA with any non-player commander. That creates the single global registry the exploit will later overwrite.",
@@ -748,7 +1393,6 @@ export default function Home() {
 
     if (!level2State.hasLevel2State) {
       return {
-        badge: "Step 2",
         title: "Open the per-player Level 2 state.",
         description:
           "Create the wallet-specific Level 2 PDA so the verifier can later tie the hijack back to the connected player.",
@@ -793,6 +1437,126 @@ export default function Home() {
     mutateLevel2State,
     signer,
     status,
+    level0State,
+  ]);
+
+  const level3Stage = useMemo<StageConfig>(() => {
+    if (status !== "connected" || !address || !signer) {
+      return {
+        badge: "Wallet required",
+        title: "Attach the operator wallet first.",
+        description:
+          "Level 3 needs a connected signer so the board can derive the guild authority PDA, open the per-player state, and delegate into the attacker program.",
+        actionLabel: null,
+        actionKind: "secondary",
+      };
+    }
+
+    if (!level0State?.isCompleted) {
+      return {
+        badge: "Locked",
+        title: "Finish Level 0 before entering the exploit board.",
+        description:
+          "The operator levels stay viewable, but their actions remain locked until the warmup registry and closeout loop are proven on-chain.",
+        actionLabel: null,
+        actionKind: "secondary",
+      };
+    }
+
+    if (isLevel3Loading) {
+      return {
+        badge: "Reading accounts",
+        title: "Inspecting the guild and your Level 3 state.",
+        description:
+          "The board is checking the shared guild authority PDA, your per-player Level 3 state, and the reward token account you supplied.",
+        actionLabel: null,
+        actionKind: "secondary",
+      };
+    }
+
+    if (level3Error) {
+      return {
+        badge: "Read error",
+        title: "Could not load Level 3 state.",
+        description:
+          "Retry the account read before sending another delegated CPI. This is usually an RPC or cluster mismatch.",
+        actionLabel: "Retry state read",
+        actionKind: "secondary",
+        onAction: async () => {
+          await mutateLevel3State();
+        },
+      };
+    }
+
+    if (level3Completed) {
+      return {
+        badge: "Cleared",
+        title: "Level 3 already cleared.",
+        description:
+          "The arbitrary CPI path has already been exploited and verified for this wallet. The guild authority persists; the per-player Level 3 PDA is closed.",
+        actionLabel: null,
+        actionKind: "secondary",
+      };
+    }
+
+    if (!level3State?.hasGuildAuthority) {
+      return {
+        title: "Bootstrap the guild authority and bounty vault.",
+        description:
+          "Provide the pre-created reward mint and bounty vault addresses, then initialize the shared guild authority PDA so the vulnerable delegation path has something valuable to sign for.",
+        actionLabel: "Initialize guild",
+        actionKind: "primary",
+        onAction: handleInitGuildAuthority,
+      };
+    }
+
+    if (!level3State.hasLevel3State) {
+      return {
+        title: "Open the per-player Level 3 state.",
+        description:
+          "Create the wallet-specific Level 3 PDA so the verifier can later tie the delegated exploit back to the connected player.",
+        actionLabel: "Initialize Level 3",
+        actionKind: "primary",
+        onAction: handleInitLevel3,
+      };
+    }
+
+    if (!level3DelegationReady) {
+      return {
+        badge: "Exploit",
+        title: "Delegate into the attacker program.",
+        description:
+          "Pass the mercenary program and your reward account. The vault will forward the guild PDA signer into arbitrary CPI and let the attacker drain the bounty vault.",
+        actionLabel: "Run delegated CPI",
+        actionKind: "primary",
+        onAction: handleDelegateTask,
+      };
+    }
+
+    return {
+      badge: "Verify",
+      title: "Prove the guild executed your malicious orders.",
+      description:
+        "Verification checks that your reward account received the bounty amount, then flips `completed_levels[3]` and closes the Level 3 instance.",
+      actionLabel: "Verify and close",
+      actionKind: "primary",
+      onAction: handleVerifyLevel3,
+    };
+  }, [
+    address,
+    handleDelegateTask,
+    handleInitGuildAuthority,
+    handleInitLevel3,
+    handleVerifyLevel3,
+    isLevel3Loading,
+    level3Completed,
+    level3DelegationReady,
+    level3Error,
+    level3State,
+    mutateLevel3State,
+    signer,
+    status,
+    level0State,
   ]);
 
   const progressValue = useMemo(() => {
@@ -808,13 +1572,6 @@ export default function Home() {
     walletBalance.lamports != null
       ? `${lamportsToSolString(walletBalance.lamports)} SOL`
       : "Loading";
-
-  const stepStates = useMemo<[StepState, StepState, StepState]>(() => {
-    if (!level0State?.hasUserStats) return ["active", "idle", "idle"];
-    if (level0State.isCompleted) return ["done", "done", "done"];
-    if (!level0State.hasLevel0State) return ["done", "active", "idle"];
-    return ["done", "done", "active"];
-  }, [level0State]);
 
   const levelTiles = useMemo<LevelTileConfig[]>(() => {
     const level0Status: LevelStatus = level0State?.isCompleted
@@ -843,6 +1600,16 @@ export default function Home() {
             ? "ready"
             : "locked";
 
+    const level3Status: LevelStatus = level3Completed
+      ? "cleared"
+      : level3DelegationReady
+        ? "armed"
+        : level3State?.hasGuildAuthority || level3State?.hasLevel3State
+          ? "live"
+          : level0State?.isCompleted
+            ? "ready"
+            : "locked";
+
     return [
       {
         id: "level0",
@@ -855,7 +1622,7 @@ export default function Home() {
       {
         id: "level1",
         index: "01",
-        label: "Exploit",
+        label: "Account substitution",
         title: "Illusionist",
         status: level1Status,
         summary: "Exploit the missing mint constraint and forge the ledger.",
@@ -863,7 +1630,7 @@ export default function Home() {
       {
         id: "level2",
         index: "02",
-        label: "Exploit",
+        label: "PDA authority bypass",
         title: "Identity Thief",
         status: level2Status,
         summary: "Hijack the global profile PDA and become commander.",
@@ -871,10 +1638,10 @@ export default function Home() {
       {
         id: "level3",
         index: "03",
-        label: "Locked",
+        label: "Arbitrary CPI",
         title: "Trojan Horse",
-        status: "locked",
-        summary: "Arbitrary CPI route with local validator testing.",
+        status: level3Status,
+        summary: "Abuse arbitrary CPI and the forwarded guild signer.",
       },
     ];
   }, [
@@ -885,287 +1652,660 @@ export default function Home() {
     level2Completed,
     level2Hijacked,
     level2State,
+    level3Completed,
+    level3DelegationReady,
+    level3State,
   ]);
 
   const operatorLevelsUnlocked = Boolean(level0State?.isCompleted);
-  const activeLevel = operatorLevelsUnlocked ? selectedLevel : "level0";
-  const selectedTile = useMemo(
-    () => levelTiles.find((tile) => tile.id === activeLevel) ?? levelTiles[0],
-    [activeLevel, levelTiles]
-  );
-  const selectedStageLabel = useMemo(() => {
-    switch (activeLevel) {
-      case "level0":
-        return stage.badge;
-      case "level1":
-        return level1Stage.badge;
-      case "level2":
-        return level2Stage.badge;
-      default:
-        return "Locked";
-    }
-  }, [activeLevel, level1Stage.badge, level2Stage.badge, stage.badge]);
-
   const clusterModeLabel =
     cluster === "localnet" ? "operator mode" : "browser mode";
+  const activeLevel =
+    activeLevelsView === "landing" ? null : activeLevelsView;
+  const activeGuide = activeLevel ? LEVEL_GUIDES[activeLevel] : null;
+  const activeTile = activeLevel
+    ? levelTiles.find((tile) => tile.id === activeLevel) ?? null
+    : null;
+  const activeCertificate = activeLevel
+    ? ({
+        level0: level0Certificate,
+        level1: level1Certificate,
+        level2: level2Certificate,
+        level3: level3Certificate,
+      }[activeLevel] ?? null)
+    : null;
+  const activeLevelStatus = useMemo(() => {
+    if (!activeLevel) return null;
+    const mintState =
+      activeCertificate?.minted
+        ? {
+            mintDisabled: true,
+            mintLabel: "Certification Minted",
+            onMint: () => {},
+          }
+        : activeLevel === "level0"
+          ? {
+              mintDisabled: !level0State?.isCompleted || mintingLevel === "level0",
+              mintLabel:
+                mintingLevel === "level0"
+                  ? "Minting..."
+                  : level0State?.isCompleted
+                    ? "Unlock Certification"
+                    : "Mint Locked",
+              onMint: () => {
+                void handleMintLevel0Flag();
+              },
+            }
+          : activeLevel === "level1"
+            ? {
+                mintDisabled: !level1Completed || mintingLevel === "level1",
+                mintLabel:
+                  mintingLevel === "level1"
+                    ? "Minting..."
+                    : level1Completed
+                      ? "Unlock Certification"
+                      : "Mint Locked",
+                onMint: () => {
+                  void handleMintLevel1Flag();
+                },
+              }
+            : activeLevel === "level2"
+              ? {
+                  mintDisabled: !level2Completed || mintingLevel === "level2",
+                  mintLabel:
+                    mintingLevel === "level2"
+                      ? "Minting..."
+                      : level2Completed
+                        ? "Unlock Certification"
+                        : "Mint Locked",
+                  onMint: () => {
+                    void handleMintLevel2Flag();
+                  },
+                }
+              : {
+                  mintDisabled: !level3Completed || mintingLevel === "level3",
+                  mintLabel:
+                    mintingLevel === "level3"
+                      ? "Minting..."
+                      : level3Completed
+                        ? "Unlock Certification"
+                        : "Mint Locked",
+                  onMint: () => {
+                    void handleMintLevel3Flag();
+                  },
+                };
+    switch (activeLevel) {
+      case "level0":
+        return {
+          badge: stage.badge,
+          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          ...mintState,
+          progressValue,
+          rows: [
+            { label: "Cluster", value: cluster },
+            {
+              label: "Wallet",
+              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+            },
+            {
+              label: "PDA state",
+              value: level0State?.hasLevel0State
+                ? "Live"
+                : level0State?.isCompleted
+                  ? "Closed"
+                  : "Pending",
+            },
+            {
+              label: "Win condition",
+              value: level0State?.isCompleted ? "1 / 1 cleared" : "0 / 1 cleared",
+            },
+          ],
+        };
+      case "level1":
+        return {
+          badge: level1Stage.badge,
+          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          ...mintState,
+          progressValue: Math.min(
+            Number(((level1State?.depositedAmount ?? 0n) * 100n) / LEVEL_1_TARGET),
+            100
+          ),
+          rows: [
+            { label: "Cluster", value: cluster },
+            {
+              label: "Wallet",
+              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+            },
+            {
+              label: "PDA state",
+              value: level1Completed
+                ? "Closed"
+                : level1State?.hasLevel1State
+                  ? "Live"
+                  : "Pending",
+            },
+            {
+              label: "Win condition",
+              value: `${(level1State?.depositedAmount ?? 0n).toString()} / ${LEVEL_1_TARGET.toString()}`,
+            },
+          ],
+        };
+      case "level2":
+        return {
+          badge: level2Stage.badge,
+          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          ...mintState,
+          progressValue: level2Completed ? 100 : level2Hijacked ? 66 : 20,
+          rows: [
+            { label: "Cluster", value: cluster },
+            {
+              label: "Wallet",
+              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+            },
+            {
+              label: "PDA state",
+              value: level2Completed
+                ? "Closed"
+                : level2State?.hasLevel2State
+                  ? "Live"
+                  : "Pending",
+            },
+            {
+              label: "Win condition",
+              value: level2Hijacked ? "Commander overwritten" : "Commander unchanged",
+            },
+          ],
+        };
+      case "level3":
+        return {
+          badge: level3Stage.badge,
+          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          ...mintState,
+          progressValue: Math.min(
+            Number(
+              (((level3State?.rewardAmount ?? 0n) * 100n) /
+                (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET))
+            ),
+            100
+          ),
+          rows: [
+            { label: "Cluster", value: cluster },
+            {
+              label: "Wallet",
+              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+            },
+            {
+              label: "PDA state",
+              value: level3Completed
+                ? "Closed"
+                : level3State?.hasLevel3State
+                  ? "Live"
+                  : "Pending",
+            },
+            {
+              label: "Win condition",
+              value: `${(level3State?.rewardAmount ?? 0n).toString()} / ${(level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET).toString()}`,
+            },
+          ],
+        };
+    }
+  }, [
+    activeLevel,
+    activeCertificate,
+    activeTile,
+    address,
+    cluster,
+    handleMintLevel0Flag,
+    handleMintLevel1Flag,
+    handleMintLevel2Flag,
+    handleMintLevel3Flag,
+    level0State,
+    level1Completed,
+    level1Stage.badge,
+    level1State,
+    level2Completed,
+    level2Hijacked,
+    level2Stage.badge,
+    level2State,
+    level3Completed,
+    level3Stage.badge,
+    level3State,
+    mintingLevel,
+    progressValue,
+    stage.badge,
+    status,
+  ]);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <GridBackground />
 
       <div className="relative z-10">
-        <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-5 sm:px-6">
-          <div className="flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-sm font-semibold tracking-tight">
-            Level 0 live
-          </div>
+        <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
+          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+            <div className="flex justify-center lg:justify-start">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection("levels");
+                  setActiveLevelsView("landing");
+                }}
+                className="text-left transition hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <p className="text-xl font-semibold tracking-[-0.05em] sm:text-2xl">
+                  SolBreach
+                </p>
+              </button>
+            </div>
 
-          <div className="text-center">
-            <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-              Rustopia
-            </p>
-            <p className="text-2xl font-semibold tracking-[-0.05em]">
-              SolBreach
-            </p>
-          </div>
+            <nav
+              className="mx-auto flex w-fit items-center rounded-full border border-border bg-card/70 p-1"
+              aria-label="Primary sections"
+            >
+              <HeaderNavButton
+                active={activeSection === "levels"}
+                label="Levels"
+                onClick={() => setActiveSection("levels")}
+              />
+              <HeaderNavButton
+                active={activeSection === "profile"}
+                label="Profile"
+                onClick={() => setActiveSection("profile")}
+              />
+            </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-            <ClusterSelect />
-            <WalletButton />
+            <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-end">
+              <ClusterSelect />
+              <WalletButton />
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
-          <section className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-muted">
-              Solana wargame
-            </p>
-            <h1 className="mt-6 text-6xl font-semibold tracking-[-0.08em] sm:text-7xl lg:text-8xl">
-              SolBreach
-            </h1>
-            <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-muted sm:text-lg">
-              Clear the browser-safe warmup, then move into three local operator
-              levels. The UI becomes the board: choose a level, inspect state,
-              and only unlock mint controls after the exploit is actually proven.
-            </p>
-          </section>
-
-          <section className="mt-12">
-            <div className="mx-auto max-w-5xl space-y-8">
-              <div className="space-y-4">
-                <div className="text-center">
-                  <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-                    Warmup
-                  </p>
-                  <h2 className="mt-3 text-3xl font-semibold tracking-[-0.06em] sm:text-4xl">
-                    Clear the handshake first.
-                  </h2>
-                  <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-                    Level 0 is the gate. It proves the registry and per-level
-                    PDA flow before the exploit levels become available.
-                  </p>
-                </div>
-
-                <div className="mx-auto max-w-sm">
-                  <LevelTile
-                    tile={levelTiles[0]}
-                    selected={activeLevel === "level0"}
-                    onSelect={() => setSelectedLevel("level0")}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="text-center">
-                  <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-                    Operator levels
-                  </p>
-                  <h2 className="mt-3 text-3xl font-semibold tracking-[-0.06em] sm:text-4xl">
-                    Three levels unlock after the warmup.
-                  </h2>
-                  <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-                    Once Level 0 is completed, the board opens the local
-                    operator path: exploit, verify, then mint.
-                  </p>
-                </div>
-
-                {operatorLevelsUnlocked ? (
-                  <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
-                    {levelTiles.slice(1).map((tile) => (
-                      <LevelTile
-                        key={tile.id}
-                        tile={tile}
-                        selected={tile.id === activeLevel}
-                        onSelect={() => setSelectedLevel(tile.id)}
+        <main className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">
+          {activeSection === "levels" ? (
+            <div className="space-y-8">
+              {activeLevelsView === "landing" ? (
+                <LandingPageSection
+                  cluster={cluster}
+                  clusterModeLabel={clusterModeLabel}
+                  levelTiles={levelTiles}
+                  operatorLevelsUnlocked={operatorLevelsUnlocked}
+                  status={status}
+                  walletBalanceLabel={walletBalanceLabel}
+                  onOpenLevel={(level) => setActiveLevelsView(level)}
+                />
+              ) : activeGuide && activeLevelStatus ? (
+                <div className="space-y-8">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {LEVEL_PAGE_OPTIONS.map((option) => (
+                      <HeaderNavButton
+                        key={option.id}
+                        active={activeLevelsView === option.id}
+                        label={option.label}
+                        onClick={() => setActiveLevelsView(option.id)}
                       />
                     ))}
                   </div>
-                ) : (
-                  <div className="rounded-[26px] border border-border bg-card/90 px-6 py-8 text-center shadow-[0_24px_80px_-60px_rgba(0,0,0,0.45)]">
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-                      Locked
-                    </p>
-                    <h3 className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
-                      Finish Level 0 to reveal Levels 1–3.
-                    </h3>
-                    <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted">
-                      The exploit levels should not appear as actionable until
-                      the warmup PDA flow is cleared. This keeps the board aligned
-                      with the real progression contract.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
 
-          <section className="mt-12">
-            <div className="rounded-[34px] border border-border bg-card/95 p-5 shadow-[0_32px_100px_-70px_rgba(0,0,0,0.45)] sm:p-7">
-              <div className="flex flex-col gap-5 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Pill>{selectedTile.index}</Pill>
-                    <Pill>{selectedTile.label}</Pill>
-                    <Pill>{statusLabel(selectedTile.status)}</Pill>
-                  </div>
-                  <div>
-                    <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-                      {selectedTile.title}
-                    </h2>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-                      {selectedTile.summary}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[360px]">
-                  <MiniStat label="Cluster" value={cluster} detail={clusterModeLabel} />
-                  <MiniStat
-                    label="Wallet"
-                    value={status === "connected" ? "Attached" : "Detached"}
-                    detail={walletBalanceLabel}
-                  />
-                  <MiniStat
-                    label="Stage"
-                    value={selectedStageLabel}
-                    detail="Current gate"
+                  <LevelWorkspacePage
+                    guide={activeGuide}
+                    missionStatus={activeLevelStatus}
                   />
                 </div>
-              </div>
-
-              <div className="mt-6">
-                {activeLevel === "level0" ? (
-                  <Level0Panel
-                    address={address}
-                    copied={copied}
-                    getExplorerUrl={getExplorerUrl}
-                    handleAirdrop={handleAirdrop}
-                    isLevel0Loading={isLevel0Loading}
-                    isSending={isSending}
-                    level0Error={level0Error}
-                    level0State={level0State}
-                    onCopy={copyText}
-                    progressValue={progressValue}
-                    stage={stage}
-                    stepStates={stepStates}
-                    status={status}
-                  />
-                ) : null}
-
-                {activeLevel === "level1" ? (
-                  <Level1Panel
-                    address={address}
-                    copied={copied}
-                    getExplorerUrl={getExplorerUrl}
-                    isSending={isSending}
-                    isLoading={isLevel1Loading}
-                    level1Amount={level1Amount}
-                    level1Completed={level1Completed}
-                    level1Error={level1Error}
-                    level1ExpectedMint={level1ExpectedMint}
-                    level1State={level1State}
-                    level1UserTokenAccount={level1UserTokenAccount}
-                    level1Vault={level1Vault}
-                    onChangeAmount={setLevel1Amount}
-                    onChangeExpectedMint={setLevel1ExpectedMint}
-                    onChangeUserTokenAccount={setLevel1UserTokenAccount}
-                    onChangeVault={setLevel1Vault}
-                    onCopy={copyText}
-                    onInitBank={handleInitBank}
-                    onInitLevel1={handleInitLevel1}
-                    onMint={handleMintLevel1Flag}
-                    onDeposit={handleDepositLevel1}
-                    onVerify={handleVerifyLevel1}
-                    stage={level1Stage}
-                    status={status}
-                  />
-                ) : null}
-
-                {activeLevel === "level2" ? (
-                  <Level2Panel
-                    address={address}
-                    copied={copied}
-                    getExplorerUrl={getExplorerUrl}
-                    isSending={isSending}
-                    isLoading={isLevel2Loading}
-                    level2Completed={level2Completed}
-                    level2Error={level2Error}
-                    level2InitialCommander={level2InitialCommander}
-                    level2State={level2State}
-                    onChangeInitialCommander={setLevel2InitialCommander}
-                    onCopy={copyText}
-                    onInitGlobalProfile={handleInitGlobalProfile}
-                    onInitLevel2={handleInitLevel2}
-                    onMint={handleMintLevel2Flag}
-                    onUpdateProfile={handleUpdateProfile}
-                    onVerify={handleVerifyLevel2}
-                    stage={level2Stage}
-                    status={status}
-                  />
-                ) : null}
-
-                {activeLevel === "level3" ? (
-                  <LockedLevelPanel
-                    copied={copied}
-                    title="Trojan Horse"
-                    description="Level 3 should look and feel like the final operator exam: local validator, proof transaction, and a mint gate that only opens after the verifier confirms the arbitrary CPI path."
-                    hint="Design target: arbitrary CPI and forged execution path."
-                    onCopy={copyText}
-                  />
-                ) : null}
-              </div>
+              ) : null}
             </div>
-          </section>
+          ) : (
+            <section className="space-y-8">
+              <div className="max-w-3xl space-y-4">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
+                  Profile
+                </p>
+                <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
+                  Wallet-bound certificates.
+                </h1>
+                <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
+                  Every SolBreach certificate is tied back to the wallet that
+                  cleared the level. This gallery is the profile surface for
+                  claimed certificates, minted cNFTs, and the progression
+                  history that powers later utility.
+                </p>
+              </div>
+
+              <ProfileCertificatesSection
+                address={address}
+                certificateState={certificateState}
+                completedLevels={level0State?.completedLevels}
+                getExplorerUrl={getExplorerUrl}
+                isLoading={isCertificateLoading || isLevel0Loading}
+                onSelectLevel={(level) => {
+                  setActiveSection("levels");
+                  setActiveLevelsView(level);
+                }}
+              />
+            </section>
+          )}
         </main>
       </div>
     </div>
   );
 }
 
-function Level0Panel({
+function HeaderNavButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative min-h-11 rounded-full px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        active
+          ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
+          : "text-muted hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      {label}
+      {active ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-4 bottom-[3px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)]"
+        />
+      ) : null}
+    </button>
+  );
+}
+
+function LandingPageSection({
+  cluster,
+  clusterModeLabel,
+  levelTiles,
+  operatorLevelsUnlocked,
+  status,
+  walletBalanceLabel,
+  onOpenLevel,
+}: {
+  cluster: string;
+  clusterModeLabel: string;
+  levelTiles: LevelTileConfig[];
+  operatorLevelsUnlocked: boolean;
+  status: string;
+  walletBalanceLabel: string;
+  onOpenLevel: (level: LevelId) => void;
+}) {
+  return (
+    <section className="space-y-8">
+      <div className="space-y-5 text-center">
+        <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl lg:text-7xl">
+            Clear the warmup, then move level by level through SolBreach.
+        </h1>
+        <p className="mx-auto max-w-3xl text-base leading-7 text-muted sm:text-lg">
+          The landing page is only the map. Open a level to read the exploit
+          narrative, inspect the vulnerable snippet, and track certification
+          unlock state without the old operator clutter.
+        </p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-4">
+        {levelTiles.map((tile) => (
+          <LevelTile
+            key={tile.id}
+            tile={tile}
+            selected={false}
+            onSelect={() => onOpenLevel(tile.id)}
+          />
+        ))}
+      </div>
+
+      {!operatorLevelsUnlocked ? (
+        <p className="text-center text-sm text-muted">
+          Levels 1–3 stay locked until Level 0 is completed.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function LevelWorkspacePage({
+  guide,
+  missionStatus,
+}: {
+  guide: LevelGuideContent;
+  missionStatus: MissionStatusData;
+}) {
+  return (
+    <section className="space-y-6">
+      <div className="space-y-3">
+        <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
+          {guide.subtitle}
+        </p>
+        <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
+          {guide.missionTitle}
+        </h1>
+      </div>
+
+      <div className="h-px bg-border" />
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-stretch">
+        <div className="space-y-6">
+          <InfoCard title="Lore">
+            <div className="space-y-4 text-base leading-8 text-muted">
+              {guide.lore.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          </InfoCard>
+
+          <InfoCard title="Hints">
+            <ul className="space-y-4 text-base leading-8 text-muted">
+              {guide.hints.map((hint) => (
+                <li key={hint} className="flex items-start gap-3">
+                  <span
+                    className="mt-3 h-1.5 w-1.5 rounded-full bg-foreground/80"
+                    aria-hidden="true"
+                  />
+                  <span>{hint}</span>
+                </li>
+              ))}
+            </ul>
+          </InfoCard>
+        </div>
+
+        <MissionStatusCard
+          badge={missionStatus.badge}
+          chipLabel={missionStatus.chipLabel}
+          mintDisabled={missionStatus.mintDisabled}
+          mintLabel={missionStatus.mintLabel}
+          onMint={missionStatus.onMint}
+          progressValue={missionStatus.progressValue}
+          rows={missionStatus.rows}
+          winCondition={guide.winCondition}
+        />
+      </div>
+
+      <CodeSnippetCard code={guide.codeSnippet} />
+      <PlaygroundCommandBar command={guide.cloneCommand} />
+    </section>
+  );
+}
+
+function MissionStatusCard({
+  badge,
+  chipLabel,
+  mintDisabled,
+  mintLabel,
+  onMint,
+  progressValue,
+  rows,
+  winCondition,
+}: {
+  badge: string;
+  chipLabel: string;
+  mintDisabled: boolean;
+  mintLabel: string;
+  onMint: () => void;
+  progressValue: number;
+  rows: Array<{ label: string; value: string }>;
+  winCondition: string;
+}) {
+  const mintButtonTone = mintDisabled
+    ? "border-border bg-card text-muted"
+    : "border-emerald-400/20 bg-emerald-400/8 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.16)]";
+
+  return (
+    <aside className="flex h-full flex-col rounded-[28px] border border-border bg-card/92 p-5 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.45)] xl:sticky xl:top-28">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
+            Mission Status
+          </p>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
+            {badge}
+          </p>
+        </div>
+        <StatusChip>{chipLabel}</StatusChip>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="grid grid-cols-[84px_minmax(0,1fr)] items-center gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0"
+          >
+            <span className="text-[11px] uppercase tracking-[0.24em] text-muted">
+              {row.label}
+            </span>
+            <span className="truncate text-right text-sm font-medium text-foreground">
+              {row.value}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.22em] text-muted">
+          <span>Win condition</span>
+          <span>{Math.round(progressValue)}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-accent">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,rgba(45,212,191,0.95),rgba(74,222,128,0.95))]"
+            style={{ width: `${Math.max(0, Math.min(progressValue, 100))}%` }}
+          />
+        </div>
+        <p className="text-sm leading-6 text-muted">{winCondition}</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onMint}
+        disabled={mintDisabled}
+        className={`relative mt-auto min-h-12 w-full rounded-full border px-5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${mintButtonTone} ${
+          mintDisabled ? "" : "hover:bg-emerald-400/12"
+        }`}
+      >
+        {mintLabel}
+        {!mintDisabled ? (
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-8 bottom-[7px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)]"
+          />
+        ) : null}
+      </button>
+    </aside>
+  );
+}
+
+function InfoCard({
+  children,
+  title,
+}: {
+  children: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.45)]">
+      <h2 className="text-3xl font-semibold tracking-[-0.05em]">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function CodeSnippetCard({ code }: { code: string }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-border bg-card/90 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.45)]">
+      <div className="border-b border-border px-5 py-4">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
+          Code Snippet (lib.rs)
+        </p>
+      </div>
+      <div className="overflow-x-auto px-5 py-5">
+        <pre className="min-w-full whitespace-pre-wrap break-words font-mono text-[13px] leading-7 text-foreground sm:whitespace-pre">
+          <code>{code}</code>
+        </pre>
+      </div>
+    </section>
+  );
+}
+
+function PlaygroundCommandBar({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-[24px] border border-border bg-card/90 p-3 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.45)] sm:flex-row sm:items-center">
+      <div className="min-w-0 flex-1 rounded-[18px] border border-border bg-background/75 px-4 py-3 font-mono text-sm text-foreground">
+        <span className="block truncate">{command}</span>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          void navigator.clipboard.writeText(command);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1400);
+        }}
+        className="min-h-12 rounded-[18px] border border-emerald-500/25 bg-emerald-500/15 px-5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        {copied ? "Copied" : "Copy playground command"}
+      </button>
+    </div>
+  );
+}
+
+export function Level0Panel({
   address,
+  certificate,
   copied,
   getExplorerUrl,
   handleAirdrop,
   isLevel0Loading,
+  isMinting,
   isSending,
   level0Error,
   level0State,
   onCopy,
+  onMint,
   progressValue,
   stage,
   stepStates,
   status,
 }: {
   address?: string;
+  certificate?: LevelCertificateSnapshot;
   copied: string | null;
   getExplorerUrl: (path: string) => string;
   handleAirdrop: () => Promise<void>;
   isLevel0Loading: boolean;
+  isMinting: boolean;
   isSending: boolean;
   level0Error: unknown;
   level0State?: Level0Snapshot;
   onCopy: (label: string, value: string) => Promise<void>;
+  onMint: () => Promise<void>;
   progressValue: number;
   stage: StageConfig;
   stepStates: [StepState, StepState, StepState];
@@ -1346,6 +2486,43 @@ function Level0Panel({
                   : "Awaiting verification"
               }
             />
+            <AddressRow
+              label="Certificate"
+              value={certificate?.certificatePda}
+              copied={copied === "level0-certificate"}
+              explorerUrl={
+                certificate?.certificatePda
+                  ? getExplorerUrl(`/address/${certificate.certificatePda}`)
+                  : null
+              }
+              onCopy={
+                certificate?.certificatePda
+                  ? () => {
+                      void onCopy(
+                        "level0-certificate",
+                        certificate.certificatePda
+                      );
+                    }
+                  : undefined
+              }
+            />
+            <AddressRow
+              label="Asset"
+              value={certificate?.minted ? certificate.assetId : null}
+              copied={copied === "level0-asset"}
+              explorerUrl={
+                certificate?.minted && certificate.assetId
+                  ? getExplorerUrl(`/address/${certificate.assetId}`)
+                  : null
+              }
+              onCopy={
+                certificate?.minted && certificate.assetId
+                  ? () => {
+                      void onCopy("level0-asset", certificate.assetId!);
+                    }
+                  : undefined
+              }
+            />
           </div>
         </div>
 
@@ -1403,17 +2580,35 @@ function Level0Panel({
               Fund wallet with 1 SOL
             </button>
           ) : null}
+
+          <button
+            onClick={() => {
+              void onMint();
+            }}
+            disabled={!level0State?.isCompleted || certificate?.minted || isMinting}
+            className="min-h-13 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-accent disabled:text-muted"
+          >
+            {certificate?.minted
+              ? "Hello SolBreach cNFT minted"
+              : isMinting
+                ? "Minting cNFT..."
+                : level0State?.isCompleted
+                  ? "Mint Hello SolBreach cNFT"
+                  : "Mint locked"}
+          </button>
         </div>
       </aside>
     </div>
   );
 }
 
-function Level1Panel({
+export function Level1Panel({
   address,
+  certificate,
   copied,
   getExplorerUrl,
   isLoading,
+  isMinting,
   isSending,
   level1Amount,
   level1Completed,
@@ -1436,9 +2631,11 @@ function Level1Panel({
   status,
 }: {
   address?: string;
+  certificate?: LevelCertificateSnapshot;
   copied: string | null;
   getExplorerUrl: (path: string) => string;
   isLoading: boolean;
+  isMinting: boolean;
   isSending: boolean;
   level1Amount: string;
   level1Completed: boolean;
@@ -1705,6 +2902,26 @@ function Level1Panel({
                 }
               />
               <AddressRow
+                label="Certificate"
+                value={certificate?.certificatePda}
+                copied={copied === "level1-certificate"}
+                explorerUrl={
+                  certificate?.certificatePda
+                    ? getExplorerUrl(`/address/${certificate.certificatePda}`)
+                    : null
+                }
+                onCopy={
+                  certificate?.certificatePda
+                    ? () => {
+                        void onCopy(
+                          "level1-certificate",
+                          certificate.certificatePda
+                        );
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
                 label="Mint"
                 value={
                   level1State?.expectedMint ??
@@ -1732,6 +2949,23 @@ function Level1Panel({
               <StatusTextRow
                 label="Ledger"
                 value={`${(level1State?.depositedAmount ?? 0n).toString()} credited`}
+              />
+              <AddressRow
+                label="Asset"
+                value={certificate?.minted ? certificate.assetId : null}
+                copied={copied === "level1-asset"}
+                explorerUrl={
+                  certificate?.minted && certificate.assetId
+                    ? getExplorerUrl(`/address/${certificate.assetId}`)
+                    : null
+                }
+                onCopy={
+                  certificate?.minted && certificate.assetId
+                    ? () => {
+                        void onCopy("level1-asset", certificate.assetId!);
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -1777,10 +3011,16 @@ function Level1Panel({
 
             <button
               onClick={onMint}
-              disabled={!level1Completed}
+              disabled={!level1Completed || certificate?.minted || isMinting}
               className="min-h-13 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-accent disabled:text-muted"
             >
-              {level1Completed ? "Mint Level 1 flag" : "Mint locked"}
+              {certificate?.minted
+                ? "Level 1 cNFT minted"
+                : isMinting
+                  ? "Minting cNFT..."
+                  : level1Completed
+                    ? "Mint Level 1 cNFT"
+                    : "Mint locked"}
             </button>
           </div>
         </div>
@@ -1800,11 +3040,13 @@ function Level1Panel({
   );
 }
 
-function Level2Panel({
+export function Level2Panel({
   address,
+  certificate,
   copied,
   getExplorerUrl,
   isLoading,
+  isMinting,
   isSending,
   level2Completed,
   level2Error,
@@ -1821,9 +3063,11 @@ function Level2Panel({
   status,
 }: {
   address?: string;
+  certificate?: LevelCertificateSnapshot;
   copied: string | null;
   getExplorerUrl: (path: string) => string;
   isLoading: boolean;
+  isMinting: boolean;
   isSending: boolean;
   level2Completed: boolean;
   level2Error: unknown;
@@ -2042,6 +3286,26 @@ function Level2Panel({
                 }
               />
               <AddressRow
+                label="Certificate"
+                value={certificate?.certificatePda}
+                copied={copied === "level2-certificate"}
+                explorerUrl={
+                  certificate?.certificatePda
+                    ? getExplorerUrl(`/address/${certificate.certificatePda}`)
+                    : null
+                }
+                onCopy={
+                  certificate?.certificatePda
+                    ? () => {
+                        void onCopy(
+                          "level2-certificate",
+                          certificate.certificatePda
+                        );
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
                 label="Commander"
                 value={
                   level2State?.commander ??
@@ -2071,6 +3335,23 @@ function Level2Panel({
               <StatusTextRow
                 label="Status"
                 value={commanderCaptured ? "Commander hijacked" : "Awaiting overwrite"}
+              />
+              <AddressRow
+                label="Asset"
+                value={certificate?.minted ? certificate.assetId : null}
+                copied={copied === "level2-asset"}
+                explorerUrl={
+                  certificate?.minted && certificate.assetId
+                    ? getExplorerUrl(`/address/${certificate.assetId}`)
+                    : null
+                }
+                onCopy={
+                  certificate?.minted && certificate.assetId
+                    ? () => {
+                        void onCopy("level2-asset", certificate.assetId!);
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -2116,10 +3397,16 @@ function Level2Panel({
 
             <button
               onClick={onMint}
-              disabled={!level2Completed}
+              disabled={!level2Completed || certificate?.minted || isMinting}
               className="min-h-13 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-accent disabled:text-muted"
             >
-              {level2Completed ? "Mint Level 2 flag" : "Mint locked"}
+              {certificate?.minted
+                ? "Level 2 cNFT minted"
+                : isMinting
+                  ? "Minting cNFT..."
+                  : level2Completed
+                    ? "Mint Level 2 cNFT"
+                    : "Mint locked"}
             </button>
           </div>
         </div>
@@ -2139,92 +3426,514 @@ function Level2Panel({
   );
 }
 
-function LockedLevelPanel({
+export function Level3Panel({
+  address,
+  certificate,
   copied,
-  description,
-  hint,
+  getExplorerUrl,
+  isLoading,
+  isMinting,
+  isSending,
+  level3Amount,
+  level3BountyVault,
+  level3Completed,
+  level3Error,
+  level3ExternalProgram,
+  level3RewardMint,
+  level3State,
+  level3UserRewardAccount,
+  onChangeAmount,
+  onChangeBountyVault,
+  onChangeExternalProgram,
+  onChangeRewardMint,
+  onChangeUserRewardAccount,
   onCopy,
-  title,
+  onDelegateTask,
+  onInitGuildAuthority,
+  onInitLevel3,
+  onMint,
+  onVerify,
+  stage,
+  status,
 }: {
+  address?: string;
+  certificate?: LevelCertificateSnapshot;
   copied: string | null;
-  description: string;
-  hint: string;
+  getExplorerUrl: (path: string) => string;
+  isLoading: boolean;
+  isMinting: boolean;
+  isSending: boolean;
+  level3Amount: string;
+  level3BountyVault: string;
+  level3Completed: boolean;
+  level3Error: unknown;
+  level3ExternalProgram: string;
+  level3RewardMint: string;
+  level3State?: Level3Snapshot;
+  level3UserRewardAccount: string;
+  onChangeAmount: (value: string) => void;
+  onChangeBountyVault: (value: string) => void;
+  onChangeExternalProgram: (value: string) => void;
+  onChangeRewardMint: (value: string) => void;
+  onChangeUserRewardAccount: (value: string) => void;
   onCopy: (label: string, value: string) => Promise<void>;
-  title: string;
+  onDelegateTask: () => Promise<void>;
+  onInitGuildAuthority: () => Promise<void>;
+  onInitLevel3: () => Promise<void>;
+  onMint: () => void;
+  onVerify: () => Promise<void>;
+  stage: StageConfig;
+  status: string;
 }) {
+  const delegated = (level3State?.rewardAmount ?? 0n) >= (level3State?.bountyAmount ?? 0n);
+
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-6">
-        <BriefCard
-          eyebrow="Queued level"
-          title={`Design the ${title} shell before wiring the exploit.`}
-          body={description}
-        />
+        <div className="grid gap-3 md:grid-cols-2">
+          <BriefCard
+            eyebrow="Arbitrary CPI"
+            title="The guild checks the uniform, not the mercenary's identity."
+            body="Level 3 forwards the guild authority signer into any external program the player supplies. Once the caller controls that CPI target, the bounty vault becomes theirs to drain."
+          />
+          <BriefCard
+            eyebrow="Attacker program"
+            title="This one needs a deployed contract, not just a crafted client account set."
+            body="Use the mercenary sample or your own program off-screen, then bring the external program id and reward token account back into the board for the delegated execution and verify steps."
+          />
+        </div>
 
         <div className="rounded-[28px] border border-border bg-background/75 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-                Operator runbook
+                Exploit pipeline
               </p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Keep the exact same local workflow structure: local keypair,
-                local validator, proof transaction, verifier, mint unlock.
+                Bootstrap the shared guild authority, open your Level 3 state,
+                then delegate into an attacker program that uses the forwarded
+                signer to drain the bounty vault. Only the verifier can unlock
+                the mint gate.
               </p>
             </div>
-            <Pill>Locked</Pill>
+            <Pill>{stage.badge}</Pill>
           </div>
 
-          <div className="mt-5 grid gap-3">
-            <CommandBlock
-              label="Generate operator keypair"
-              command="solana-keygen new -o .keys/player.json"
-              copied={copied === "cmd-keygen"}
-              onCopy={() => {
-                void onCopy("cmd-keygen", "solana-keygen new -o .keys/player.json");
-              }}
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <SequenceCard
+              index="01"
+              title="Guild"
+              body="Register the reward mint and bounty vault."
+              state={
+                level3Completed || level3State?.hasGuildAuthority ? "done" : "active"
+              }
             />
-            <CommandBlock
-              label="Point Solana CLI to localhost"
-              command="solana config set --keypair .keys/player.json --url localhost"
-              copied={copied === "cmd-config"}
-              onCopy={() => {
-                void onCopy(
-                  "cmd-config",
-                  "solana config set --keypair .keys/player.json --url localhost"
-                );
-              }}
+            <SequenceCard
+              index="02"
+              title="Instance"
+              body="Open your Level 3 PDA."
+              state={
+                level3Completed
+                  ? "done"
+                  : level3State?.hasLevel3State
+                    ? "done"
+                    : level3State?.hasGuildAuthority
+                      ? "active"
+                      : "idle"
+              }
             />
-            <CommandBlock
-              label="Run local validator"
-              command="solana-test-validator --reset"
-              copied={copied === "cmd-validator"}
-              onCopy={() => {
-                void onCopy("cmd-validator", "solana-test-validator --reset");
-              }}
+            <SequenceCard
+              index="03"
+              title="Delegate"
+              body="Forward the signer into your attacker program."
+              state={
+                level3Completed
+                  ? "done"
+                  : delegated
+                    ? "done"
+                    : level3State?.hasLevel3State
+                      ? "active"
+                      : "idle"
+              }
             />
+            <SequenceCard
+              index="04"
+              title="Verify"
+              body="Close the instance and unlock mint."
+              state={level3Completed ? "done" : delegated ? "active" : "idle"}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-border bg-background/75 p-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <TestingField
+              label="Reward mint"
+              value={level3RewardMint}
+              onChange={onChangeRewardMint}
+              placeholder="Pre-created SPL mint used for the bounty"
+            />
+            <TestingField
+              label="Bounty vault"
+              value={level3BountyVault}
+              onChange={onChangeBountyVault}
+              placeholder="Token account owned by the guild PDA"
+            />
+            <TestingField
+              label="User reward account"
+              value={level3UserRewardAccount}
+              onChange={onChangeUserRewardAccount}
+              placeholder="Your token account for the drained bounty"
+            />
+            <TestingField
+              label="External program"
+              value={level3ExternalProgram}
+              onChange={onChangeExternalProgram}
+              placeholder="Mercenary or custom attacker program id"
+            />
+            <TestingField
+              label="Raw amount"
+              value={level3Amount}
+              onChange={onChangeAmount}
+              placeholder="1000000"
+            />
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 md:flex-row md:flex-wrap">
+            <button
+              onClick={() => {
+                void onInitGuildAuthority();
+              }}
+              disabled={isSending}
+              className="min-h-12 rounded-full bg-foreground px-5 text-sm font-medium text-background transition hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Initialize guild
+            </button>
+            <button
+              onClick={() => {
+                void onInitLevel3();
+              }}
+              disabled={isSending}
+              className="min-h-12 rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Initialize level
+            </button>
+            <button
+              onClick={() => {
+                void onDelegateTask();
+              }}
+              disabled={isSending}
+              className="min-h-12 rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Run delegated CPI
+            </button>
+            <button
+              onClick={() => {
+                void onVerify();
+              }}
+              disabled={isSending}
+              className="min-h-12 rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Verify and close
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-[22px] border border-border bg-card/80 p-4">
+            <StatusTextRow
+              label="Reward balance"
+              value={`${(level3State?.rewardAmount ?? 0n).toString()} / ${(level3State?.bountyAmount ?? 0n).toString()}`}
+            />
+            <div className="mt-3 h-1.5 rounded-full bg-accent">
+              <div
+                className="h-full rounded-full bg-foreground transition-[width] duration-300"
+                style={{
+                  width: `${
+                    level3State?.bountyAmount
+                      ? Math.min(
+                          Number(
+                            ((level3State.rewardAmount ?? 0n) * 100n) /
+                              level3State.bountyAmount
+                          ),
+                          100
+                        )
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       <aside className="space-y-4">
         <div className="rounded-[28px] border border-border bg-background/75 p-5">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-            Level brief
-          </p>
-          <p className="mt-3 text-sm leading-6 text-muted">{hint}</p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
+                Mission console
+              </p>
+              <h3 className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
+                {stage.title}
+              </h3>
+            </div>
+            {address ? (
+              <button
+                onClick={() => {
+                  void onCopy("level3-wallet", address);
+                }}
+                className="min-h-10 rounded-full border border-border px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-muted transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                {copied === "level3-wallet" ? "Done" : "Copy wallet"}
+              </button>
+            ) : null}
+          </div>
+
+          <p className="mt-3 text-sm leading-6 text-muted">{stage.description}</p>
+
+          <div className="mt-5 rounded-[22px] border border-border bg-card/80 p-4">
+            <div className="space-y-4">
+              <AddressRow
+                label="Wallet"
+                value={address}
+                copied={copied === "level3-wallet-address"}
+                explorerUrl={address ? getExplorerUrl(`/address/${address}`) : null}
+                onCopy={
+                  address
+                    ? () => {
+                        void onCopy("level3-wallet-address", address);
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
+                label="Guild"
+                value={level3State?.guildAuthorityPda}
+                copied={copied === "level3-guild"}
+                explorerUrl={
+                  level3State?.guildAuthorityPda
+                    ? getExplorerUrl(`/address/${level3State.guildAuthorityPda}`)
+                    : null
+                }
+                onCopy={
+                  level3State?.guildAuthorityPda
+                    ? () => {
+                        void onCopy("level3-guild", level3State.guildAuthorityPda);
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
+                label="Level3"
+                value={level3State?.level3StatePda}
+                copied={copied === "level3-pda"}
+                explorerUrl={
+                  level3State?.level3StatePda
+                    ? getExplorerUrl(`/address/${level3State.level3StatePda}`)
+                    : null
+                }
+                onCopy={
+                  level3State?.level3StatePda
+                    ? () => {
+                        void onCopy("level3-pda", level3State.level3StatePda);
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
+                label="Certificate"
+                value={certificate?.certificatePda}
+                copied={copied === "level3-certificate"}
+                explorerUrl={
+                  certificate?.certificatePda
+                    ? getExplorerUrl(`/address/${certificate.certificatePda}`)
+                    : null
+                }
+                onCopy={
+                  certificate?.certificatePda
+                    ? () => {
+                        void onCopy(
+                          "level3-certificate",
+                          certificate.certificatePda
+                        );
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
+                label="Reward mint"
+                value={
+                  level3State?.rewardMint ??
+                  (level3RewardMint.trim() ? level3RewardMint.trim() : null)
+                }
+                copied={copied === "level3-mint"}
+                explorerUrl={
+                  level3State?.rewardMint
+                    ? getExplorerUrl(`/address/${level3State.rewardMint}`)
+                    : isAddress(level3RewardMint.trim())
+                      ? getExplorerUrl(`/address/${level3RewardMint.trim()}`)
+                      : null
+                }
+                onCopy={
+                  level3State?.rewardMint || level3RewardMint.trim()
+                    ? () => {
+                        void onCopy(
+                          "level3-mint",
+                          level3State?.rewardMint ?? level3RewardMint.trim()
+                        );
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
+                label="Bounty vault"
+                value={
+                  level3State?.bountyVault ??
+                  (level3BountyVault.trim() ? level3BountyVault.trim() : null)
+                }
+                copied={copied === "level3-bounty"}
+                explorerUrl={
+                  level3State?.bountyVault
+                    ? getExplorerUrl(`/address/${level3State.bountyVault}`)
+                    : isAddress(level3BountyVault.trim())
+                      ? getExplorerUrl(`/address/${level3BountyVault.trim()}`)
+                      : null
+                }
+                onCopy={
+                  level3State?.bountyVault || level3BountyVault.trim()
+                    ? () => {
+                        void onCopy(
+                          "level3-bounty",
+                          level3State?.bountyVault ?? level3BountyVault.trim()
+                        );
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
+                label="Reward acct"
+                value={level3UserRewardAccount.trim() || level3State?.rewardAccount}
+                copied={copied === "level3-reward"}
+                explorerUrl={
+                  isAddress(level3UserRewardAccount.trim())
+                    ? getExplorerUrl(`/address/${level3UserRewardAccount.trim()}`)
+                    : null
+                }
+                onCopy={
+                  level3UserRewardAccount.trim()
+                    ? () => {
+                        void onCopy("level3-reward", level3UserRewardAccount.trim());
+                      }
+                    : undefined
+                }
+              />
+              <AddressRow
+                label="Mercenary"
+                value={level3ExternalProgram.trim() || null}
+                copied={copied === "level3-external"}
+                explorerUrl={
+                  isAddress(level3ExternalProgram.trim())
+                    ? getExplorerUrl(`/address/${level3ExternalProgram.trim()}`)
+                    : null
+                }
+                onCopy={
+                  level3ExternalProgram.trim()
+                    ? () => {
+                        void onCopy(
+                          "level3-external",
+                          level3ExternalProgram.trim()
+                        );
+                      }
+                    : undefined
+                }
+              />
+              <StatusTextRow
+                label="Status"
+                value={delegated ? "Guild bounty drained" : "Awaiting delegated exploit"}
+              />
+              <AddressRow
+                label="Asset"
+                value={certificate?.minted ? certificate.assetId : null}
+                copied={copied === "level3-asset"}
+                explorerUrl={
+                  certificate?.minted && certificate.assetId
+                    ? getExplorerUrl(`/address/${certificate.assetId}`)
+                    : null
+                }
+                onCopy={
+                  certificate?.minted && certificate.assetId
+                    ? () => {
+                        void onCopy("level3-asset", certificate.assetId!);
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          </div>
+
+          {status === "connected" && isLoading ? (
+            <div className="mt-5 space-y-3">
+              <SkeletonLine className="h-12" />
+              <SkeletonLine className="h-28" />
+            </div>
+          ) : null}
+
+          {status === "connected" && level3Error ? (
+            <div className="mt-5 rounded-[22px] border border-destructive/20 bg-destructive/5 p-4">
+              <p className="text-sm font-medium text-foreground">
+                Could not read Level 3 state
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                {level3Error instanceof Error
+                  ? level3Error.message
+                  : "The selected cluster returned an unexpected Level 3 account response."}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="mt-5 space-y-3">
+            {stage.actionLabel && stage.onAction ? (
+              <button
+                onClick={() => {
+                  void stage.onAction?.();
+                }}
+                disabled={isSending}
+                className="min-h-13 w-full rounded-full bg-foreground px-5 text-sm font-medium text-background transition hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                {isSending ? "Submitting..." : stage.actionLabel}
+              </button>
+            ) : (
+              <div className="rounded-full border border-border bg-card px-4 py-3 text-center text-sm text-muted">
+                {level3Completed
+                  ? "The exploit is verified. Mint can unlock from here."
+                  : "Connect a wallet to unlock the exploit actions."}
+              </div>
+            )}
+
+            <button
+              onClick={onMint}
+              disabled={!level3Completed || certificate?.minted || isMinting}
+              className="min-h-13 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-accent disabled:text-muted"
+            >
+              {certificate?.minted
+                ? "Level 3 cNFT minted"
+                : isMinting
+                  ? "Minting cNFT..."
+                  : level3Completed
+                    ? "Mint Level 3 cNFT"
+                    : "Mint locked"}
+            </button>
+          </div>
         </div>
 
         <div className="rounded-[28px] border border-border bg-background/75 p-5">
           <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-            Mint gate
+            Exploit note
           </p>
-          <button
-            disabled
-            className="mt-5 min-h-13 w-full rounded-full bg-accent px-5 text-sm font-medium text-muted"
-          >
-            Mint locked
-          </button>
+          <div className="mt-4 space-y-3 text-sm leading-6 text-muted">
+            <ChecklistItem text="Unchecked external programs are arbitrary code execution in disguise once valuable signer privileges are forwarded." />
+            <ChecklistItem text="This exploit needs an attacker program because the malicious behavior happens inside the delegated CPI target, not in the original client transaction alone." />
+            <ChecklistItem text="Verification only cares that your reward account received the bounty amount and that the per-player Level 3 state exists to close." />
+          </div>
         </div>
       </aside>
     </div>
@@ -2275,6 +3984,222 @@ function LevelTile({
         <p className="mt-3 text-sm leading-6 opacity-78">{tile.summary}</p>
       </div>
     </button>
+  );
+}
+
+function ProfileCertificatesSection({
+  address,
+  certificateState,
+  completedLevels,
+  getExplorerUrl,
+  isLoading,
+  onSelectLevel,
+}: {
+  address?: string;
+  certificateState?: CertificateCollection;
+  completedLevels?: boolean[];
+  getExplorerUrl: (path: string) => string;
+  isLoading: boolean;
+  onSelectLevel: (level: LevelId) => void;
+}) {
+  return (
+    <div className="rounded-[34px] border border-border bg-card/95 p-5 shadow-[0_32px_100px_-70px_rgba(0,0,0,0.45)] sm:p-7">
+      <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
+            Profile
+          </p>
+          <h2 className="mt-3 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+            SolBreach certificates
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
+            This wallet gallery shows which level certificates are still locked,
+            which ones are claimed on-chain, and which cNFTs have already been
+            minted and bound back to the original hacker wallet.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
+          <MiniStat
+            label="Wallet"
+            value={address ? "Attached" : "Detached"}
+            detail={address ? compactAddress(address) : "Connect to inspect"}
+          />
+          <MiniStat
+            label="Minted"
+            value={
+              certificateState
+                ? `${Object.values(certificateState).filter((certificate) => certificate.minted).length}/4`
+                : "0/4"
+            }
+            detail="Recorded cNFTs"
+          />
+          <MiniStat
+            label="Cleared"
+            value={
+              completedLevels
+                ? `${completedLevels.filter(Boolean).length}/4`
+                : "0/4"
+            }
+            detail="Challenge progress"
+          />
+        </div>
+      </div>
+
+      {!address ? (
+        <div className="mt-6 rounded-[24px] border border-dashed border-border bg-background/60 px-6 py-10 text-center">
+          <p className="text-base font-medium tracking-[-0.03em] text-foreground">
+            Connect a wallet to inspect your SolBreach profile.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            The certificate gallery is derived from the same wallet-bound PDAs
+            used by the exploit board and cNFT mint flow.
+          </p>
+        </div>
+      ) : isLoading ? (
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {LEVEL_NUMBERS.map((level) => (
+            <SkeletonLine key={level} className="h-[360px]" />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {LEVEL_NUMBERS.map((level) => (
+            <CertificateCard
+              key={level}
+              certificate={certificateState?.[level]}
+              completed={Boolean(completedLevels?.[level])}
+              detail={LEVEL_CERTIFICATE_DETAILS[level]}
+              getExplorerUrl={getExplorerUrl}
+              onOpenLevel={() => {
+                onSelectLevel(`level${level}` as LevelId);
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CertificateCard({
+  certificate,
+  completed,
+  detail,
+  getExplorerUrl,
+  onOpenLevel,
+}: {
+  certificate?: LevelCertificateSnapshot;
+  completed: boolean;
+  detail: CertificateDetails;
+  getExplorerUrl: (path: string) => string;
+  onOpenLevel: () => void;
+}) {
+  const status = certificate?.minted
+    ? "Minted"
+    : certificate?.exists
+      ? "Claimed"
+      : completed
+        ? "Ready to mint"
+        : "Locked";
+
+  const statusTone = certificate?.minted
+    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+    : certificate?.exists
+      ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+      : completed
+        ? "border-foreground/15 bg-foreground/5 text-foreground"
+        : "border-border bg-accent text-muted";
+  const imageSrc =
+    completed || !detail.lockedImage ? detail.image : detail.lockedImage;
+
+  return (
+    <article className="overflow-hidden rounded-[28px] border border-border bg-background/80">
+      <div className="relative aspect-[4/5] border-b border-border bg-card/70">
+        <Image
+          src={imageSrc}
+          alt={`${detail.title} certificate art`}
+          fill
+          className="object-cover"
+          sizes="(min-width: 1280px) 22vw, (min-width: 768px) 45vw, 92vw"
+        />
+        <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
+          <span className="rounded-full border border-black/10 bg-background/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted shadow-sm backdrop-blur">
+            {detail.levelLabel}
+          </span>
+          <span
+            className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] backdrop-blur ${statusTone}`}
+          >
+            {status}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+            Certification
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.05em]">
+            {detail.title}
+          </h3>
+        </div>
+
+        <div className="space-y-3 rounded-[22px] border border-border bg-card/75 p-4">
+          <StatusTextRow
+            label="Completion"
+            value={completed ? "Cleared" : "Not cleared"}
+          />
+          <StatusTextRow
+            label="Certificate"
+            value={certificate?.exists ? "Claimed on-chain" : "Not claimed"}
+          />
+          <StatusTextRow
+            label="Asset"
+            value={
+              certificate?.minted && certificate.assetId
+                ? compactAddress(certificate.assetId)
+                : "Not minted"
+            }
+          />
+        </div>
+
+        <div className="space-y-2 text-sm text-muted">
+          {certificate?.minted && certificate.assetId ? (
+            <a
+              href={getExplorerUrl(`/address/${certificate.assetId}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block truncate underline underline-offset-2"
+            >
+              View cNFT asset
+            </a>
+          ) : null}
+          {certificate?.certificatePda ? (
+            <a
+              href={getExplorerUrl(`/address/${certificate.certificatePda}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block truncate underline underline-offset-2"
+            >
+              View certificate PDA
+            </a>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpenLevel}
+          className="min-h-12 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          {certificate?.minted
+            ? "Open level details"
+            : completed
+              ? "Open mint flow"
+              : "Open level"}
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -2373,39 +4298,6 @@ function BriefCard({
   );
 }
 
-function CommandBlock({
-  label,
-  command,
-  copied,
-  onCopy,
-}: {
-  label: string;
-  command: string;
-  copied: boolean;
-  onCopy: () => void;
-}) {
-  return (
-    <div className="rounded-[22px] border border-border bg-card/80 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-            {label}
-          </p>
-          <code className="mt-3 block overflow-x-auto font-mono text-sm text-foreground">
-            {command}
-          </code>
-        </div>
-        <button
-          onClick={onCopy}
-          className="min-h-10 rounded-full border border-border px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-muted transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          {copied ? "Done" : "Copy"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function TestingField({
   label,
   value,
@@ -2455,6 +4347,18 @@ function Pill({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-flex min-h-10 items-center rounded-full border border-border bg-background px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-muted">
       {children}
+    </span>
+  );
+}
+
+function StatusChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="relative inline-flex min-h-10 items-center rounded-full border border-emerald-400/20 bg-emerald-400/8 px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.16)]">
+      {children}
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-4 bottom-[4px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)]"
+      />
     </span>
   );
 }

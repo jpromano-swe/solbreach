@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Solana dApp Starter",
+  title: "SolBreach by Rustopia",
   description: "A minimal Next.js starter powered by @solana/kit",
   icons: {
     icon: "/icon.svg",

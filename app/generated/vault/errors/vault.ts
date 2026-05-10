@@ -16,26 +16,50 @@ import { VAULT_PROGRAM_ADDRESS } from "../programs";
 
 /** LevelAlreadyCompleted: This level has already been completed */
 export const VAULT_ERROR__LEVEL_ALREADY_COMPLETED = 0x1770; // 6000
-/** InvalidLevelOwner: he provided level account does not belong to this user */
+/** InvalidLevelOwner: The provided level account does not belong to this user */
 export const VAULT_ERROR__INVALID_LEVEL_OWNER = 0x1771; // 6001
 /** DepositGoalNotReached: The deposit target has not been reached */
 export const VAULT_ERROR__DEPOSIT_GOAL_NOT_REACHED = 0x1772; // 6002
 /** CommanderNotHijacked: The commander registry has not been hijacked by this player */
 export const VAULT_ERROR__COMMANDER_NOT_HIJACKED = 0x1773; // 6003
+/** DelegationNotHijacked: The delegation path has not been hijacked by this player */
+export const VAULT_ERROR__DELEGATION_NOT_HIJACKED = 0x1774; // 6004
+/** MissingGuildAuthoritySigner: The guild authority signer was not forwarded into the delegated CPI */
+export const VAULT_ERROR__MISSING_GUILD_AUTHORITY_SIGNER = 0x1775; // 6005
+/** InvalidLevelIndex: The provided level index is out of bounds */
+export const VAULT_ERROR__INVALID_LEVEL_INDEX = 0x1776; // 6006
+/** LevelNotCompleted: This player has not completed the requested level yet */
+export const VAULT_ERROR__LEVEL_NOT_COMPLETED = 0x1777; // 6007
+/** CertificateAssetAlreadyRecorded: This certificate asset has already been recorded */
+export const VAULT_ERROR__CERTIFICATE_ASSET_ALREADY_RECORDED = 0x1778; // 6008
+/** UnauthorizedCertificationAuthority: The signer is not allowed to bind certificate assets */
+export const VAULT_ERROR__UNAUTHORIZED_CERTIFICATION_AUTHORITY = 0x1779; // 6009
 
 export type VaultError =
+  | typeof VAULT_ERROR__CERTIFICATE_ASSET_ALREADY_RECORDED
   | typeof VAULT_ERROR__COMMANDER_NOT_HIJACKED
+  | typeof VAULT_ERROR__DELEGATION_NOT_HIJACKED
   | typeof VAULT_ERROR__DEPOSIT_GOAL_NOT_REACHED
+  | typeof VAULT_ERROR__INVALID_LEVEL_INDEX
   | typeof VAULT_ERROR__INVALID_LEVEL_OWNER
-  | typeof VAULT_ERROR__LEVEL_ALREADY_COMPLETED;
+  | typeof VAULT_ERROR__LEVEL_ALREADY_COMPLETED
+  | typeof VAULT_ERROR__LEVEL_NOT_COMPLETED
+  | typeof VAULT_ERROR__MISSING_GUILD_AUTHORITY_SIGNER
+  | typeof VAULT_ERROR__UNAUTHORIZED_CERTIFICATION_AUTHORITY;
 
 let vaultErrorMessages: Record<VaultError, string> | undefined;
 if (process.env.NODE_ENV !== "production") {
   vaultErrorMessages = {
+    [VAULT_ERROR__CERTIFICATE_ASSET_ALREADY_RECORDED]: `This certificate asset has already been recorded`,
     [VAULT_ERROR__COMMANDER_NOT_HIJACKED]: `The commander registry has not been hijacked by this player`,
+    [VAULT_ERROR__DELEGATION_NOT_HIJACKED]: `The delegation path has not been hijacked by this player`,
     [VAULT_ERROR__DEPOSIT_GOAL_NOT_REACHED]: `The deposit target has not been reached`,
-    [VAULT_ERROR__INVALID_LEVEL_OWNER]: `he provided level account does not belong to this user`,
+    [VAULT_ERROR__INVALID_LEVEL_INDEX]: `The provided level index is out of bounds`,
+    [VAULT_ERROR__INVALID_LEVEL_OWNER]: `The provided level account does not belong to this user`,
     [VAULT_ERROR__LEVEL_ALREADY_COMPLETED]: `This level has already been completed`,
+    [VAULT_ERROR__LEVEL_NOT_COMPLETED]: `This player has not completed the requested level yet`,
+    [VAULT_ERROR__MISSING_GUILD_AUTHORITY_SIGNER]: `The guild authority signer was not forwarded into the delegated CPI`,
+    [VAULT_ERROR__UNAUTHORIZED_CERTIFICATION_AUTHORITY]: `The signer is not allowed to bind certificate assets`,
   };
 }
 
