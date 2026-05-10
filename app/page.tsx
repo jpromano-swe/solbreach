@@ -194,6 +194,7 @@ const DEFAULT_LEVEL_2_COMMANDER =
   "11111111111111111111111111111111" as Address;
 const PLAYGROUND_REPOSITORY =
   "git clone https://github.com/jpronano-swe/solbreach-playground";
+const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
 ]);
@@ -1583,35 +1584,35 @@ export default function Home() {
         ? "live"
         : "ready";
 
-    const level1Status: LevelStatus = level1Completed
-      ? "cleared"
-      : level1DepositReady
-        ? "armed"
-        : level1State?.hasLevel1State
-          ? "live"
-          : level0State?.isCompleted
-            ? "ready"
-            : "locked";
+    const level1Status: LevelStatus = !level0State?.isCompleted
+      ? "locked"
+      : level1Completed
+        ? "cleared"
+        : level1DepositReady
+          ? "armed"
+          : level1State?.hasLevel1State
+            ? "live"
+            : "ready";
 
-    const level2Status: LevelStatus = level2Completed
-      ? "cleared"
-      : level2Hijacked
-        ? "armed"
-        : level2State?.hasProfile || level2State?.hasLevel2State
-          ? "live"
-          : level0State?.isCompleted
-            ? "ready"
-            : "locked";
+    const level2Status: LevelStatus = !level0State?.isCompleted
+      ? "locked"
+      : level2Completed
+        ? "cleared"
+        : level2Hijacked
+          ? "armed"
+          : level2State?.hasProfile || level2State?.hasLevel2State
+            ? "live"
+            : "ready";
 
-    const level3Status: LevelStatus = level3Completed
-      ? "cleared"
-      : level3DelegationReady
-        ? "armed"
-        : level3State?.hasGuildAuthority || level3State?.hasLevel3State
-          ? "live"
-          : level0State?.isCompleted
-            ? "ready"
-            : "locked";
+    const level3Status: LevelStatus = !level0State?.isCompleted
+      ? "locked"
+      : level3Completed
+        ? "cleared"
+        : level3DelegationReady
+          ? "armed"
+          : level3State?.hasGuildAuthority || level3State?.hasLevel3State
+            ? "live"
+            : "ready";
 
     return [
       {
@@ -1941,6 +1942,7 @@ export default function Home() {
                         active={activeLevelsView === option.id}
                         label={option.label}
                         onClick={() => setActiveLevelsView(option.id)}
+                        variant="subtle"
                       />
                     ))}
                   </div>
@@ -1978,6 +1980,22 @@ export default function Home() {
             </section>
           )}
         </main>
+
+        <footer className="border-t border-border/70">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6 md:flex-row">
+            <p>Build for Solana by ZirconDioxide.</p>
+            <a
+              href={SOLBREACH_REPOSITORY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/70 px-4 transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label="Open SolBreach GitHub repository"
+            >
+              <GitHubIcon />
+              <span>GitHub</span>
+            </a>
+          </div>
+        </footer>
       </div>
     </div>
   );
@@ -1987,26 +2005,36 @@ function HeaderNavButton({
   active,
   label,
   onClick,
+  variant = "header",
 }: {
   active: boolean;
   label: string;
   onClick: () => void;
+  variant?: "header" | "subtle";
 }) {
+  const isSubtle = variant === "subtle";
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative min-h-11 rounded-full px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-        active
-          ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
-          : "text-muted hover:bg-accent hover:text-foreground"
+      className={`relative min-h-11 px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        isSubtle
+          ? active
+            ? "text-foreground"
+            : "text-muted hover:text-foreground"
+          : active
+            ? "rounded-full bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
+            : "rounded-full text-muted hover:bg-accent hover:text-foreground"
       }`}
     >
       {label}
       {active ? (
         <span
           aria-hidden="true"
-          className="absolute inset-x-4 bottom-[3px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)]"
+          className={`absolute bottom-[3px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)] ${
+            isSubtle ? "inset-x-3" : "inset-x-4"
+          }`}
         />
       ) : null}
     </button>
@@ -2023,27 +2051,52 @@ function LandingPageSection({
   onOpenLevel: (level: LevelId) => void;
 }) {
   return (
-    <section className="space-y-8">
-      <div className="space-y-5 text-center">
+    <section className="space-y-12">
+      <div className="space-y-7 text-center">
         <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl lg:text-7xl">
-            Clear the warmup, then move level by level through SolBreach.
+            Master Smart Contract Security on Solana
         </h1>
-        <p className="mx-auto max-w-3xl text-base leading-7 text-muted sm:text-lg">
-          The landing page is only the map. Open a level to read the exploit
-          narrative, inspect the vulnerable snippet, and track certification
-          unlock state without the old operator clutter.
+        <p className="mx-auto max-w-3xl text-base leading-8 text-muted sm:text-lg">
+        Hands-on smart contract security wargame.
+        Exploit real vulnerabilities, complete on-chain objectives, and earn verifiable certifications.
         </p>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-4">
-        {levelTiles.map((tile) => (
-          <LevelTile
-            key={tile.id}
-            tile={tile}
-            selected={false}
-            onSelect={() => onOpenLevel(tile.id)}
-          />
-        ))}
+      <div className="space-y-10 pt-4">
+        <div className="flex flex-col items-center space-y-3">
+          <p className="text-center text-[11px] uppercase tracking-[0.32em] text-muted">
+            Tutorial
+          </p>
+          <div className="w-full max-w-6xl">
+            <div className="grid justify-center gap-4 xl:grid-cols-3">
+              <div className="hidden xl:block" />
+              <LevelTile
+                tile={levelTiles[0]}
+                selected={false}
+                onSelect={() => onOpenLevel(levelTiles[0].id)}
+              />
+              <div className="hidden xl:block" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center space-y-3">
+          <p className="text-center text-[11px] uppercase tracking-[0.32em] text-muted">
+            Challenge Levels
+          </p>
+          <div className="w-full max-w-6xl">
+            <div className="grid gap-4 xl:grid-cols-3">
+              {levelTiles.slice(1).map((tile) => (
+                <LevelTile
+                  key={tile.id}
+                  tile={tile}
+                  selected={false}
+                  onSelect={() => onOpenLevel(tile.id)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {!operatorLevelsUnlocked ? (
@@ -3991,7 +4044,7 @@ function ProfileCertificatesSection({
       <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="mt-3 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-            Hackers's Achievements
+            Hacker Achievements
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
             This gallery shows which level certificates are still locked,
@@ -4341,6 +4394,18 @@ function StatusChip({ children }: { children: React.ReactNode }) {
         className="absolute inset-x-4 bottom-[4px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)]"
       />
     </span>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 fill-current"
+    >
+      <path d="M12 2C6.477 2 2 6.59 2 12.252c0 4.53 2.865 8.37 6.839 9.727.5.096.682-.222.682-.494 0-.244-.009-.891-.014-1.75-2.782.617-3.369-1.37-3.369-1.37-.455-1.183-1.11-1.497-1.11-1.497-.908-.637.069-.624.069-.624 1.004.072 1.532 1.055 1.532 1.055.893 1.566 2.341 1.114 2.91.852.091-.664.35-1.115.636-1.371-2.221-.258-4.555-1.137-4.555-5.062 0-1.118.389-2.032 1.029-2.749-.103-.259-.446-1.301.098-2.713 0 0 .84-.276 2.75 1.05A9.327 9.327 0 0 1 12 6.863c.85.004 1.706.118 2.504.346 1.909-1.326 2.748-1.05 2.748-1.05.546 1.412.203 2.454.1 2.713.64.717 1.028 1.631 1.028 2.749 0 3.934-2.337 4.801-4.566 5.054.359.319.678.948.678 1.911 0 1.379-.012 2.49-.012 2.829 0 .274.18.594.688.493C19.138 20.619 22 16.78 22 12.252 22 6.59 17.523 2 12 2Z" />
+    </svg>
   );
 }
 
