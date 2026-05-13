@@ -9,6 +9,16 @@ import {
   type Instruction,
 } from "@solana/kit";
 import { PublicKey as Web3PublicKey } from "@solana/web3.js";
+import {
+  ArrowRight,
+  Cpu,
+  FileCode2,
+  LockKeyhole,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import { GridBackground } from "./components/grid-background";
@@ -148,6 +158,11 @@ type LevelGuideContent = {
   missionTitle: string;
   subtitle: string;
   title: string;
+  vulnerabilityActiveLabel?: string;
+  vulnerabilityLabel?: string;
+  vulnerabilityNote?: string;
+  vulnerabilityTone?: "cyan" | "red";
+  vulnerableLines?: number[];
   winCondition: string;
 };
 
@@ -190,13 +205,39 @@ const LEVEL_CERTIFICATE_DETAILS: Record<0 | 1 | 2 | 3, CertificateDetails> = {
     title: "The Trojan Horse",
   },
 };
-const DEFAULT_LEVEL_2_COMMANDER =
-  "11111111111111111111111111111111" as Address;
+const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
 const PLAYGROUND_REPOSITORY =
   "git clone https://github.com/jpronano-swe/solbreach-playground";
 const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
+]);
+const RUST_CODE_KEYWORDS = new Set([
+  "Account",
+  "AccountMeta",
+  "Context",
+  "CpiContext",
+  "Instruction",
+  "Ok",
+  "Program",
+  "Pubkey",
+  "Result",
+  "Signer",
+  "System",
+  "Token",
+  "TokenAccount",
+  "UncheckedAccount",
+  "Vec",
+  "bump",
+  "fn",
+  "let",
+  "msg",
+  "mut",
+  "pub",
+  "seeds",
+  "struct",
+  "token",
+  "vec",
 ]);
 const LEVEL_GUIDES: Record<LevelId, LevelGuideContent> = {
   level0: {
@@ -228,6 +269,12 @@ pub fn verify_and_close_level_0(ctx: Context<VerifyAndCloseLevel0>) -> Result<()
     user_stats.completed_levels[0] = true;
     Ok(())
 }`,
+    vulnerabilityActiveLabel: "Hide Review Notes",
+    vulnerabilityLabel: "Review Focus",
+    vulnerabilityNote:
+      "Level 0 is intentionally safe. The key pattern is the wallet-bound PDA derivation and the completion write that unlocks the exploit levels.",
+    vulnerabilityTone: "cyan",
+    vulnerableLines: [8, 17, 25],
     hints: [
       "Program Derived Addresses are deterministic. Trace the stats PDA and the per-level PDA separately.",
       "The win condition is not a trick exploit. It is understanding the account lifecycle the rest of the wargame depends on.",
@@ -251,8 +298,6 @@ pub struct DepositTokens<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
     
-    // VULNERABILITY: Missing #[account(constraint = vault.mint == expected_mint.key())]
-    // Anchor checks that this is a valid TokenAccount, but NOT which token it holds!
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
     
@@ -278,6 +323,9 @@ pub fn deposit(ctx: Context<DepositTokens>, amount: u64) -> Result<()> {
     msg!("Successfully deposited {} tokens!", amount);
     Ok(())
 }`,
+    vulnerabilityNote:
+      "Missing mint constraint: the vault token account is never tied to the expected mint.",
+    vulnerableLines: [6, 7],
     hints: [
       "Not all SPL tokens are created equal.",
       "Who determines the mint address of a TokenAccount?",
@@ -300,9 +348,6 @@ pub struct UpdateProfile<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
     
-    // VULNERABILITY: The seeds are static! 
-    // It should be seeds = [b"profile", user.key().as_ref()]
-    // Because it's static, there is only ONE global profile PDA.
     #[account(
         mut,
         seeds = [b"profile"], 
@@ -321,6 +366,9 @@ pub fn update_profile(ctx: Context<UpdateProfile>) -> Result<()> {
     profile.commander = ctx.accounts.user.key();
     Ok(())
 }`,
+    vulnerabilityNote:
+      "Static PDA seed: every user writes to the same global profile instead of a wallet-bound PDA.",
+    vulnerableLines: [8],
     hints: [
       "Program Derived Addresses are like deterministic lockers.",
       "What happens if a locker doesn't include the owner's name on it?",
@@ -343,9 +391,6 @@ pub struct DelegateTask<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
     
-    // VULNERABILITY: The developer failed to verify the program ID.
-    // Missing: #[account(address = known_mercenary_program::ID)]
-    /// CHECK: We trust the external mercenary program to do its job.
     pub external_program: UncheckedAccount<'info>,
     
     pub system_program: Program<'info, System>,
@@ -368,6 +413,9 @@ pub fn delegate(ctx: Context<DelegateTask>, task_data: Vec<u8>) -> Result<()> {
     
     Ok(())
 }`,
+    vulnerabilityNote:
+      "Unchecked CPI target: the external program can be attacker-controlled because its program ID is not constrained.",
+    vulnerableLines: [6],
     hints: [
       "Cross-Program Invocations (CPIs) are powerful, but who are you really calling?",
       "UncheckedAccount is exactly what it sounds like. It turns off Anchor's safety nets.",
@@ -422,9 +470,7 @@ export default function Home() {
   const [level1Vault] = useState("");
   const [level1UserTokenAccount] = useState("");
   const [level1Amount] = useState("1000000");
-  const [level2InitialCommander] = useState<string>(
-    DEFAULT_LEVEL_2_COMMANDER
-  );
+  const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
   const [level3UserRewardAccount] = useState("");
@@ -674,7 +720,9 @@ export default function Home() {
   const parseAmountInput = useCallback((value: string) => {
     const trimmed = value.trim();
     if (!/^\d+$/.test(trimmed)) {
-      throw new Error("Deposit amount must be a whole number of raw token units.");
+      throw new Error(
+        "Deposit amount must be a whole number of raw token units."
+      );
     }
     return BigInt(trimmed);
   }, []);
@@ -876,7 +924,8 @@ export default function Home() {
   const handleDelegateTask = useCallback(async () => {
     await runInstruction(
       async () => {
-        const amount = level3State?.bountyAmount || parseAmountInput(level3Amount);
+        const amount =
+          level3State?.bountyAmount || parseAmountInput(level3Amount);
         const taskData = new Uint8Array(16);
         taskData.set(MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR, 0);
         new DataView(taskData.buffer).setBigUint64(8, amount, true);
@@ -976,7 +1025,9 @@ export default function Home() {
             >
               View recorded asset
             </a>
-          ) : "The certificate PDA already has a recorded compressed asset.",
+          ) : (
+            "The certificate PDA already has a recorded compressed asset."
+          ),
         });
         return;
       }
@@ -992,7 +1043,9 @@ export default function Home() {
               level,
             });
 
-          const claimSignature = await send({ instructions: [claimInstruction] });
+          const claimSignature = await send({
+            instructions: [claimInstruction],
+          });
           toast.success(`${title} certificate claimed.`, {
             description: (
               <a
@@ -1661,12 +1714,10 @@ export default function Home() {
     level3State,
   ]);
 
-  const operatorLevelsUnlocked = Boolean(level0State?.isCompleted);
-  const activeLevel =
-    activeLevelsView === "landing" ? null : activeLevelsView;
+  const activeLevel = activeLevelsView === "landing" ? null : activeLevelsView;
   const activeGuide = activeLevel ? LEVEL_GUIDES[activeLevel] : null;
   const activeTile = activeLevel
-    ? levelTiles.find((tile) => tile.id === activeLevel) ?? null
+    ? (levelTiles.find((tile) => tile.id === activeLevel) ?? null)
     : null;
   const activeCertificate = activeLevel
     ? ({
@@ -1678,64 +1729,64 @@ export default function Home() {
     : null;
   const activeLevelStatus = useMemo(() => {
     if (!activeLevel) return null;
-    const mintState =
-      activeCertificate?.minted
+    const mintState = activeCertificate?.minted
+      ? {
+          mintDisabled: true,
+          mintLabel: "Certification Minted",
+          onMint: () => {},
+        }
+      : activeLevel === "level0"
         ? {
-            mintDisabled: true,
-            mintLabel: "Certification Minted",
-            onMint: () => {},
+            mintDisabled:
+              !level0State?.isCompleted || mintingLevel === "level0",
+            mintLabel:
+              mintingLevel === "level0"
+                ? "Minting..."
+                : level0State?.isCompleted
+                  ? "Unlock Certification"
+                  : "Mint Locked",
+            onMint: () => {
+              void handleMintLevel0Flag();
+            },
           }
-        : activeLevel === "level0"
+        : activeLevel === "level1"
           ? {
-              mintDisabled: !level0State?.isCompleted || mintingLevel === "level0",
+              mintDisabled: !level1Completed || mintingLevel === "level1",
               mintLabel:
-                mintingLevel === "level0"
+                mintingLevel === "level1"
                   ? "Minting..."
-                  : level0State?.isCompleted
+                  : level1Completed
                     ? "Unlock Certification"
                     : "Mint Locked",
               onMint: () => {
-                void handleMintLevel0Flag();
+                void handleMintLevel1Flag();
               },
             }
-          : activeLevel === "level1"
+          : activeLevel === "level2"
             ? {
-                mintDisabled: !level1Completed || mintingLevel === "level1",
+                mintDisabled: !level2Completed || mintingLevel === "level2",
                 mintLabel:
-                  mintingLevel === "level1"
+                  mintingLevel === "level2"
                     ? "Minting..."
-                    : level1Completed
+                    : level2Completed
                       ? "Unlock Certification"
                       : "Mint Locked",
                 onMint: () => {
-                  void handleMintLevel1Flag();
+                  void handleMintLevel2Flag();
                 },
               }
-            : activeLevel === "level2"
-              ? {
-                  mintDisabled: !level2Completed || mintingLevel === "level2",
-                  mintLabel:
-                    mintingLevel === "level2"
-                      ? "Minting..."
-                      : level2Completed
-                        ? "Unlock Certification"
-                        : "Mint Locked",
-                  onMint: () => {
-                    void handleMintLevel2Flag();
-                  },
-                }
-              : {
-                  mintDisabled: !level3Completed || mintingLevel === "level3",
-                  mintLabel:
-                    mintingLevel === "level3"
-                      ? "Minting..."
-                      : level3Completed
-                        ? "Unlock Certification"
-                        : "Mint Locked",
-                  onMint: () => {
-                    void handleMintLevel3Flag();
-                  },
-                };
+            : {
+                mintDisabled: !level3Completed || mintingLevel === "level3",
+                mintLabel:
+                  mintingLevel === "level3"
+                    ? "Minting..."
+                    : level3Completed
+                      ? "Unlock Certification"
+                      : "Mint Locked",
+                onMint: () => {
+                  void handleMintLevel3Flag();
+                },
+              };
     switch (activeLevel) {
       case "level0":
         return {
@@ -1747,7 +1798,10 @@ export default function Home() {
             { label: "Cluster", value: cluster },
             {
               label: "Wallet",
-              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+              value:
+                status === "connected"
+                  ? compactAddress(address ?? "")
+                  : "Detached",
             },
             {
               label: "PDA state",
@@ -1759,7 +1813,9 @@ export default function Home() {
             },
             {
               label: "Win condition",
-              value: level0State?.isCompleted ? "1 / 1 cleared" : "0 / 1 cleared",
+              value: level0State?.isCompleted
+                ? "1 / 1 cleared"
+                : "0 / 1 cleared",
             },
           ],
         };
@@ -1769,14 +1825,19 @@ export default function Home() {
           chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
           ...mintState,
           progressValue: Math.min(
-            Number(((level1State?.depositedAmount ?? 0n) * 100n) / LEVEL_1_TARGET),
+            Number(
+              ((level1State?.depositedAmount ?? 0n) * 100n) / LEVEL_1_TARGET
+            ),
             100
           ),
           rows: [
             { label: "Cluster", value: cluster },
             {
               label: "Wallet",
-              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+              value:
+                status === "connected"
+                  ? compactAddress(address ?? "")
+                  : "Detached",
             },
             {
               label: "PDA state",
@@ -1802,7 +1863,10 @@ export default function Home() {
             { label: "Cluster", value: cluster },
             {
               label: "Wallet",
-              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+              value:
+                status === "connected"
+                  ? compactAddress(address ?? "")
+                  : "Detached",
             },
             {
               label: "PDA state",
@@ -1814,7 +1878,9 @@ export default function Home() {
             },
             {
               label: "Win condition",
-              value: level2Hijacked ? "Commander overwritten" : "Commander unchanged",
+              value: level2Hijacked
+                ? "Commander overwritten"
+                : "Commander unchanged",
             },
           ],
         };
@@ -1825,8 +1891,8 @@ export default function Home() {
           ...mintState,
           progressValue: Math.min(
             Number(
-              (((level3State?.rewardAmount ?? 0n) * 100n) /
-                (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET))
+              ((level3State?.rewardAmount ?? 0n) * 100n) /
+                (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET)
             ),
             100
           ),
@@ -1834,7 +1900,10 @@ export default function Home() {
             { label: "Cluster", value: cluster },
             {
               label: "Wallet",
-              value: status === "connected" ? compactAddress(address ?? "") : "Detached",
+              value:
+                status === "connected"
+                  ? compactAddress(address ?? "")
+                  : "Detached",
             },
             {
               label: "PDA state",
@@ -1884,7 +1953,7 @@ export default function Home() {
 
       <div className="relative z-10">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
-          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+          <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:justify-between">
             <div className="flex justify-center lg:justify-start">
               <button
                 type="button"
@@ -1906,25 +1975,22 @@ export default function Home() {
               </button>
             </div>
 
-            <nav
-              className="mx-auto flex w-fit items-center rounded-full border border-border bg-card/70 p-1"
-              aria-label="Primary sections"
-            >
-              <HeaderNavButton
-                active={activeSection === "levels"}
-                label="Levels"
-                onClick={() => setActiveSection("levels")}
-              />
-              <HeaderNavButton
-                active={activeSection === "profile"}
-                label="Profile"
-                onClick={() => setActiveSection("profile")}
-              />
-            </nav>
-
             <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-end">
               <ClusterSelect />
               <WalletButton />
+              {status === "connected" ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("profile")}
+                  className={`min-h-11 rounded-full border px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    activeSection === "profile"
+                      ? "border-foreground/20 bg-foreground text-background"
+                      : "border-border bg-card/70 text-foreground hover:bg-accent"
+                  }`}
+                >
+                  My Profile
+                </button>
+              ) : null}
               <ThemeToggle />
             </div>
           </div>
@@ -1935,9 +2001,7 @@ export default function Home() {
             <div className="space-y-8">
               {activeLevelsView === "landing" ? (
                 <LandingPageSection
-                  levelTiles={levelTiles}
-                  operatorLevelsUnlocked={operatorLevelsUnlocked}
-                  onOpenLevel={(level) => setActiveLevelsView(level)}
+                  onPlayNow={() => setActiveLevelsView("level0")}
                 />
               ) : activeGuide && activeLevelStatus ? (
                 <div className="space-y-8">
@@ -1968,7 +2032,7 @@ export default function Home() {
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
                   Every SolBreach certificate is tied back to the wallet that
-                  cleared the level. 
+                  cleared the level.
                 </p>
               </div>
 
@@ -1990,16 +2054,28 @@ export default function Home() {
         <footer className="border-t border-border/70">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6 md:flex-row">
             <p>Build for Solana by ZirconDioxide.</p>
-            <a
-              href={SOLBREACH_REPOSITORY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/70 px-4 transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              aria-label="Open SolBreach GitHub repository"
-            >
-              <GitHubIcon />
-              <span>GitHub</span>
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href="https://x.com/solbreach_app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/70 px-4 transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label="Open SolBreach on X"
+              >
+                <XIcon />
+                <span>Twitter</span>
+              </a>
+              <a
+                href={SOLBREACH_REPOSITORY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/70 px-4 transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label="Open SolBreach GitHub repository"
+              >
+                <GitHubIcon />
+                <span>GitHub</span>
+              </a>
+            </div>
           </div>
         </footer>
       </div>
@@ -2024,93 +2100,340 @@ function HeaderNavButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative min-h-11 px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+      className={`min-h-11 rounded-full px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
         isSubtle
           ? active
-            ? "text-foreground"
+            ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
             : "text-muted hover:text-foreground"
           : active
-            ? "rounded-full bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
-            : "rounded-full text-muted hover:bg-accent hover:text-foreground"
+            ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
+            : "text-muted hover:bg-accent hover:text-foreground"
       }`}
     >
       {label}
-      {active ? (
-        <span
-          aria-hidden="true"
-          className={`absolute bottom-[3px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)] ${
-            isSubtle ? "inset-x-3" : "inset-x-4"
-          }`}
-        />
-      ) : null}
     </button>
   );
 }
 
-function LandingPageSection({
-  levelTiles,
-  operatorLevelsUnlocked,
-  onOpenLevel,
-}: {
-  levelTiles: LevelTileConfig[];
-  operatorLevelsUnlocked: boolean;
-  onOpenLevel: (level: LevelId) => void;
-}) {
+function LandingPageSection({ onPlayNow }: { onPlayNow: () => void }) {
   return (
-    <section className="space-y-12">
-      <div className="space-y-7 text-center">
+    <section className="space-y-14">
+      <div className="mx-auto max-w-4xl space-y-7 text-center">
         <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl lg:text-7xl">
-            Master Smart Contract Security on Solana
+          Master Solana Programs{" "}
+          <span className="text-[#14f195] drop-shadow-[0_0_28px_rgba(20,241,149,0.22)]">
+            Security
+          </span>
+          .
         </h1>
         <p className="mx-auto max-w-3xl text-base leading-8 text-muted sm:text-lg">
-        Hands-on smart contract security wargame.
-        Exploit real vulnerabilities, complete on-chain objectives, and earn verifiable certifications.
+          Hands-on solana programs security wargame. Exploit real
+          vulnerabilities, learn from past hacks, participate on review training
+          and earn verifiable certifications.
         </p>
+
+        <button
+          type="button"
+          onClick={onPlayNow}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          Play now
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
 
-      <div className="space-y-10 pt-4">
-        <div className="flex flex-col items-center space-y-3">
-          <p className="text-center text-[11px] uppercase tracking-[0.32em] text-muted">
-            Tutorial
-          </p>
-          <div className="w-full max-w-6xl">
-            <div className="grid justify-center gap-4 xl:grid-cols-3">
-              <div className="hidden xl:block" />
-              <LevelTile
-                tile={levelTiles[0]}
-                selected={false}
-                onSelect={() => onOpenLevel(levelTiles[0].id)}
-              />
-              <div className="hidden xl:block" />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center space-y-3">
-          <p className="text-center text-[11px] uppercase tracking-[0.32em] text-muted">
-            Challenge Levels
-          </p>
-          <div className="w-full max-w-6xl">
-            <div className="grid gap-4 xl:grid-cols-3">
-              {levelTiles.slice(1).map((tile) => (
-                <LevelTile
-                  key={tile.id}
-                  tile={tile}
-                  selected={false}
-                  onSelect={() => onOpenLevel(tile.id)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {!operatorLevelsUnlocked ? (
-        <p className="text-center text-sm text-muted">
-          Levels 1–3 stay locked until Level 0 is completed.
-        </p>
-      ) : null}
+      <FeatureShowcaseSection />
     </section>
+  );
+}
+
+function FeatureShowcaseSection() {
+  return (
+    <section
+      className="relative overflow-hidden border border-violet-500/12 bg-background/80 shadow-[0_36px_120px_-90px_rgba(20,241,149,0.45),0_28px_100px_-90px_rgba(153,69,255,0.55)]"
+      aria-labelledby="feature-showcase-title"
+      style={{
+        backgroundImage: [
+          "radial-gradient(ellipse 42% 42% at 12% 12%, rgba(153,69,255,0.10), transparent 72%)",
+          "radial-gradient(ellipse 42% 42% at 88% 18%, rgba(20,241,149,0.08), transparent 72%)",
+        ].join(", "),
+      }}
+    >
+      <div
+        className="pointer-events-none absolute -left-1 top-0 h-px w-3 bg-background"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute -right-1 top-0 h-px w-3 bg-background"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute -left-1 bottom-0 h-px w-3 bg-background"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute -right-1 bottom-0 h-px w-3 bg-background"
+        aria-hidden="true"
+      />
+
+      <h2 id="feature-showcase-title" className="sr-only">
+        Feature overview
+      </h2>
+
+      <div className="grid divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+        <FeaturePreview
+          tint="purple"
+          title="Exploit Foundations"
+          description="Interact with vulnerable devnet programs, complete exploit objectives, and unlock wallet-bound certifications."
+        >
+          <ExploitFoundationsPreview />
+        </FeaturePreview>
+        <FeaturePreview
+          tint="green"
+          title="Security Case Studies"
+          description="Study vulnerable and secure implementations side-by-side while tracing real-world Solana bug patterns."
+        >
+          <SecurityCaseStudyPreview />
+        </FeaturePreview>
+        <FeaturePreview
+          tint="mixed"
+          title="Arena & Reviewer Training"
+          description="Practice professional findings and team review rooms built for onboarding, assessment, and readiness."
+        >
+          <ArenaTrainingPreview />
+        </FeaturePreview>
+      </div>
+
+      <div className="grid divide-y divide-border border-t border-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-6">
+        <FeatureMiniItem
+          icon={<Zap className="h-4 w-4" aria-hidden="true" />}
+          tint="purple"
+          title="Real Vulnerable Programs"
+          body="Intentionally vulnerable Solana programs deployed on devnet."
+        />
+        <FeatureMiniItem
+          icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
+          tint="green"
+          title="Exploit Verification"
+          body="On-chain objectives with wallet-bound certifications."
+        />
+        <FeatureMiniItem
+          icon={<FileCode2 className="h-4 w-4" aria-hidden="true" />}
+          tint="purple"
+          title="Secure Comparisons"
+          body="Insecure implementations beside patched versions."
+        />
+        <FeatureMiniItem
+          icon={<LockKeyhole className="h-4 w-4" aria-hidden="true" />}
+          tint="green"
+          title="Bug Patterns"
+          body="Arbitrary CPI, PDA misuse, signer confusion, and authority bugs."
+        />
+        <FeatureMiniItem
+          icon={<Cpu className="h-4 w-4" aria-hidden="true" />}
+          tint="purple"
+          title="Security Writeups"
+          body="Severity, exploit reasoning, impact, and remediation practice."
+        />
+        <FeatureMiniItem
+          icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
+          tint="green"
+          title="Review Rooms"
+          body="Challenge environments for teams and reviewer training."
+        />
+      </div>
+    </section>
+  );
+}
+
+function FeaturePreview({
+  children,
+  description,
+  tint,
+  title,
+}: {
+  children: React.ReactNode;
+  description: string;
+  tint: "green" | "mixed" | "purple";
+  title: string;
+}) {
+  const tintClass =
+    tint === "purple"
+      ? "bg-[radial-gradient(ellipse_70%_42%_at_50%_0%,rgba(153,69,255,0.10),transparent_72%)]"
+      : tint === "green"
+        ? "bg-[radial-gradient(ellipse_70%_42%_at_50%_0%,rgba(20,241,149,0.08),transparent_72%)]"
+        : "bg-[radial-gradient(ellipse_70%_42%_at_30%_0%,rgba(153,69,255,0.08),transparent_70%),radial-gradient(ellipse_70%_42%_at_70%_0%,rgba(20,241,149,0.07),transparent_70%)]";
+
+  return (
+    <article
+      className={`flex min-h-[520px] flex-col items-center justify-between px-6 py-12 text-center sm:px-8 ${tintClass}`}
+    >
+      <div className="flex min-h-[300px] w-full items-start justify-center">
+        {children}
+      </div>
+      <div className="mt-10 max-w-sm">
+        <h3 className="text-base font-semibold tracking-[-0.02em] text-foreground">
+          {title}
+        </h3>
+        <p className="mt-4 text-sm leading-6 text-muted sm:text-base sm:leading-7">
+          {description}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function FeatureMiniItem({
+  body,
+  icon,
+  tint,
+  title,
+}: {
+  body: string;
+  icon: React.ReactNode;
+  tint: "green" | "purple";
+  title: string;
+}) {
+  const tintClass =
+    tint === "purple"
+      ? "text-[#b184ff] bg-[linear-gradient(180deg,rgba(153,69,255,0.045),transparent)]"
+      : "text-[#14f195] bg-[linear-gradient(180deg,rgba(20,241,149,0.04),transparent)]";
+
+  return (
+    <article className={`px-5 py-7 text-left ${tintClass}`}>
+      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        {icon}
+        <h3>{title}</h3>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-muted">{body}</p>
+    </article>
+  );
+}
+
+function ExploitFoundationsPreview() {
+  return (
+    <div className="relative h-[300px] w-full max-w-[340px]">
+      <div className="absolute inset-x-0 top-0 overflow-hidden rounded-[24px] border border-border bg-card p-7 text-left shadow-[0_18px_60px_-45px_rgba(0,0,0,0.5)] [mask-image:linear-gradient(to_bottom,black_0%,black_54%,transparent_100%)]">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background">
+              <Zap className="h-4 w-4 text-foreground" aria-hidden="true" />
+            </div>
+            <p className="mt-7 text-xs font-medium text-muted">CERTIFICATIONS</p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              4 exploits
+            </p>
+            <p className="mt-1 text-xs text-muted">2 certified</p>
+          </div>
+          <div className="rounded-md border border-border bg-background p-3 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/60" />
+              <span className="h-1.5 w-14 rounded-full bg-muted/20" />
+            </div>
+            <div className="space-y-2">
+              <span className="block h-1.5 w-14 rounded-full bg-muted/20" />
+              <span className="block h-1.5 w-10 rounded-full bg-muted/20" />
+              <span className="block h-1.5 w-12 rounded-full bg-muted/20" />
+            </div>
+            <ShieldCheck
+              className="ml-auto mt-4 h-3.5 w-3.5 text-foreground"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+        <div className="mt-7 grid grid-cols-[72px_1fr] gap-y-3 text-sm text-muted">
+          <span>Setup</span>
+          <span className="mt-1 h-2 w-20 rounded-full bg-muted/15" />
+          <span>Verify</span>
+          <span className="mt-1 h-2 w-28 rounded-full bg-muted/15" />
+          <span>Mint</span>
+          <span className="mt-1 h-2 w-16 rounded-full bg-muted/15" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SecurityCaseStudyPreview() {
+  return (
+    <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
+      <div className="flex items-center gap-2 bg-accent px-6 py-4 text-left text-sm font-medium text-foreground">
+        <FileCode2 className="h-3.5 w-3.5" aria-hidden="true" />
+        Drift Protocol Hack April 2026
+      </div>
+      <div className="grid flex-1 gap-3 p-6 sm:grid-cols-2">
+        <CodeComparisonPanel
+          title="Vulnerable"
+          lines={["unchecked CPI", "static PDA", "missing signer"]}
+        />
+        <CodeComparisonPanel
+          title="Patched"
+          lines={["program guard", "user seeds", "authority check"]}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CodeComparisonPanel({
+  lines,
+  title,
+}: {
+  lines: string[];
+  title: string;
+}) {
+  return (
+    <div className="flex min-h-[170px] flex-col justify-center rounded-lg border border-border bg-background p-5 text-left">
+      <p className="text-xs font-medium text-foreground">{title}</p>
+      <div className="mt-5 space-y-2.5 font-mono text-[11px] leading-5 text-muted">
+        {lines.map((line) => (
+          <div key={line} className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-muted/30" />
+            <span>{line}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ArenaTrainingPreview() {
+  return (
+    <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card text-left shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
+      <div className="flex items-center justify-between border-b border-border bg-accent px-6 py-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+          Breach Room
+        </div>
+        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground">
+          Live
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col justify-center gap-4 p-6">
+        <div className="min-h-[128px] rounded-lg border border-border bg-background p-5">
+          <div className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
+            <Send className="h-4 w-4" aria-hidden="true" />
+            Sending review
+          </div>
+          <div className="space-y-2">
+            <span className="block h-1.5 w-40 rounded-full bg-muted/20" />
+            <span className="block h-1.5 w-28 rounded-full bg-muted/20" />
+            <span className="block h-1.5 w-36 rounded-full bg-muted/20" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-medium text-muted">
+          <span className="rounded-md border border-border bg-background px-2 py-2">
+            Severity
+          </span>
+          <span className="rounded-md border border-border bg-background px-2 py-2">
+            Impact
+          </span>
+          <span className="rounded-md border border-border bg-background px-2 py-2">
+            Likelihood
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2171,7 +2494,15 @@ function LevelWorkspacePage({
         />
       </div>
 
-      <CodeSnippetCard code={guide.codeSnippet} />
+      <CodeSnippetCard
+        key={guide.title}
+        code={guide.codeSnippet}
+        vulnerabilityActiveLabel={guide.vulnerabilityActiveLabel}
+        vulnerabilityLabel={guide.vulnerabilityLabel}
+        vulnerabilityNote={guide.vulnerabilityNote}
+        vulnerabilityTone={guide.vulnerabilityTone}
+        vulnerableLines={guide.vulnerableLines}
+      />
       <PlaygroundCommandBar command={guide.cloneCommand} />
     </section>
   );
@@ -2248,17 +2579,11 @@ function MissionStatusCard({
         type="button"
         onClick={onMint}
         disabled={mintDisabled}
-        className={`relative mt-auto min-h-12 w-full rounded-full border px-5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${mintButtonTone} ${
+        className={`mt-auto min-h-12 w-full rounded-full border px-5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${mintButtonTone} ${
           mintDisabled ? "" : "hover:bg-emerald-400/12"
         }`}
       >
         {mintLabel}
-        {!mintDisabled ? (
-          <span
-            aria-hidden="true"
-            className="absolute inset-x-8 bottom-[7px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)]"
-          />
-        ) : null}
       </button>
     </aside>
   );
@@ -2279,21 +2604,213 @@ function InfoCard({
   );
 }
 
-function CodeSnippetCard({ code }: { code: string }) {
+function CodeSnippetCard({
+  code,
+  vulnerabilityActiveLabel,
+  vulnerabilityLabel = "Vulnerability",
+  vulnerabilityNote,
+  vulnerabilityTone = "red",
+  vulnerableLines = [],
+}: {
+  code: string;
+  vulnerabilityActiveLabel?: string;
+  vulnerabilityLabel?: string;
+  vulnerabilityNote?: string;
+  vulnerabilityTone?: "cyan" | "red";
+  vulnerableLines?: number[];
+}) {
+  const [showVulnerableCode, setShowVulnerableCode] = useState(false);
+  const vulnerableLineSet = useMemo(
+    () => new Set(vulnerableLines),
+    [vulnerableLines]
+  );
+  const lines = useMemo(() => code.split("\n"), [code]);
+  const hasVulnerableLines = vulnerableLines.length > 0;
+  const isRedHighlight = vulnerabilityTone === "red";
+  const revealToneClass = isRedHighlight
+    ? "border-amber-300/20 bg-amber-300/8 text-amber-200"
+    : "border-cyan-300/20 bg-cyan-300/8 text-cyan-200";
+  const revealBodyClass = isRedHighlight ? "text-amber-50/78" : "text-cyan-50/78";
+
   return (
     <section className="overflow-hidden rounded-[28px] border border-border bg-card/90 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.45)]">
-      <div className="border-b border-border px-5 py-4">
+      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
           Code Snippet (lib.rs)
         </p>
+        {hasVulnerableLines ? (
+          <button
+            type="button"
+            aria-pressed={showVulnerableCode}
+            onClick={() => setShowVulnerableCode((current) => !current)}
+            className={`min-h-10 rounded-full border px-4 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              showVulnerableCode
+                ? "border-red-400/30 bg-red-500/10 text-red-100 hover:bg-red-500/14"
+                : "border-border bg-background/70 text-foreground hover:bg-accent"
+            }`}
+          >
+            {showVulnerableCode
+              ? (vulnerabilityActiveLabel ?? "Hide Vulnerable Code")
+              : isRedHighlight
+                ? "Show Vulnerable Code"
+                : "Show Review Notes"}
+          </button>
+        ) : null}
       </div>
       <div className="overflow-x-auto px-5 py-5">
-        <pre className="min-w-full whitespace-pre-wrap break-words font-mono text-[13px] leading-7 text-foreground sm:whitespace-pre">
-          <code>{code}</code>
+        {vulnerabilityNote ? (
+          <div
+            className={`overflow-hidden motion-safe:transition-[max-height,opacity,transform,margin] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none ${
+              showVulnerableCode
+                ? "mb-4 max-h-40 translate-y-0 opacity-100"
+                : "mb-0 max-h-0 -translate-y-1 opacity-0"
+            }`}
+            aria-hidden={!showVulnerableCode}
+          >
+            <div className={`rounded-2xl border px-4 py-3 ${revealToneClass}`}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em]">
+                {vulnerabilityLabel}
+              </p>
+              <p className={`mt-1 text-sm leading-6 ${revealBodyClass}`}>
+                {vulnerabilityNote}
+              </p>
+            </div>
+          </div>
+        ) : null}
+        <pre className="min-w-full font-mono text-[13px] leading-7">
+          <code className="block min-w-max">
+            {lines.map((line, index) => {
+              const lineNumber = index + 1;
+              const isVulnerableLine = vulnerableLineSet.has(lineNumber);
+              const shouldDimLine =
+                showVulnerableCode && hasVulnerableLines && !isVulnerableLine;
+
+              return (
+                <span
+                  key={`${lineNumber}-${line}`}
+                  className={`grid grid-cols-[2.75rem_minmax(0,1fr)] gap-4 rounded-lg border px-3 motion-safe:transition motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none ${
+                    showVulnerableCode && isVulnerableLine
+                      ? isRedHighlight
+                        ? "border-red-400/30 bg-red-500/10 text-red-100 shadow-[0_0_34px_-22px_rgba(248,113,113,0.95)]"
+                        : "border-cyan-300/25 bg-cyan-300/8 text-cyan-100 shadow-[0_0_34px_-22px_rgba(103,232,249,0.75)]"
+                      : "border-transparent text-foreground"
+                  } ${shouldDimLine ? "opacity-35" : "opacity-100"}`}
+                >
+                  <span
+                    className={`select-none text-right text-[11px] ${
+                      showVulnerableCode && isVulnerableLine
+                        ? isRedHighlight
+                          ? "text-red-200/80"
+                          : "text-cyan-100/80"
+                        : "text-muted/55"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {lineNumber}
+                  </span>
+                  <span className="whitespace-pre">
+                    {renderRustLine(line, {
+                      isDimmed: shouldDimLine,
+                      isVulnerable: showVulnerableCode && isVulnerableLine,
+                      tone: vulnerabilityTone,
+                    })}
+                  </span>
+                </span>
+              );
+            })}
+          </code>
         </pre>
       </div>
     </section>
   );
+}
+
+function renderRustLine(
+  line: string,
+  {
+    isDimmed,
+    isVulnerable,
+    tone,
+  }: {
+    isDimmed: boolean;
+    isVulnerable: boolean;
+    tone: "cyan" | "red";
+  }
+) {
+  if (line.trim().length === 0) {
+    return "\u00A0";
+  }
+
+  if (isDimmed) {
+    return <span className="text-muted">{line}</span>;
+  }
+
+  if (isVulnerable) {
+    return (
+      <span className={tone === "red" ? "text-red-100" : "text-cyan-100"}>
+        {line}
+      </span>
+    );
+  }
+
+  const commentStart = line.indexOf("//");
+  if (commentStart >= 0) {
+    const beforeComment = line.slice(0, commentStart);
+    const comment = line.slice(commentStart);
+
+    return (
+      <>
+        {renderRustTokens(beforeComment)}
+        <span className="text-emerald-300/70">{comment}</span>
+      </>
+    );
+  }
+
+  return renderRustTokens(line);
+}
+
+function renderRustTokens(line: string) {
+  const parts = line
+    .split(/(#\[[^\]]+\]|b?"[^"]*"|\b[A-Za-z_][A-Za-z0-9_]*\b|\d+)/g)
+    .filter(Boolean);
+
+  return parts.map((part, index) => {
+    const key = `${part}-${index}`;
+
+    if (/^#\[/.test(part)) {
+      return (
+        <span key={key} className="text-violet-300">
+          {part}
+        </span>
+      );
+    }
+
+    if (/^b?"[^"]*"$/.test(part)) {
+      return (
+        <span key={key} className="text-emerald-300">
+          {part}
+        </span>
+      );
+    }
+
+    if (/^\d+$/.test(part)) {
+      return (
+        <span key={key} className="text-cyan-200">
+          {part}
+        </span>
+      );
+    }
+
+    if (RUST_CODE_KEYWORDS.has(part)) {
+      return (
+        <span key={key} className="text-[#14f195]">
+          {part}
+        </span>
+      );
+    }
+
+    return <span key={key}>{part}</span>;
+  });
 }
 
 function PlaygroundCommandBar({ command }: { command: string }) {
@@ -2463,8 +2980,16 @@ export function Level0Panel({
         <p className="mt-3 text-sm leading-6 text-muted">{stage.description}</p>
 
         <div className="mt-5 space-y-3">
-          <InlineStep index="01" label="Create registry" state={stepStates[0]} />
-          <InlineStep index="02" label="Initialize level" state={stepStates[1]} />
+          <InlineStep
+            index="01"
+            label="Create registry"
+            state={stepStates[0]}
+          />
+          <InlineStep
+            index="02"
+            label="Initialize level"
+            state={stepStates[1]}
+          />
           <InlineStep
             index="03"
             label="Verify and close"
@@ -2478,7 +3003,9 @@ export function Level0Panel({
               label="Wallet"
               value={address}
               copied={copied === "wallet-address"}
-              explorerUrl={address ? getExplorerUrl(`/address/${address}`) : null}
+              explorerUrl={
+                address ? getExplorerUrl(`/address/${address}`) : null
+              }
               onCopy={
                 address
                   ? () => {
@@ -2628,7 +3155,9 @@ export function Level0Panel({
             onClick={() => {
               void onMint();
             }}
-            disabled={!level0State?.isCompleted || certificate?.minted || isMinting}
+            disabled={
+              !level0State?.isCompleted || certificate?.minted || isMinting
+            }
             className="min-h-13 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-accent disabled:text-muted"
           >
             {certificate?.minted
@@ -2893,7 +3422,9 @@ export function Level1Panel({
             ) : null}
           </div>
 
-          <p className="mt-3 text-sm leading-6 text-muted">{stage.description}</p>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            {stage.description}
+          </p>
 
           <div className="mt-5 rounded-[22px] border border-border bg-card/80 p-4">
             <div className="space-y-4">
@@ -2901,7 +3432,9 @@ export function Level1Panel({
                 label="Wallet"
                 value={address}
                 copied={copied === "level1-wallet-address"}
-                explorerUrl={address ? getExplorerUrl(`/address/${address}`) : null}
+                explorerUrl={
+                  address ? getExplorerUrl(`/address/${address}`) : null
+                }
                 onCopy={
                   address
                     ? () => {
@@ -3126,7 +3659,9 @@ export function Level2Panel({
   stage: StageConfig;
   status: string;
 }) {
-  const commanderCaptured = Boolean(address && level2State?.commander === address);
+  const commanderCaptured = Boolean(
+    address && level2State?.commander === address
+  );
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -3200,7 +3735,9 @@ export function Level2Panel({
               index="04"
               title="Verify"
               body="Close the instance and unlock mint."
-              state={level2Completed ? "done" : commanderCaptured ? "active" : "idle"}
+              state={
+                level2Completed ? "done" : commanderCaptured ? "active" : "idle"
+              }
             />
           </div>
         </div>
@@ -3277,7 +3814,9 @@ export function Level2Panel({
             ) : null}
           </div>
 
-          <p className="mt-3 text-sm leading-6 text-muted">{stage.description}</p>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            {stage.description}
+          </p>
 
           <div className="mt-5 rounded-[22px] border border-border bg-card/80 p-4">
             <div className="space-y-4">
@@ -3285,7 +3824,9 @@ export function Level2Panel({
                 label="Wallet"
                 value={address}
                 copied={copied === "level2-wallet-address"}
-                explorerUrl={address ? getExplorerUrl(`/address/${address}`) : null}
+                explorerUrl={
+                  address ? getExplorerUrl(`/address/${address}`) : null
+                }
                 onCopy={
                   address
                     ? () => {
@@ -3361,7 +3902,9 @@ export function Level2Panel({
                   level2State?.commander
                     ? getExplorerUrl(`/address/${level2State.commander}`)
                     : isAddress(level2InitialCommander.trim())
-                      ? getExplorerUrl(`/address/${level2InitialCommander.trim()}`)
+                      ? getExplorerUrl(
+                          `/address/${level2InitialCommander.trim()}`
+                        )
                       : null
                 }
                 onCopy={
@@ -3369,7 +3912,8 @@ export function Level2Panel({
                     ? () => {
                         void onCopy(
                           "level2-commander",
-                          level2State?.commander ?? level2InitialCommander.trim()
+                          level2State?.commander ??
+                            level2InitialCommander.trim()
                         );
                       }
                     : undefined
@@ -3377,7 +3921,11 @@ export function Level2Panel({
               />
               <StatusTextRow
                 label="Status"
-                value={commanderCaptured ? "Commander hijacked" : "Awaiting overwrite"}
+                value={
+                  commanderCaptured
+                    ? "Commander hijacked"
+                    : "Awaiting overwrite"
+                }
               />
               <AddressRow
                 label="Asset"
@@ -3528,7 +4076,8 @@ export function Level3Panel({
   stage: StageConfig;
   status: string;
 }) {
-  const delegated = (level3State?.rewardAmount ?? 0n) >= (level3State?.bountyAmount ?? 0n);
+  const delegated =
+    (level3State?.rewardAmount ?? 0n) >= (level3State?.bountyAmount ?? 0n);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -3568,7 +4117,9 @@ export function Level3Panel({
               title="Guild"
               body="Register the reward mint and bounty vault."
               state={
-                level3Completed || level3State?.hasGuildAuthority ? "done" : "active"
+                level3Completed || level3State?.hasGuildAuthority
+                  ? "done"
+                  : "active"
               }
             />
             <SequenceCard
@@ -3731,7 +4282,9 @@ export function Level3Panel({
             ) : null}
           </div>
 
-          <p className="mt-3 text-sm leading-6 text-muted">{stage.description}</p>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            {stage.description}
+          </p>
 
           <div className="mt-5 rounded-[22px] border border-border bg-card/80 p-4">
             <div className="space-y-4">
@@ -3739,7 +4292,9 @@ export function Level3Panel({
                 label="Wallet"
                 value={address}
                 copied={copied === "level3-wallet-address"}
-                explorerUrl={address ? getExplorerUrl(`/address/${address}`) : null}
+                explorerUrl={
+                  address ? getExplorerUrl(`/address/${address}`) : null
+                }
                 onCopy={
                   address
                     ? () => {
@@ -3754,13 +4309,18 @@ export function Level3Panel({
                 copied={copied === "level3-guild"}
                 explorerUrl={
                   level3State?.guildAuthorityPda
-                    ? getExplorerUrl(`/address/${level3State.guildAuthorityPda}`)
+                    ? getExplorerUrl(
+                        `/address/${level3State.guildAuthorityPda}`
+                      )
                     : null
                 }
                 onCopy={
                   level3State?.guildAuthorityPda
                     ? () => {
-                        void onCopy("level3-guild", level3State.guildAuthorityPda);
+                        void onCopy(
+                          "level3-guild",
+                          level3State.guildAuthorityPda
+                        );
                       }
                     : undefined
                 }
@@ -3854,17 +4414,24 @@ export function Level3Panel({
               />
               <AddressRow
                 label="Reward acct"
-                value={level3UserRewardAccount.trim() || level3State?.rewardAccount}
+                value={
+                  level3UserRewardAccount.trim() || level3State?.rewardAccount
+                }
                 copied={copied === "level3-reward"}
                 explorerUrl={
                   isAddress(level3UserRewardAccount.trim())
-                    ? getExplorerUrl(`/address/${level3UserRewardAccount.trim()}`)
+                    ? getExplorerUrl(
+                        `/address/${level3UserRewardAccount.trim()}`
+                      )
                     : null
                 }
                 onCopy={
                   level3UserRewardAccount.trim()
                     ? () => {
-                        void onCopy("level3-reward", level3UserRewardAccount.trim());
+                        void onCopy(
+                          "level3-reward",
+                          level3UserRewardAccount.trim()
+                        );
                       }
                     : undefined
                 }
@@ -3891,7 +4458,11 @@ export function Level3Panel({
               />
               <StatusTextRow
                 label="Status"
-                value={delegated ? "Guild bounty drained" : "Awaiting delegated exploit"}
+                value={
+                  delegated
+                    ? "Guild bounty drained"
+                    : "Awaiting delegated exploit"
+                }
               />
               <AddressRow
                 label="Asset"
@@ -3983,74 +4554,6 @@ export function Level3Panel({
   );
 }
 
-function LevelTile({
-  onSelect,
-  selected,
-  tile,
-}: {
-  onSelect: () => void;
-  selected: boolean;
-  tile: LevelTileConfig;
-}) {
-  const tone = selected
-    ? "border-foreground bg-foreground text-background"
-    : "border-border bg-card/90 text-foreground hover:border-foreground/25 hover:bg-card";
-
-  const statusTone = getLevelStatusTone(tile.status, selected);
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`min-h-[170px] w-full rounded-[22px] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${tone}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${selected ? "bg-background/12 text-background" : "bg-accent text-muted"}`}
-        >
-          {tile.index}
-        </span>
-        <span
-          className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] ${statusTone}`}
-        >
-          {statusLabel(tile.status)}
-        </span>
-      </div>
-
-      <div className="mt-10">
-        <p className="text-[11px] uppercase tracking-[0.28em] opacity-70">
-          {tile.label}
-        </p>
-        <h3 className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
-          {tile.title}
-        </h3>
-        <p className="mt-3 text-sm leading-6 opacity-78">{tile.summary}</p>
-      </div>
-    </button>
-  );
-}
-
-function getLevelStatusTone(status: LevelStatus, selected: boolean) {
-  if (selected) {
-    return "bg-background/12 text-background";
-  }
-
-  switch (status) {
-    case "cleared":
-      return "border border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
-    case "ready":
-      return "border border-sky-400/20 bg-sky-400/10 text-sky-300";
-    case "live":
-      return "border border-violet-400/20 bg-violet-400/10 text-violet-300";
-    case "locked":
-      return "border border-border bg-accent text-muted";
-    case "armed":
-      return "border border-amber-400/20 bg-amber-400/10 text-amber-300";
-    case "mint":
-      return "border border-cyan-400/20 bg-cyan-400/10 text-cyan-300";
-  }
-}
-
 function ProfileCertificatesSection({
   address,
   certificateState,
@@ -4074,9 +4577,9 @@ function ProfileCertificatesSection({
             Hacker Achievements
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            This gallery shows which level certificates are still locked,
-            which ones are claimed on-chain, and which cNFTs have already been
-            minted and bound back to the original hacker wallet.
+            This gallery shows which level certificates are still locked, which
+            ones are claimed on-chain, and which cNFTs have already been minted
+            and bound back to the original hacker wallet.
           </p>
         </div>
 
@@ -4275,7 +4778,9 @@ function MiniStat({
 }) {
   return (
     <div className="rounded-[20px] border border-border bg-background/70 px-4 py-3">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">{label}</p>
+      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+        {label}
+      </p>
       <p className="mt-2 text-base font-semibold tracking-[-0.03em]">{value}</p>
       <p className="mt-1 text-xs text-muted">{detail}</p>
     </div>
@@ -4293,7 +4798,9 @@ function MiniBlock({
 }) {
   return (
     <div className="rounded-[22px] border border-border bg-background/75 px-4 py-4">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">{label}</p>
+      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+        {label}
+      </p>
       <p className="mt-3 text-2xl font-semibold tracking-[-0.05em]">{value}</p>
       <p className="mt-2 text-sm text-muted">{detail}</p>
     </div>
@@ -4328,7 +4835,9 @@ function SequenceCard({
   return (
     <article className={`rounded-[22px] border p-4 ${wrapperTone}`}>
       <div className="flex items-center justify-between gap-3">
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeTone}`}>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${badgeTone}`}
+        >
           {index}
         </span>
         <span className="text-[11px] uppercase tracking-[0.28em] opacity-70">
@@ -4352,8 +4861,12 @@ function BriefCard({
 }) {
   return (
     <article className="rounded-[24px] border border-border bg-background/75 p-5">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">{eyebrow}</p>
-      <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em]">{title}</h3>
+      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+        {eyebrow}
+      </p>
+      <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em]">
+        {title}
+      </h3>
       <p className="mt-3 text-sm leading-6 text-muted">{body}</p>
     </article>
   );
@@ -4413,13 +4926,16 @@ function Pill({ children }: { children: React.ReactNode }) {
 }
 
 function StatusChip({ children }: { children: React.ReactNode }) {
+  const isLocked = children === "Locked";
+  const toneClass = isLocked
+    ? "border-violet-400/22 bg-violet-500/8 text-violet-100 shadow-[inset_0_0_0_1px_rgba(167,139,250,0.14)]"
+    : "border-emerald-400/20 bg-emerald-400/8 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.16)]";
+
   return (
-    <span className="relative inline-flex min-h-10 items-center rounded-full border border-emerald-400/20 bg-emerald-400/8 px-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.16)]">
+    <span
+      className={`inline-flex min-h-10 items-center rounded-full border px-4 text-[11px] font-semibold uppercase tracking-[0.28em] ${toneClass}`}
+    >
       {children}
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-4 bottom-[4px] h-px rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.75)]"
-      />
     </span>
   );
 }
@@ -4432,6 +4948,18 @@ function GitHubIcon() {
       className="h-4 w-4 fill-current"
     >
       <path d="M12 2C6.477 2 2 6.59 2 12.252c0 4.53 2.865 8.37 6.839 9.727.5.096.682-.222.682-.494 0-.244-.009-.891-.014-1.75-2.782.617-3.369-1.37-3.369-1.37-.455-1.183-1.11-1.497-1.11-1.497-.908-.637.069-.624.069-.624 1.004.072 1.532 1.055 1.532 1.055.893 1.566 2.341 1.114 2.91.852.091-.664.35-1.115.636-1.371-2.221-.258-4.555-1.137-4.555-5.062 0-1.118.389-2.032 1.029-2.749-.103-.259-.446-1.301.098-2.713 0 0 .84-.276 2.75 1.05A9.327 9.327 0 0 1 12 6.863c.85.004 1.706.118 2.504.346 1.909-1.326 2.748-1.05 2.748-1.05.546 1.412.203 2.454.1 2.713.64.717 1.028 1.631 1.028 2.749 0 3.934-2.337 4.801-4.566 5.054.359.319.678.948.678 1.911 0 1.379-.012 2.49-.012 2.829 0 .274.18.594.688.493C19.138 20.619 22 16.78 22 12.252 22 6.59 17.523 2 12 2Z" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 fill-current"
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
     </svg>
   );
 }
@@ -4516,13 +5044,7 @@ function AddressRow({
   );
 }
 
-function StatusTextRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function StatusTextRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-2 sm:grid-cols-[96px_minmax(0,1fr)] sm:items-center">
       <span className="text-[11px] uppercase tracking-[0.26em] text-muted">
@@ -4534,7 +5056,9 @@ function StatusTextRow({
 }
 
 function SkeletonLine({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-[20px] bg-accent ${className}`} />;
+  return (
+    <div className={`animate-pulse rounded-[20px] bg-accent ${className}`} />
+  );
 }
 
 function compactAddress(address: string, start = 8, end = 8) {
