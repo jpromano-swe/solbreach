@@ -1,7 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type ComponentType,
+} from "react";
 import {
   address as toAddress,
   isAddress,
@@ -11,6 +16,7 @@ import {
 import { PublicKey as Web3PublicKey } from "@solana/web3.js";
 import {
   ArrowRight,
+  ChevronDown,
   Cpu,
   FileCode2,
   LockKeyhole,
@@ -68,7 +74,7 @@ import {
 } from "./generated/vault";
 
 type LevelId = "level0" | "level1" | "level2" | "level3";
-type RootSection = "levels" | "profile";
+type RootSection = "levels" | "case-studies" | "profile";
 type LevelsView = "landing" | LevelId;
 type LevelStatus = "ready" | "live" | "cleared" | "armed" | "mint" | "locked";
 
@@ -164,6 +170,18 @@ type LevelGuideContent = {
   vulnerabilityTone?: "cyan" | "red";
   vulnerableLines?: number[];
   winCondition: string;
+};
+
+type CourseMenuItem = {
+  description: string;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  target?: LevelsView;
+  title: string;
+};
+
+type CourseMenuSection = {
+  items: CourseMenuItem[];
+  title: string;
 };
 
 type MissionStatusData = {
@@ -432,11 +450,113 @@ pub fn delegate(ctx: Context<DelegateTask>, task_data: Vec<u8>) -> Result<()> {
       "Drain the guild bounty through arbitrary CPI, then verify and close the per-player level PDA.",
   },
 };
-const LEVEL_PAGE_OPTIONS: Array<{ id: LevelsView; label: string }> = [
-  { id: "level0", label: "Level 0" },
-  { id: "level1", label: "Level 1" },
-  { id: "level2", label: "Level 2" },
-  { id: "level3", label: "Level 3" },
+const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
+  {
+    title: "Application Level",
+    items: [
+      {
+        icon: FileCode2,
+        target: "level1",
+        title: "The Illusionist",
+        description: "Unchecked account validation and forged deposits",
+      },
+      {
+        icon: ShieldCheck,
+        target: "level2",
+        title: "Identity Thief",
+        description: "Static PDA seeds and shared profile authority",
+      },
+      {
+        icon: Zap,
+        target: "level3",
+        title: "Trojan Horse",
+        description: "Arbitrary CPI and delegated signer abuse",
+      },
+    ],
+  },
+  {
+    title: "Supply Chain",
+    items: [
+      {
+        icon: Cpu,
+        title: "Dependency Takeover",
+        description: "Malicious packages in build and deploy paths",
+      },
+      {
+        icon: Sparkles,
+        title: "CI Secret Exposure",
+        description: "Leaked keys, tokens, and release credentials",
+      },
+      {
+        icon: ShieldCheck,
+        title: "Build Integrity",
+        description: "Reproducible artifacts and trusted signers",
+      },
+    ],
+  },
+  {
+    title: "Client and Wallet Side",
+    items: [
+      {
+        icon: Send,
+        title: "Transaction Spoofing",
+        description: "Misleading prompts and unsafe message construction",
+      },
+      {
+        icon: LockKeyhole,
+        title: "Approval Drains",
+        description: "Persistent permissions and hidden token movement",
+      },
+      {
+        icon: Cpu,
+        title: "Frontend Injection",
+        description: "Compromised clients that rewrite wallet intent",
+      },
+    ],
+  },
+];
+
+const CASE_STUDY_MENU_SECTIONS: CourseMenuSection[] = [
+  {
+    title: "Latest Incidents",
+    items: [
+      {
+        icon: ShieldCheck,
+        title: "Drift Protocol",
+        description: "Apr 2026: durable nonce and governance takeover",
+      },
+      {
+        icon: LockKeyhole,
+        title: "Step Finance",
+        description: "Jan 2026: executive device and treasury compromise",
+      },
+      {
+        icon: FileCode2,
+        title: "Loopscale",
+        description: "Apr 2025: pricing mechanism manipulation",
+      },
+    ],
+  },
+  {
+    title: "Supply Chain & Clients",
+    items: [
+      {
+        icon: Cpu,
+        title: "npm Wallet Hijack",
+        description: "Sep 2025: package malware rewrote crypto activity",
+      },
+      {
+        icon: Sparkles,
+        title: "@solana/web3.js",
+        description: "Dec 2024: compromised package release path",
+      },
+      {
+        icon: Send,
+        title: "Wallet UX Failures",
+        description: "Prompt clarity, signer policy, and user-side risk",
+      },
+    ],
+  },
 ];
 
 function findCertificatePdaForUser(
@@ -1953,7 +2073,7 @@ export default function Home() {
 
       <div className="relative z-10">
         <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:justify-between">
+          <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
             <div className="flex justify-center lg:justify-start">
               <button
                 type="button"
@@ -1975,7 +2095,19 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-end">
+            {activeSection !== "levels" || activeLevelsView !== "landing" ? (
+              <HeaderCourseNav
+                onSelectCaseStudies={() => setActiveSection("case-studies")}
+                onSelectLevel={(level) => {
+                  setActiveSection("levels");
+                  setActiveLevelsView(level);
+                }}
+              />
+            ) : (
+              <div className="hidden lg:block" aria-hidden="true" />
+            )}
+
+            <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
               <ClusterSelect />
               <WalletButton />
               {status === "connected" ? (
@@ -2005,18 +2137,6 @@ export default function Home() {
                 />
               ) : activeGuide && activeLevelStatus ? (
                 <div className="space-y-8">
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    {LEVEL_PAGE_OPTIONS.map((option) => (
-                      <HeaderNavButton
-                        key={option.id}
-                        active={activeLevelsView === option.id}
-                        label={option.label}
-                        onClick={() => setActiveLevelsView(option.id)}
-                        variant="subtle"
-                      />
-                    ))}
-                  </div>
-
                   <LevelWorkspacePage
                     guide={activeGuide}
                     missionStatus={activeLevelStatus}
@@ -2024,6 +2144,29 @@ export default function Home() {
                 </div>
               ) : null}
             </div>
+          ) : activeSection === "case-studies" ? (
+            <section className="space-y-8">
+              <div className="max-w-3xl space-y-4">
+                <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#14f195]">
+                  Case Studies
+                </p>
+                <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
+                  Learn from real Solana incidents.
+                </h1>
+                <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
+                  This section will host vulnerable-vs-secure walkthroughs and
+                  postmortems after the exploit foundations are in place.
+                </p>
+              </div>
+
+              <div className="rounded-[28px] border border-border bg-card/70 p-6 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)]">
+                <p className="text-sm leading-6 text-muted">
+                  Case study pages are next in the course structure. The header
+                  navigation is ready now, so we can plug in the Drift-style
+                  review flow without changing the app shell again.
+                </p>
+              </div>
+            </section>
           ) : (
             <section className="space-y-8">
               <div className="max-w-3xl space-y-4">
@@ -2085,32 +2228,250 @@ export default function Home() {
 
 function HeaderNavButton({
   active,
+  disabled = false,
   label,
+  locked = false,
   onClick,
   variant = "header",
 }: {
   active: boolean;
+  disabled?: boolean;
   label: string;
+  locked?: boolean;
   onClick: () => void;
   variant?: "header" | "subtle";
 }) {
   const isSubtle = variant === "subtle";
+  const disabledClass =
+    "cursor-not-allowed border border-border/60 bg-muted/20 text-muted/55";
 
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className={`min-h-11 rounded-full px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-        isSubtle
-          ? active
-            ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
-            : "text-muted hover:text-foreground"
-          : active
-            ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
-            : "text-muted hover:bg-accent hover:text-foreground"
+      className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        disabled
+          ? disabledClass
+          : isSubtle
+            ? active
+              ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
+              : "text-muted hover:text-foreground"
+            : active
+              ? "bg-emerald-400/6 text-foreground shadow-[inset_0_0_0_1px_rgba(74,222,128,0.2)]"
+              : "text-muted hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      {locked ? <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+      {label}
+    </button>
+  );
+}
+
+type CourseMenuKey = "vulnerabilities" | "case-studies";
+
+const COURSE_MENU_ORDER: Record<CourseMenuKey, number> = {
+  vulnerabilities: 0,
+  "case-studies": 1,
+};
+
+function HeaderCourseNav({
+  onSelectCaseStudies,
+  onSelectLevel,
+}: {
+  onSelectCaseStudies: () => void;
+  onSelectLevel: (level: LevelsView) => void;
+}) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeMenu, setActiveMenu] =
+    useState<CourseMenuKey>("vulnerabilities");
+
+  const openCourseMenu = useCallback(
+    (nextMenu: CourseMenuKey) => {
+      setActiveMenu(nextMenu);
+      setIsMenuOpen(true);
+    },
+    []
+  );
+
+  return (
+    <nav
+      aria-label="Course sections"
+      className="relative flex flex-wrap items-center justify-center gap-3 motion-safe:animate-[headerNavFade_180ms_ease-out]"
+      onMouseLeave={() => setIsMenuOpen(false)}
+    >
+      <HeaderMenuTrigger
+        label="Vulnerabilities"
+        open={isMenuOpen && activeMenu === "vulnerabilities"}
+        onClick={() => {
+          setActiveMenu("vulnerabilities");
+          setIsMenuOpen(
+            !(isMenuOpen && activeMenu === "vulnerabilities")
+          );
+        }}
+        onMouseEnter={() => openCourseMenu("vulnerabilities")}
+      />
+      <HeaderMenuTrigger
+        label="Case Studies"
+        open={isMenuOpen && activeMenu === "case-studies"}
+        onClick={() => {
+          setActiveMenu("case-studies");
+          setIsMenuOpen(!(isMenuOpen && activeMenu === "case-studies"));
+        }}
+        onMouseEnter={() => openCourseMenu("case-studies")}
+      />
+      <HeaderNavButton
+        active={false}
+        disabled
+        label="Review Rooms"
+        locked
+        onClick={() => undefined}
+      />
+
+      <div
+        className={`absolute left-0 right-0 top-full h-4 ${
+          isMenuOpen ? "block" : "hidden"
+        }`}
+        aria-hidden="true"
+      />
+
+      <div
+        className={`absolute left-1/2 top-[calc(100%+0.35rem)] z-40 w-[min(calc(100vw-2rem),860px)] -translate-x-1/2 rounded-[22px] border border-border bg-card/98 p-2 shadow-[0_28px_90px_-54px_rgba(0,0,0,0.9)] backdrop-blur-xl motion-safe:transition-[opacity,transform] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none ${
+          isMenuOpen
+            ? "pointer-events-auto translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-1 opacity-0"
+        }`}
+        onMouseEnter={() => setIsMenuOpen(true)}
+      >
+        <div className="relative overflow-hidden">
+          <div
+            className="grid w-[200%] grid-cols-2 motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-in-out motion-reduce:transition-none"
+            style={{
+              transform: `translateX(-${COURSE_MENU_ORDER[activeMenu] * 50}%)`,
+            }}
+          >
+            <CourseMenuContent
+              menu="vulnerabilities"
+              onClose={() => setIsMenuOpen(false)}
+              onSelectCaseStudies={onSelectCaseStudies}
+              onSelectLevel={onSelectLevel}
+              sections={VULNERABILITY_MENU_SECTIONS}
+            />
+            <CourseMenuContent
+              menu="case-studies"
+              onClose={() => setIsMenuOpen(false)}
+              onSelectCaseStudies={onSelectCaseStudies}
+              onSelectLevel={onSelectLevel}
+              sections={CASE_STUDY_MENU_SECTIONS}
+            />
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function CourseMenuContent({
+  menu,
+  onClose,
+  onSelectCaseStudies,
+  onSelectLevel,
+  sections,
+}: {
+  menu: CourseMenuKey;
+  onClose: () => void;
+  onSelectCaseStudies: () => void;
+  onSelectLevel: (level: LevelsView) => void;
+  sections: CourseMenuSection[];
+}) {
+  return (
+    <div
+      className={`grid min-w-0 ${
+        sections.length === 3 ? "lg:grid-cols-3" : "md:grid-cols-2"
+      }`}
+    >
+      {sections.map((section, sectionIndex) => (
+        <div
+          key={section.title}
+          className={`p-4 ${
+            sectionIndex > 0
+              ? "border-t border-border md:border-l md:border-t-0"
+              : ""
+          }`}
+        >
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
+            {section.title}
+          </p>
+          <div className="space-y-2">
+            {section.items.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => {
+                    if (menu === "case-studies") {
+                      onSelectCaseStudies();
+                    } else if (item.target) {
+                      onSelectLevel(item.target);
+                    }
+
+                    onClose();
+                  }}
+                  className="flex min-h-14 w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm">
+                    <Icon className="h-4 w-4" aria-hidden={true} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-foreground">
+                      {item.title}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-5 text-muted">
+                      {item.description}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HeaderMenuTrigger({
+  label,
+  onClick,
+  onMouseEnter,
+  open,
+}: {
+  label: string;
+  onClick: () => void;
+  onMouseEnter: () => void;
+  open: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        open
+          ? "bg-foreground/5 text-foreground"
+          : "text-muted hover:bg-foreground/5 hover:text-foreground"
       }`}
     >
       {label}
+      <ChevronDown
+        className={`h-3.5 w-3.5 opacity-70 transition-transform ${
+          open ? "rotate-180" : ""
+        }`}
+        aria-hidden="true"
+      />
     </button>
   );
 }
