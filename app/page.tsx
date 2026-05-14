@@ -2870,14 +2870,20 @@ function HeroReviewRoomPanel() {
           Review room
         </p>
         <div className="mt-5 space-y-4">
-          <HeroReviewField label="Title" value="Vulnerability name" />
-          <HeroReviewField label="Summary" value="Lorem Ipsum" />
+          <HeroReviewField label="Title" value="Unchecked CPI target" />
+          <HeroReviewField
+            label="Summary"
+            value="The program lets users choose the CPI target, allowing malicious instructions to run with delegated authority."
+          />
           <div className="flex flex-wrap gap-2 lg:flex-nowrap">
             <HeroMetric label="Severity" value="High" tone="red" />
             <HeroMetric label="Impact" value="Medium" tone="amber" />
             <HeroMetric label="Likelihood" value="Low" tone="cyan" />
           </div>
-          <HeroReviewField label="Recommendation" value="How to fix it" />
+          <HeroReviewField
+            label="Recommendation"
+            value="Allowlist trusted program IDs and validate CPI accounts before forwarding signer privileges."
+          />
 
           <button
             type="button"
