@@ -2116,8 +2116,64 @@ function HeaderNavButton({
 }
 
 function LandingPageSection({ onPlayNow }: { onPlayNow: () => void }) {
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+  const heroSlides = [
+    {
+      code: `#[derive(Accounts)]
+pub struct DepositTokens<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(mut)]
+    pub vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+}`,
+      highlightedLines: [6, 7],
+      label: "Vulnerabilities",
+      panel: <HeroMissionStatusCard />,
+      title: "levels/01-illusionist/lib.rs",
+    },
+    {
+      code: `pub fn execute_security_council_action(ctx: Context<AdminAction>) -> Result<()> {
+    require!(ctx.accounts.council.threshold >= 2, ErrorCode::Quorum);
+
+    let action = ctx.accounts.pending_action.load()?;
+    action.execute_without_timelock()?;
+
+    ctx.accounts.market.update_oracle(action.oracle)?;
+    ctx.accounts.market.enable_collateral(action.mint)?;
+
+    Ok(())
+}`,
+      highlightedLines: [4, 6, 7],
+      label: "Case Studies",
+      panel: <HeroCaseStudyPanel />,
+      title: "case-study/drift-governance.rs",
+    },
+    {
+      code: `pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+    let vault = &mut ctx.accounts.vault;
+
+    require!(vault.balance >= amount, ErrorCode::InsufficientFunds);
+
+    vault.balance -= amount;
+    transfer_to_user(ctx.accounts.user.key(), amount)?;
+
+    Ok(())
+}`,
+      highlightedLines: [4, 6, 7],
+      label: "Reviews",
+      panel: <HeroReviewRoomPanel />,
+      title: "review-room/finding-target.rs",
+    },
+  ];
+
   return (
-    <section className="space-y-14">
+    <section className="space-y-10">
       <div className="mx-auto max-w-4xl space-y-7 text-center">
         <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl lg:text-7xl">
           Master Solana Programs{" "}
@@ -2142,8 +2198,345 @@ function LandingPageSection({ onPlayNow }: { onPlayNow: () => void }) {
         </button>
       </div>
 
+      <HeroProductCarousel
+        activeSlide={activeHeroSlide}
+        onSelectSlide={setActiveHeroSlide}
+        slides={heroSlides}
+      />
+
       <FeatureShowcaseSection />
     </section>
+  );
+}
+
+function HeroProductCarousel({
+  activeSlide,
+  onSelectSlide,
+  slides,
+}: {
+  activeSlide: number;
+  onSelectSlide: (index: number) => void;
+  slides: Array<{
+    code: string;
+    highlightedLines: number[];
+    label: string;
+    panel: React.ReactNode;
+    title: string;
+  }>;
+}) {
+  return (
+    <section
+      className="relative overflow-hidden bg-transparent"
+      aria-label="SolBreach product preview"
+    >
+      <div className="relative min-h-[560px] overflow-hidden lg:min-h-[620px]">
+        <div className="absolute inset-x-4 bottom-16 top-5 [mask-image:linear-gradient(to_bottom,black_0%,black_76%,transparent_100%)] sm:inset-x-7">
+          {slides.map((slide, index) => (
+            <div
+              key={slide.label}
+              className={`absolute inset-0 motion-safe:transition-[opacity,transform] motion-safe:duration-300 motion-safe:ease-out motion-reduce:transition-none ${
+                activeSlide === index
+                  ? "translate-y-0 opacity-100"
+                  : "pointer-events-none translate-y-3 opacity-0"
+              }`}
+              aria-hidden={activeSlide !== index}
+            >
+              <HeroComposedSlide
+                code={slide.code}
+                highlightedLines={slide.highlightedLines}
+                panel={slide.panel}
+                title={slide.title}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-5 z-10 flex justify-center">
+        <div className="flex items-center gap-2">
+          {slides.map((slide, index) => (
+            <button
+              key={slide.label}
+              type="button"
+              aria-label={`Show ${slide.label} preview`}
+              aria-pressed={activeSlide === index}
+              onClick={() => onSelectSlide(index)}
+              className={`h-2.5 rounded-full motion-safe:transition-[width,background-color,opacity] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                activeSlide === index
+                  ? "w-8 bg-[#14f195]"
+                  : "w-2.5 bg-muted/45 hover:bg-muted/70"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HeroComposedSlide({
+  code,
+  highlightedLines,
+  panel,
+  title,
+}: {
+  code: string;
+  highlightedLines: number[];
+  panel: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="relative h-full min-h-[500px] pt-4 sm:pt-8">
+      <HeroCodeWindow
+        className="h-[430px] w-full lg:h-[500px]"
+        code={code}
+        highlightedLines={highlightedLines}
+        title={title}
+      />
+      <div className="relative z-10 mx-auto -mt-24 w-[min(96%,500px)] sm:-mt-36 lg:absolute lg:right-0 lg:top-0 lg:mx-0 lg:mt-0 lg:w-[500px]">
+        {panel}
+      </div>
+    </div>
+  );
+}
+
+function HeroCaseStudyPanel() {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-[24px] border border-border bg-card/95 p-5 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
+        <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+              Case study review
+            </p>
+            <h3 className="mt-3 text-xl font-semibold tracking-[-0.05em]">
+              Drift durable nonce takeover
+            </h3>
+          </div>
+          <span className="w-fit rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-red-100">
+            Critical
+          </span>
+        </div>
+
+        <div className="mt-5 space-y-3 text-sm leading-6 text-muted">
+          <p>
+            Public reports describe a durable-nonce and social-engineering
+            attack that led to a rapid Security Council administrative takeover.
+          </p>
+          <p>
+            Review focus: signer policy, transaction freshness, admin scope, and
+            missing timelock controls.
+          </p>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2 lg:flex-nowrap">
+          <HeroMetric label="Date" value="Apr 1, 2026" />
+          <HeroMetric label="Loss" value="$285M" />
+          <HeroMetric label="Class" value="Governance" />
+        </div>
+
+        <div className="mt-5 rounded-[18px] border border-border bg-background/80 p-4">
+          <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
+            Reviewer checklist
+          </p>
+          <div className="mt-4 space-y-3 text-sm text-muted">
+            <ChecklistItem text="Can stale pre-signed governance transactions execute after context changes?" />
+            <ChecklistItem text="Can two signers authorize critical admin powers without delay?" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroReviewRoomPanel() {
+  return (
+    <div className="space-y-3">
+      <div className="rounded-[24px] border border-border bg-card/95 p-5 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+          Review room
+        </p>
+        <div className="mt-5 space-y-4">
+          <HeroReviewField label="Title" value="Vulnerability name" />
+          <HeroReviewField label="Summary" value="Lorem Ipsum" />
+          <div className="flex flex-wrap gap-2 lg:flex-nowrap">
+            <HeroMetric label="Severity" value="High" tone="red" />
+            <HeroMetric label="Impact" value="Medium" tone="amber" />
+            <HeroMetric label="Likelihood" value="Low" tone="cyan" />
+          </div>
+          <HeroReviewField label="Recommendation" value="How to fix it" />
+
+          <button
+            type="button"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Send className="h-4 w-4" aria-hidden="true" />
+            Send review
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroMissionStatusCard() {
+  return (
+    <div className="rounded-[24px] border border-border bg-card/95 p-5 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
+            Mission Status
+          </p>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.05em]">
+            Level 1
+          </p>
+        </div>
+        <StatusChip>Armed</StatusChip>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        <HeroStatusRow label="Cluster" value="devnet" />
+        <HeroStatusRow label="Wallet" value="9xQe...1b2C" />
+        <HeroStatusRow label="PDA state" value="Live" />
+        <HeroStatusRow label="Win condition" value="Ledger forged" />
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.22em] text-muted">
+          <span>Completion</span>
+          <span>100%</span>
+        </div>
+        <div className="h-2 rounded-full bg-accent">
+          <div className="h-full w-full rounded-full bg-[linear-gradient(90deg,rgba(153,69,255,0.95),rgba(20,241,149,0.95))]" />
+        </div>
+        <p className="text-sm leading-6 text-muted">
+          Exploit objective verified. Wallet-bound certification is ready.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        className="mt-6 min-h-12 w-full rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        Mint certification
+      </button>
+    </div>
+  );
+}
+
+function HeroCodeWindow({
+  className = "",
+  code,
+  highlightedLines,
+  title,
+}: {
+  className?: string;
+  code: string;
+  highlightedLines?: number[];
+  title: string;
+}) {
+  const highlightedLineSet = new Set(highlightedLines ?? []);
+  const lines = code.split("\n");
+
+  return (
+    <div
+      className={`overflow-hidden rounded-[24px] border border-border bg-card/92 shadow-[0_32px_90px_-58px_rgba(0,0,0,0.88)] ${className}`}
+    >
+      <div className="flex min-h-12 items-center gap-3 border-b border-border bg-accent/70 px-4">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full border border-border bg-background" />
+          <span className="h-2.5 w-2.5 rounded-full border border-border bg-background" />
+          <span className="h-2.5 w-2.5 rounded-full border border-border bg-background" />
+        </div>
+        <span className="min-w-0 truncate text-xs text-muted">{title}</span>
+      </div>
+      <pre className="overflow-x-auto px-4 py-4 font-mono text-[12px] leading-6 [mask-image:linear-gradient(to_right,black_0%,black_48%,transparent_68%)]">
+        <code className="block min-w-max">
+          {lines.map((line, index) => {
+            const lineNumber = index + 1;
+            const isHighlighted = highlightedLineSet.has(lineNumber);
+
+            return (
+              <span
+                key={`${title}-${lineNumber}-${line}`}
+                className={`grid grid-cols-[2rem_minmax(0,1fr)] gap-4 rounded-md px-2 ${
+                  isHighlighted
+                    ? "border border-red-400/25 bg-red-500/10 text-red-100"
+                    : "border border-transparent text-foreground"
+                }`}
+              >
+                <span className="select-none text-right text-[11px] text-muted/55">
+                  {lineNumber}
+                </span>
+                <span className="whitespace-pre">
+                  {renderRustLine(line, {
+                    isDimmed: false,
+                    isVulnerable: false,
+                    tone: "red",
+                  })}
+                </span>
+              </span>
+            );
+          })}
+        </code>
+      </pre>
+    </div>
+  );
+}
+
+function HeroMetric({
+  label,
+  tone = "default",
+  value,
+}: {
+  label: string;
+  tone?: "amber" | "cyan" | "default" | "red";
+  value: string;
+}) {
+  const toneClass =
+    tone === "red"
+      ? "border-red-400/20 bg-red-500/12 text-red-100"
+      : tone === "amber"
+        ? "border-amber-300/20 bg-amber-300/12 text-amber-100"
+        : tone === "cyan"
+          ? "border-cyan-300/20 bg-cyan-300/12 text-cyan-100"
+          : "border-border bg-background/80 text-foreground";
+
+  return (
+    <div className="flex shrink-0 items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-muted">
+      <span className="whitespace-nowrap">{label}</span>
+      <span
+        className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-xs font-semibold normal-case tracking-normal ${toneClass}`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function HeroReviewField({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] uppercase tracking-[0.26em] text-muted">
+        {label}
+      </span>
+      <span className="mt-2 block rounded-[16px] border border-border bg-background/80 px-4 py-3 text-sm text-foreground">
+        {value}
+      </span>
+    </label>
+  );
+}
+
+function HeroStatusRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[92px_minmax(0,1fr)] items-center gap-3 border-b border-border pb-3 last:border-b-0 last:pb-0">
+      <span className="text-[11px] uppercase tracking-[0.24em] text-muted">
+        {label}
+      </span>
+      <span className="truncate text-right text-sm font-medium text-foreground">
+        {value}
+      </span>
+    </div>
   );
 }
 
@@ -2239,7 +2632,7 @@ function FeatureShowcaseSection() {
           icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
           tint="green"
           title="Review Rooms"
-          body="Challenge environments for teams and reviewer training."
+          body="Challenge environments for first-flights, and review writeup training."
         />
       </div>
     </section>
