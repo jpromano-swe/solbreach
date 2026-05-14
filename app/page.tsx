@@ -2228,37 +2228,15 @@ pub struct DepositTokens<'info> {
 function LandingCtaSection({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <section className="grid items-center gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="relative min-h-[360px] overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,rgba(153,69,255,0.18),rgba(20,241,149,0.12))] p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_46%_at_72%_16%,rgba(20,241,149,0.18),transparent_70%)]" />
-        <div className="relative ml-auto flex h-[320px] max-w-[430px] flex-col overflow-hidden rounded-[24px] border border-border bg-card/96 shadow-[0_34px_100px_-60px_rgba(0,0,0,0.9)]">
-          <div className="flex min-h-12 items-center gap-2 border-b border-border bg-accent/70 px-4">
-            <span className="h-2.5 w-2.5 rounded-full bg-muted/40" />
-            <span className="h-2.5 w-2.5 rounded-full bg-muted/40" />
-            <span className="h-2.5 w-2.5 rounded-full bg-muted/40" />
-            <span className="ml-2 text-xs text-muted">certification-run.rs</span>
-          </div>
-          <div className="grid flex-1 gap-4 p-5">
-            <div className="rounded-[18px] border border-border bg-background/80 p-4 font-mono text-xs leading-6">
-              <p>
-                <span className="text-[#14f195]">pub fn</span>{" "}
-                verify_objective()
-              </p>
-              <p className="pl-4 text-muted">assert!(exploit_proven);</p>
-              <p className="pl-4 text-muted">mint_certificate(wallet);</p>
-            </div>
-            <div className="rounded-[18px] border border-emerald-400/20 bg-emerald-400/8 p-4">
-              <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
-                Certification
-              </p>
-              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-                Ready to mint
-              </p>
-              <div className="mt-4 h-2 rounded-full bg-background">
-                <div className="h-full w-full rounded-full bg-[linear-gradient(90deg,rgba(153,69,255,0.95),rgba(20,241,149,0.95))]" />
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="flex min-h-[360px] items-center justify-center">
+        <Image
+          src="/solana_logo_nobg.png"
+          alt="Solana logo"
+          width={1254}
+          height={1254}
+          className="h-auto w-[min(76%,360px)] drop-shadow-[0_32px_80px_rgba(20,241,149,0.18)]"
+          priority={false}
+        />
       </div>
 
       <div className="max-w-xl lg:ml-auto">
