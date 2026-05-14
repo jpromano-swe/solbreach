@@ -225,7 +225,7 @@ const LEVEL_CERTIFICATE_DETAILS: Record<0 | 1 | 2 | 3, CertificateDetails> = {
 };
 const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
 const PLAYGROUND_REPOSITORY =
-  "git clone https://github.com/jpronano-swe/solbreach-playground";
+  "git clone https://github.com/jpromano-swe/solbreach-playground";
 const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
@@ -537,24 +537,49 @@ const CASE_STUDY_MENU_SECTIONS: CourseMenuSection[] = [
       },
     ],
   },
+];
+
+const CASE_STUDIES = [
   {
-    title: "Supply Chain & Clients",
-    items: [
-      {
-        icon: Cpu,
-        title: "npm Wallet Hijack",
-        description: "Sep 2025: package malware rewrote crypto activity",
-      },
-      {
-        icon: Sparkles,
-        title: "@solana/web3.js",
-        description: "Dec 2024: compromised package release path",
-      },
-      {
-        icon: Send,
-        title: "Wallet UX Failures",
-        description: "Prompt clarity, signer policy, and user-side risk",
-      },
+    protocol: "Drift Protocol",
+    amount: "$285M",
+    date: "Apr 1, 2026",
+    summary:
+      "Attackers used social engineering and durable nonce transactions to gain unauthorized control over Drift Security Council powers, then executed a rapid governance takeover that drained protocol funds.",
+    tags: [
+      "Durable nonce",
+      "Governance control",
+      "Multisig hygiene",
+      "Privileged access",
+      "Social engineering",
+    ],
+  },
+  {
+    protocol: "Step Finance",
+    amount: "$40M",
+    date: "Jan 31, 2026",
+    summary:
+      "Compromised executive devices were used to access operational systems and drain the Step Finance treasury, showing how endpoint security and treasury authorization controls are part of protocol security.",
+    tags: [
+      "Device compromise",
+      "Treasury controls",
+      "Key management",
+      "Operational security",
+      "Incident response",
+    ],
+  },
+  {
+    protocol: "Loopscale",
+    amount: "$5.8M",
+    date: "Apr 26, 2025",
+    summary:
+      "The attacker exploited a flaw in lending market pricing and collateral validation, taking out undercollateralized loans that siphoned USDC and SOL from Loopscale vaults shortly after launch.",
+    tags: [
+      "Collateral pricing",
+      "Oracle validation",
+      "Market risk",
+      "Undercollateralized loans",
+      "Vault safety",
     ],
   },
 ];
@@ -2145,7 +2170,7 @@ export default function Home() {
               ) : null}
             </div>
           ) : activeSection === "case-studies" ? (
-            <section className="space-y-8">
+            <section className="space-y-10">
               <div className="max-w-3xl space-y-4">
                 <p className="text-sm font-medium uppercase tracking-[0.28em] text-[#14f195]">
                   Case Studies
@@ -2154,17 +2179,61 @@ export default function Home() {
                   Learn from real Solana incidents.
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                  This section will host vulnerable-vs-secure walkthroughs and
-                  postmortems after the exploit foundations are in place.
+                  Study protocol failures as security workflows: what broke,
+                  how much was at risk, and which topics map back to the
+                  lectures.
                 </p>
               </div>
 
-              <div className="rounded-[28px] border border-border bg-card/70 p-6 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)]">
-                <p className="text-sm leading-6 text-muted">
-                  Case study pages are next in the course structure. The header
-                  navigation is ready now, so we can plug in the Drift-style
-                  review flow without changing the app shell again.
-                </p>
+              <div className="divide-y divide-border rounded-[28px] border border-border bg-card/70 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)]">
+                {CASE_STUDIES.map((caseStudy) => (
+                  <article
+                    key={caseStudy.protocol}
+                    className="grid gap-6 p-6 lg:grid-cols-[0.72fr_1.28fr]"
+                  >
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted">
+                        {caseStudy.date}
+                      </p>
+                      <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
+                        {caseStudy.protocol}
+                      </h2>
+                      <p className="mt-4 flex items-baseline gap-2">
+                        <span className="text-5xl font-semibold tracking-[-0.07em] text-red-500 drop-shadow-[0_0_26px_rgba(239,68,68,0.24)]">
+                          {caseStudy.amount}
+                        </span>
+                        <span className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                          affected
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="space-y-5">
+                      <p className="text-sm leading-7 text-muted sm:text-base">
+                        {caseStudy.summary}
+                      </p>
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="flex flex-wrap gap-2">
+                          {caseStudy.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-medium text-muted"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex min-h-11 shrink-0 cursor-not-allowed items-center justify-center rounded-full border border-border bg-muted/20 px-4 text-sm font-medium text-muted/55"
+                        >
+                          Start Level
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
               </div>
             </section>
           ) : (
@@ -2438,6 +2507,24 @@ function CourseMenuContent({
           </div>
         </div>
       ))}
+      {menu === "case-studies" ? (
+        <div className="border-t border-border px-4 py-3">
+          <button
+            type="button"
+            onClick={() => {
+              onSelectCaseStudies();
+              onClose();
+            }}
+            className="group inline-flex min-h-11 w-full items-center justify-between rounded-xl px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <span>Show all case studies</span>
+            <ArrowRight
+              className="h-4 w-4 text-muted motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

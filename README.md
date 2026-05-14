@@ -92,6 +92,6 @@ Gamification: Metaplex Umi / Bubblegum SDK
 ## Repositories
 
 - Web app + contracts: `https://github.com/jpromano-swe/solbreach`
-- Player playground: `https://github.com/jpronano-swe/solbreach-playground`
+- Player playground: `https://github.com/jpromano-swe/solbreach-playground`
 
 Built for Solana by Rustopia.

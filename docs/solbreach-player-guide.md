@@ -38,7 +38,7 @@ Read the vulnerable logic here:
 
 This is where the player should start writing and running exploits:
 
-- `https://github.com/jpronano-swe/solbreach-playground`
+- `https://github.com/jpromano-swe/solbreach-playground`
 
 ### Operator CLI
 
@@ -212,7 +212,7 @@ Complete the PDA lifecycle:
 ### Commands
 
 ```bash
-git clone https://github.com/jpronano-swe/solbreach-playground
+git clone https://github.com/jpromano-swe/solbreach-playground
 cd solbreach-playground/levels/00-hello-solbreach
 npx tsx exploit.template.ts setup
 npx tsx exploit.template.ts verify
@@ -251,7 +251,7 @@ Credit the internal ledger with `1_000_000` token units without depositing the e
 ### Commands
 
 ```bash
-git clone https://github.com/jpronano-swe/solbreach-playground
+git clone https://github.com/jpromano-swe/solbreach-playground
 cd solbreach-playground/levels/01-illusionist
 npx tsx exploit.template.ts setup
 npx tsx exploit.template.ts exploit
@@ -297,7 +297,7 @@ Replace the global `commander` field with your own wallet address.
 ### Commands
 
 ```bash
-git clone https://github.com/jpronano-swe/solbreach-playground
+git clone https://github.com/jpromano-swe/solbreach-playground
 cd solbreach-playground/levels/02-identity-thief
 npx tsx exploit.template.ts setup
 npx tsx exploit.template.ts exploit
@@ -346,7 +346,7 @@ Drain the guild’s bounty vault by supplying a malicious external program that 
 ### Commands
 
 ```bash
-git clone https://github.com/jpronano-swe/solbreach-playground
+git clone https://github.com/jpromano-swe/solbreach-playground
 cd solbreach-playground/levels/03-trojan-horse
 npx tsx exploit.template.ts setup
 npx tsx exploit.template.ts exploit --external-program <program-id>
