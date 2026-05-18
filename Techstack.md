@@ -1,11 +1,11 @@
-# Rustopia
+# SolBreach
 
-Next.js starter with Tailwind CSS, `@solana/kit`, and an Anchor vault program example.
+SolBreach is a Next.js and Anchor application for gamified Solana security training, interactive exploit levels, and wallet-bound cNFT certifications.
 
 ## Getting Started
 
 ```shell
-npx -y create-solana-dapp@latest -t solana-foundation/templates/kit/Rustopia
+git clone https://github.com/jpromano-swe/solbreach
 ```
 
 ```shell
@@ -14,14 +14,14 @@ npm run setup   # Builds the Anchor program and generates the TypeScript client
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), connect your wallet, and interact with the vault.
+Open [http://localhost:3000](http://localhost:3000), connect your wallet, and enter the SolBreach levels.
 
 ## What's Included
 
 - **Wallet connection** via wallet-standard with auto-discovery and dropdown UI
 - **Cluster switching** — devnet, testnet, mainnet, and localnet from the header
 - **Wallet balance** display with airdrop button (devnet/testnet/localnet)
-- **SOL Vault program** — deposit and withdraw SOL from a personal PDA vault
+- **SolBreach challenge program** — player state, level verification, and certification accounts
 - **Toast notifications** with explorer links for every transaction
 - **Error handling** — human-readable messages for common Solana and program errors
 - **Codama-generated client** — type-safe program interactions using `@solana/kit`
@@ -64,9 +64,9 @@ Open [http://localhost:3000](http://localhost:3000), connect your wallet, and in
 │   │   ├── send-transaction.ts # Transaction build + sign + send pipeline
 │   │   ├── errors.ts           # Transaction error parsing
 │   │   └── explorer.ts         # Explorer URL builder + address helpers
-│   └── page.tsx                # Main page
+│   └── page.tsx                # Main app shell and Solana state orchestration
 ├── anchor/                     # Anchor workspace
-│   └── programs/vault/         # Vault program (Rust)
+│   └── programs/vault/         # SolBreach challenge registry program (Rust)
 └── codama.json                 # Codama client generation config
 ```
 
@@ -93,9 +93,9 @@ To test against a local validator instead of devnet:
 
 3. **Switch to localnet** in the app using the cluster selector in the header.
 
-## Deploy Your Own Vault
+## Deploy Your Own SolBreach Program
 
-The included vault program is already deployed to devnet. To deploy your own:
+The included challenge program is already deployed to devnet. To deploy your own:
 
 ### Prerequisites
 

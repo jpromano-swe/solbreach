@@ -15,8 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SolBreach by Rustopia",
-  description: "A minimal Next.js starter powered by @solana/kit",
+  title: "SolBreach",
+  description:
+    "Gamified Solana security training with interactive exploit levels and wallet-bound certifications.",
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",
