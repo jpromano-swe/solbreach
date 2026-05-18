@@ -42,24 +42,20 @@ import {
   type LevelId,
   type LevelsView,
 } from "./lib/levels/course-status";
+import {
+  fetchLevel0Snapshot,
+  fetchLevel1Snapshot,
+  fetchLevel2Snapshot,
+  fetchLevel3Snapshot,
+  type Level0Snapshot,
+  type Level1Snapshot,
+  type Level2Snapshot,
+  type Level3Snapshot,
+} from "./lib/levels/level-state";
 import { getClusterUrl } from "./lib/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import {
-  fetchMaybeBankConfig,
-  fetchMaybeGuildAuthority,
-  fetchMaybeLevel0State,
-  fetchMaybeLevel1State,
-  fetchMaybeLevel2State,
-  fetchMaybeLevel3State,
-  fetchMaybeUserProfile,
-  fetchMaybeUserStats,
-  findBankPda,
-  findGuildAuthorityPda,
-  findLevel1StatePda,
-  findLevel2StatePda,
-  findLevel3StatePda,
-  findProfilePda,
   getClaimLevelCertificateInstructionAsync,
   getDelegateTaskInstructionAsync,
   getDepositTokensInstructionAsync,
@@ -79,44 +75,6 @@ import {
 } from "./generated/vault";
 
 type RootSection = "levels" | "case-studies" | "profile";
-
-type Level0Snapshot = {
-  userStatsPda: Address;
-  level0StatePda: Address;
-  hasUserStats: boolean;
-  hasLevel0State: boolean;
-  completedLevels: boolean[];
-  isCompleted: boolean;
-};
-
-type Level1Snapshot = {
-  bankPda: Address;
-  level1StatePda: Address;
-  hasBank: boolean;
-  expectedMint: Address | null;
-  hasLevel1State: boolean;
-  depositedAmount: bigint;
-};
-
-type Level2Snapshot = {
-  profilePda: Address;
-  level2StatePda: Address;
-  hasProfile: boolean;
-  commander: Address | null;
-  hasLevel2State: boolean;
-};
-
-type Level3Snapshot = {
-  guildAuthorityPda: Address;
-  level3StatePda: Address;
-  hasGuildAuthority: boolean;
-  rewardMint: Address | null;
-  bountyVault: Address | null;
-  bountyAmount: bigint;
-  hasLevel3State: boolean;
-  rewardAccount: Address | null;
-  rewardAmount: bigint;
-};
 
 type StageConfig = {
   badge: string;
@@ -166,34 +124,10 @@ export default function Home() {
   } = useSWR(
     signer && address ? (["level0-state", cluster, address] as const) : null,
     async (): Promise<Level0Snapshot> => {
-      const [initStatsIx, initLevel0Ix] = await Promise.all([
-        getInitUserStatsInstructionAsync({ user: signer! }),
-        getInitLevel0InstructionAsync({ user: signer! }),
-      ]);
-
-      const userStatsPda = initStatsIx.accounts[1].address;
-      const level0StatePda = initLevel0Ix.accounts[2].address;
-
-      const [userStatsAccount, level0StateAccount] = await Promise.all([
-        fetchMaybeUserStats(client.rpc, userStatsPda),
-        fetchMaybeLevel0State(client.rpc, level0StatePda),
-      ]);
-
-      const hasUserStats = userStatsAccount.exists;
-      const hasLevel0State = level0StateAccount.exists;
-      const completedLevels = hasUserStats
-        ? [...userStatsAccount.data.completedLevels]
-        : [false, false, false, false];
-      const isCompleted = completedLevels[0] ?? false;
-
-      return {
-        userStatsPda,
-        level0StatePda,
-        hasUserStats,
-        hasLevel0State,
-        completedLevels,
-        isCompleted,
-      };
+      return fetchLevel0Snapshot({
+        rpc: client.rpc,
+        user: signer!,
+      });
     },
     { revalidateOnFocus: true }
   );
@@ -206,26 +140,10 @@ export default function Home() {
   } = useSWR(
     signer && address ? (["level1-state", cluster, address] as const) : null,
     async (): Promise<Level1Snapshot> => {
-      const [[bankPda], [level1StatePda]] = await Promise.all([
-        findBankPda(),
-        findLevel1StatePda({ user: toAddress(address!) }),
-      ]);
-
-      const [bankAccount, level1Account] = await Promise.all([
-        fetchMaybeBankConfig(client.rpc, bankPda),
-        fetchMaybeLevel1State(client.rpc, level1StatePda),
-      ]);
-
-      return {
-        bankPda,
-        level1StatePda,
-        hasBank: bankAccount.exists,
-        expectedMint: bankAccount.exists ? bankAccount.data.expectedMint : null,
-        hasLevel1State: level1Account.exists,
-        depositedAmount: level1Account.exists
-          ? level1Account.data.depositedAmount
-          : 0n,
-      };
+      return fetchLevel1Snapshot({
+        playerAddress: address!,
+        rpc: client.rpc,
+      });
     },
     { revalidateOnFocus: true }
   );
@@ -238,23 +156,10 @@ export default function Home() {
   } = useSWR(
     signer && address ? (["level2-state", cluster, address] as const) : null,
     async (): Promise<Level2Snapshot> => {
-      const [[profilePda], [level2StatePda]] = await Promise.all([
-        findProfilePda(),
-        findLevel2StatePda({ user: toAddress(address!) }),
-      ]);
-
-      const [profileAccount, level2Account] = await Promise.all([
-        fetchMaybeUserProfile(client.rpc, profilePda),
-        fetchMaybeLevel2State(client.rpc, level2StatePda),
-      ]);
-
-      return {
-        profilePda,
-        level2StatePda,
-        hasProfile: profileAccount.exists,
-        commander: profileAccount.exists ? profileAccount.data.commander : null,
-        hasLevel2State: level2Account.exists,
-      };
+      return fetchLevel2Snapshot({
+        playerAddress: address!,
+        rpc: client.rpc,
+      });
     },
     { revalidateOnFocus: true }
   );
@@ -274,50 +179,11 @@ export default function Home() {
         ] as const)
       : null,
     async (): Promise<Level3Snapshot> => {
-      const [[guildAuthorityPda], [level3StatePda]] = await Promise.all([
-        findGuildAuthorityPda(),
-        findLevel3StatePda({ user: toAddress(address!) }),
-      ]);
-
-      const [guildAuthorityAccount, level3Account] = await Promise.all([
-        fetchMaybeGuildAuthority(client.rpc, guildAuthorityPda),
-        fetchMaybeLevel3State(client.rpc, level3StatePda),
-      ]);
-
-      const rewardAccountInput = level3UserRewardAccount.trim();
-      const rewardAccount = isAddress(rewardAccountInput)
-        ? toAddress(rewardAccountInput)
-        : null;
-
-      let rewardAmount = 0n;
-      if (rewardAccount) {
-        try {
-          const { value } = await client.rpc
-            .getTokenAccountBalance(rewardAccount)
-            .send();
-          rewardAmount = BigInt(value.amount);
-        } catch {
-          rewardAmount = 0n;
-        }
-      }
-
-      return {
-        guildAuthorityPda,
-        level3StatePda,
-        hasGuildAuthority: guildAuthorityAccount.exists,
-        rewardMint: guildAuthorityAccount.exists
-          ? guildAuthorityAccount.data.rewardMint
-          : null,
-        bountyVault: guildAuthorityAccount.exists
-          ? guildAuthorityAccount.data.bountyVault
-          : null,
-        bountyAmount: guildAuthorityAccount.exists
-          ? guildAuthorityAccount.data.bountyAmount
-          : 0n,
-        hasLevel3State: level3Account.exists,
-        rewardAccount,
-        rewardAmount,
-      };
+      return fetchLevel3Snapshot({
+        playerAddress: address!,
+        rewardAccountInput: level3UserRewardAccount,
+        rpc: client.rpc,
+      });
     },
     { revalidateOnFocus: true }
   );
