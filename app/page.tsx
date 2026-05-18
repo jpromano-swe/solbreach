@@ -37,6 +37,13 @@ import { useCluster } from "./components/cluster-context";
 import { parseTransactionError } from "./lib/errors";
 import { useBalance } from "./lib/hooks/use-balance";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
+import {
+  LEVEL_NUMBERS,
+  buildLevelTiles,
+  getStatusLabel,
+  type LevelId,
+  type LevelsView,
+} from "./lib/levels/course-status";
 import { getClusterUrl } from "./lib/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
@@ -75,10 +82,7 @@ import {
   getVerifyAndCloseLevel3InstructionAsync,
 } from "./generated/vault";
 
-type LevelId = "level0" | "level1" | "level2" | "level3";
 type RootSection = "levels" | "case-studies" | "profile";
-type LevelsView = "landing" | LevelId;
-type LevelStatus = "ready" | "live" | "cleared" | "armed" | "mint" | "locked";
 
 type Level0Snapshot = {
   userStatsPda: Address;
@@ -127,18 +131,8 @@ type StageConfig = {
   onAction?: () => Promise<void>;
 };
 
-type LevelTileConfig = {
-  id: LevelId;
-  index: string;
-  label: string;
-  title: string;
-  status: LevelStatus;
-  summary: string;
-};
-
 const LEVEL_1_TARGET = 1_000_000n;
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
-const LEVEL_NUMBERS = [0, 1, 2, 3] as const;
 const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
 const PLAYGROUND_REPOSITORY =
   "git clone https://github.com/jpromano-swe/solbreach-playground";
@@ -1530,88 +1524,36 @@ export default function Home() {
     return 92;
   }, [address, isLevel0Loading, level0Error, level0State, status]);
 
-  const levelTiles = useMemo<LevelTileConfig[]>(() => {
-    const level0Status: LevelStatus = level0State?.isCompleted
-      ? "cleared"
-      : level0State?.hasLevel0State
-        ? "live"
-        : "ready";
-
-    const level1Status: LevelStatus = !level0State?.isCompleted
-      ? "locked"
-      : level1Completed
-        ? "cleared"
-        : level1DepositReady
-          ? "armed"
-          : level1State?.hasLevel1State
-            ? "live"
-            : "ready";
-
-    const level2Status: LevelStatus = !level0State?.isCompleted
-      ? "locked"
-      : level2Completed
-        ? "cleared"
-        : level2Hijacked
-          ? "armed"
-          : level2State?.hasProfile || level2State?.hasLevel2State
-            ? "live"
-            : "ready";
-
-    const level3Status: LevelStatus = !level0State?.isCompleted
-      ? "locked"
-      : level3Completed
-        ? "cleared"
-        : level3DelegationReady
-          ? "armed"
-          : level3State?.hasGuildAuthority || level3State?.hasLevel3State
-            ? "live"
-            : "ready";
-
-    return [
-      {
-        id: "level0",
-        index: "00",
-        label: "Warmup",
-        title: "Wallet Handshake",
-        status: level0Status,
-        summary: "Create registry, open PDA, close it correctly.",
-      },
-      {
-        id: "level1",
-        index: "01",
-        label: "Account substitution",
-        title: "Illusionist",
-        status: level1Status,
-        summary: "Exploit the missing mint constraint and forge the ledger.",
-      },
-      {
-        id: "level2",
-        index: "02",
-        label: "PDA authority bypass",
-        title: "Identity Thief",
-        status: level2Status,
-        summary: "Hijack the global profile PDA and become commander.",
-      },
-      {
-        id: "level3",
-        index: "03",
-        label: "Arbitrary CPI",
-        title: "Trojan Horse",
-        status: level3Status,
-        summary: "Abuse arbitrary CPI and the forwarded guild signer.",
-      },
-    ];
+  const levelTiles = useMemo(() => {
+    return buildLevelTiles({
+      level0Completed: level0State?.isCompleted,
+      level0HasLevelState: level0State?.hasLevel0State,
+      level1Completed,
+      level1DepositReady,
+      level1HasLevelState: level1State?.hasLevel1State,
+      level2Completed,
+      level2HasLevelState: level2State?.hasLevel2State,
+      level2HasProfile: level2State?.hasProfile,
+      level2Hijacked,
+      level3Completed,
+      level3DelegationReady,
+      level3HasGuildAuthority: level3State?.hasGuildAuthority,
+      level3HasLevelState: level3State?.hasLevel3State,
+    });
   }, [
-    level0State,
+    level0State?.hasLevel0State,
+    level0State?.isCompleted,
     level1Completed,
     level1DepositReady,
-    level1State,
+    level1State?.hasLevel1State,
     level2Completed,
     level2Hijacked,
-    level2State,
+    level2State?.hasLevel2State,
+    level2State?.hasProfile,
     level3Completed,
     level3DelegationReady,
-    level3State,
+    level3State?.hasGuildAuthority,
+    level3State?.hasLevel3State,
   ]);
 
   const activeLevel = activeLevelsView === "landing" ? null : activeLevelsView;
@@ -1691,7 +1633,7 @@ export default function Home() {
       case "level0":
         return {
           badge: stage.badge,
-          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
           ...mintState,
           progressValue,
           rows: [
@@ -1722,7 +1664,7 @@ export default function Home() {
       case "level1":
         return {
           badge: level1Stage.badge,
-          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
           ...mintState,
           progressValue: Math.min(
             Number(
@@ -1756,7 +1698,7 @@ export default function Home() {
       case "level2":
         return {
           badge: level2Stage.badge,
-          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
           ...mintState,
           progressValue: level2Completed ? 100 : level2Hijacked ? 66 : 20,
           rows: [
@@ -1787,7 +1729,7 @@ export default function Home() {
       case "level3":
         return {
           badge: level3Stage.badge,
-          chipLabel: activeTile ? statusLabel(activeTile.status) : "Ready",
+          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
           ...mintState,
           progressValue: Math.min(
             Number(
@@ -1958,21 +1900,4 @@ export default function Home() {
       </div>
     </div>
   );
-}
-
-function statusLabel(status: LevelStatus) {
-  switch (status) {
-    case "ready":
-      return "Ready";
-    case "live":
-      return "Live";
-    case "cleared":
-      return "Cleared";
-    case "armed":
-      return "Armed";
-    case "mint":
-      return "Mint";
-    case "locked":
-      return "Locked";
-  }
 }
