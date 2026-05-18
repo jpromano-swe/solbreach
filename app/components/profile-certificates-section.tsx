@@ -1,26 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import type { Address } from "@solana/kit";
+import type {
+  CertificateCollection,
+  LevelCertificateSnapshot,
+} from "../lib/certificates/certificate-state";
 import { SkeletonLine, StatusTextRow, compactAddress } from "./level-ui";
 
 export type ProfileLevelId = "level0" | "level1" | "level2" | "level3";
-
-export type LevelCertificateSnapshot = {
-  assetId: Address | null;
-  certificatePda: Address;
-  exists: boolean;
-  leafIndex: number | null;
-  leafNonce: bigint | null;
-  level: 0 | 1 | 2 | 3;
-  merkleTree: Address | null;
-  minted: boolean;
-};
-
-export type CertificateCollection = Record<
-  0 | 1 | 2 | 3,
-  LevelCertificateSnapshot
->;
 
 type CertificateDetails = {
   image: string;
