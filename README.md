@@ -1,97 +1,101 @@
-# SolBreach ⚡️
+# SolBreach
 
-## Gamified Web3 security training natively designed for the Solana Virtual Machine (SVM). Learn to exploit, learn to secure.
+## Gamified Web3 security training for Solana
 
-This repository now contains the live SolBreach web app, the Anchor challenge programs, the cNFT certification flow, and the internal tooling used to run and verify levels on devnet.
+SolBreach is an interactive CTF platform for learning offensive and defensive Solana program security. Developers exploit intentionally vulnerable Anchor programs on devnet, verify objectives on-chain, and mint wallet-bound cNFT certifications for completed levels.
+
+This repository contains the SolBreach web app, Anchor challenge programs, cNFT certification flow, and operator tooling used to run and verify levels on devnet.
 
 ## The Problem
 
-As the Solana ecosystem scales, the complexity of its protocols has skyrocketed. However, developer security education has failed to keep pace. The SVM utilizes a fundamentally different architecture than the EVM, rendering Ethereum-based security training (like Ethernaut) obsolete.
+Solana developers need security training that matches the SVM execution model. Ethereum-focused training environments do not teach account validation, PDA authority, CPI boundaries, signer constraints, or transaction UX in the way Solana programs actually fail.
 
-Currently, developers lack a persistent, interactive environment to practice offensive security natively on Solana. This results in the continuous deployment of smart contracts with critical, preventable logic flaws—such as Anchor constraint omissions, unchecked Cross-Program Invocations (CPIs), and Program Derived Address (PDA) authority bypasses.
+Today, many developers learn these patterns from scattered audit reports, docs, and postmortems. SolBreach turns those concepts into a persistent hands-on environment where players can practice real exploit workflows safely.
 
-## The Solution: SolBreach
+## The Solution
 
-SolBreach is an open-source, interactive Capture The Flag (CTF) environment where developers learn to secure smart contracts by actively exploiting them. We transform dry security documentation into an immersive, hands-on hacker workflow.
+SolBreach is an open-source security wargame modeled on Ethernaut, but designed natively for Solana and Anchor. Players connect a wallet, inspect vulnerable code, run exploits from a playground repo, verify progress on-chain, and collect verifiable certifications.
 
-Core Architectural Innovations
+### Core architecture
 
-To achieve a seamless UX without the prohibitive costs of deploying individual smart contracts for every user, SolBreach utilizes a highly optimized, Solana-native architecture:
+- **Rent-refund PDAs:** Players initialize per-level PDAs and recover rent when a level is verified and closed.
+- **Wallet-bound progress:** Completion state is tracked through Solana accounts tied to the player wallet.
+- **Metaplex cNFT certifications:** Completed levels can mint compressed NFT credentials through Bubblegum.
+- **Exploit verification:** The web app checks on-chain state transitions and level win conditions before certification.
 
-Zero-Cost Execution (Rent-Refund PDAs): Instead of deploying a new program per user, SolBreach operates via a single monolithic Anchor registry. Players lock a micro-fraction of SOL to initialize a PDA for their specific level instance. Upon successfully "hacking" the level, the final instruction closes the PDA, instantly refunding the rent and creating a zero-cost Mainnet experience.
+## Curriculum
 
-Proof-of-Hack (Metaplex cNFTs): Progress is tracked immutably on-chain. When a developer completes a level, our serverless API issues a Metaplex Compressed NFT (cNFT) "Flag" via Bubblegum, costing fractions of a cent while providing a verifiable credential for auditing firms.
+The current devnet build includes the warmup plus three exploit levels:
 
-Agentic Auditor (AI Integration): We integrate an autonomous agent into the core game loop. When a developer submits an exploit, the agent autonomously parses the transaction simulation, verifies if the on-chain state (PDA) was successfully manipulated according to the level's win-condition, and triggers the cNFT reward.
+| Level | Name | Concept | Vulnerability |
+| --- | --- | --- | --- |
+| 0 | Hello SolBreach | Player registry | PDA setup, completion, and closeout flow |
+| 1 | The Illusionist | Account substitution | Missing constraints allow counterfeit token accounts |
+| 2 | Identity Thief | PDA authority bypass | Static seeds let any signer overwrite shared state |
+| 3 | Trojan Horse | Arbitrary CPI | Unchecked external program invocation enables delegated abuse |
 
-## MVP Curriculum (Dev3pack Build)
+## Player Workflow
 
-The initial hackathon build focuses on 3 foundational Anchor anti-patterns:
+1. Connect a wallet to the SolBreach web app.
+2. Open a level and inspect the lore, hints, and vulnerable snippet.
+3. Clone the external SolBreach Playground repository.
+4. Run the exploit locally against the devnet program.
+5. Return to the web app to verify progress and mint the cNFT certification.
 
-Level
+## Traction
 
-Concept
+SolBreach is still early-stage. The current evidence of progress is product shipping rather than broad user adoption:
 
-The Vulnerability
+- Live Vercel demo for the web app.
+- Public repository with Anchor programs, frontend, player scripts, and cNFT tooling.
+- Separate player playground repository for the exploit workflow.
+- Devnet deployment with working level verification and certification minting.
 
-### 1. The Illusionist
+The next validation milestone is to run public playtests with Solana developers, audit learners, and hackathon teams, then publish completion rates, feedback, and learner outcomes.
 
-Account Substitution
+## Building in Public
 
-Missing #[account(constraint = ...)] allowing users to pass counterfeit SPL tokens.
+The project is moving toward a more visible development cadence:
 
-### 2. Identity Thief
+- Publish level writeups and postmortems for new vulnerability classes.
+- Share progress updates around devnet deployments, case studies, and review-room training.
+- Track roadmap items in public issues where practical.
+- Invite security reviewers and Solana developers to test levels and propose new scenarios.
 
-PDA Authority Bypass
+## Adoption Path
 
-Static seeds allowing any signer to overwrite the global state PDA.
+SolBreach is built for:
 
-### 3. Trojan Horse
+- Solana developers learning secure Anchor patterns.
+- Audit learners practicing exploit reasoning and remediation.
+- Hackathon teams preparing protocols before launch.
+- Protocol teams onboarding engineers to Solana security workflows.
+- Security teams training reviewers through structured findings and review rooms.
 
-Arbitrary CPI
+The core CTF can remain free and open-source. Potential paid paths include team training environments, reviewer assessment rooms, certification programs, and protocol-sponsored case studies based on real incidents.
 
-Invoking unchecked external programs via malicious user input data.
+## Tech Stack
 
-#### 💻 The Hacker Workflow
+- Smart contracts: Rust, Anchor Framework
+- Frontend: Next.js, React, Tailwind CSS
+- Solana integration: `@solana/kit`, Wallet Standard, `@solana/web3.js`
+- Certifications: Metaplex Umi and Bubblegum
+- Testing: Cargo tests and local player scripts
 
-Players do not just click buttons on a web UI; they use real developer tools.
+## Current Status
 
-Connect wallet to the SolBreach web app.
-
-Open the level page and inspect the lore, hints, and vulnerable snippet.
-
-Clone the external SolBreach Playground repository.
-
-Run the exploit locally from the playground against the devnet program.
-
-Return to the web app to verify progress and mint the cNFT certification.
-
-## ⚙️ Tech Stack
-
-Smart Contracts: Rust, Anchor Framework
-
-Frontend: Next.js, React, Tailwind CSS
-
-Web3 Integration: @solana/web3.js, Wallet Adapter
-
-Gamification: Metaplex Umi / Bubblegum SDK
-
-
-## 🚀 Current Status
-
-[x] Anchor challenge program live on devnet
-
-[x] Levels 0–3 implemented and tested
-
-[x] Web board, level pages, and profile gallery shipped
-
-[x] Metaplex Bubblegum cNFT certifications working on devnet
-
-[x] External playground repo ready for player exploit flow
+- [x] Anchor challenge program live on devnet
+- [x] Levels 0-3 implemented and tested
+- [x] Web board, level pages, and profile gallery shipped
+- [x] Metaplex Bubblegum cNFT certifications working on devnet
+- [x] External playground repo ready for player exploit flow
+- [ ] Public playtest metrics and community traction evidence
+- [ ] Production-ready modular frontend architecture
+- [ ] Mainnet deployment plan and safeguards
 
 ## Repositories
 
 - Web app + contracts: `https://github.com/jpromano-swe/solbreach`
 - Player playground: `https://github.com/jpromano-swe/solbreach-playground`
 
-Built for Solana by Rustopia.
+Built for Solana by the SolBreach team.
