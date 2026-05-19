@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, ChevronDown, WalletCards } from "lucide-react";
 import { StatusChip } from "./level-ui";
+import { useWallet } from "../lib/wallet/context";
 
 export type LevelGuideContent = {
   cloneCommand: string;
@@ -27,6 +29,30 @@ export type MissionStatusData = {
   onMint: () => void;
   progressValue: number;
   rows: Array<{ label: string; value: string }>;
+};
+
+export type Level0ProtocolActivityData = {
+  certificateMinted: boolean;
+  isLevel0Loading: boolean;
+  isMinting: boolean;
+  isSending: boolean;
+  level0Error: unknown;
+  level0State?: {
+    hasUserStats: boolean;
+    hasLevel0State: boolean;
+    isCompleted: boolean;
+  };
+  mintDisabled: boolean;
+  mintLabel: string;
+  onContinueToLevel1: () => void;
+  onMint: () => void;
+  stage: {
+    actionLabel: string | null;
+    description: string;
+    onAction?: () => Promise<void>;
+    title: string;
+  };
+  status: string;
 };
 
 const RUST_CODE_KEYWORDS = new Set([
@@ -59,11 +85,21 @@ const RUST_CODE_KEYWORDS = new Set([
 
 export function LevelWorkspacePage({
   guide,
+  levelId,
+  level0Activity,
   missionStatus,
 }: {
   guide: LevelGuideContent;
+  levelId?: string;
+  level0Activity?: Level0ProtocolActivityData;
   missionStatus: MissionStatusData;
 }) {
+  if (levelId === "level0" && level0Activity) {
+    return (
+      <Level0WorkspacePage guide={guide} level0Activity={level0Activity} />
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div className="space-y-3">
@@ -125,6 +161,488 @@ export function LevelWorkspacePage({
       />
       <PlaygroundCommandBar command={guide.cloneCommand} />
     </section>
+  );
+}
+
+function Level0WorkspacePage({
+  guide,
+  level0Activity,
+}: {
+  guide: LevelGuideContent;
+  level0Activity: Level0ProtocolActivityData;
+}) {
+  return (
+    <section className="grid gap-y-7 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start xl:gap-x-8">
+      <div className="max-w-3xl space-y-4 xl:col-start-1 xl:row-start-1">
+        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
+          {guide.subtitle}
+        </p>
+        <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
+          {guide.missionTitle}
+        </h1>
+        <div className="max-w-2xl space-y-2 text-base leading-7 text-muted sm:text-lg">
+          {guide.lore.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </div>
+      </div>
+
+      <div className="min-w-0 xl:col-start-1 xl:row-start-2">
+        <ProtocolNotes notes={guide.hints} />
+      </div>
+
+      <div className="xl:hidden">
+        <ProtocolActivityPanel data={level0Activity} />
+      </div>
+
+      <div className="min-w-0 xl:col-start-1 xl:row-start-3">
+        <CodeSnippetCard
+          key={guide.title}
+          activeProtocolLines={getLevel0ActiveCodeLines(level0Activity)}
+          code={guide.codeSnippet}
+          vulnerabilityActiveLabel={guide.vulnerabilityActiveLabel}
+          vulnerabilityLabel={guide.vulnerabilityLabel}
+          vulnerabilityNote={guide.vulnerabilityNote}
+          vulnerabilityTone={guide.vulnerabilityTone}
+          vulnerableLines={guide.vulnerableLines}
+        />
+      </div>
+
+      <div className="hidden xl:col-start-2 xl:row-span-2 xl:row-start-2 xl:block">
+        <ProtocolActivityPanel data={level0Activity} />
+      </div>
+    </section>
+  );
+}
+
+function ProtocolNotes({ notes }: { notes: string[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <section className="rounded-[20px] border border-border/80 bg-card/55 px-4 py-3">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+        className="flex min-h-10 w-full items-center justify-between gap-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <span>
+          <span className="block text-[11px] uppercase tracking-[0.3em] text-muted">
+            Protocol Notes
+          </span>
+          <span className="mt-1 block text-sm text-foreground">
+            View protocol notes
+          </span>
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 text-muted motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none ${
+            isOpen ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      <div
+        className={`grid motion-safe:transition-[grid-template-rows,opacity] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none ${
+          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <ul className="space-y-3 pb-2 pt-4 text-sm leading-6 text-muted">
+            {notes.map((note) => (
+              <li key={note} className="flex items-start gap-3">
+                <span
+                  className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#14f195]/80"
+                  aria-hidden="true"
+                />
+                <span>{note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type ProtocolEventState = "waiting" | "active" | "done" | "complete" | "error";
+
+type ProtocolEvent = {
+  detail?: string;
+  state: ProtocolEventState;
+  title: string;
+};
+
+function ProtocolActivityPanel({ data }: { data: Level0ProtocolActivityData }) {
+  const events = useMemo(() => buildLevel0ProtocolEvents(data), [data]);
+  const isConnected = data.status === "connected";
+  const isProtocolComplete = Boolean(data.level0State?.isCompleted);
+  const showMintButton =
+    isConnected &&
+    isProtocolComplete &&
+    !data.stage.actionLabel &&
+    !data.certificateMinted;
+  const showContinueButton = isConnected && isProtocolComplete;
+
+  return (
+    <aside className="flex min-h-[360px] flex-col rounded-[24px] border border-border/90 bg-card/72 shadow-[0_20px_70px_-52px_rgba(0,0,0,0.72)] xl:sticky xl:top-28 xl:min-h-[320px]">
+      <div className="flex items-center justify-between gap-3 border-b border-border/75 px-5 py-4">
+        <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
+          Protocol Activity
+        </p>
+        <StatusChip>{isConnected ? "Live" : "Ready"}</StatusChip>
+      </div>
+
+      <div className="flex-1 px-5 py-6">
+        <div className="space-y-0">
+          {events.map((event, index) => (
+            <ProtocolActivityEvent
+              event={event}
+              isLast={index === events.length - 1}
+              key={`${event.title}-${index}`}
+              order={index}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border/75 px-5 py-5">
+        {data.status !== "connected" ? (
+          <ProtocolWalletConnectButton />
+        ) : data.stage.actionLabel && data.stage.onAction ? (
+          <ProtocolPrimaryButton
+            disabled={data.isSending}
+            label={
+              data.isSending ? "Submitting instruction" : data.stage.actionLabel
+            }
+            onClick={() => {
+              void data.stage.onAction?.();
+            }}
+          />
+        ) : showMintButton ? (
+          <ProtocolPrimaryButton
+            disabled={data.mintDisabled || data.isMinting}
+            label={data.isMinting ? "Minting certification" : data.mintLabel}
+            onClick={data.onMint}
+          />
+        ) : !showContinueButton ? (
+          <button
+            type="button"
+            disabled
+            className="min-h-13 w-full rounded-full border border-border bg-background/65 px-5 text-sm font-medium text-muted"
+          >
+            {data.certificateMinted
+              ? "Certification minted"
+              : "Protocol settled"}
+          </button>
+        ) : null}
+        {showContinueButton ? (
+          <ContinueToLevelButton onClick={data.onContinueToLevel1} />
+        ) : null}
+        {isConnected ? (
+          <p className="mt-3 text-center text-xs leading-5 text-muted">
+            {data.stage.description}
+          </p>
+        ) : null}
+      </div>
+    </aside>
+  );
+}
+
+function ProtocolActivityEvent({
+  event,
+  isLast,
+  order,
+}: {
+  event: ProtocolEvent;
+  isLast: boolean;
+  order: number;
+}) {
+  const isDone = event.state === "done";
+  const isActive = event.state === "active";
+  const isComplete = event.state === "complete";
+  const isError = event.state === "error";
+  const nodeClass = isError
+    ? "border-destructive bg-destructive/20"
+    : isComplete
+      ? "protocol-activity-node-complete border-[#14f195] bg-[#14f195]"
+      : isDone
+        ? "border-[#14f195] bg-[#14f195]"
+        : isActive
+          ? "protocol-activity-node-active border-[#14f195] bg-[#14f195]/14"
+          : "border-muted bg-background";
+
+  return (
+    <div
+      className="protocol-activity-entry grid grid-cols-[28px_minmax(0,1fr)] gap-4"
+      style={{ animationDelay: `${Math.min(order * 70, 280)}ms` }}
+    >
+      <div className="flex flex-col items-center">
+        <span
+          className={`mt-1 h-5 w-5 rounded-full border ${nodeClass}`}
+          aria-hidden="true"
+        />
+        {!isLast ? (
+          <span
+            className={`protocol-activity-line mt-2 w-px flex-1 min-h-12 ${
+              isDone
+                ? "bg-[#14f195]/35"
+                : isComplete
+                  ? "bg-[#14f195]/28"
+                  : isActive
+                    ? "bg-gradient-to-b from-[#14f195]/35 to-border"
+                    : "bg-border"
+            }`}
+            aria-hidden="true"
+          />
+        ) : null}
+      </div>
+      <div className={`${isLast ? "" : "pb-9"}`}>
+        <p className="text-sm font-medium text-foreground">{event.title}</p>
+        {event.detail ? (
+          <p className="mt-1 text-sm leading-6 text-muted">{event.detail}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function buildLevel0ProtocolEvents(data: Level0ProtocolActivityData) {
+  if (data.status !== "connected") {
+    return [
+      {
+        detail: "Connect your wallet to begin.",
+        state: "waiting",
+        title: "Waiting for action",
+      },
+    ] satisfies ProtocolEvent[];
+  }
+
+  const events: ProtocolEvent[] = [
+    { state: "done", title: "Wallet signature received" },
+  ];
+
+  if (data.level0Error) {
+    events.push({
+      detail: "Retry the account read before submitting another instruction.",
+      state: "error",
+      title: "Registry state read failed",
+    });
+    return events;
+  }
+
+  if (data.isLevel0Loading) {
+    events.push({
+      detail: "Resolving deterministic account state.",
+      state: "active",
+      title: "Deriving Player Registry PDA",
+    });
+    return events;
+  }
+
+  events.push({ state: "done", title: "Deriving Player Registry PDA" });
+
+  if (!data.level0State?.hasUserStats) {
+    events.push({
+      detail: "Initialize the registry PDA to continue.",
+      state: "active",
+      title: "UserStats account ready",
+    });
+    return events;
+  }
+
+  events.push({ state: "done", title: "UserStats account initialized" });
+
+  if (data.level0State.isCompleted) {
+    events.push(
+      { state: "done", title: "Temporary Level PDA created" },
+      { state: "done", title: "Verifier instruction executed" },
+      { state: "done", title: "Level PDA closed successfully" },
+      { state: "done", title: "Registry state updated" },
+      { state: "complete", title: "Protocol warmup completed" }
+    );
+
+    if (data.certificateMinted) {
+      events.push({ state: "complete", title: "Certification minted" });
+    }
+
+    return events;
+  }
+
+  if (!data.level0State.hasLevel0State) {
+    events.push({
+      detail: "Create the temporary level account.",
+      state: "active",
+      title: "Temporary Level PDA ready",
+    });
+    return events;
+  }
+
+  events.push(
+    { state: "done", title: "Temporary Level PDA created" },
+    {
+      detail: "Close temporary state and record completion.",
+      state: "active",
+      title: "Verifier instruction ready",
+    }
+  );
+
+  return events;
+}
+
+function getLevel0ActiveCodeLines(data: Level0ProtocolActivityData) {
+  if (data.status !== "connected" || data.level0Error) return [];
+
+  if (data.isLevel0Loading) {
+    return [8];
+  }
+
+  if (!data.level0State?.hasUserStats) {
+    return [8, 11];
+  }
+
+  if (data.level0State.isCompleted) {
+    return [23, 25];
+  }
+
+  if (!data.level0State.hasLevel0State) {
+    return [14, 17, 20];
+  }
+
+  return [23, 25];
+}
+
+function ProtocolWalletConnectButton() {
+  const { connectors, connect, error, status } = useWallet();
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        onClick={() => setIsOpen((current) => !current)}
+        className="group inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <WalletCards className="h-4 w-4" aria-hidden="true" />
+        {status === "connecting" ? "Connecting Wallet" : "Connect Wallet"}
+      </button>
+
+      {isOpen ? (
+        <div
+          role="menu"
+          className="absolute inset-x-0 bottom-full z-20 mb-3 rounded-[18px] border border-border bg-popover p-3 shadow-lg"
+        >
+          <p className="px-2 pb-2 pt-1 text-xs font-medium text-muted">
+            Choose a wallet
+          </p>
+          <div className="space-y-1" role="none">
+            {connectors.map((connector) => (
+              <button
+                type="button"
+                role="menuitem"
+                key={connector.id}
+                onClick={async () => {
+                  try {
+                    await connect(connector.id);
+                    setIsOpen(false);
+                  } catch {
+                    /* connection errors are surfaced below */
+                  }
+                }}
+                disabled={status === "connecting"}
+                className="flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3 text-left text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+              >
+                {connector.icon ? (
+                  <span
+                    className="h-5 w-5 shrink-0 rounded bg-cover bg-center"
+                    style={{ backgroundImage: `url(${connector.icon})` }}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <WalletCards
+                    className="h-5 w-5 shrink-0 text-muted"
+                    aria-hidden="true"
+                  />
+                )}
+                <span>{connector.name}</span>
+              </button>
+            ))}
+          </div>
+          {connectors.length === 0 ? (
+            <p className="px-2 py-2 text-xs leading-5 text-muted">
+              No supported wallet detected.
+            </p>
+          ) : null}
+          {status === "connecting" ? (
+            <p className="px-2 pt-2 text-xs text-muted">Connecting...</p>
+          ) : null}
+          {error ? (
+            <p className="px-2 pt-2 text-xs text-destructive">
+              {error instanceof Error ? error.message : String(error)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProtocolPrimaryButton({
+  disabled,
+  label,
+  onClick,
+}: {
+  disabled: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+    >
+      {label}
+    </button>
+  );
+}
+
+function ContinueToLevelButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="protocol-completion-cta mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-border bg-background/72 px-5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      Continue to Level 1
+      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    </button>
   );
 }
 
@@ -209,13 +727,7 @@ function MissionStatusCard({
   );
 }
 
-function InfoCard({
-  children,
-  title,
-}: {
-  children: ReactNode;
-  title: string;
-}) {
+function InfoCard({ children, title }: { children: ReactNode; title: string }) {
   return (
     <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.45)]">
       <h2 className="text-3xl font-semibold tracking-[-0.05em]">{title}</h2>
@@ -225,6 +737,7 @@ function InfoCard({
 }
 
 function CodeSnippetCard({
+  activeProtocolLines = [],
   code,
   vulnerabilityActiveLabel,
   vulnerabilityLabel = "Vulnerability",
@@ -232,6 +745,7 @@ function CodeSnippetCard({
   vulnerabilityTone = "red",
   vulnerableLines = [],
 }: {
+  activeProtocolLines?: number[];
   code: string;
   vulnerabilityActiveLabel?: string;
   vulnerabilityLabel?: string;
@@ -244,20 +758,22 @@ function CodeSnippetCard({
     () => new Set(vulnerableLines),
     [vulnerableLines]
   );
+  const activeProtocolLineSet = useMemo(
+    () => new Set(activeProtocolLines),
+    [activeProtocolLines]
+  );
   const lines = useMemo(() => code.split("\n"), [code]);
   const hasVulnerableLines = vulnerableLines.length > 0;
   const isRedHighlight = vulnerabilityTone === "red";
   const revealToneClass = isRedHighlight
     ? "border-amber-300/20 bg-amber-300/8 text-amber-200"
-    : "border-cyan-300/20 bg-cyan-300/8 text-cyan-200";
-  const revealBodyClass = isRedHighlight
-    ? "text-amber-50/78"
-    : "text-cyan-50/78";
+    : "border-cyan-300/12 bg-cyan-300/[0.035] text-cyan-100/78";
+  const revealBodyClass = isRedHighlight ? "text-amber-50/78" : "text-muted";
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/90 shadow-[0_20px_60px_-45px_rgba(0,0,0,0.45)]">
-      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
+    <section className="overflow-hidden rounded-[22px] border border-border/85 bg-card/72 shadow-[0_18px_60px_-52px_rgba(0,0,0,0.55)]">
+      <div className="flex flex-col gap-3 border-b border-border/75 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
           Code Snippet (lib.rs)
         </p>
         {hasVulnerableLines ? (
@@ -279,7 +795,7 @@ function CodeSnippetCard({
           </button>
         ) : null}
       </div>
-      <div className="overflow-x-auto px-5 py-5">
+      <div className="overflow-x-auto bg-background/22 px-4 py-5 sm:px-5">
         {vulnerabilityNote ? (
           <div
             className={`overflow-hidden motion-safe:transition-[max-height,opacity,transform,margin] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none ${
@@ -304,18 +820,22 @@ function CodeSnippetCard({
             {lines.map((line, index) => {
               const lineNumber = index + 1;
               const isVulnerableLine = vulnerableLineSet.has(lineNumber);
+              const isActiveProtocolLine =
+                activeProtocolLineSet.has(lineNumber);
               const shouldDimLine =
                 showVulnerableCode && hasVulnerableLines && !isVulnerableLine;
 
               return (
                 <span
                   key={`${lineNumber}-${line}`}
-                  className={`grid grid-cols-[2.75rem_minmax(0,1fr)] gap-4 rounded-lg border px-3 motion-safe:transition motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none ${
+                  className={`grid grid-cols-[2.75rem_minmax(0,1fr)] gap-4 rounded-md border px-3 motion-safe:transition-[border-color,background-color,color,opacity,box-shadow] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none ${
                     showVulnerableCode && isVulnerableLine
                       ? isRedHighlight
                         ? "border-red-400/30 bg-red-500/10 text-red-100 shadow-[0_0_34px_-22px_rgba(248,113,113,0.95)]"
-                        : "border-cyan-300/25 bg-cyan-300/8 text-cyan-100 shadow-[0_0_34px_-22px_rgba(103,232,249,0.75)]"
-                      : "border-transparent text-foreground"
+                        : "border-cyan-300/12 bg-cyan-300/[0.035] text-foreground"
+                      : isActiveProtocolLine
+                        ? "protocol-code-line-active border-[#14f195]/16 bg-[#14f195]/[0.045] text-foreground"
+                        : "border-transparent text-foreground"
                   } ${shouldDimLine ? "opacity-35" : "opacity-100"}`}
                 >
                   <span
@@ -324,7 +844,9 @@ function CodeSnippetCard({
                         ? isRedHighlight
                           ? "text-red-200/80"
                           : "text-cyan-100/80"
-                        : "text-muted/55"
+                        : isActiveProtocolLine
+                          ? "text-[#14f195]/70"
+                          : "text-muted/55"
                     }`}
                     aria-hidden="true"
                   >

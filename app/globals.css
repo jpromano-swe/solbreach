@@ -152,3 +152,96 @@
     transform: translateX(18px);
   }
 }
+
+@keyframes protocolActivityEntryIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes protocolActivityLineReveal {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes protocolActivityNodePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(20, 241, 149, 0.18);
+  }
+
+  50% {
+    box-shadow: 0 0 0 7px rgba(20, 241, 149, 0.05);
+  }
+}
+
+@keyframes protocolActivityCompletePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(20, 241, 149, 0.2);
+  }
+
+  100% {
+    box-shadow: 0 0 0 8px rgba(20, 241, 149, 0);
+  }
+}
+
+@keyframes protocolCompletionCtaIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes protocolCodeLineFocus {
+  0%,
+  100% {
+    box-shadow: inset 2px 0 0 rgba(20, 241, 149, 0.22);
+  }
+
+  50% {
+    box-shadow: inset 2px 0 0 rgba(20, 241, 149, 0.42);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .protocol-activity-entry {
+    animation: protocolActivityEntryIn 180ms ease-out both;
+  }
+
+  .protocol-activity-line {
+    animation: protocolActivityLineReveal 260ms ease-out both;
+    transform-origin: top;
+  }
+
+  .protocol-activity-node-active {
+    animation: protocolActivityNodePulse 1800ms ease-in-out infinite;
+  }
+
+  .protocol-activity-node-complete {
+    animation: protocolActivityCompletePulse 900ms ease-out 1;
+  }
+
+  .protocol-completion-cta {
+    animation: protocolCompletionCtaIn 220ms ease-out both;
+  }
+
+  .protocol-code-line-active {
+    animation: protocolCodeLineFocus 1600ms ease-in-out infinite;
+  }
+}
