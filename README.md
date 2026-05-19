@@ -1,101 +1,310 @@
 # SolBreach
 
-## Gamified Web3 security training for Solana
+> Interactive Solana security labs for learning protocol exploitation through guided state visualization, account manipulation, and real vulnerability flows.
 
-SolBreach is an interactive CTF platform for learning offensive and defensive Solana program security. Developers exploit intentionally vulnerable Anchor programs on devnet, verify objectives on-chain, and mint wallet-bound cNFT certifications for completed levels.
+SolBreach is a protocol-driven security education platform for the Solana ecosystem.
 
-This repository contains the SolBreach web app, Anchor challenge programs, cNFT certification flow, and operator tooling used to run and verify levels on devnet.
+Instead of forcing developers directly into local exploit environments, SolBreach teaches security concepts progressively through interactive protocol labs that visualize:
+- account relationships,
+- trust assumptions,
+- protocol state transitions,
+- exploit causality,
+- and vulnerable execution flows.
 
-## The Problem
+The platform combines:
+- real Solana programs,
+- guided exploit cognition,
+- visual protocol topology,
+- constrained exploit manipulation,
+- and wallet-bound progression systems
 
-Solana developers need security training that matches the SVM execution model. Ethereum-focused training environments do not teach account validation, PDA authority, CPI boundaries, signer constraints, or transaction UX in the way Solana programs actually fail.
+to create a modern security training experience purpose-built for the Solana Virtual Machine (SVM).
 
-Today, many developers learn these patterns from scattered audit reports, docs, and postmortems. SolBreach turns those concepts into a persistent hands-on environment where players can practice real exploit workflows safely.
+---
 
-## The Solution
+# Why SolBreach Exists
 
-SolBreach is an open-source security wargame modeled on Ethernaut, but designed natively for Solana and Anchor. Players connect a wallet, inspect vulnerable code, run exploits from a playground repo, verify progress on-chain, and collect verifiable certifications.
+Most Solana security learning today happens through:
+- scattered audit reports,
+- isolated code snippets,
+- postmortems,
+- and highly advanced exploit writeups.
 
-### Core architecture
+That creates a massive onboarding cliff.
 
-- **Rent-refund PDAs:** Players initialize per-level PDAs and recover rent when a level is verified and closed.
-- **Wallet-bound progress:** Completion state is tracked through Solana accounts tied to the player wallet.
-- **Metaplex cNFT certifications:** Completed levels can mint compressed NFT credentials through Bubblegum.
-- **Exploit verification:** The web app checks on-chain state transitions and level win conditions before certification.
+New developers struggle to understand:
+- PDA trust boundaries,
+- account validation,
+- token custody assumptions,
+- signer authority,
+- CPI execution risks,
+- and state synchronization vulnerabilities.
 
-## Curriculum
+SolBreach turns those abstract concepts into:
 
-The current devnet build includes the warmup plus three exploit levels:
+# interactive protocol behavior.
 
-| Level | Name | Concept | Vulnerability |
-| --- | --- | --- | --- |
-| 0 | Hello SolBreach | Player registry | PDA setup, completion, and closeout flow |
-| 1 | The Illusionist | Account substitution | Missing constraints allow counterfeit token accounts |
-| 2 | Identity Thief | PDA authority bypass | Static seeds let any signer overwrite shared state |
-| 3 | Trojan Horse | Arbitrary CPI | Unchecked external program invocation enables delegated abuse |
+Players do not simply read exploits.
+They observe, manipulate, and execute them progressively.
 
-## Player Workflow
+---
 
-1. Connect a wallet to the SolBreach web app.
-2. Open a level and inspect the lore, hints, and vulnerable snippet.
-3. Clone the external SolBreach Playground repository.
-4. Run the exploit locally against the devnet program.
-5. Return to the web app to verify progress and mint the cNFT certification.
+# Core Product Direction
 
-## Traction
+SolBreach is NOT designed as:
+- a browser IDE,
+- a generic coding playground,
+- or a traditional quiz-based CTF.
 
-SolBreach is still early-stage. The current evidence of progress is product shipping rather than broad user adoption:
+Instead, the platform focuses on:
 
-- Live Vercel demo for the web app.
-- Public repository with Anchor programs, frontend, player scripts, and cNFT tooling.
-- Separate player playground repository for the exploit workflow.
-- Devnet deployment with working level verification and certification minting.
+# exploit cognition.
 
-The next validation milestone is to run public playtests with Solana developers, audit learners, and hackathon teams, then publish completion rates, feedback, and learner outcomes.
+Every level teaches:
+- how protocols trust accounts,
+- how assumptions break,
+- and how vulnerable relationships evolve during execution.
 
-## Building in Public
+The experience is designed to feel closer to:
+- protocol analysis,
+- interactive security review,
+- and exploit reasoning
 
-The project is moving toward a more visible development cadence:
+than traditional gamified hacking platforms.
 
-- Publish level writeups and postmortems for new vulnerability classes.
-- Share progress updates around devnet deployments, case studies, and review-room training.
-- Track roadmap items in public issues where practical.
-- Invite security reviewers and Solana developers to test levels and propose new scenarios.
+---
 
-## Adoption Path
+# Learning Model
 
-SolBreach is built for:
+Each level progressively transitions through multiple interaction stages.
 
-- Solana developers learning secure Anchor patterns.
-- Audit learners practicing exploit reasoning and remediation.
-- Hackathon teams preparing protocols before launch.
-- Protocol teams onboarding engineers to Solana security workflows.
-- Security teams training reviewers through structured findings and review rooms.
+## 1. Observe
 
-The core CTF can remain free and open-source. Potential paid paths include team training environments, reviewer assessment rooms, certification programs, and protocol-sponsored case studies based on real incidents.
+Players first observe legitimate protocol behavior.
 
-## Tech Stack
+The platform visualizes:
+- account relationships,
+- protocol validation flow,
+- internal ledger updates,
+- and trusted execution paths.
 
-- Smart contracts: Rust, Anchor Framework
-- Frontend: Next.js, React, Tailwind CSS
-- Solana integration: `@solana/kit`, Wallet Standard, `@solana/web3.js`
-- Certifications: Metaplex Umi and Bubblegum
-- Testing: Cargo tests and local player scripts
+This establishes the baseline mental model.
 
-## Current Status
+---
 
-- [x] Anchor challenge program live on devnet
-- [x] Levels 0-3 implemented and tested
-- [x] Web board, level pages, and profile gallery shipped
-- [x] Metaplex Bubblegum cNFT certifications working on devnet
-- [x] External playground repo ready for player exploit flow
-- [ ] Public playtest metrics and community traction evidence
-- [ ] Production-ready modular frontend architecture
-- [ ] Mainnet deployment plan and safeguards
+## 2. Manipulate
 
-## Repositories
+Players begin modifying protocol assumptions interactively.
 
-- Web app + contracts: `https://github.com/jpromano-swe/solbreach`
-- Player playground: `https://github.com/jpromano-swe/solbreach-playground`
+Instead of writing exploit code immediately, they manipulate:
+- vault relationships,
+- mint sources,
+- custody assumptions,
+- and account mappings.
 
-Built for Solana by the SolBreach team.
+This allows players to discover:
+
+# which trust boundaries actually matter.
+
+---
+
+## 3. Inspect
+
+Only after understanding protocol causality do players inspect exploit structure.
+
+At this stage, SolBreach exposes:
+- constrained exploit anatomy,
+- variable mapping,
+- vulnerable account injection,
+- and guided exploit execution.
+
+The goal is to connect:
+- protocol topology,
+- account substitution,
+- and exploit logic
+
+without overwhelming users with full local environments too early.
+
+---
+
+# Current Curriculum
+
+| Level | Name | Focus | Vulnerability |
+|---|---|---|---|
+| 0 | Hello SolBreach | PDA lifecycle warmup | Player registry initialization and closeout |
+| 1 | The Illusionist | Account substitution | Counterfeit token account acceptance |
+| 2 | Identity Thief | PDA authority misuse | Static seed authority overwrite |
+| 3 | Trojan Horse | Arbitrary CPI | Delegated external program abuse |
+
+---
+
+# Current Architecture
+
+SolBreach combines:
+- interactive frontend visualization,
+- backend exploit orchestration,
+- and real Solana program execution.
+
+The platform uses:
+- real vulnerable programs,
+- controlled counterfeit infrastructure,
+- deterministic protocol state,
+- and guided exploit surfaces
+
+to preserve realism while maintaining approachable onboarding.
+
+---
+
+# Core Concepts
+
+## Interactive Protocol Visualization
+
+Every level includes a live topology graph that visualizes:
+- wallets,
+- vaults,
+- token accounts,
+- mints,
+- treasury state,
+- and trust relationships.
+
+Protocol state evolves dynamically as the player progresses.
+
+---
+
+## Stateful Protocol Activity
+
+The UI streams protocol execution progressively rather than exposing static checklists.
+
+This allows players to experience:
+- transaction flow,
+- state evolution,
+- validation logic,
+- and exploit progression
+
+as reactive protocol behavior.
+
+---
+
+## Guided Exploit Anatomy
+
+Exploit execution is intentionally constrained.
+
+Instead of exposing arbitrary exploit coding immediately, SolBreach focuses on:
+- causal variables,
+- account relationships,
+- exploit structure,
+- and trust remapping.
+
+This keeps the learning experience focused on reasoning instead of boilerplate.
+
+---
+
+## Wallet-Bound Progression
+
+Player progress is tied directly to Solana accounts and protocol state.
+
+Levels use:
+- PDAs,
+- registry state,
+- temporary protocol accounts,
+- and on-chain verification
+
+to validate exploit completion.
+
+---
+
+## Certification Flow
+
+Completed levels unlock wallet-bound certifications using compressed NFTs (cNFTs).
+
+These certifications act as:
+- proof of completion,
+- exploit verification,
+- and future reviewer reputation primitives.
+
+---
+
+# Product Vision
+
+SolBreach is evolving toward:
+
+# interactive security infrastructure for Solana.
+
+Long-term directions include:
+- protocol review rooms,
+- team training environments,
+- exploit replay systems,
+- audit onboarding labs,
+- protocol-sponsored incident recreations,
+- and reviewer certification flows.
+
+The goal is to create:
+
+# the modern security learning layer for the SVM ecosystem.
+
+---
+
+# Tech Stack
+
+## Frontend
+- Next.js
+- React
+- TailwindCSS
+- Framer Motion
+
+## Solana
+- Rust
+- Anchor Framework
+- @solana/web3.js
+
+## Certifications
+- Metaplex Umi
+- Bubblegum
+
+## Backend Orchestration
+- Session-driven exploit execution
+- Deterministic protocol state management
+- Guided exploit transaction builders
+
+---
+
+# Current Status
+
+- Interactive Level 0 shipped
+- Multi-stage Level 1 interaction flow implemented
+- Real protocol topology visualization system live
+- Guided exploit anatomy system implemented
+- Devnet verification flow working
+- Wallet-bound progression system working
+- cNFT certification flow functional on devnet
+- Modular frontend architecture stabilized
+- Backend orchestration migration in progress
+
+---
+
+# Repositories
+
+## Main Platform
+https://github.com/jpromano-swe/solbreach
+
+## Playground Repository
+https://github.com/jpromano-swe/solbreach-playground
+
+---
+
+# Current Positioning
+
+SolBreach is currently focused on:
+- Solana developers,
+- audit learners,
+- security researchers,
+- hackathon teams,
+- and protocol engineering onboarding.
+
+The platform is intentionally designed to reduce the onboarding gap between:
+- beginner protocol understanding,
+- and real exploit reasoning.
+
+---
+
+Built for Solana by ZirconDioxide and the SolBreach Team.
