@@ -1,11 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   address as toAddress,
   isAddress,
@@ -97,7 +93,7 @@ export default function Home() {
   const { wallet, signer, status } = useWallet();
   const { cluster, getExplorerUrl } = useCluster();
   const client = useSolanaClient();
-  const { send } = useSendTransaction();
+  const { send, isSending } = useSendTransaction();
 
   const address = wallet?.account.address;
   const walletBalance = useBalance(address);
@@ -1483,6 +1479,29 @@ export default function Home() {
                 <div className="space-y-8">
                   <LevelWorkspacePage
                     guide={activeGuide}
+                    level0Activity={
+                      activeLevel === "level0"
+                        ? {
+                            certificateMinted: Boolean(
+                              level0Certificate?.minted
+                            ),
+                            isLevel0Loading,
+                            isMinting: mintingLevel === "level0",
+                            isSending,
+                            level0Error,
+                            level0State,
+                            mintDisabled: activeLevelStatus.mintDisabled,
+                            mintLabel: activeLevelStatus.mintLabel,
+                            onContinueToLevel1: () => {
+                              setActiveLevelsView("level1");
+                            },
+                            onMint: activeLevelStatus.onMint,
+                            stage,
+                            status,
+                          }
+                        : undefined
+                    }
+                    levelId={activeLevel ?? undefined}
                     missionStatus={activeLevelStatus}
                   />
                 </div>

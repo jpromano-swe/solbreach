@@ -40,17 +40,16 @@ pub fn verify_and_close_level_0(ctx: Context<VerifyAndCloseLevel0>) -> Result<()
     vulnerabilityTone: "cyan",
     vulnerableLines: [8, 17, 25],
     hints: [
-      "Program Derived Addresses are deterministic. Trace the stats PDA and the per-level PDA separately.",
-      "The win condition is not a trick exploit. It is understanding the account lifecycle the rest of the wargame depends on.",
-      "The verifier closes the temporary level PDA, so completion is proven by both state and account cleanup.",
+      "Program Derived Addresses (PDAs) are deterministic.",
+      "Completion requires temporary account cleanup.",
+      "The verifier closes the temporary Level PDA automatically.",
     ],
     lore: [
-      "Before the vault can be attacked, the Guild wants proof that you understand how its world is stitched together. Level 0 is that handshake: derive the player registry, open the temporary level PDA, then close it correctly.",
-      "This first checkpoint is intentionally honest. It exists so every later exploit can assume the same player-bound registry and completion flow without having to teach those mechanics again.",
-      "Your objective is to prove you can operate inside SolBreach's account model and leave no temporary state behind.",
+      "Learn how SolBreach tracks player progress using PDAs and temporary protocol state.",
+      "Create a temporary Level PDA, then close it correctly to complete the warmup.",
     ],
     missionTitle: "Level 0: Hello SolBreach",
-    subtitle: "Wallet handshake and PDA closeout warmup",
+    subtitle: "Wallet Handshake & PDA Closeout Warmup",
     title: "Hello SolBreach",
     winCondition:
       "Set completed_levels[0] = true and close the temporary Level 0 PDA.",
