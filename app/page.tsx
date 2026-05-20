@@ -1,7 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import {
   address as toAddress,
   isAddress,
@@ -15,7 +19,6 @@ import { ClusterSelect } from "./components/cluster-select";
 import { CaseStudiesSection } from "./components/case-studies-section";
 import { HeaderCourseNav } from "./components/course-nav";
 import { LandingPageSection } from "./components/landing-page-section";
-import { Level1Panel } from "./components/level-1-panel";
 import { LevelWorkspacePage } from "./components/level-workspace";
 import { compactAddress } from "./components/level-ui";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
@@ -112,14 +115,6 @@ export default function Home() {
   const [level3ExternalProgram] = useState("");
   const [level3Amount] = useState("1000000");
   const [mintingLevel, setMintingLevel] = useState<LevelId | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
-
-  const handleCopy = useCallback(async (label: string, value: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopied(label);
-    window.setTimeout(() => setCopied(null), 1600);
-  }, []);
 
   const {
     data: level0State,
@@ -255,7 +250,6 @@ export default function Home() {
     ) => {
       if (!signer) return;
 
-      setIsSending(true);
       try {
         const instruction = await buildInstruction();
         const signature = await send({ instructions: [instruction] });
@@ -277,8 +271,6 @@ export default function Home() {
       } catch (err) {
         console.error("Transaction failed:", err);
         toast.error(parseTransactionError(err));
-      } finally {
-        setIsSending(false);
       }
     },
     [getExplorerUrl, refreshState, send, signer]
@@ -1489,28 +1481,10 @@ export default function Home() {
                 />
               ) : activeGuide && activeLevelStatus ? (
                 <div className="space-y-8">
-                  {activeLevel === "level1" ? (
-                    <Level1Panel
-                      address={address}
-                      copied={copied}
-                      isLoading={isLevel1Loading}
-                      isSending={isSending}
-                      level1Error={level1Error}
-                      level1State={level1State}
-                      onCopy={handleCopy}
-                      onDeposit={handleDepositLevel1}
-                      onInitBank={handleInitBank}
-                      onInitLevel1={handleInitLevel1}
-                      onVerify={handleVerifyLevel1}
-                      stage={level1Stage}
-                      status={status}
-                    />
-                  ) : (
-                    <LevelWorkspacePage
-                      guide={activeGuide}
-                      missionStatus={activeLevelStatus}
-                    />
-                  )}
+                  <LevelWorkspacePage
+                    guide={activeGuide}
+                    missionStatus={activeLevelStatus}
+                  />
                 </div>
               ) : null}
             </div>
