@@ -39,6 +39,7 @@ type StageConfig = {
   description: string;
   actionLabel: string | null;
   actionKind: "primary" | "secondary";
+  level1Mode?: "prepare" | "sequence" | "execute" | "complete";
   onAction?: () => Promise<void>;
 };
 
@@ -125,6 +126,39 @@ const EXPLOIT_MANIPULATION: ManipulationState = {
   vault: "fake",
 };
 
+const EXPLOIT_SEQUENCE: VariableKey[] = [
+  "vault",
+  "mint",
+  "source",
+  "authority",
+];
+
+const EXPLOIT_SEQUENCE_META: Record<
+  VariableKey,
+  { badgeClassName: string; borderClassName: string; label: string }
+> = {
+  authority: {
+    badgeClassName: "bg-red-400/14 text-red-200 ring-red-300/25",
+    borderClassName: "border-red-300/36 bg-red-400/[0.04]",
+    label: "4",
+  },
+  mint: {
+    badgeClassName: "bg-violet-400/14 text-violet-200 ring-violet-300/25",
+    borderClassName: "border-violet-300/36 bg-violet-400/[0.04]",
+    label: "2",
+  },
+  source: {
+    badgeClassName: "bg-orange-400/14 text-orange-200 ring-orange-300/25",
+    borderClassName: "border-orange-300/36 bg-orange-400/[0.04]",
+    label: "3",
+  },
+  vault: {
+    badgeClassName: "bg-cyan-400/14 text-cyan-200 ring-cyan-300/25",
+    borderClassName: "border-cyan-300/36 bg-cyan-400/[0.04]",
+    label: "1",
+  },
+};
+
 const elk = new ELK();
 
 export function Level1Panel({
@@ -159,6 +193,8 @@ export function Level1Panel({
   const [stageOneRevealRun, setStageOneRevealRun] = useState(0);
   const [stageOneRevealStep, setStageOneRevealStep] = useState(0);
   const [activeVariable, setActiveVariable] = useState<VariableKey>("vault");
+  const [exploitSequence, setExploitSequence] = useState<VariableKey[]>([]);
+  const [sequenceFeedback, setSequenceFeedback] = useState<string | null>(null);
   const [manipulation, setManipulation] = useState<ManipulationState>({
     authority: "valid",
     mint: "official",
@@ -179,6 +215,12 @@ export function Level1Panel({
     effectiveManipulation.vault === "fake" ||
     effectiveManipulation.mint === "counterfeit" ||
     effectiveManipulation.source === "counterfeit";
+  const exploitPrepared =
+    stage.level1Mode === "sequence" ||
+    stage.level1Mode === "execute" ||
+    stage.level1Mode === "complete";
+  const exploitSequenceComplete =
+    exploitSequence.length === EXPLOIT_SEQUENCE.length;
 
   const accounts = useMemo(
     () =>
@@ -206,24 +248,30 @@ export function Level1Panel({
         authorityRejected,
         activeVariable,
         exploitPreviewed,
+        exploitPrepared,
         exploitReady,
+        exploitSequence,
         isConnected,
         labStage,
         manipulation,
         manipulationTested,
         normalDepositObserved,
+        sequenceFeedback,
         stageOneRevealStep,
       }),
     [
       activeVariable,
       authorityRejected,
       exploitPreviewed,
+      exploitPrepared,
       exploitReady,
+      exploitSequence,
       isConnected,
       labStage,
       manipulation,
       manipulationTested,
       normalDepositObserved,
+      sequenceFeedback,
       stageOneRevealStep,
     ]
   );
@@ -255,8 +303,10 @@ export function Level1Panel({
     if (nextStage === 1) {
       setActiveVariable("vault");
       setExploitPreviewed(false);
+      setExploitSequence([]);
       setManipulationTested(false);
       setNormalDepositObserved(false);
+      setSequenceFeedback(null);
       setStageOneRevealRun(0);
       setStageOneRevealStep(0);
       setManipulation({
@@ -266,6 +316,43 @@ export function Level1Panel({
         vault: "official",
       });
     }
+  };
+
+  const handleExploitVariableSelect = (key: VariableKey) => {
+    if (!exploitPrepared) {
+      setSequenceFeedback("Prepare the exploit challenge before mapping dependencies.");
+      return;
+    }
+
+    if (exploitSequence.includes(key)) {
+      const selectedIndex = exploitSequence.indexOf(key);
+      const nextSequence = exploitSequence.slice(0, selectedIndex);
+      const nextRequired = EXPLOIT_SEQUENCE[nextSequence.length] ?? key;
+
+      setExploitSequence(nextSequence);
+      setActiveVariable(nextRequired);
+      setSequenceFeedback(
+        `${EXPLOIT_SEQUENCE_META[key].label} unmapped: ${getVariableLabel(
+          key
+        )}. Continue from ${getVariableLabel(nextRequired)}.`
+      );
+      return;
+    }
+
+    const nextKey = EXPLOIT_SEQUENCE[exploitSequence.length];
+    if (key !== nextKey) {
+      setActiveVariable(key);
+      setSequenceFeedback(
+        "This is not the next dependency in the exploit chain."
+      );
+      return;
+    }
+
+    setActiveVariable(key);
+    setExploitSequence((current) => [...current, key]);
+    setSequenceFeedback(
+      `${EXPLOIT_SEQUENCE_META[key].label} mapped: ${getVariableLabel(key)}.`
+    );
   };
 
   return (
@@ -302,14 +389,25 @@ export function Level1Panel({
             <ExploitCodeWalkthrough
               activeCodeLines={activeCodeLines}
               activeVariable={activeVariable}
+              exploitPrepared={exploitPrepared}
+              exploitSequence={exploitSequence}
+              exploitSequenceComplete={exploitSequenceComplete}
               isSending={isSending}
-              onExecute={() => {
-                if (stage.actionLabel && stage.onAction) {
-                  void stage.onAction();
+              onExecute={async () => {
+                if (stage.level1Mode === "prepare") {
+                  setExploitSequence([]);
+                  setSequenceFeedback(null);
+                  setExploitPreviewed(false);
                 }
-                setExploitPreviewed(true);
+                if (stage.actionLabel && stage.onAction) {
+                  await stage.onAction();
+                }
+                if (stage.level1Mode !== "prepare") {
+                  setExploitPreviewed(true);
+                }
               }}
-              onVariableFocus={setActiveVariable}
+              onVariableFocus={handleExploitVariableSelect}
+              sequenceFeedback={sequenceFeedback}
               stage={stage}
             />
           )
@@ -1424,7 +1522,7 @@ function ExecutionButton({
 }: {
   disabled: boolean;
   label: string;
-  onClick: () => void;
+  onClick: () => Promise<void> | void;
 }) {
   return (
     <button
@@ -1438,19 +1536,73 @@ function ExecutionButton({
   );
 }
 
+function ExploitSequenceButton({
+  active,
+  children,
+  disabled,
+  mapped,
+  next,
+  onClick,
+  sequenceKey,
+}: {
+  active: boolean;
+  children: ReactNode;
+  disabled: boolean;
+  mapped: boolean;
+  next: boolean;
+  onClick: () => void;
+  sequenceKey: VariableKey;
+}) {
+  const meta = EXPLOIT_SEQUENCE_META[sequenceKey];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`min-h-11 rounded-full border px-3 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45 ${
+        mapped
+          ? meta.borderClassName
+          : active
+            ? "border-foreground bg-foreground text-background"
+            : next
+              ? "border-emerald-300/35 bg-emerald-400/[0.04] text-foreground"
+              : "border-border bg-background text-muted hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      <span className="flex items-center justify-center gap-2">
+        <span
+          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full text-[10px] font-semibold ring-1 ${meta.badgeClassName}`}
+        >
+          {meta.label}
+        </span>
+        <span>{children}</span>
+      </span>
+    </button>
+  );
+}
+
 function ExploitCodeWalkthrough({
   activeCodeLines,
   activeVariable,
+  exploitPrepared,
+  exploitSequence,
+  exploitSequenceComplete,
   isSending,
   onExecute,
   onVariableFocus,
+  sequenceFeedback,
   stage,
 }: {
   activeCodeLines: number[];
   activeVariable: VariableKey;
+  exploitPrepared: boolean;
+  exploitSequence: VariableKey[];
+  exploitSequenceComplete: boolean;
   isSending: boolean;
-  onExecute: () => void;
+  onExecute: () => Promise<void> | void;
   onVariableFocus: (key: VariableKey) => void;
+  sequenceFeedback: string | null;
   stage: StageConfig;
 }) {
   const activeSet = new Set(activeCodeLines);
@@ -1497,18 +1649,20 @@ function ExploitCodeWalkthrough({
       <div className="space-y-4 p-5">
         <div className="grid grid-cols-2 gap-2">
           {variableRows.map(({ key, label }) => (
-            <button
-              type="button"
+            <ExploitSequenceButton
               key={key}
+              active={activeVariable === key}
+              disabled={!exploitPrepared}
+              mapped={exploitSequence.includes(key)}
+              next={
+                exploitPrepared &&
+                EXPLOIT_SEQUENCE[exploitSequence.length] === key
+              }
+              sequenceKey={key}
               onClick={() => onVariableFocus(key)}
-              className={`min-h-10 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                activeVariable === key
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-background text-muted hover:bg-accent hover:text-foreground"
-              }`}
             >
               {label}
-            </button>
+            </ExploitSequenceButton>
           ))}
         </div>
 
@@ -1516,6 +1670,7 @@ function ExploitCodeWalkthrough({
           <code className="block min-w-max">
             {variableRows.map(({ key, line, prefix, value }) => {
               const isActive = activeVariable === key;
+              const mapped = exploitSequence.includes(key);
               return (
                 <span
                   key={key}
@@ -1532,12 +1687,15 @@ function ExploitCodeWalkthrough({
                     {prefix}
                     <button
                       type="button"
+                      disabled={!exploitPrepared}
                       onClick={() => onVariableFocus(key)}
                       className={`rounded-md px-1.5 py-0.5 font-mono transition-colors ${
-                        isActive
+                        mapped
+                          ? `${EXPLOIT_SEQUENCE_META[key].borderClassName} text-foreground`
+                          : isActive
                           ? "bg-emerald-400/12 text-emerald-100"
                           : "text-foreground hover:bg-accent"
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-45`}
                     >
                       {value}
                     </button>
@@ -1570,11 +1728,15 @@ function ExploitCodeWalkthrough({
 
         <div className="rounded-[20px] border border-border bg-background/55 p-4">
           <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-            Causal focus
+            Exploit sequence
           </p>
-          <p className="mt-2 text-sm font-medium">{activeContext.title}</p>
+          <p className="mt-2 text-sm font-medium">
+            {exploitPrepared
+              ? activeContext.title
+              : "Prepare the challenge to unlock dependency mapping."}
+          </p>
           <p className="mt-2 text-sm leading-6 text-muted">
-            {activeContext.detail}
+            {sequenceFeedback ?? activeContext.detail}
           </p>
         </div>
 
@@ -1582,13 +1744,19 @@ function ExploitCodeWalkthrough({
           <p className="text-sm leading-6 text-muted">{stage.description}</p>
           <div className="mt-4">
             <ExecutionButton
-              disabled={isSending || !stage.actionLabel}
+              disabled={
+                isSending ||
+                !stage.actionLabel ||
+                (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
+              }
               label={
                 stage.actionLabel
                   ? isSending
                     ? "Submitting instruction"
                     : stage.actionLabel
-                  : "Preview exploit flow"
+                  : exploitSequenceComplete
+                    ? "Exploit execution unlocked"
+                    : "Reconstruct exploit sequence"
               }
               onClick={onExecute}
             />
@@ -1699,23 +1867,29 @@ function buildProtocolActivity({
   activeVariable,
   authorityRejected,
   exploitPreviewed,
+  exploitPrepared,
   exploitReady,
+  exploitSequence,
   isConnected,
   labStage,
   manipulation,
   manipulationTested,
   normalDepositObserved,
+  sequenceFeedback,
   stageOneRevealStep,
 }: {
   activeVariable: VariableKey;
   authorityRejected: boolean;
   exploitPreviewed: boolean;
+  exploitPrepared: boolean;
   exploitReady: boolean;
+  exploitSequence: VariableKey[];
   isConnected: boolean;
   labStage: LabStage;
   manipulation: ManipulationState;
   manipulationTested: boolean;
   normalDepositObserved: boolean;
+  sequenceFeedback: string | null;
   stageOneRevealStep: number;
 }): ProtocolActivityEvent[] {
   if (!isConnected && labStage === 1) {
@@ -1840,21 +2014,59 @@ function buildProtocolActivity({
 
   const focusedEvent = getFocusedVariableActivity(activeVariable);
 
-  if (!exploitPreviewed) {
+  if (!exploitPrepared) {
     return [
-      { title: "Exploit variables mapped", tone: "active" },
-      focusedEvent,
       {
-        detail:
-          "The highlighted variable is now driving the graph and trust path.",
-        title: "Causal relationship synchronized",
+        detail: "Start the backend session and receive deterministic challenge accounts.",
+        title: "Prepare For Exploit required",
+        tone: "active",
+      },
+      {
+        detail: "Exploit dependencies remain locked until setup completes.",
+        title: "Sequence reconstruction locked",
         tone: "waiting",
       },
     ];
   }
 
+  const sequenceEvents = exploitSequence.map((key) => ({
+    detail: getFocusedVariableActivity(key).detail,
+    title: `${EXPLOIT_SEQUENCE_META[key].label}. ${getVariableLabel(key)} dependency mapped`,
+    tone: "done" as const,
+  }));
+
+  if (exploitSequence.length < EXPLOIT_SEQUENCE.length) {
+    const nextKey = EXPLOIT_SEQUENCE[exploitSequence.length];
+    return [
+      { title: "Exploit challenge prepared", tone: "done" },
+      ...sequenceEvents,
+      {
+        detail:
+          sequenceFeedback ??
+          `Select ${getVariableLabel(nextKey)} as the next dependency.`,
+        title: `Next dependency: ${getVariableLabel(nextKey)}`,
+        tone: sequenceFeedback?.startsWith("This is not")
+          ? "warning"
+          : "active",
+      },
+    ];
+  }
+
+  if (!exploitPreviewed) {
+    return [
+      { title: "Exploit challenge prepared", tone: "done" },
+      ...sequenceEvents,
+      {
+        detail:
+          "The exploit path has been reconstructed. Execution is now unlocked.",
+        title: "Exploit execution unlocked",
+        tone: "active",
+      },
+    ];
+  }
+
   return [
-    { title: "Exploit variables mapped", tone: "done" },
+    { title: "Exploit sequence reconstructed", tone: "done" },
     focusedEvent,
     { title: "Forged account structure accepted", tone: "corrupt" },
     { title: "Deposit instruction executed", tone: "done" },
@@ -1896,6 +2108,13 @@ function getFocusedVariableActivity(
     title: "Authority validation satisfied",
     tone: "done",
   };
+}
+
+function getVariableLabel(activeVariable: VariableKey) {
+  if (activeVariable === "vault") return "Vault";
+  if (activeVariable === "mint") return "Mint";
+  if (activeVariable === "source") return "Source";
+  return "Authority";
 }
 
 function getActiveExploitCodeLines(activeVariable: VariableKey) {
