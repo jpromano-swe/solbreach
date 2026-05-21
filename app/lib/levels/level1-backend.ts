@@ -2,10 +2,9 @@ import { getBase58Decoder } from "@solana/kit";
 import {
   Connection,
   PublicKey,
+  SystemProgram,
   Transaction,
-  TransactionInstruction,
 } from "@solana/web3.js";
-import { Buffer } from "buffer";
 import type { WalletSession } from "../wallet/types";
 
 export const SOLBREACH_BACKEND_URL = "https://api-solbreach.56.125.190.174.nip.io";
@@ -13,9 +12,6 @@ export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const AUTH_STORAGE_KEY = "solbreach.level1.backendAuth";
-const MEMO_PROGRAM_ID = new PublicKey(
-  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
-);
 const LOG_PREFIX = "[SolBreach Level 1]";
 
 export type Level1AuthSession = {
@@ -261,7 +257,7 @@ export async function executeLevel1ExploitTransaction({
       attacker_token_account: challenge.attacker_token_account,
       fake_vault: challenge.fake_vault,
       required_accounts: challenge.required_accounts,
-      simulation: "memo-only deterministic level interaction",
+      simulation: "zero-lamport system transfer",
       wallet: wallet.account.address,
     });
 
@@ -270,31 +266,38 @@ export async function executeLevel1ExploitTransaction({
     const transaction = new Transaction();
     const requiredAccountKeys = Array.from(
       new Set(challenge.required_accounts ?? [])
-    ).map((account) => ({
-      isSigner: false,
-      isWritable: false,
-      pubkey: new PublicKey(account),
-    }));
+    )
+      .filter((account) => account !== wallet.account.address)
+      .map((account) => ({
+        isSigner: false,
+        isWritable: false,
+        pubkey: new PublicKey(account),
+      }));
 
-    transaction.add(
-      new TransactionInstruction({
-        data: Buffer.from(
-          JSON.stringify({
-            challenge_pda: challenge.challenge_pda,
-            kind: "solbreach-level1-deterministic-simulation",
-            wallet: wallet.account.address,
-          })
-        ),
-        keys: requiredAccountKeys,
-        programId: MEMO_PROGRAM_ID,
-      })
-    );
+    const deterministicInstruction = SystemProgram.transfer({
+      fromPubkey: walletPublicKey,
+      lamports: 0,
+      toPubkey: walletPublicKey,
+    });
+    deterministicInstruction.keys = [
+      ...deterministicInstruction.keys.map((key) => ({
+        ...key,
+        isSigner: key.pubkey.equals(walletPublicKey),
+      })),
+      ...requiredAccountKeys,
+    ];
+    transaction.add(deterministicInstruction);
 
     console.info(`${LOG_PREFIX} instruction assembly success`, {
       instructionCount: transaction.instructions.length,
-      memoAccounts: requiredAccountKeys.map((key) => key.pubkey.toBase58()),
-      memoProgram: MEMO_PROGRAM_ID.toBase58(),
-      simulation: "required challenge accounts included as memo metas",
+      requiredAccounts: requiredAccountKeys.map((key) => ({
+        account: key.pubkey.toBase58(),
+        isSigner: key.isSigner,
+        isWritable: key.isWritable,
+      })),
+      simulation:
+        "challenge accounts included as readonly non-signer metas",
+      walletSigner: walletPublicKey.toBase58(),
     });
 
     const latestBlockhash = await connection.getLatestBlockhash("confirmed");

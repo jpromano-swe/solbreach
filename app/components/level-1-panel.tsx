@@ -325,8 +325,17 @@ export function Level1Panel({
     }
 
     if (exploitSequence.includes(key)) {
-      setActiveVariable(key);
-      setSequenceFeedback("Dependency already mapped.");
+      const selectedIndex = exploitSequence.indexOf(key);
+      const nextSequence = exploitSequence.slice(0, selectedIndex);
+      const nextRequired = EXPLOIT_SEQUENCE[nextSequence.length] ?? key;
+
+      setExploitSequence(nextSequence);
+      setActiveVariable(nextRequired);
+      setSequenceFeedback(
+        `${EXPLOIT_SEQUENCE_META[key].label} unmapped: ${getVariableLabel(
+          key
+        )}. Continue from ${getVariableLabel(nextRequired)}.`
+      );
       return;
     }
 
@@ -341,7 +350,9 @@ export function Level1Panel({
 
     setActiveVariable(key);
     setExploitSequence((current) => [...current, key]);
-    setSequenceFeedback(`${EXPLOIT_SEQUENCE_META[key].label} mapped: ${getVariableLabel(key)}.`);
+    setSequenceFeedback(
+      `${EXPLOIT_SEQUENCE_META[key].label} mapped: ${getVariableLabel(key)}.`
+    );
   };
 
   return (
