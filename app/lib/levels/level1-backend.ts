@@ -17,6 +17,7 @@ const AUTH_STORAGE_KEY = "solbreach.level1.backendAuth";
 const MEMO_PROGRAM_ID = new PublicKey(
   "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
 );
+const LOG_PREFIX = "[SolBreach Level 1]";
 
 export type Level1AuthSession = {
   accessToken: string;
@@ -129,7 +130,11 @@ async function backendRequest<T>(
   if (!response.ok) {
     const message =
       typeof body === "object" && body !== null
-        ? body.error?.message || body.detail || response.statusText
+        ? body.error?.message ||
+          (typeof body.detail === "string"
+            ? body.detail
+            : JSON.stringify(body.detail ?? body)) ||
+          response.statusText
         : response.statusText;
     throw new Error(message);
   }
@@ -215,6 +220,8 @@ export async function submitLevel1Proof(
     wallet_address: string;
   }
 ) {
+  console.info(`${LOG_PREFIX} backend submit start`, payload);
+
   const result = await backendRequest<Level1SubmitResponse>(
     `/api/v1/levels/${LEVEL_1_BACKEND_ID}/submit`,
     {
@@ -225,10 +232,22 @@ export async function submitLevel1Proof(
   );
 
   if (!result.success) {
-    throw new Error(result.error?.message ?? "Level 1 verification failed.");
+    throw new Error(
+      result.error
+        ? JSON.stringify(result.error)
+        : "Level 1 verification failed."
+    );
   }
 
+  console.info(`${LOG_PREFIX} backend submit success`, result);
   return result;
+}
+
+function logLevel1Error(label: string, error: unknown) {
+  console.error(`${LOG_PREFIX} ${label}`, error);
+  if (error instanceof Error && error.stack) {
+    console.error(`${LOG_PREFIX} ${label} stack`, error.stack);
+  }
 }
 
 export async function executeLevel1ExploitTransaction({
@@ -238,76 +257,136 @@ export async function executeLevel1ExploitTransaction({
   challenge: Level1Challenge;
   wallet: WalletSession;
 }) {
-  const connection = new Connection(DEVNET_RPC_URL, "confirmed");
-  const walletPublicKey = new PublicKey(wallet.account.address);
-  const amount = BigInt(
-    challenge.exploit_parameters?.expected_attacker_token_delta ?? 1000
-  );
-  const transaction = new Transaction();
+  try {
+    console.info(`${LOG_PREFIX} tx construction start`, {
+      attacker_token_account: challenge.attacker_token_account,
+      fake_vault: challenge.fake_vault,
+      required_accounts: challenge.required_accounts,
+      wallet: wallet.account.address,
+    });
 
-  transaction.add(
-    createTransferInstruction(
-      new PublicKey(challenge.fake_vault),
-      new PublicKey(challenge.attacker_token_account),
-      walletPublicKey,
-      amount
-    )
-  );
+    const connection = new Connection(DEVNET_RPC_URL, "confirmed");
+    const walletPublicKey = new PublicKey(wallet.account.address);
+    const fakeVault = new PublicKey(challenge.fake_vault);
+    const attackerTokenAccount = new PublicKey(
+      challenge.attacker_token_account
+    );
+    const amount = BigInt(
+      challenge.exploit_parameters?.expected_attacker_token_delta ?? 1000
+    );
+    const transaction = new Transaction();
 
-  const requiredAccountKeys = Array.from(
-    new Set(challenge.required_accounts ?? [])
-  ).map((account) => ({
-    isSigner: false,
-    isWritable: false,
-    pubkey: new PublicKey(account),
-  }));
-
-  if (requiredAccountKeys.length > 0) {
     transaction.add(
-      new TransactionInstruction({
-        data: Buffer.from("solbreach:level1"),
-        keys: requiredAccountKeys,
-        programId: MEMO_PROGRAM_ID,
-      })
+      createTransferInstruction(
+        fakeVault,
+        attackerTokenAccount,
+        walletPublicKey,
+        amount
+      )
     );
-  }
 
-  const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-  transaction.feePayer = walletPublicKey;
-  transaction.recentBlockhash = latestBlockhash.blockhash;
+    const requiredAccountKeys = Array.from(
+      new Set(challenge.required_accounts ?? [])
+    ).map((account) => ({
+      isSigner: false,
+      isWritable: false,
+      pubkey: new PublicKey(account),
+    }));
 
-  const serialized = transaction.serialize({
-    requireAllSignatures: false,
-    verifySignatures: false,
-  });
+    if (requiredAccountKeys.length > 0) {
+      transaction.add(
+        new TransactionInstruction({
+          data: Buffer.from("solbreach:level1"),
+          keys: requiredAccountKeys,
+          programId: MEMO_PROGRAM_ID,
+        })
+      );
+    }
 
-  if (wallet.sendTransaction) {
-    const signatureBytes = await wallet.sendTransaction(
+    console.info(`${LOG_PREFIX} instruction assembly success`, {
+      amount: amount.toString(),
+      instructionCount: transaction.instructions.length,
+      memoAccounts: requiredAccountKeys.map((key) => key.pubkey.toBase58()),
+      transfer: {
+        authority: walletPublicKey.toBase58(),
+        destination: attackerTokenAccount.toBase58(),
+        source: fakeVault.toBase58(),
+      },
+    });
+
+    const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+    transaction.feePayer = walletPublicKey;
+    transaction.recentBlockhash = latestBlockhash.blockhash;
+
+    const serialized = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    const signTransaction = wallet.signTransaction;
+    const sendTransaction = wallet.sendTransaction;
+
+    if (!signTransaction && !sendTransaction) {
+      throw new Error("Connected wallet cannot sign Solana transactions.");
+    }
+
+    if (!signTransaction && sendTransaction) {
+      console.warn(
+        `${LOG_PREFIX} wallet lacks signTransaction; falling back to signAndSendTransaction. sendRawTransaction will be handled by wallet adapter.`
+      );
+      console.info(`${LOG_PREFIX} wallet sign request`, {
+        method: "signAndSendTransaction",
+        serializedBytes: serialized.length,
+      });
+      const signatureBytes = await sendTransaction(
+        new Uint8Array(serialized),
+        "solana:devnet"
+      );
+      console.info(`${LOG_PREFIX} wallet signature success`, {
+        signatureBytes: signatureBytes.length,
+      });
+      const signature = getBase58Decoder().decode(signatureBytes);
+      console.info(`${LOG_PREFIX} tx signature returned`, { signature });
+      const confirmation = await connection.confirmTransaction(
+        { signature, ...latestBlockhash },
+        "confirmed"
+      );
+      console.info(`${LOG_PREFIX} confirmTransaction success`, confirmation);
+      return signature;
+    }
+
+    if (!signTransaction) {
+      throw new Error("Connected wallet cannot sign Solana transactions.");
+    }
+
+    console.info(`${LOG_PREFIX} wallet sign request`, {
+      method: "signTransaction",
+      serializedBytes: serialized.length,
+    });
+    const signed = await signTransaction(
       new Uint8Array(serialized),
       "solana:devnet"
     );
-    const signature = getBase58Decoder().decode(signatureBytes);
-    await connection.confirmTransaction(
-      { signature, ...latestBlockhash },
-      "confirmed"
-    );
-    return signature;
-  }
+    console.info(`${LOG_PREFIX} wallet signature success`, {
+      signedBytes: signed.length,
+    });
 
-  if (wallet.signTransaction) {
-    const signed = await wallet.signTransaction(
-      new Uint8Array(serialized),
-      "solana:devnet"
-    );
+    console.info(`${LOG_PREFIX} sendRawTransaction start`, {
+      signedBytes: signed.length,
+    });
     const signature = await connection.sendRawTransaction(signed, {
       skipPreflight: false,
     });
-    await connection.confirmTransaction(
+    console.info(`${LOG_PREFIX} tx signature returned`, { signature });
+
+    const confirmation = await connection.confirmTransaction(
       { signature, ...latestBlockhash },
       "confirmed"
     );
+    console.info(`${LOG_PREFIX} confirmTransaction success`, confirmation);
     return signature;
+  } catch (error) {
+    logLevel1Error("exploit transaction failed", error);
+    throw error;
   }
-
-  throw new Error("Connected wallet cannot sign Solana transactions.");
 }

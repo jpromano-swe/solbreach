@@ -96,9 +96,28 @@ const LEVEL_1_TARGET = 1_000_000n;
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
 const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
+const LEVEL_1_LOG_PREFIX = "[SolBreach Level 1]";
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
 ]);
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+function logLevel1FrontendError(label: string, error: unknown) {
+  console.error(`${LEVEL_1_LOG_PREFIX} ${label}`, error);
+  if (error instanceof Error && error.stack) {
+    console.error(`${LEVEL_1_LOG_PREFIX} ${label} stack`, error.stack);
+  }
+}
 
 export default function Home() {
   const { wallet, signer, status } = useWallet();
@@ -123,6 +142,9 @@ export default function Home() {
     null
   );
   const [isLevel1BackendBusy, setIsLevel1BackendBusy] = useState(false);
+  const [level1RuntimeError, setLevel1RuntimeError] = useState<string | null>(
+    null
+  );
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
@@ -421,15 +443,20 @@ export default function Home() {
     if (!address) return;
 
     setIsLevel1BackendBusy(true);
+    setLevel1RuntimeError(null);
     try {
       const auth = await ensureLevel1BackendSession();
       await ensureLevel1Started(auth.accessToken);
       const setup = await setupLevel1(auth.accessToken, address);
+      console.info(`${LEVEL_1_LOG_PREFIX} challenge payload received`, setup);
       setLevel1Challenge(setup.challenge);
       await mutateLevel1BackendStatus();
       toast.success("Level 1 exploit challenge prepared.");
     } catch (error) {
-      toast.error(parseTransactionError(error));
+      logLevel1FrontendError("challenge setup failed", error);
+      const message = getErrorMessage(error);
+      setLevel1RuntimeError(message);
+      toast.error(message);
       throw error;
     } finally {
       setIsLevel1BackendBusy(false);
@@ -445,6 +472,7 @@ export default function Home() {
     if (!address || !wallet) return;
 
     setIsLevel1BackendBusy(true);
+    setLevel1RuntimeError(null);
     try {
       const auth = await ensureLevel1BackendSession();
       await ensureLevel1Started(auth.accessToken);
@@ -456,6 +484,7 @@ export default function Home() {
             }
           : await setupLevel1(auth.accessToken, address);
 
+      console.info(`${LEVEL_1_LOG_PREFIX} challenge payload received`, setup);
       setLevel1Challenge(setup.challenge);
 
       const signature = await executeLevel1ExploitTransaction({
@@ -464,6 +493,11 @@ export default function Home() {
       });
       setLevel1TxSignature(signature);
 
+      console.info(`${LEVEL_1_LOG_PREFIX} backend submit start`, {
+        level_session_id: setup.level_session_id,
+        transaction_signature: signature,
+        wallet_address: address,
+      });
       await submitLevel1Proof(auth.accessToken, {
         level_session_id: setup.level_session_id,
         transaction_signature: signature,
@@ -473,7 +507,10 @@ export default function Home() {
 
       toast.success("Level 1 exploit verified by backend.");
     } catch (error) {
-      toast.error(parseTransactionError(error));
+      logLevel1FrontendError("exploit flow failed", error);
+      const message = getErrorMessage(error);
+      setLevel1RuntimeError(message);
+      toast.error(message);
       throw error;
     } finally {
       setIsLevel1BackendBusy(false);
@@ -992,6 +1029,21 @@ export default function Home() {
       };
     }
 
+    if (level1RuntimeError) {
+      return {
+        badge: "Execution error",
+        title: "Level 1 exploit flow stopped before verification.",
+        description: level1RuntimeError,
+        actionLabel: level1Challenge
+          ? "Retry exploit deposit"
+          : "Retry challenge setup",
+        actionKind: "primary",
+        onAction: level1Challenge
+          ? handleRunLevel1BackendExploit
+          : handleSetupLevel1Backend,
+      };
+    }
+
     if (level1Completed) {
       return {
         badge: "Verified",
@@ -1036,6 +1088,7 @@ export default function Home() {
     level1BackendStatus?.level_session_id,
     level1Completed,
     level1Challenge,
+    level1RuntimeError,
     level1TxSignature,
     mutateLevel1BackendStatus,
     status,
