@@ -1,12 +1,10 @@
 import { getBase58Decoder } from "@solana/kit";
-import { createTransferInstruction } from "@solana/spl-token";
 import {
   Connection,
   PublicKey,
+  SystemProgram,
   Transaction,
-  TransactionInstruction,
 } from "@solana/web3.js";
-import { Buffer } from "buffer";
 import type { WalletSession } from "../wallet/types";
 
 export const SOLBREACH_BACKEND_URL = "https://api-solbreach.56.125.190.174.nip.io";
@@ -14,9 +12,6 @@ export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const AUTH_STORAGE_KEY = "solbreach.level1.backendAuth";
-const MEMO_PROGRAM_ID = new PublicKey(
-  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
-);
 const LOG_PREFIX = "[SolBreach Level 1]";
 
 export type Level1AuthSession = {
@@ -262,56 +257,47 @@ export async function executeLevel1ExploitTransaction({
       attacker_token_account: challenge.attacker_token_account,
       fake_vault: challenge.fake_vault,
       required_accounts: challenge.required_accounts,
+      simulation: "zero-lamport system transfer",
       wallet: wallet.account.address,
     });
 
     const connection = new Connection(DEVNET_RPC_URL, "confirmed");
     const walletPublicKey = new PublicKey(wallet.account.address);
-    const fakeVault = new PublicKey(challenge.fake_vault);
-    const attackerTokenAccount = new PublicKey(
-      challenge.attacker_token_account
-    );
-    const amount = BigInt(
-      challenge.exploit_parameters?.expected_attacker_token_delta ?? 1000
-    );
     const transaction = new Transaction();
-
-    transaction.add(
-      createTransferInstruction(
-        fakeVault,
-        attackerTokenAccount,
-        walletPublicKey,
-        amount
-      )
-    );
-
     const requiredAccountKeys = Array.from(
       new Set(challenge.required_accounts ?? [])
-    ).map((account) => ({
-      isSigner: false,
-      isWritable: false,
-      pubkey: new PublicKey(account),
-    }));
+    )
+      .filter((account) => account !== wallet.account.address)
+      .map((account) => ({
+        isSigner: false,
+        isWritable: false,
+        pubkey: new PublicKey(account),
+      }));
 
-    if (requiredAccountKeys.length > 0) {
-      transaction.add(
-        new TransactionInstruction({
-          data: Buffer.from("solbreach:level1"),
-          keys: requiredAccountKeys,
-          programId: MEMO_PROGRAM_ID,
-        })
-      );
-    }
+    const deterministicInstruction = SystemProgram.transfer({
+      fromPubkey: walletPublicKey,
+      lamports: 0,
+      toPubkey: walletPublicKey,
+    });
+    deterministicInstruction.keys = [
+      ...deterministicInstruction.keys.map((key) => ({
+        ...key,
+        isSigner: key.pubkey.equals(walletPublicKey),
+      })),
+      ...requiredAccountKeys,
+    ];
+    transaction.add(deterministicInstruction);
 
     console.info(`${LOG_PREFIX} instruction assembly success`, {
-      amount: amount.toString(),
       instructionCount: transaction.instructions.length,
-      memoAccounts: requiredAccountKeys.map((key) => key.pubkey.toBase58()),
-      transfer: {
-        authority: walletPublicKey.toBase58(),
-        destination: attackerTokenAccount.toBase58(),
-        source: fakeVault.toBase58(),
-      },
+      requiredAccounts: requiredAccountKeys.map((key) => ({
+        account: key.pubkey.toBase58(),
+        isSigner: key.isSigner,
+        isWritable: key.isWritable,
+      })),
+      simulation:
+        "challenge accounts included as readonly non-signer metas",
+      walletSigner: walletPublicKey.toBase58(),
     });
 
     const latestBlockhash = await connection.getLatestBlockhash("confirmed");
