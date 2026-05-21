@@ -9,7 +9,7 @@ import {
 import { Buffer } from "buffer";
 import type { WalletSession } from "../wallet/types";
 
-export const SOLBREACH_BACKEND_URL = "http://56.125.190.174:8000";
+export const SOLBREACH_BACKEND_URL = "https://api-solbreach.56.125.190.174.nip.io";
 export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
