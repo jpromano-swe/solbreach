@@ -40,6 +40,16 @@ import {
   type LevelsView,
 } from "./lib/levels/course-status";
 import {
+  ensureLevel1DemoAuth,
+  executeLevel1ExploitTransaction,
+  fetchLevel1BackendStatus,
+  setupLevel1,
+  startLevel1,
+  submitLevel1Proof,
+  type Level1AuthSession,
+  type Level1Challenge,
+} from "./lib/levels/level1-backend";
+import {
   fetchLevel0Snapshot,
   fetchLevel1Snapshot,
   fetchLevel2Snapshot,
@@ -105,6 +115,14 @@ export default function Home() {
   const [level1Vault] = useState("");
   const [level1UserTokenAccount] = useState("");
   const [level1Amount] = useState("1000000");
+  const [level1BackendAuth, setLevel1BackendAuth] =
+    useState<Level1AuthSession | null>(null);
+  const [level1Challenge, setLevel1Challenge] =
+    useState<Level1Challenge | null>(null);
+  const [level1TxSignature, setLevel1TxSignature] = useState<string | null>(
+    null
+  );
+  const [isLevel1BackendBusy, setIsLevel1BackendBusy] = useState(false);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
@@ -148,6 +166,21 @@ export default function Home() {
         playerAddress: address!,
         rpc: client.rpc,
       });
+    },
+    { revalidateOnFocus: true }
+  );
+
+  const {
+    data: level1BackendStatus,
+    error: level1BackendError,
+    isLoading: isLevel1BackendLoading,
+    mutate: mutateLevel1BackendStatus,
+  } = useSWR(
+    level1BackendAuth
+      ? (["level1-backend-status", level1BackendAuth.accessToken] as const)
+      : null,
+    async (): Promise<Awaited<ReturnType<typeof fetchLevel1BackendStatus>>> => {
+      return fetchLevel1BackendStatus(level1BackendAuth!.accessToken);
     },
     { revalidateOnFocus: true }
   );
@@ -211,6 +244,7 @@ export default function Home() {
     await Promise.all([
       mutateLevel0State(),
       mutateLevel1State(),
+      mutateLevel1BackendStatus(),
       mutateLevel2State(),
       mutateLevel3State(),
       mutateCertificateState(),
@@ -219,6 +253,7 @@ export default function Home() {
   }, [
     mutateCertificateState,
     mutateLevel0State,
+    mutateLevel1BackendStatus,
     mutateLevel1State,
     mutateLevel2State,
     mutateLevel3State,
@@ -356,6 +391,102 @@ export default function Home() {
       "View verify_and_close_level_1 transaction"
     );
   }, [runInstruction, signer]);
+
+  const ensureLevel1BackendSession = useCallback(async () => {
+    if (status !== "connected" || !address) {
+      throw new Error("Connect your wallet before starting Level 1.");
+    }
+
+    const auth = await ensureLevel1DemoAuth(address);
+    setLevel1BackendAuth(auth);
+    return auth;
+  }, [address, status]);
+
+  const ensureLevel1Started = useCallback(async (accessToken: string) => {
+    try {
+      await startLevel1(accessToken);
+    } catch (error) {
+      const message = parseTransactionError(error).toLowerCase();
+      if (
+        !message.includes("active") &&
+        !message.includes("already") &&
+        !message.includes("started")
+      ) {
+        throw error;
+      }
+    }
+  }, []);
+
+  const handleSetupLevel1Backend = useCallback(async () => {
+    if (!address) return;
+
+    setIsLevel1BackendBusy(true);
+    try {
+      const auth = await ensureLevel1BackendSession();
+      await ensureLevel1Started(auth.accessToken);
+      const setup = await setupLevel1(auth.accessToken, address);
+      setLevel1Challenge(setup.challenge);
+      await mutateLevel1BackendStatus();
+      toast.success("Level 1 exploit challenge prepared.");
+    } catch (error) {
+      toast.error(parseTransactionError(error));
+      throw error;
+    } finally {
+      setIsLevel1BackendBusy(false);
+    }
+  }, [
+    address,
+    ensureLevel1BackendSession,
+    ensureLevel1Started,
+    mutateLevel1BackendStatus,
+  ]);
+
+  const handleRunLevel1BackendExploit = useCallback(async () => {
+    if (!address || !wallet) return;
+
+    setIsLevel1BackendBusy(true);
+    try {
+      const auth = await ensureLevel1BackendSession();
+      await ensureLevel1Started(auth.accessToken);
+      const setup =
+        level1Challenge && level1BackendStatus?.level_session_id
+          ? {
+              challenge: level1Challenge,
+              level_session_id: level1BackendStatus.level_session_id,
+            }
+          : await setupLevel1(auth.accessToken, address);
+
+      setLevel1Challenge(setup.challenge);
+
+      const signature = await executeLevel1ExploitTransaction({
+        challenge: setup.challenge,
+        wallet,
+      });
+      setLevel1TxSignature(signature);
+
+      await submitLevel1Proof(auth.accessToken, {
+        level_session_id: setup.level_session_id,
+        transaction_signature: signature,
+        wallet_address: address,
+      });
+      await mutateLevel1BackendStatus();
+
+      toast.success("Level 1 exploit verified by backend.");
+    } catch (error) {
+      toast.error(parseTransactionError(error));
+      throw error;
+    } finally {
+      setIsLevel1BackendBusy(false);
+    }
+  }, [
+    address,
+    ensureLevel1BackendSession,
+    ensureLevel1Started,
+    level1BackendStatus,
+    level1Challenge,
+    mutateLevel1BackendStatus,
+    wallet,
+  ]);
 
   const handleInitGlobalProfile = useCallback(async () => {
     await runInstruction(
@@ -495,7 +626,9 @@ export default function Home() {
     );
   }, [level3UserRewardAccount, parseAddressInput, runInstruction, signer]);
 
-  const level1Completed = Boolean(level0State?.completedLevels[1]);
+  const level1BackendCompleted = Boolean(level1BackendStatus?.completed);
+  const level1Completed =
+    Boolean(level0State?.completedLevels[1]) || level1BackendCompleted;
   const level2Completed = Boolean(level0State?.completedLevels[2]);
   const level3Completed = Boolean(level0State?.completedLevels[3]);
   const level0Certificate = certificateState?.[0];
@@ -503,11 +636,41 @@ export default function Home() {
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
   const level1DepositReady =
-    (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET;
+    (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET ||
+    level1BackendCompleted;
   const level2Hijacked = Boolean(address && level2State?.commander === address);
   const level3DelegationReady =
     (level3State?.rewardAmount ?? 0n) >=
     (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET);
+  const level1PanelChallenge =
+    level1Challenge ?? level1BackendStatus?.challenge_context ?? null;
+  const level1PanelPda =
+    level1PanelChallenge?.challenge_pda &&
+    isAddress(level1PanelChallenge.challenge_pda)
+      ? toAddress(level1PanelChallenge.challenge_pda)
+      : (level1State?.bankPda ?? DEFAULT_LEVEL_2_COMMANDER);
+  const level1PanelExpectedMint =
+    level1PanelChallenge?.official_mint &&
+    isAddress(level1PanelChallenge.official_mint)
+      ? toAddress(level1PanelChallenge.official_mint)
+      : (level1State?.expectedMint ?? null);
+  const level1PanelState: Level1Snapshot | undefined = level1PanelChallenge
+    ? {
+        bankPda: level1PanelPda,
+        depositedAmount: level1BackendCompleted
+          ? LEVEL_1_TARGET
+          : (level1State?.depositedAmount ?? 0n),
+        expectedMint: level1PanelExpectedMint,
+        hasBank: true,
+        hasLevel1State: Boolean(
+          level1BackendStatus?.level_session_id || level1State?.hasLevel1State
+        ),
+        level1StatePda: level1PanelPda,
+      }
+    : level1State;
+  const level1PanelError = level1BackendError ?? level1Error;
+  const isLevel1PanelLoading =
+    isLevel1Loading || isLevel1BackendLoading || isLevel1BackendBusy;
 
   const mintLevelCertificate = useCallback(
     async ({
@@ -778,124 +941,105 @@ export default function Home() {
   ]);
 
   const level1Stage = useMemo<StageConfig>(() => {
-    if (status !== "connected" || !address || !signer) {
+    if (status !== "connected" || !address || !wallet) {
       return {
         badge: "Wallet required",
         title: "Attach the operator wallet first.",
         description:
-          "Level 1 needs a connected signer so the board can derive the per-player PDA and submit the vulnerable deposit instruction.",
+          "Level 1 needs a connected devnet wallet so the backend can bind the challenge and verify the exploit transaction.",
         actionLabel: null,
         actionKind: "secondary",
       };
     }
 
-    if (!level0State?.isCompleted) {
+    if (cluster !== "devnet") {
       return {
-        badge: "Locked",
-        title: "Finish Level 0 before entering the exploit board.",
+        badge: "Devnet required",
+        title: "Switch the cluster to devnet.",
         description:
-          "The operator levels stay viewable, but their actions remain locked until the warmup registry and closeout loop are proven on-chain.",
+          "The Level 1 backend verifies a real devnet transaction signature. Switch clusters before preparing the challenge.",
         actionLabel: null,
         actionKind: "secondary",
       };
     }
 
-    if (isLevel1Loading) {
+    if (isLevel1BackendBusy || isLevel1BackendLoading) {
       return {
-        badge: "Reading accounts",
-        title: "Inspecting the bank and your Level 1 instance.",
+        badge: "Synchronizing",
+        title: "Synchronizing Level 1 with the backend.",
         description:
-          "The board is checking whether the global bank PDA exists and whether this wallet already opened its per-player challenge state.",
+          "The frontend is preparing challenge state, submitting the transaction, or waiting for backend verification.",
         actionLabel: null,
         actionKind: "secondary",
       };
     }
 
-    if (level1Error) {
+    if (level1BackendError) {
       return {
-        badge: "Read error",
-        title: "Could not load Level 1 state.",
+        badge: "Backend read error",
+        title: "Could not read the Level 1 backend state.",
         description:
-          "Retry the account read before pushing another exploit transaction. This is usually an RPC or cluster mismatch.",
-        actionLabel: "Retry state read",
+          "Retry the backend session read before running another exploit transaction.",
+        actionLabel: "Retry backend sync",
         actionKind: "secondary",
         onAction: async () => {
-          await mutateLevel1State();
+          if (level1BackendAuth) {
+            await mutateLevel1BackendStatus();
+          } else {
+            await handleSetupLevel1Backend();
+          }
         },
       };
     }
 
     if (level1Completed) {
       return {
-        badge: "Cleared",
-        title: "Level 1 already cleared.",
+        badge: "Verified",
+        title: "Level 1 exploit verified.",
         description:
-          "The vulnerable deposit path has already been exploited for this wallet and the level instance has been closed.",
+          "The backend accepted the signed devnet transaction and recorded the forged ledger credit for this wallet.",
         actionLabel: null,
         actionKind: "secondary",
       };
     }
 
-    if (!level1State?.hasBank) {
+    if (!level1Challenge) {
       return {
-        badge: "Step 1",
-        title: "Configure the bank's expected mint.",
+        badge: level1BackendStatus?.level_session_id ? "Challenge" : "Start",
+        title: "Prepare the deterministic exploit challenge.",
         description:
-          "Bootstrap the global bank PDA with the legit mint first. The exploit only matters once that expectation exists on-chain.",
-        actionLabel: "Initialize bank",
+          "The backend will create the Level 1 setup, expose the official and counterfeit accounts, and bind them to this wallet.",
+        actionLabel: "Prepare exploit challenge",
         actionKind: "primary",
-        onAction: handleInitBank,
-      };
-    }
-
-    if (!level1State.hasLevel1State) {
-      return {
-        badge: "Step 2",
-        title: "Open the per-player Level 1 state.",
-        description:
-          "Create the wallet-specific level PDA that will accumulate the fake deposit amount and later close on verification.",
-        actionLabel: "Initialize Level 1",
-        actionKind: "primary",
-        onAction: handleInitLevel1,
-      };
-    }
-
-    if (!level1DepositReady) {
-      return {
-        badge: "Exploit",
-        title: "Substitute the token accounts.",
-        description:
-          "Provide the fake mint's token accounts and push the vulnerable deposit. The program will count the amount without validating the vault mint.",
-        actionLabel: "Run exploit deposit",
-        actionKind: "primary",
-        onAction: handleDepositLevel1,
+        onAction: handleSetupLevel1Backend,
       };
     }
 
     return {
-      badge: "Verify",
-      title: "Lock in the forged deposit amount.",
+      badge: level1TxSignature ? "Proof ready" : "Exploit",
+      title: "Execute the counterfeit deposit path.",
       description:
-        "Verification flips `completed_levels[1]` once the internal ledger reaches the 1,000,000 unit target, then closes the Level 1 instance.",
-      actionLabel: "Verify and close",
+        "The frontend will sign a devnet transfer from the fake vault to the attacker token account, then submit the signature to the verifier.",
+      actionLabel: "Run exploit deposit",
       actionKind: "primary",
-      onAction: handleVerifyLevel1,
+      onAction: handleRunLevel1BackendExploit,
     };
   }, [
     address,
-    handleDepositLevel1,
-    handleInitBank,
-    handleInitLevel1,
-    handleVerifyLevel1,
-    isLevel1Loading,
+    cluster,
+    handleRunLevel1BackendExploit,
+    handleSetupLevel1Backend,
+    isLevel1BackendBusy,
+    isLevel1BackendLoading,
+    level1BackendAuth,
+    level1BackendError,
+    level1BackendStatus?.level_session_id,
     level1Completed,
-    level1DepositReady,
-    level1Error,
-    level1State,
-    mutateLevel1State,
-    signer,
+    level1Challenge,
+    level1TxSignature,
+    mutateLevel1BackendStatus,
     status,
-    level0State,
+    wallet,
   ]);
 
   const level2Stage = useMemo<StageConfig>(() => {
@@ -1489,10 +1633,10 @@ export default function Home() {
                     <Level1Panel
                       address={address}
                       copied={copied}
-                      isLoading={isLevel1Loading}
-                      isSending={isSending}
-                      level1Error={level1Error}
-                      level1State={level1State}
+                      isLoading={isLevel1PanelLoading}
+                      isSending={isSending || isLevel1BackendBusy}
+                      level1Error={level1PanelError}
+                      level1State={level1PanelState}
                       onCopy={handleCopy}
                       onDeposit={handleDepositLevel1}
                       onInitBank={handleInitBank}
