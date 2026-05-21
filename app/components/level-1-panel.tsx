@@ -66,6 +66,11 @@ type ProtocolActivityEvent = {
 };
 
 type VariableKey = "vault" | "mint" | "source" | "authority";
+type SequenceMiss = {
+  attempted: VariableKey;
+  expected: VariableKey;
+  id: number;
+};
 
 type ManipulationState = Record<VariableKey, string>;
 
@@ -135,26 +140,18 @@ const EXPLOIT_SEQUENCE: VariableKey[] = [
 
 const EXPLOIT_SEQUENCE_META: Record<
   VariableKey,
-  { badgeClassName: string; borderClassName: string; label: string }
+  { label: string }
 > = {
   authority: {
-    badgeClassName: "bg-red-400/14 text-red-200 ring-red-300/25",
-    borderClassName: "border-red-300/36 bg-red-400/[0.04]",
     label: "4",
   },
   mint: {
-    badgeClassName: "bg-violet-400/14 text-violet-200 ring-violet-300/25",
-    borderClassName: "border-violet-300/36 bg-violet-400/[0.04]",
     label: "2",
   },
   source: {
-    badgeClassName: "bg-orange-400/14 text-orange-200 ring-orange-300/25",
-    borderClassName: "border-orange-300/36 bg-orange-400/[0.04]",
     label: "3",
   },
   vault: {
-    badgeClassName: "bg-cyan-400/14 text-cyan-200 ring-cyan-300/25",
-    borderClassName: "border-cyan-300/36 bg-cyan-400/[0.04]",
     label: "1",
   },
 };
@@ -195,6 +192,7 @@ export function Level1Panel({
   const [activeVariable, setActiveVariable] = useState<VariableKey>("vault");
   const [exploitSequence, setExploitSequence] = useState<VariableKey[]>([]);
   const [sequenceFeedback, setSequenceFeedback] = useState<string | null>(null);
+  const [sequenceMiss, setSequenceMiss] = useState<SequenceMiss | null>(null);
   const [manipulation, setManipulation] = useState<ManipulationState>({
     authority: "valid",
     mint: "official",
@@ -257,6 +255,7 @@ export function Level1Panel({
         manipulationTested,
         normalDepositObserved,
         sequenceFeedback,
+        sequenceMiss,
         stageOneRevealStep,
       }),
     [
@@ -272,6 +271,7 @@ export function Level1Panel({
       manipulationTested,
       normalDepositObserved,
       sequenceFeedback,
+      sequenceMiss,
       stageOneRevealStep,
     ]
   );
@@ -307,6 +307,7 @@ export function Level1Panel({
       setManipulationTested(false);
       setNormalDepositObserved(false);
       setSequenceFeedback(null);
+      setSequenceMiss(null);
       setStageOneRevealRun(0);
       setStageOneRevealStep(0);
       setManipulation({
@@ -342,16 +343,17 @@ export function Level1Panel({
     const nextKey = EXPLOIT_SEQUENCE[exploitSequence.length];
     if (key !== nextKey) {
       setActiveVariable(key);
-      setSequenceFeedback(
-        "This is not the next dependency in the exploit chain."
-      );
+      const miss = { attempted: key, expected: nextKey, id: Date.now() };
+      setSequenceMiss(miss);
+      setSequenceFeedback(getSequenceMissReason(miss));
       return;
     }
 
     setActiveVariable(key);
     setExploitSequence((current) => [...current, key]);
+    setSequenceMiss(null);
     setSequenceFeedback(
-      `${EXPLOIT_SEQUENCE_META[key].label} mapped: ${getVariableLabel(key)}.`
+      `${getVariableLabel(key)} dependency mapped.`
     );
   };
 
@@ -408,6 +410,7 @@ export function Level1Panel({
               }}
               onVariableFocus={handleExploitVariableSelect}
               sequenceFeedback={sequenceFeedback}
+              sequenceMiss={sequenceMiss}
               stage={stage}
             />
           )
@@ -1543,6 +1546,7 @@ function ExploitSequenceButton({
   mapped,
   next,
   onClick,
+  rejected,
   sequenceKey,
 }: {
   active: boolean;
@@ -1551,6 +1555,7 @@ function ExploitSequenceButton({
   mapped: boolean;
   next: boolean;
   onClick: () => void;
+  rejected: boolean;
   sequenceKey: VariableKey;
 }) {
   const meta = EXPLOIT_SEQUENCE_META[sequenceKey];
@@ -1561,18 +1566,26 @@ function ExploitSequenceButton({
       onClick={onClick}
       disabled={disabled}
       className={`min-h-11 rounded-full border px-3 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45 ${
-        mapped
-          ? meta.borderClassName
-          : active
-            ? "border-foreground bg-foreground text-background"
-            : next
-              ? "border-emerald-300/35 bg-emerald-400/[0.04] text-foreground"
-              : "border-border bg-background text-muted hover:bg-accent hover:text-foreground"
+        rejected
+          ? "level1-sequence-rejected border-red-300/60 bg-red-400/[0.075] text-red-100 shadow-[0_0_26px_-16px_rgba(248,113,113,0.75)]"
+          : mapped
+            ? "level1-sequence-mapped border-emerald-300/34 bg-emerald-400/[0.055] text-foreground shadow-[0_0_30px_-20px_rgba(52,211,153,0.8)]"
+            : active
+              ? "border-cyan-300/35 bg-background text-foreground"
+              : next
+                ? "border-cyan-300/24 bg-background text-foreground hover:border-cyan-300/45"
+                : "border-border bg-background text-muted hover:border-cyan-300/26 hover:text-foreground"
       }`}
     >
       <span className="flex items-center justify-center gap-2">
         <span
-          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full text-[10px] font-semibold ring-1 ${meta.badgeClassName}`}
+          className={`inline-flex h-4 min-w-4 items-center justify-center rounded-[6px] text-[9px] font-semibold ring-1 ${
+            mapped
+              ? "bg-emerald-400/13 text-emerald-200 ring-emerald-300/28"
+              : rejected
+                ? "bg-red-400/12 text-red-200 ring-red-300/30"
+                : "bg-foreground/[0.035] text-muted ring-border"
+          }`}
         >
           {meta.label}
         </span>
@@ -1592,6 +1605,7 @@ function ExploitCodeWalkthrough({
   onExecute,
   onVariableFocus,
   sequenceFeedback,
+  sequenceMiss,
   stage,
 }: {
   activeCodeLines: number[];
@@ -1603,6 +1617,7 @@ function ExploitCodeWalkthrough({
   onExecute: () => Promise<void> | void;
   onVariableFocus: (key: VariableKey) => void;
   sequenceFeedback: string | null;
+  sequenceMiss: SequenceMiss | null;
   stage: StageConfig;
 }) {
   const activeSet = new Set(activeCodeLines);
@@ -1658,6 +1673,7 @@ function ExploitCodeWalkthrough({
                 exploitPrepared &&
                 EXPLOIT_SEQUENCE[exploitSequence.length] === key
               }
+              rejected={sequenceMiss?.attempted === key}
               sequenceKey={key}
               onClick={() => onVariableFocus(key)}
             >
@@ -1691,7 +1707,7 @@ function ExploitCodeWalkthrough({
                       onClick={() => onVariableFocus(key)}
                       className={`rounded-md px-1.5 py-0.5 font-mono transition-colors ${
                         mapped
-                          ? `${EXPLOIT_SEQUENCE_META[key].borderClassName} text-foreground`
+                          ? "bg-emerald-400/10 text-emerald-100 ring-1 ring-emerald-300/18"
                           : isActive
                           ? "bg-emerald-400/12 text-emerald-100"
                           : "text-foreground hover:bg-accent"
@@ -1876,6 +1892,7 @@ function buildProtocolActivity({
   manipulationTested,
   normalDepositObserved,
   sequenceFeedback,
+  sequenceMiss,
   stageOneRevealStep,
 }: {
   activeVariable: VariableKey;
@@ -1890,6 +1907,7 @@ function buildProtocolActivity({
   manipulationTested: boolean;
   normalDepositObserved: boolean;
   sequenceFeedback: string | null;
+  sequenceMiss: SequenceMiss | null;
   stageOneRevealStep: number;
 }): ProtocolActivityEvent[] {
   if (!isConnected && labStage === 1) {
@@ -2031,23 +2049,30 @@ function buildProtocolActivity({
 
   const sequenceEvents = exploitSequence.map((key) => ({
     detail: getFocusedVariableActivity(key).detail,
-    title: `${EXPLOIT_SEQUENCE_META[key].label}. ${getVariableLabel(key)} dependency mapped`,
+    title: `${getVariableLabel(key)} dependency mapped`,
     tone: "done" as const,
   }));
+
+  const missEvent = sequenceMiss
+    ? {
+        detail: getSequenceMissReason(sequenceMiss),
+        title: `${getVariableLabel(sequenceMiss.attempted)} selected too early`,
+        tone: "warning" as const,
+      }
+    : null;
 
   if (exploitSequence.length < EXPLOIT_SEQUENCE.length) {
     const nextKey = EXPLOIT_SEQUENCE[exploitSequence.length];
     return [
       { title: "Exploit challenge prepared", tone: "done" },
       ...sequenceEvents,
+      ...(missEvent ? [missEvent] : []),
       {
         detail:
           sequenceFeedback ??
           `Select ${getVariableLabel(nextKey)} as the next dependency.`,
         title: `Next dependency: ${getVariableLabel(nextKey)}`,
-        tone: sequenceFeedback?.startsWith("This is not")
-          ? "warning"
-          : "active",
+        tone: missEvent ? "warning" : "active",
       },
     ];
   }
@@ -2115,6 +2140,33 @@ function getVariableLabel(activeVariable: VariableKey) {
   if (activeVariable === "mint") return "Mint";
   if (activeVariable === "source") return "Source";
   return "Authority";
+}
+
+function getSequenceMissReason({
+  attempted,
+  expected,
+}: SequenceMiss): string {
+  if (attempted === "authority") {
+    return "Authority validation cannot occur before source substitution.";
+  }
+
+  if (attempted === "source" && expected === "vault") {
+    return "Counterfeit source selection needs the custody path to be remapped first.";
+  }
+
+  if (attempted === "source" && expected === "mint") {
+    return "Counterfeit asset path is incomplete until the mint dependency is mapped.";
+  }
+
+  if (attempted === "mint" && expected === "vault") {
+    return "Counterfeit asset routing depends on vault substitution first.";
+  }
+
+  if (attempted === "vault") {
+    return "Vault substitution is already behind the current dependency cursor.";
+  }
+
+  return `${getVariableLabel(attempted)} cannot be mapped before ${getVariableLabel(expected)}.`;
 }
 
 function getActiveExploitCodeLines(activeVariable: VariableKey) {

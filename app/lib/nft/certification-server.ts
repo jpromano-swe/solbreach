@@ -298,6 +298,7 @@ export async function mintCertificateAsset(params: {
   player: string;
   cluster: MintCertificateCluster;
   baseUrl: string;
+  allowMissingCertificate?: boolean;
   merkleTree?: string;
   rpcUrl?: string;
 }) {
@@ -318,14 +319,16 @@ export async function mintCertificateAsset(params: {
     certificatePda,
     "confirmed",
   );
-  if (!certificateAccount) {
+  if (!certificateAccount && !params.allowMissingCertificate) {
     throw new Error(
       `Certificate PDA ${certificatePda.toBase58()} does not exist. Claim the certificate first.`,
     );
   }
 
-  const certificate = parseLevelCertificateAccount(certificateAccount.data);
-  if (certificate.minted) {
+  const certificate = certificateAccount
+    ? parseLevelCertificateAccount(certificateAccount.data)
+    : null;
+  if (certificate?.minted) {
     return {
       alreadyMinted: true,
       assetId: certificate.assetId.toBase58(),
@@ -399,21 +402,22 @@ export async function mintCertificateAsset(params: {
   const assetId = predictedAssetKey;
   const leafNonce = BigInt(nextLeafIndex);
 
-  const recordInstruction = buildRecordCertificateAssetInstruction({
-    authority: signer.publicKey,
-    certificationAuthority: certificationAuthorityPda,
-    certificate: certificatePda,
-    merkleTree,
-    assetId,
-    leafIndex: nextLeafIndex,
-    leafNonce,
-    programId,
-  });
-  const recordSignature = await sendInstruction(
-    connection,
-    signer,
-    recordInstruction,
-  );
+  const recordSignature = certificateAccount
+    ? await sendInstruction(
+        connection,
+        signer,
+        buildRecordCertificateAssetInstruction({
+          authority: signer.publicKey,
+          certificationAuthority: certificationAuthorityPda,
+          certificate: certificatePda,
+          merkleTree,
+          assetId,
+          leafIndex: nextLeafIndex,
+          leafNonce,
+          programId,
+        }),
+      )
+    : undefined;
 
   return {
     alreadyMinted: false,

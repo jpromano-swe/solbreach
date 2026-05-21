@@ -146,6 +146,10 @@ export default function Home() {
   const [level1RuntimeError, setLevel1RuntimeError] = useState<string | null>(
     null
   );
+  const [
+    level1BackendCertificateMinted,
+    setLevel1BackendCertificateMinted,
+  ] = useState(false);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
@@ -673,6 +677,8 @@ export default function Home() {
   const level1Certificate = certificateState?.[1];
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
+  const level1CertificationMinted =
+    Boolean(level1Certificate?.minted) || level1BackendCertificateMinted;
   const level1DepositReady =
     (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET ||
     level1BackendCompleted;
@@ -712,11 +718,13 @@ export default function Home() {
 
   const mintLevelCertificate = useCallback(
     async ({
+      backendAccessToken,
       level,
       levelId,
       existingCertificate,
       title,
     }: {
+      backendAccessToken?: string;
       level: 0 | 1 | 2 | 3;
       levelId: LevelId;
       existingCertificate?: LevelCertificateSnapshot;
@@ -755,7 +763,10 @@ export default function Home() {
       setMintingLevel(levelId);
 
       try {
-        if (!existingCertificate?.exists) {
+        const canMintFromBackendCompletion =
+          level === 1 && Boolean(backendAccessToken);
+
+        if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
           const claimInstruction =
             await getClaimLevelCertificateInstructionAsync({
               user: signer,
@@ -784,6 +795,7 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            backendAccessToken,
             cluster: cluster === "mainnet" ? "mainnet-beta" : cluster,
             level,
             player: address,
@@ -812,6 +824,10 @@ export default function Home() {
         }
 
         await refreshState();
+
+        if (level === 1 && backendAccessToken) {
+          setLevel1BackendCertificateMinted(true);
+        }
 
         const assetId = "assetId" in payload ? payload.assetId : undefined;
         const mintSignature =
@@ -858,13 +874,25 @@ export default function Home() {
   }, [level0Certificate, mintLevelCertificate]);
 
   const handleMintLevel1Flag = useCallback(async () => {
+    const auth = level1BackendCompleted
+      ? await ensureLevel1BackendSession()
+      : null;
+
     await mintLevelCertificate({
+      backendAccessToken: level1BackendCompleted
+        ? auth?.accessToken
+        : undefined,
       level: 1,
       levelId: "level1",
       existingCertificate: level1Certificate,
       title: "Level 1",
     });
-  }, [level1Certificate, mintLevelCertificate]);
+  }, [
+    ensureLevel1BackendSession,
+    level1BackendCompleted,
+    level1Certificate,
+    mintLevelCertificate,
+  ]);
 
   const handleMintLevel2Flag = useCallback(async () => {
     await mintLevelCertificate({
@@ -1398,7 +1426,11 @@ export default function Home() {
     : null;
   const activeLevelStatus = useMemo(() => {
     if (!activeLevel) return null;
-    const mintState = activeCertificate?.minted
+    const activeLevelCertificateMinted =
+      activeLevel === "level1"
+        ? level1CertificationMinted
+        : Boolean(activeCertificate?.minted);
+    const mintState = activeLevelCertificateMinted
       ? {
           mintDisabled: true,
           mintLabel: "Certification Minted",
@@ -1599,6 +1631,7 @@ export default function Home() {
     handleMintLevel1Flag,
     handleMintLevel2Flag,
     handleMintLevel3Flag,
+    level1CertificationMinted,
     level0State,
     level1Completed,
     level1Stage.badge,
