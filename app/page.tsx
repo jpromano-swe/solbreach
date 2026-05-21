@@ -89,6 +89,7 @@ type StageConfig = {
   description: string;
   actionLabel: string | null;
   actionKind: "primary" | "secondary";
+  level1Mode?: "prepare" | "sequence" | "execute" | "complete";
   onAction?: () => Promise<void>;
 };
 
@@ -1038,6 +1039,7 @@ export default function Home() {
           ? "Retry exploit deposit"
           : "Retry challenge setup",
         actionKind: "primary",
+        level1Mode: level1Challenge ? "execute" : "prepare",
         onAction: level1Challenge
           ? handleRunLevel1BackendExploit
           : handleSetupLevel1Backend,
@@ -1052,6 +1054,7 @@ export default function Home() {
           "The backend accepted the signed devnet transaction and recorded the forged ledger credit for this wallet.",
         actionLabel: null,
         actionKind: "secondary",
+        level1Mode: "complete",
       };
     }
 
@@ -1061,8 +1064,9 @@ export default function Home() {
         title: "Prepare the deterministic exploit challenge.",
         description:
           "The backend will create the Level 1 setup, expose the official and counterfeit accounts, and bind them to this wallet.",
-        actionLabel: "Prepare exploit challenge",
+        actionLabel: "Prepare For Exploit",
         actionKind: "primary",
+        level1Mode: "prepare",
         onAction: handleSetupLevel1Backend,
       };
     }
@@ -1071,9 +1075,10 @@ export default function Home() {
       badge: level1TxSignature ? "Proof ready" : "Exploit",
       title: "Execute the counterfeit deposit path.",
       description:
-        "The frontend will sign a devnet transfer from the fake vault to the attacker token account, then submit the signature to the verifier.",
+        "Reconstruct the dependency chain, then sign the deterministic devnet interaction and submit the signature to the verifier.",
       actionLabel: "Run exploit deposit",
       actionKind: "primary",
+      level1Mode: "sequence",
       onAction: handleRunLevel1BackendExploit,
     };
   }, [

@@ -1,5 +1,4 @@
 import { getBase58Decoder } from "@solana/kit";
-import { createTransferInstruction } from "@solana/spl-token";
 import {
   Connection,
   PublicKey,
@@ -262,29 +261,13 @@ export async function executeLevel1ExploitTransaction({
       attacker_token_account: challenge.attacker_token_account,
       fake_vault: challenge.fake_vault,
       required_accounts: challenge.required_accounts,
+      simulation: "memo-only deterministic level interaction",
       wallet: wallet.account.address,
     });
 
     const connection = new Connection(DEVNET_RPC_URL, "confirmed");
     const walletPublicKey = new PublicKey(wallet.account.address);
-    const fakeVault = new PublicKey(challenge.fake_vault);
-    const attackerTokenAccount = new PublicKey(
-      challenge.attacker_token_account
-    );
-    const amount = BigInt(
-      challenge.exploit_parameters?.expected_attacker_token_delta ?? 1000
-    );
     const transaction = new Transaction();
-
-    transaction.add(
-      createTransferInstruction(
-        fakeVault,
-        attackerTokenAccount,
-        walletPublicKey,
-        amount
-      )
-    );
-
     const requiredAccountKeys = Array.from(
       new Set(challenge.required_accounts ?? [])
     ).map((account) => ({
@@ -293,25 +276,25 @@ export async function executeLevel1ExploitTransaction({
       pubkey: new PublicKey(account),
     }));
 
-    if (requiredAccountKeys.length > 0) {
-      transaction.add(
-        new TransactionInstruction({
-          data: Buffer.from("solbreach:level1"),
-          keys: requiredAccountKeys,
-          programId: MEMO_PROGRAM_ID,
-        })
-      );
-    }
+    transaction.add(
+      new TransactionInstruction({
+        data: Buffer.from(
+          JSON.stringify({
+            challenge_pda: challenge.challenge_pda,
+            kind: "solbreach-level1-deterministic-simulation",
+            wallet: wallet.account.address,
+          })
+        ),
+        keys: requiredAccountKeys,
+        programId: MEMO_PROGRAM_ID,
+      })
+    );
 
     console.info(`${LOG_PREFIX} instruction assembly success`, {
-      amount: amount.toString(),
       instructionCount: transaction.instructions.length,
       memoAccounts: requiredAccountKeys.map((key) => key.pubkey.toBase58()),
-      transfer: {
-        authority: walletPublicKey.toBase58(),
-        destination: attackerTokenAccount.toBase58(),
-        source: fakeVault.toBase58(),
-      },
+      memoProgram: MEMO_PROGRAM_ID.toBase58(),
+      simulation: "required challenge accounts included as memo metas",
     });
 
     const latestBlockhash = await connection.getLatestBlockhash("confirmed");
