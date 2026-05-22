@@ -1723,6 +1723,11 @@ export default function Home() {
                   {activeLevel === "level1" ? (
                     <Level1Panel
                       address={address}
+                      certificationAction={{
+                        disabled: activeLevelStatus.mintDisabled,
+                        label: activeLevelStatus.mintLabel,
+                        onMint: activeLevelStatus.onMint,
+                      }}
                       copied={copied}
                       isLoading={isLevel1PanelLoading}
                       isSending={isSending || isLevel1BackendBusy}
