@@ -93,11 +93,24 @@ type StageConfig = {
   onAction?: () => Promise<void>;
 };
 
+type Level1BackendCertificateRecord = {
+  assetId: string;
+  certificatePda: string;
+  cluster: string;
+  leafIndex: number | null;
+  leafNonce: string | null;
+  merkleTree: string | null;
+  mintedAt: string;
+  walletAddress: string;
+};
+
 const LEVEL_1_TARGET = 1_000_000n;
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
 const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
 const LEVEL_1_LOG_PREFIX = "[SolBreach Level 1]";
+const LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX =
+  "solbreach.level1.backendCertificate";
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
 ]);
@@ -111,6 +124,42 @@ function getErrorMessage(error: unknown) {
   } catch {
     return String(error);
   }
+}
+
+function level1BackendCertificateStorageKey({
+  cluster,
+  walletAddress,
+}: {
+  cluster: string;
+  walletAddress: string;
+}) {
+  return `${LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX}:${cluster}:${walletAddress}`;
+}
+
+function toLevel1BackendCertificateSnapshot(
+  record: Level1BackendCertificateRecord | null
+): LevelCertificateSnapshot | null {
+  if (
+    !record ||
+    !isAddress(record.assetId) ||
+    !isAddress(record.certificatePda)
+  ) {
+    return null;
+  }
+
+  return {
+    assetId: toAddress(record.assetId),
+    certificatePda: toAddress(record.certificatePda),
+    exists: true,
+    leafIndex: record.leafIndex,
+    leafNonce: record.leafNonce ? BigInt(record.leafNonce) : null,
+    level: 1,
+    merkleTree:
+      record.merkleTree && isAddress(record.merkleTree)
+        ? toAddress(record.merkleTree)
+        : null,
+    minted: true,
+  };
 }
 
 function logLevel1FrontendError(label: string, error: unknown) {
@@ -147,9 +196,10 @@ export default function Home() {
     null
   );
   const [
-    level1BackendCertificateMinted,
-    setLevel1BackendCertificateMinted,
-  ] = useState(false);
+    level1BackendCertificateOverride,
+    setLevel1BackendCertificateOverride,
+  ] =
+    useState<Level1BackendCertificateRecord | null>(null);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
@@ -164,6 +214,30 @@ export default function Home() {
     setCopied(label);
     window.setTimeout(() => setCopied(null), 1600);
   }, []);
+
+  const level1BackendCertificate = useMemo(() => {
+    if (!address) return null;
+    if (
+      level1BackendCertificateOverride?.walletAddress === address &&
+      level1BackendCertificateOverride.cluster === cluster
+    ) {
+      return level1BackendCertificateOverride;
+    }
+
+    if (typeof window === "undefined") return null;
+
+    try {
+      const raw = window.localStorage.getItem(
+        level1BackendCertificateStorageKey({
+          cluster,
+          walletAddress: address,
+        })
+      );
+      return raw ? (JSON.parse(raw) as Level1BackendCertificateRecord) : null;
+    } catch {
+      return null;
+    }
+  }, [address, cluster, level1BackendCertificateOverride]);
 
   const {
     data: level0State,
@@ -674,11 +748,28 @@ export default function Home() {
   const level2Completed = Boolean(level0State?.completedLevels[2]);
   const level3Completed = Boolean(level0State?.completedLevels[3]);
   const level0Certificate = certificateState?.[0];
-  const level1Certificate = certificateState?.[1];
+  const chainLevel1Certificate = certificateState?.[1];
+  const level1BackendCertificateSnapshot = useMemo(
+    () => toLevel1BackendCertificateSnapshot(level1BackendCertificate),
+    [level1BackendCertificate]
+  );
+  const level1Certificate = chainLevel1Certificate?.minted
+    ? chainLevel1Certificate
+    : (level1BackendCertificateSnapshot ?? chainLevel1Certificate);
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
-  const level1CertificationMinted =
-    Boolean(level1Certificate?.minted) || level1BackendCertificateMinted;
+  const effectiveCertificateState = useMemo(() => {
+    if (!certificateState) return certificateState;
+    if (!level1BackendCertificateSnapshot || certificateState[1]?.minted) {
+      return certificateState;
+    }
+
+    return {
+      ...certificateState,
+      1: level1BackendCertificateSnapshot,
+    } satisfies CertificateCollection;
+  }, [certificateState, level1BackendCertificateSnapshot]);
+  const level1CertificationMinted = Boolean(level1Certificate?.minted);
   const level1DepositReady =
     (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET ||
     level1BackendCompleted;
@@ -763,8 +854,10 @@ export default function Home() {
       setMintingLevel(levelId);
 
       try {
-      
-        if (!existingCertificate?.exists) {
+        const canMintFromBackendCompletion =
+          level === 1 && Boolean(backendAccessToken);
+
+        if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
           const claimInstruction =
             await getClaimLevelCertificateInstructionAsync({
               user: signer,
@@ -809,6 +902,9 @@ export default function Home() {
               alreadyMinted: boolean;
               assetId: string;
               certificatePda: string;
+              leafIndex: number;
+              leafNonce: string;
+              merkleTree: string;
               mintSignature?: string;
               recordSignature?: string;
             };
@@ -823,15 +919,42 @@ export default function Home() {
 
         await refreshState();
 
-        if (level === 1 && backendAccessToken) {
-          setLevel1BackendCertificateMinted(true);
-        }
-
         const assetId = "assetId" in payload ? payload.assetId : undefined;
         const mintSignature =
           "mintSignature" in payload ? payload.mintSignature : undefined;
         const alreadyMinted =
           "alreadyMinted" in payload ? payload.alreadyMinted : false;
+
+        if (
+          level === 1 &&
+          backendAccessToken &&
+          address &&
+          "assetId" in payload &&
+          "certificatePda" in payload
+        ) {
+          const backendCertificateRecord: Level1BackendCertificateRecord = {
+            assetId: payload.assetId,
+            certificatePda: payload.certificatePda,
+            cluster,
+            leafIndex: payload.leafIndex ?? null,
+            leafNonce: payload.leafNonce ?? null,
+            merkleTree: payload.merkleTree ?? null,
+            mintedAt: new Date().toISOString(),
+            walletAddress: address,
+          };
+
+          setLevel1BackendCertificateOverride(backendCertificateRecord);
+
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(
+              level1BackendCertificateStorageKey({
+                cluster,
+                walletAddress: address,
+              }),
+              JSON.stringify(backendCertificateRecord)
+            );
+          }
+        }
 
         toast.success(
           alreadyMinted
@@ -1787,7 +1910,7 @@ export default function Home() {
 
               <ProfileCertificatesSection
                 address={address}
-                certificateState={certificateState}
+                certificateState={effectiveCertificateState}
                 completedLevels={
                   level0State?.completedLevels
                     ? level0State.completedLevels.map((val, i) =>
