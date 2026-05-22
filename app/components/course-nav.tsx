@@ -27,11 +27,11 @@ type CourseMenuSection = {
   title: string;
 };
 
-type CourseMenuKey = "vulnerabilities" | "case-studies";
+type CourseMenuKey = "vulnerabilities" | "research-labs";
 
 const COURSE_MENU_ORDER: Record<CourseMenuKey, number> = {
   vulnerabilities: 0,
-  "case-studies": 1,
+  "research-labs": 1,
 };
 
 const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
@@ -100,34 +100,34 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
   },
 ];
 
-const CASE_STUDY_MENU_SECTIONS: CourseMenuSection[] = [
+const RESEARCH_LAB_MENU_SECTIONS: CourseMenuSection[] = [
   {
-    title: "Latest Incidents",
+    title: "Research Labs",
     items: [
       {
         icon: ShieldCheck,
-        title: "Drift Protocol",
-        description: "Apr 2026: durable nonce and governance takeover",
+        title: "Vault Mirage",
+        description: "Oracle manipulation and vault health distortion",
       },
       {
         icon: LockKeyhole,
-        title: "Step Finance",
-        description: "Jan 2026: executive device and treasury compromise",
+        title: "Governance Takeover",
+        description: "Durable nonce abuse and authority escalation",
       },
       {
         icon: FileCode2,
-        title: "Loopscale",
-        description: "Apr 2025: pricing mechanism manipulation",
+        title: "Lending Market Manipulation",
+        description: "Collateral validation flaw and liquidity drain",
       },
     ],
   },
 ];
 
 export function HeaderCourseNav({
-  onSelectCaseStudies,
+  onSelectResearchLabs,
   onSelectLevel,
 }: {
-  onSelectCaseStudies: () => void;
+  onSelectResearchLabs: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -155,13 +155,13 @@ export function HeaderCourseNav({
         onMouseEnter={() => openCourseMenu("vulnerabilities")}
       />
       <HeaderMenuTrigger
-        label="Case Studies"
-        open={isMenuOpen && activeMenu === "case-studies"}
+        label="Research Labs"
+        open={isMenuOpen && activeMenu === "research-labs"}
         onClick={() => {
-          setActiveMenu("case-studies");
-          setIsMenuOpen(!(isMenuOpen && activeMenu === "case-studies"));
+          setActiveMenu("research-labs");
+          setIsMenuOpen(!(isMenuOpen && activeMenu === "research-labs"));
         }}
-        onMouseEnter={() => openCourseMenu("case-studies")}
+        onMouseEnter={() => openCourseMenu("research-labs")}
       />
       <HeaderNavButton disabled label="Review Rooms" locked />
 
@@ -190,16 +190,16 @@ export function HeaderCourseNav({
             <CourseMenuContent
               menu="vulnerabilities"
               onClose={() => setIsMenuOpen(false)}
-              onSelectCaseStudies={onSelectCaseStudies}
+              onSelectResearchLabs={onSelectResearchLabs}
               onSelectLevel={onSelectLevel}
               sections={VULNERABILITY_MENU_SECTIONS}
             />
             <CourseMenuContent
-              menu="case-studies"
+              menu="research-labs"
               onClose={() => setIsMenuOpen(false)}
-              onSelectCaseStudies={onSelectCaseStudies}
+              onSelectResearchLabs={onSelectResearchLabs}
               onSelectLevel={onSelectLevel}
-              sections={CASE_STUDY_MENU_SECTIONS}
+              sections={RESEARCH_LAB_MENU_SECTIONS}
             />
           </div>
         </div>
@@ -211,13 +211,13 @@ export function HeaderCourseNav({
 function CourseMenuContent({
   menu,
   onClose,
-  onSelectCaseStudies,
+  onSelectResearchLabs,
   onSelectLevel,
   sections,
 }: {
   menu: CourseMenuKey;
   onClose: () => void;
-  onSelectCaseStudies: () => void;
+  onSelectResearchLabs: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
   sections: CourseMenuSection[];
 }) {
@@ -248,8 +248,8 @@ function CourseMenuContent({
                   key={item.title}
                   type="button"
                   onClick={() => {
-                    if (menu === "case-studies") {
-                      onSelectCaseStudies();
+                    if (menu === "research-labs") {
+                      onSelectResearchLabs();
                     } else if (item.target) {
                       onSelectLevel(item.target);
                     }
@@ -275,17 +275,17 @@ function CourseMenuContent({
           </div>
         </div>
       ))}
-      {menu === "case-studies" ? (
+      {menu === "research-labs" ? (
         <div className="border-t border-border px-4 py-3">
           <button
             type="button"
             onClick={() => {
-              onSelectCaseStudies();
+              onSelectResearchLabs();
               onClose();
             }}
             className="group inline-flex min-h-11 w-full items-center justify-between rounded-xl px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <span>Show all case studies</span>
+            <span>Show all research labs</span>
             <ArrowRight
               className="h-4 w-4 text-muted motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1"
               aria-hidden="true"
