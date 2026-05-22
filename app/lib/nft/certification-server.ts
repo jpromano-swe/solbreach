@@ -40,7 +40,7 @@ export type MintCertificateResult = {
   leafNonce: string;
   merkleTree: string;
   mintSignature?: string;
-  recordSignature?: string;
+  recordSignature: string;
 };
 
 const DEFAULT_RPC_URL = "https://api.devnet.solana.com";
@@ -344,6 +344,7 @@ export async function mintCertificateAsset(params: {
       leafIndex: certificate.leafIndex,
       leafNonce: certificate.leafNonce.toString(),
       merkleTree: certificate.merkleTree.toBase58(),
+      recordSignature: "",
     } satisfies MintCertificateResult;
   }
 
@@ -430,8 +431,7 @@ export async function mintCertificateAsset(params: {
     );
   }
 
-  const recordSignature = certificateAccount
-    ? await sendInstruction(
+  const recordSignature = await sendInstruction(
         connection,
         signer,
         buildRecordCertificateAssetInstruction({
@@ -444,8 +444,7 @@ export async function mintCertificateAsset(params: {
           leafNonce,
           programId,
         }),
-      )
-    : undefined;
+      );
 
   return {
     alreadyMinted: false,
