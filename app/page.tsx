@@ -40,6 +40,7 @@ import {
   type LevelsView,
 } from "./lib/levels/course-status";
 import {
+  authorizeLevel1CertificateMint,
   ensureLevel1DemoAuth,
   executeLevel1ExploitTransaction,
   fetchLevel1BackendStatus,
@@ -198,8 +199,7 @@ export default function Home() {
   const [
     level1BackendCertificateOverride,
     setLevel1BackendCertificateOverride,
-  ] =
-    useState<Level1BackendCertificateRecord | null>(null);
+  ] = useState<Level1BackendCertificateRecord | null>(null);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
@@ -856,6 +856,7 @@ export default function Home() {
       try {
         const canMintFromBackendCompletion =
           level === 1 && Boolean(backendAccessToken);
+        let mintAuthorizationSignature: string | undefined;
 
         if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
           const claimInstruction =
@@ -880,6 +881,29 @@ export default function Home() {
               </a>
             ),
           });
+        } else if (canMintFromBackendCompletion) {
+          if (!wallet) {
+            throw new Error(
+              "Connect your wallet before minting the Level 1 certification."
+            );
+          }
+
+          mintAuthorizationSignature = await authorizeLevel1CertificateMint({
+            wallet,
+          });
+
+          toast.success(`${title} certification authorized.`, {
+            description: (
+              <a
+                href={getExplorerUrl(`/tx/${mintAuthorizationSignature}`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                View wallet authorization transaction
+              </a>
+            ),
+          });
         }
 
         const response = await fetch("/api/nfts/certifications/mint", {
@@ -889,6 +913,7 @@ export default function Home() {
             backendAccessToken,
             cluster: cluster === "mainnet" ? "mainnet-beta" : cluster,
             level,
+            mintAuthorizationSignature,
             player: address,
             rpcUrl: getClusterUrl(cluster),
           }),
@@ -982,7 +1007,7 @@ export default function Home() {
         setMintingLevel(null);
       }
     },
-    [address, cluster, getExplorerUrl, refreshState, send, signer]
+    [address, cluster, getExplorerUrl, refreshState, send, signer, wallet]
   );
 
   const handleMintLevel0Flag = useCallback(async () => {
