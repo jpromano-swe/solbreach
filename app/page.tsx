@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import {
+  AccountRole,
   address as toAddress,
   isAddress,
   type Address,
@@ -111,6 +112,8 @@ const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
 const LEVEL_1_LOG_PREFIX = "[SolBreach Level 1]";
 const LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX =
   "solbreach.level1.backendCertificate";
+const MEMO_PROGRAM_ADDRESS =
+  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr" as Address;
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
 ]);
@@ -159,6 +162,25 @@ function toLevel1BackendCertificateSnapshot(
         ? toAddress(record.merkleTree)
         : null,
     minted: true,
+  };
+}
+
+function getLevel1CertificateAuthorizationInstruction({
+  playerAddress,
+}: {
+  playerAddress: Address;
+}): Instruction {
+  return {
+    accounts: [
+      {
+        address: playerAddress,
+        role: AccountRole.READONLY_SIGNER,
+      },
+    ],
+    data: new TextEncoder().encode(
+      `SolBreach Level 1 certification mint:${playerAddress}:${Date.now()}`
+    ),
+    programAddress: MEMO_PROGRAM_ADDRESS,
   };
 }
 
@@ -856,6 +878,7 @@ export default function Home() {
       try {
         const canMintFromBackendCompletion =
           level === 1 && Boolean(backendAccessToken);
+        let mintAuthorizationSignature: string | undefined;
 
         if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
           const claimInstruction =
@@ -880,6 +903,26 @@ export default function Home() {
               </a>
             ),
           });
+        } else if (canMintFromBackendCompletion) {
+          mintAuthorizationSignature = await send({
+            instructions: [
+              getLevel1CertificateAuthorizationInstruction({
+                playerAddress: toAddress(address),
+              }),
+            ],
+          });
+          toast.success(`${title} certification mint authorized.`, {
+            description: (
+              <a
+                href={getExplorerUrl(`/tx/${mintAuthorizationSignature}`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                View wallet authorization transaction
+              </a>
+            ),
+          });
         }
 
         const response = await fetch("/api/nfts/certifications/mint", {
@@ -889,6 +932,7 @@ export default function Home() {
             backendAccessToken,
             cluster: cluster === "mainnet" ? "mainnet-beta" : cluster,
             level,
+            mintAuthorizationSignature,
             player: address,
             rpcUrl: getClusterUrl(cluster),
           }),
