@@ -43,6 +43,12 @@ type StageConfig = {
   onAction?: () => Promise<void>;
 };
 
+type CertificationAction = {
+  disabled: boolean;
+  label: string;
+  onMint: () => void;
+};
+
 type LabStage = 1 | 2 | 3;
 type AccountTone = "neutral" | "valid" | "fake" | "corrupt";
 type ActivityTone = "waiting" | "active" | "done" | "warning" | "corrupt";
@@ -160,6 +166,7 @@ const elk = new ELK();
 
 export function Level1Panel({
   address,
+  certificationAction,
   copied,
   isLoading,
   isSending,
@@ -170,6 +177,7 @@ export function Level1Panel({
   status,
 }: {
   address?: string;
+  certificationAction?: CertificationAction;
   copied: string | null;
   isLoading: boolean;
   isSending: boolean;
@@ -183,22 +191,31 @@ export function Level1Panel({
   stage: StageConfig;
   status: string;
 }) {
-  const [labStage, setLabStage] = useState<LabStage>(1);
+  const startsComplete = stage.level1Mode === "complete";
+  const [labStage, setLabStage] = useState<LabStage>(
+    startsComplete ? 3 : 1
+  );
   const [normalDepositObserved, setNormalDepositObserved] = useState(false);
   const [manipulationTested, setManipulationTested] = useState(false);
-  const [exploitPreviewed, setExploitPreviewed] = useState(false);
+  const [exploitPreviewed, setExploitPreviewed] = useState(startsComplete);
   const [stageOneRevealRun, setStageOneRevealRun] = useState(0);
   const [stageOneRevealStep, setStageOneRevealStep] = useState(0);
   const [activeVariable, setActiveVariable] = useState<VariableKey>("vault");
-  const [exploitSequence, setExploitSequence] = useState<VariableKey[]>([]);
+  const [exploitSequence, setExploitSequence] = useState<VariableKey[]>(
+    startsComplete ? EXPLOIT_SEQUENCE : []
+  );
   const [sequenceFeedback, setSequenceFeedback] = useState<string | null>(null);
   const [sequenceMiss, setSequenceMiss] = useState<SequenceMiss | null>(null);
-  const [manipulation, setManipulation] = useState<ManipulationState>({
-    authority: "valid",
-    mint: "official",
-    source: "official",
-    vault: "official",
-  });
+  const [manipulation, setManipulation] = useState<ManipulationState>(
+    startsComplete
+      ? EXPLOIT_MANIPULATION
+      : {
+          authority: "valid",
+          mint: "official",
+          source: "official",
+          vault: "official",
+        }
+  );
 
   const isConnected = status === "connected";
   const exploitReady =
@@ -282,6 +299,10 @@ export function Level1Panel({
     Number((creditedAmount * 100n) / LEVEL_1_TARGET),
     100
   );
+  const showCertificationAction =
+    Boolean(certificationAction) &&
+    (stage.level1Mode === "complete" ||
+      certificationAction?.label !== "Mint Locked");
 
   useEffect(() => {
     if (labStage !== 1 || !normalDepositObserved) return;
@@ -440,14 +461,19 @@ export function Level1Panel({
             activity={activity}
             footer={
               labStage === 1 ? null : (
-                <Level1StateFooter
-                  copied={copied}
-                  isLoading={labStage === 2 ? isLoading : false}
-                  level1Error={labStage === 2 ? level1Error : null}
-                  level1State={level1State}
-                  onCopy={onCopy}
-                  progress={progress}
-                />
+                <div className="space-y-4">
+                  <Level1StateFooter
+                    copied={copied}
+                    isLoading={labStage === 2 ? isLoading : false}
+                    level1Error={labStage === 2 ? level1Error : null}
+                    level1State={level1State}
+                    onCopy={onCopy}
+                    progress={progress}
+                  />
+                  {showCertificationAction && certificationAction ? (
+                    <Level1CertificationFooter action={certificationAction} />
+                  ) : null}
+                </div>
               )
             }
           />
@@ -1518,6 +1544,31 @@ function Level1StateFooter({
   );
 }
 
+function Level1CertificationFooter({
+  action,
+}: {
+  action: CertificationAction;
+}) {
+  return (
+    <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
+      <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
+        Certification unlocked
+      </p>
+      <p className="mt-2 text-sm leading-6 text-muted">
+        Level 1 verification is recorded. Mint the wallet-bound certification
+        for this exploit path.
+      </p>
+      <div className="mt-4">
+        <ExecutionButton
+          disabled={action.disabled}
+          label={action.label}
+          onClick={action.onMint}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ExecutionButton({
   disabled,
   label,
@@ -1758,25 +1809,18 @@ function ExploitCodeWalkthrough({
 
         <div className="rounded-[20px] border border-emerald-400/12 bg-emerald-400/[0.035] p-4">
           <p className="text-sm leading-6 text-muted">{stage.description}</p>
-          <div className="mt-4">
-            <ExecutionButton
-              disabled={
-                isSending ||
-                !stage.actionLabel ||
-                (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
-              }
-              label={
-                stage.actionLabel
-                  ? isSending
-                    ? "Submitting instruction"
-                    : stage.actionLabel
-                  : exploitSequenceComplete
-                    ? "Exploit execution unlocked"
-                    : "Reconstruct exploit sequence"
-              }
-              onClick={onExecute}
-            />
-          </div>
+          {stage.actionLabel ? (
+            <div className="mt-4">
+              <ExecutionButton
+                disabled={
+                  isSending ||
+                  (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
+                }
+                label={isSending ? "Submitting instruction" : stage.actionLabel}
+                onClick={onExecute}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
