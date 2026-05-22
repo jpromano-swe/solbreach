@@ -74,6 +74,7 @@ type ProtocolActivityEvent = {
 type VariableKey = "vault" | "mint" | "source" | "authority";
 type SequenceMiss = {
   attempted: VariableKey;
+  attemptedOrder: number;
   expected: VariableKey;
   id: number;
 };
@@ -143,24 +144,6 @@ const EXPLOIT_SEQUENCE: VariableKey[] = [
   "source",
   "authority",
 ];
-
-const EXPLOIT_SEQUENCE_META: Record<
-  VariableKey,
-  { label: string }
-> = {
-  authority: {
-    label: "4",
-  },
-  mint: {
-    label: "2",
-  },
-  source: {
-    label: "3",
-  },
-  vault: {
-    label: "1",
-  },
-};
 
 const elk = new ELK();
 
@@ -354,7 +337,7 @@ export function Level1Panel({
       setExploitSequence(nextSequence);
       setActiveVariable(nextRequired);
       setSequenceFeedback(
-        `${EXPLOIT_SEQUENCE_META[key].label} unmapped: ${getVariableLabel(
+        `${selectedIndex + 1} unmapped: ${getVariableLabel(
           key
         )}. Continue from ${getVariableLabel(nextRequired)}.`
       );
@@ -364,7 +347,12 @@ export function Level1Panel({
     const nextKey = EXPLOIT_SEQUENCE[exploitSequence.length];
     if (key !== nextKey) {
       setActiveVariable(key);
-      const miss = { attempted: key, expected: nextKey, id: Date.now() };
+      const miss = {
+        attempted: key,
+        attemptedOrder: exploitSequence.length + 1,
+        expected: nextKey,
+        id: Date.now(),
+      };
       setSequenceMiss(miss);
       setSequenceFeedback(getSequenceMissReason(miss));
       return;
@@ -1595,25 +1583,21 @@ function ExecutionButton({
 
 function ExploitSequenceButton({
   active,
+  badgeLabel,
   children,
   disabled,
   mapped,
-  next,
   onClick,
   rejected,
-  sequenceKey,
 }: {
   active: boolean;
+  badgeLabel?: string;
   children: ReactNode;
   disabled: boolean;
   mapped: boolean;
-  next: boolean;
   onClick: () => void;
   rejected: boolean;
-  sequenceKey: VariableKey;
 }) {
-  const meta = EXPLOIT_SEQUENCE_META[sequenceKey];
-
   return (
     <button
       type="button"
@@ -1626,23 +1610,23 @@ function ExploitSequenceButton({
             ? "level1-sequence-mapped border-emerald-300/34 bg-emerald-400/[0.055] text-foreground shadow-[0_0_30px_-20px_rgba(52,211,153,0.8)]"
             : active
               ? "border-cyan-300/35 bg-background text-foreground"
-              : next
-                ? "border-cyan-300/24 bg-background text-foreground hover:border-cyan-300/45"
-                : "border-border bg-background text-muted hover:border-cyan-300/26 hover:text-foreground"
+              : "border-border bg-background text-muted hover:border-cyan-300/26 hover:text-foreground"
       }`}
     >
       <span className="flex items-center justify-center gap-2">
-        <span
-          className={`inline-flex h-4 min-w-4 items-center justify-center rounded-[6px] text-[9px] font-semibold ring-1 ${
-            mapped
-              ? "bg-emerald-400/13 text-emerald-200 ring-emerald-300/28"
-              : rejected
-                ? "bg-red-400/12 text-red-200 ring-red-300/30"
-                : "bg-foreground/[0.035] text-muted ring-border"
-          }`}
-        >
-          {meta.label}
-        </span>
+        {badgeLabel ? (
+          <span
+            className={`inline-flex h-4 min-w-4 items-center justify-center rounded-[6px] text-[9px] font-semibold ring-1 ${
+              mapped
+                ? "bg-emerald-400/13 text-emerald-200 ring-emerald-300/28"
+                : rejected
+                  ? "bg-red-400/12 text-red-200 ring-red-300/30"
+                  : "bg-foreground/[0.035] text-muted ring-border"
+            }`}
+          >
+            {badgeLabel}
+          </span>
+        ) : null}
         <span>{children}</span>
       </span>
     </button>
@@ -1717,23 +1701,30 @@ function ExploitCodeWalkthrough({
       </div>
       <div className="space-y-4 p-5">
         <div className="grid grid-cols-2 gap-2">
-          {variableRows.map(({ key, label }) => (
-            <ExploitSequenceButton
-              key={key}
-              active={activeVariable === key}
-              disabled={!exploitPrepared}
-              mapped={exploitSequence.includes(key)}
-              next={
-                exploitPrepared &&
-                EXPLOIT_SEQUENCE[exploitSequence.length] === key
-              }
-              rejected={sequenceMiss?.attempted === key}
-              sequenceKey={key}
-              onClick={() => onVariableFocus(key)}
-            >
-              {label}
-            </ExploitSequenceButton>
-          ))}
+          {variableRows.map(({ key, label }) => {
+            const mappedIndex = exploitSequence.indexOf(key);
+            const rejected = sequenceMiss?.attempted === key;
+            const badgeLabel =
+              mappedIndex >= 0
+                ? String(mappedIndex + 1)
+                : rejected
+                  ? String(sequenceMiss.attemptedOrder)
+                  : undefined;
+
+            return (
+              <ExploitSequenceButton
+                key={key}
+                active={activeVariable === key}
+                badgeLabel={badgeLabel}
+                disabled={!exploitPrepared}
+                mapped={mappedIndex >= 0}
+                rejected={rejected}
+                onClick={() => onVariableFocus(key)}
+              >
+                {label}
+              </ExploitSequenceButton>
+            );
+          })}
         </div>
 
         <pre className="overflow-x-auto rounded-[20px] border border-border bg-background/74 p-4 font-mono text-[13px] leading-7">

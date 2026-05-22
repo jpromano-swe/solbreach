@@ -279,19 +279,11 @@ function metadataUri({
   cluster,
   level,
   player,
-  assetId,
-  leafIndex,
-  merkleTree,
-  programId,
 }: {
-  assetId?: string;
   baseUrl: string;
   cluster: MintCertificateCluster;
-  leafIndex?: number;
   level: number;
-  merkleTree?: PublicKey;
   player: PublicKey;
-  programId?: PublicKey;
 }) {
   const url = new URL(
     `/api/nfts/certifications/${level}/${player.toBase58()}`,
@@ -299,18 +291,6 @@ function metadataUri({
   );
   if (cluster !== "devnet") {
     url.searchParams.set("cluster", cluster);
-  }
-  if (programId) {
-    url.searchParams.set("challengeProgramId", programId.toBase58());
-  }
-  if (merkleTree) {
-    url.searchParams.set("merkleTree", merkleTree.toBase58());
-  }
-  if (assetId) {
-    url.searchParams.set("assetId", assetId);
-  }
-  if (leafIndex !== undefined) {
-    url.searchParams.set("leafIndex", String(leafIndex));
   }
   return url.toString();
 }
@@ -390,14 +370,10 @@ export async function mintCertificateAsset(params: {
   const predictedAssetKey = new PublicKey(predictedAssetId.toString());
 
   const uri = metadataUri({
-    assetId: predictedAssetId.toString(),
     baseUrl: params.baseUrl,
     cluster: params.cluster,
-    leafIndex: nextLeafIndex,
     level,
-    merkleTree,
     player,
-    programId,
   });
 
   const builder = mintV1(umi, {
