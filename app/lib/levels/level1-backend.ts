@@ -7,7 +7,8 @@ import {
 } from "@solana/web3.js";
 import type { WalletSession } from "../wallet/types";
 
-export const SOLBREACH_BACKEND_URL = "https://api-solbreach.56.125.190.174.nip.io";
+export const SOLBREACH_BACKEND_URL =
+  "https://api-solbreach.56.125.190.174.nip.io";
 export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
@@ -186,10 +187,7 @@ export async function startLevel1(accessToken: string) {
   });
 }
 
-export async function setupLevel1(
-  accessToken: string,
-  walletAddress: string
-) {
+export async function setupLevel1(accessToken: string, walletAddress: string) {
   return backendRequest<Level1SetupResponse>(
     `/api/v1/levels/${LEVEL_1_BACKEND_ID}/setup`,
     {
@@ -295,8 +293,7 @@ export async function executeLevel1ExploitTransaction({
         isSigner: key.isSigner,
         isWritable: key.isWritable,
       })),
-      simulation:
-        "challenge accounts included as readonly non-signer metas",
+      simulation: "challenge accounts included as readonly non-signer metas",
       walletSigner: walletPublicKey.toBase58(),
     });
 
@@ -373,6 +370,117 @@ export async function executeLevel1ExploitTransaction({
     return signature;
   } catch (error) {
     logLevel1Error("exploit transaction failed", error);
+    throw error;
+  }
+}
+
+export async function authorizeLevel1CertificateMint({
+  wallet,
+}: {
+  wallet: WalletSession;
+}) {
+  try {
+    console.info(`${LOG_PREFIX} certification authorization tx start`, {
+      simulation: "one-lamport self transfer",
+      wallet: wallet.account.address,
+    });
+
+    const connection = new Connection(DEVNET_RPC_URL, "confirmed");
+    const walletPublicKey = new PublicKey(wallet.account.address);
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: walletPublicKey,
+        lamports: 1,
+        toPubkey: walletPublicKey,
+      })
+    );
+
+    console.info(`${LOG_PREFIX} certification instruction assembly success`, {
+      instructionCount: transaction.instructions.length,
+      walletSigner: walletPublicKey.toBase58(),
+    });
+
+    const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+    transaction.feePayer = walletPublicKey;
+    transaction.recentBlockhash = latestBlockhash.blockhash;
+
+    const serialized = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    const signTransaction = wallet.signTransaction;
+    const sendTransaction = wallet.sendTransaction;
+
+    if (!signTransaction && !sendTransaction) {
+      throw new Error("Connected wallet cannot sign Solana transactions.");
+    }
+
+    if (!signTransaction && sendTransaction) {
+      console.info(`${LOG_PREFIX} certification wallet sign request`, {
+        method: "signAndSendTransaction",
+        serializedBytes: serialized.length,
+      });
+      const signatureBytes = await sendTransaction(
+        new Uint8Array(serialized),
+        "solana:devnet"
+      );
+      console.info(`${LOG_PREFIX} certification wallet signature success`, {
+        signatureBytes: signatureBytes.length,
+      });
+      const signature = getBase58Decoder().decode(signatureBytes);
+      console.info(`${LOG_PREFIX} certification tx signature returned`, {
+        signature,
+      });
+      const confirmation = await connection.confirmTransaction(
+        { signature, ...latestBlockhash },
+        "confirmed"
+      );
+      console.info(
+        `${LOG_PREFIX} certification confirmTransaction success`,
+        confirmation
+      );
+      return signature;
+    }
+
+    if (!signTransaction) {
+      throw new Error("Connected wallet cannot sign Solana transactions.");
+    }
+
+    console.info(`${LOG_PREFIX} certification wallet sign request`, {
+      method: "signTransaction",
+      serializedBytes: serialized.length,
+    });
+    const signed = await signTransaction(
+      new Uint8Array(serialized),
+      "solana:devnet"
+    );
+    console.info(`${LOG_PREFIX} certification wallet signature success`, {
+      signedBytes: signed.length,
+    });
+
+    console.info(`${LOG_PREFIX} certification sendRawTransaction start`, {
+      signedBytes: signed.length,
+    });
+    const signature = await connection.sendRawTransaction(signed, {
+      maxRetries: 3,
+      skipPreflight: false,
+    });
+    console.info(`${LOG_PREFIX} certification tx signature returned`, {
+      signature,
+    });
+
+    const confirmation = await connection.confirmTransaction(
+      { signature, ...latestBlockhash },
+      "confirmed"
+    );
+    console.info(
+      `${LOG_PREFIX} certification confirmTransaction success`,
+      confirmation
+    );
+    return signature;
+  } catch (error) {
+    logLevel1Error("certification authorization failed", error);
     throw error;
   }
 }

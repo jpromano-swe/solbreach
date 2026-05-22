@@ -8,8 +8,7 @@ import {
 
 export const runtime = "nodejs";
 
-const SOLBREACH_BACKEND_URL =
-  "https://api-solbreach.56.125.190.174.nip.io";
+const SOLBREACH_BACKEND_URL = "https://api-solbreach.56.125.190.174.nip.io";
 const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 type MintRequestBody = {
@@ -17,6 +16,7 @@ type MintRequestBody = {
   cluster?: MintCertificateCluster;
   level?: number;
   merkleTree?: string;
+  mintAuthorizationSignature?: string;
   player?: string;
   rpcUrl?: string;
 };
@@ -28,7 +28,9 @@ const CLUSTERS = new Set<MintCertificateCluster>([
 ]);
 
 function parseCluster(value: unknown): MintCertificateCluster {
-  const cluster = (typeof value === "string" ? value : "devnet") as MintCertificateCluster;
+  const cluster = (
+    typeof value === "string" ? value : "devnet"
+  ) as MintCertificateCluster;
   if (!CLUSTERS.has(cluster)) {
     throw new Error("Cluster must be devnet, localnet, or mainnet-beta.");
   }
@@ -55,6 +57,19 @@ function parsePublicKey(value: unknown, label: string) {
   }
 }
 
+function parseSignature(value: unknown, label: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`${label} is required.`);
+  }
+
+  const signature = value.trim();
+  if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) {
+    throw new Error(`${label} is invalid.`);
+  }
+
+  return signature;
+}
+
 function publicBaseUrl(request: NextRequest) {
   return (
     process.env.APP_BASE_URL?.trim() ||
@@ -78,7 +93,7 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
       headers: {
         authorization: `Bearer ${accessToken}`,
       },
-    },
+    }
   );
 
   if (!response.ok) {
@@ -107,14 +122,17 @@ export async function POST(request: NextRequest) {
         : { completed: false, reason: null };
     const allowMissingCertificate = level === 1 && backendLevel1.completed;
 
-    if (
-      level === 1 &&
-      body.backendAccessToken &&
-      !backendLevel1.completed
-    ) {
+    if (level === 1 && body.backendAccessToken && !backendLevel1.completed) {
       throw new Error(
         backendLevel1.reason ??
           "Level 1 backend completion could not be verified."
+      );
+    }
+
+    if (allowMissingCertificate) {
+      parseSignature(
+        body.mintAuthorizationSignature,
+        "Level 1 mint authorization signature"
       );
     }
 
@@ -143,7 +161,7 @@ export async function POST(request: NextRequest) {
             ? error.message
             : "Failed to mint SolBreach certificate cNFT.",
       },
-      { status: 400 },
+      { status: 400 }
     );
   }
 }
