@@ -1790,7 +1790,13 @@ export default function Home() {
               <ProfileCertificatesSection
                 address={address}
                 certificateState={certificateState}
-                completedLevels={level0State?.completedLevels}
+                completedLevels={
+                  level0State?.completedLevels
+                    ? level0State.completedLevels.map((val, i) =>
+                        i === 1 ? val || level1BackendCompleted : val
+                      )
+                    : undefined
+                }
                 getExplorerUrl={getExplorerUrl}
                 isLoading={isCertificateLoading || isLevel0Loading}
                 onSelectLevel={(level) => {
