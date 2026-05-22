@@ -408,16 +408,27 @@ export async function mintCertificateAsset(params: {
   }
 
   const mintSignature = signatureToBase58(signature);
-  const leaf = await parseLeafFromMintV1Transaction(umi, signature);
-  const assetId = new PublicKey(leaf.id.toString());
+  let assetId = predictedAssetKey;
+  let leafNonce = BigInt(nextLeafIndex);
 
-  if (!assetId.equals(predictedAssetKey)) {
-    throw new Error(
-      `Minted asset id ${assetId.toBase58()} did not match predicted asset id ${predictedAssetKey.toBase58()}.`,
+  try {
+    const leaf = await parseLeafFromMintV1Transaction(umi, signature);
+    const parsedAssetId = new PublicKey(leaf.id.toString());
+
+    if (parsedAssetId.equals(predictedAssetKey)) {
+      assetId = parsedAssetId;
+      leafNonce = BigInt(leaf.nonce);
+    } else {
+      console.warn(
+        `Parsed cNFT asset id ${parsedAssetId.toBase58()} did not match predicted asset id ${predictedAssetKey.toBase58()}. Using predicted asset id.`,
+      );
+    }
+  } catch (error) {
+    console.warn(
+      `Could not parse Bubblegum leaf from mint transaction ${mintSignature}. Using predicted asset id ${predictedAssetKey.toBase58()}.`,
+      error,
     );
   }
-
-  const leafNonce = BigInt(leaf.nonce);
 
   const recordSignature = certificateAccount
     ? await sendInstruction(
