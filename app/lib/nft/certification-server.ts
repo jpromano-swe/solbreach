@@ -40,7 +40,7 @@ export type MintCertificateResult = {
   leafNonce: string;
   merkleTree: string;
   mintSignature?: string;
-  recordSignature: string;
+  recordSignature?: string;
 };
 
 const DEFAULT_RPC_URL = "https://api.devnet.solana.com";
@@ -333,9 +333,25 @@ export async function mintCertificateAsset(params: {
     );
   }
 
-  const certificate = certificateAccount
-    ? parseLevelCertificateAccount(certificateAccount.data)
-    : null;
+  let certificate: ParsedCertificate | null = null;
+  let shouldRecordCertificateAsset = false;
+
+  if (certificateAccount) {
+    try {
+      certificate = parseLevelCertificateAccount(certificateAccount.data);
+      shouldRecordCertificateAsset = true;
+    } catch (error) {
+      if (!params.allowMissingCertificate) {
+        throw error;
+      }
+
+      console.warn(
+        `Certificate PDA ${certificatePda.toBase58()} exists but is not initialized as a LevelCertificate. Skipping on-chain asset recording for backend-completed Level ${level}.`,
+        error,
+      );
+    }
+  }
+
   if (certificate?.minted) {
     return {
       alreadyMinted: true,
@@ -344,15 +360,8 @@ export async function mintCertificateAsset(params: {
       leafIndex: certificate.leafIndex,
       leafNonce: certificate.leafNonce.toString(),
       merkleTree: certificate.merkleTree.toBase58(),
-      recordSignature: "",
     } satisfies MintCertificateResult;
   }
-
-  const certificationAuthorityPda = await ensureCertificationAuthority(
-    connection,
-    signer,
-    programId,
-  );
 
   const umi = createUmi(rpcUrl).use(mplBubblegum());
   const umiKeypair = umi.eddsa.createKeypairFromSecretKey(signer.secretKey);
@@ -431,12 +440,17 @@ export async function mintCertificateAsset(params: {
     );
   }
 
-  const recordSignature = await sendInstruction(
+  const recordSignature = shouldRecordCertificateAsset
+    ? await sendInstruction(
         connection,
         signer,
         buildRecordCertificateAssetInstruction({
           authority: signer.publicKey,
-          certificationAuthority: certificationAuthorityPda,
+          certificationAuthority: await ensureCertificationAuthority(
+            connection,
+            signer,
+            programId,
+          ),
           certificate: certificatePda,
           merkleTree,
           assetId,
@@ -444,9 +458,10 @@ export async function mintCertificateAsset(params: {
           leafNonce,
           programId,
         }),
-      );
+      )
+    : undefined;
 
-  return {
+  const mintResult: MintCertificateResult = {
     alreadyMinted: false,
     assetId: assetId.toBase58(),
     certificatePda: certificatePda.toBase58(),
@@ -454,6 +469,11 @@ export async function mintCertificateAsset(params: {
     leafNonce: leafNonce.toString(),
     merkleTree: merkleTree.toBase58(),
     mintSignature,
-    recordSignature,
-  } satisfies MintCertificateResult;
+  };
+
+  if (recordSignature) {
+    mintResult.recordSignature = recordSignature;
+  }
+
+  return mintResult;
 }
