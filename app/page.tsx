@@ -763,10 +763,8 @@ export default function Home() {
       setMintingLevel(levelId);
 
       try {
-        const canMintFromBackendCompletion =
-          level === 1 && Boolean(backendAccessToken);
-
-        if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
+      
+        if (!existingCertificate?.exists) {
           const claimInstruction =
             await getClaimLevelCertificateInstructionAsync({
               user: signer,
