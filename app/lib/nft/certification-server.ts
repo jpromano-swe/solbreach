@@ -5,8 +5,10 @@ import {
   findLeafAssetIdPda,
   mintV1,
   mplBubblegum,
+  parseLeafFromMintV1Transaction,
 } from "@metaplex-foundation/mpl-bubblegum";
 import { keypairIdentity, publicKey } from "@metaplex-foundation/umi";
+import { base58 } from "@metaplex-foundation/umi/serializers";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
   Connection,
@@ -277,11 +279,19 @@ function metadataUri({
   cluster,
   level,
   player,
+  assetId,
+  leafIndex,
+  merkleTree,
+  programId,
 }: {
+  assetId?: string;
   baseUrl: string;
   cluster: MintCertificateCluster;
+  leafIndex?: number;
   level: number;
+  merkleTree?: PublicKey;
   player: PublicKey;
+  programId?: PublicKey;
 }) {
   const url = new URL(
     `/api/nfts/certifications/${level}/${player.toBase58()}`,
@@ -290,7 +300,25 @@ function metadataUri({
   if (cluster !== "devnet") {
     url.searchParams.set("cluster", cluster);
   }
+  if (programId) {
+    url.searchParams.set("challengeProgramId", programId.toBase58());
+  }
+  if (merkleTree) {
+    url.searchParams.set("merkleTree", merkleTree.toBase58());
+  }
+  if (assetId) {
+    url.searchParams.set("assetId", assetId);
+  }
+  if (leafIndex !== undefined) {
+    url.searchParams.set("leafIndex", String(leafIndex));
+  }
   return url.toString();
+}
+
+function signatureToBase58(signature: Uint8Array | string) {
+  return typeof signature === "string"
+    ? signature
+    : base58.deserialize(signature)[0];
 }
 
 export async function mintCertificateAsset(params: {
@@ -362,10 +390,14 @@ export async function mintCertificateAsset(params: {
   const predictedAssetKey = new PublicKey(predictedAssetId.toString());
 
   const uri = metadataUri({
+    assetId: predictedAssetId.toString(),
     baseUrl: params.baseUrl,
     cluster: params.cluster,
+    leafIndex: nextLeafIndex,
     level,
+    merkleTree,
     player,
+    programId,
   });
 
   const builder = mintV1(umi, {
@@ -390,7 +422,7 @@ export async function mintCertificateAsset(params: {
     },
   });
 
-  const { result } = await builder.sendAndConfirm(umi, {
+  const { result, signature } = await builder.sendAndConfirm(umi, {
     confirm: { commitment: "confirmed" },
     send: { preflightCommitment: "confirmed", skipPreflight: false },
   });
@@ -399,8 +431,17 @@ export async function mintCertificateAsset(params: {
     throw new Error(`cNFT mint failed: ${JSON.stringify(result.value.err)}`);
   }
 
-  const assetId = predictedAssetKey;
-  const leafNonce = BigInt(nextLeafIndex);
+  const mintSignature = signatureToBase58(signature);
+  const leaf = await parseLeafFromMintV1Transaction(umi, signature);
+  const assetId = new PublicKey(leaf.id.toString());
+
+  if (!assetId.equals(predictedAssetKey)) {
+    throw new Error(
+      `Minted asset id ${assetId.toBase58()} did not match predicted asset id ${predictedAssetKey.toBase58()}.`,
+    );
+  }
+
+  const leafNonce = BigInt(leaf.nonce);
 
   const recordSignature = certificateAccount
     ? await sendInstruction(
@@ -426,6 +467,7 @@ export async function mintCertificateAsset(params: {
     leafIndex: nextLeafIndex,
     leafNonce: leafNonce.toString(),
     merkleTree: merkleTree.toBase58(),
+    mintSignature,
     recordSignature,
   } satisfies MintCertificateResult;
 }

@@ -1559,11 +1559,14 @@ function Level1CertificationFooter({
         for this exploit path.
       </p>
       <div className="mt-4">
-        <ExecutionButton
-          disabled={action.disabled}
-          label={action.label}
+        <button
+          type="button"
           onClick={action.onMint}
-        />
+          disabled={action.disabled}
+          className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          {action.label}
+        </button>
       </div>
     </div>
   );

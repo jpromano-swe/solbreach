@@ -5,12 +5,12 @@ import {
   mintCertificateAsset,
   type MintCertificateCluster,
 } from "@/app/lib/nft/certification-server";
-import {
-  LEVEL_1_BACKEND_ID,
-  SOLBREACH_BACKEND_URL,
-} from "@/app/lib/levels/level1-backend";
 
 export const runtime = "nodejs";
+
+const SOLBREACH_BACKEND_URL =
+  "https://api-solbreach.56.125.190.174.nip.io";
+const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 type MintRequestBody = {
   backendAccessToken?: string;
@@ -55,9 +55,21 @@ function parsePublicKey(value: unknown, label: string) {
   }
 }
 
+function publicBaseUrl(request: NextRequest) {
+  return (
+    process.env.APP_BASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.PUBLIC_APP_URL?.trim() ||
+    request.nextUrl.origin
+  ).replace(/\/$/, "");
+}
+
 async function canMintBackendLevel1Certificate(accessToken: unknown) {
   if (typeof accessToken !== "string" || !accessToken.trim()) {
-    return false;
+    return {
+      completed: false,
+      reason: "Level 1 backend session token is missing.",
+    };
   }
 
   const response = await fetch(
@@ -70,27 +82,48 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
   );
 
   if (!response.ok) {
-    return false;
+    return {
+      completed: false,
+      reason: `Level 1 backend status check failed with ${response.status}.`,
+    };
   }
 
   const status = (await response.json()) as { completed?: boolean };
-  return Boolean(status.completed);
+  return {
+    completed: Boolean(status.completed),
+    reason: status.completed
+      ? null
+      : "Level 1 backend verification is not complete for this session.",
+  };
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as MintRequestBody;
     const level = parseLevel(body.level);
-    const allowMissingCertificate =
+    const backendLevel1 =
       level === 1
         ? await canMintBackendLevel1Certificate(body.backendAccessToken)
-        : false;
+        : { completed: false, reason: null };
+    const allowMissingCertificate = level === 1 && backendLevel1.completed;
+
+    if (
+      level === 1 &&
+      body.backendAccessToken &&
+      !backendLevel1.completed
+    ) {
+      throw new Error(
+        backendLevel1.reason ??
+          "Level 1 backend completion could not be verified."
+      );
+    }
+
     const result = await mintCertificateAsset({
       allowMissingCertificate,
       level,
       player: parsePublicKey(body.player, "Player"),
       cluster: parseCluster(body.cluster),
-      baseUrl: request.nextUrl.origin,
+      baseUrl: publicBaseUrl(request),
       merkleTree:
         typeof body.merkleTree === "string" && body.merkleTree.trim()
           ? parsePublicKey(body.merkleTree, "Merkle tree")
