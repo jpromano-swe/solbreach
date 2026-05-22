@@ -5,8 +5,8 @@ SolBreach is still a single Next.js app, but the frontend is being split into fo
 ## Current module boundaries
 
 - `app/page.tsx` owns wallet-derived state, Solana transaction handlers, level progress, and the main route-level view switch.
-- `app/components/course-nav.tsx` owns the course dropdown navigation for Vulnerabilities, Case Studies, and locked Review Rooms.
-- `app/components/case-studies-section.tsx` owns the case study list view and placeholder Start Level actions.
+- `app/components/course-nav.tsx` owns the course dropdown navigation for Vulnerabilities, Research Labs, and locked Review Rooms.
+- `app/components/research-labs-section.tsx` owns the research lab list view and placeholder Start Researching actions.
 - `app/components/site-footer.tsx` owns the site footer and external links.
 
 ## Extraction rules

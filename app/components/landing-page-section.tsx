@@ -82,9 +82,9 @@ pub struct DepositTokens<'info> {
     Ok(())
 }`,
       highlightedLines: [4, 6, 7],
-      label: "Case Studies",
-      panel: <HeroCaseStudyPanel />,
-      title: "case-study/drift-governance.rs",
+      label: "Research Labs",
+      panel: <HeroResearchLabPanel />,
+      title: "research-labs/governance-takeover.rs",
     },
     {
       code: `pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
@@ -306,17 +306,17 @@ function HeroComposedSlide({
   );
 }
 
-function HeroCaseStudyPanel() {
+function HeroResearchLabPanel() {
   return (
     <div className="space-y-3">
       <div className="rounded-[24px] border border-border bg-card/95 p-5 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-              Case study review
+              Research lab
             </p>
             <h3 className="mt-3 text-xl font-semibold tracking-[-0.05em]">
-              Drift durable nonce takeover
+              Governance Takeover
             </h3>
           </div>
           <span className="w-fit rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-red-100">
@@ -326,18 +326,18 @@ function HeroCaseStudyPanel() {
 
         <div className="mt-5 space-y-3 text-sm leading-6 text-muted">
           <p>
-            Public reports describe a durable-nonce and social-engineering
-            attack that led to a rapid Security Council administrative takeover.
+            Research social engineering and durable nonce abuse that escalates
+            governance authority.
           </p>
           <p>
-            Review focus: signer policy, transaction freshness, admin scope, and
-            missing timelock controls.
+            Review focus: governance flow, transaction freshness, authority
+            boundaries, and proposal execution.
           </p>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2 lg:flex-nowrap">
           <HeroMetric label="Date" value="Apr 1, 2026" />
-          <HeroMetric label="Loss" value="$285M" />
+          <HeroMetric label="Time" value="3-5h" />
           <HeroMetric label="Class" value="Governance" />
         </div>
 
@@ -570,10 +570,10 @@ function FeatureShowcaseSection() {
         </FeaturePreview>
         <FeaturePreview
           tint="green"
-          title="Security Case Studies"
-          description="Study vulnerable and secure implementations side-by-side while tracing real-world Solana bug patterns."
+          title="Security Research Labs"
+          description="Study structured research scenarios side-by-side while tracing real-world Solana bug patterns."
         >
-          <SecurityCaseStudyPreview />
+          <SecurityResearchLabPreview />
         </FeaturePreview>
         <FeaturePreview
           tint="mixed"
@@ -734,12 +734,12 @@ function ExploitFoundationsPreview() {
   );
 }
 
-function SecurityCaseStudyPreview() {
+function SecurityResearchLabPreview() {
   return (
     <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
       <div className="flex items-center gap-2 bg-accent px-6 py-4 text-left text-sm font-medium text-foreground">
         <FileCode2 className="h-3.5 w-3.5" aria-hidden="true" />
-        Drift Protocol Hack April 2026
+        Governance Takeover Research Lab
       </div>
       <div className="grid flex-1 gap-3 p-6 sm:grid-cols-2">
         <CodeComparisonPanel

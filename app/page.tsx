@@ -12,13 +12,13 @@ import useSWR from "swr";
 import { toast } from "sonner";
 import { GridBackground } from "./components/grid-background";
 import { ClusterSelect } from "./components/cluster-select";
-import { CaseStudiesSection } from "./components/case-studies-section";
 import { HeaderCourseNav } from "./components/course-nav";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
 import { LevelWorkspacePage } from "./components/level-workspace";
 import { compactAddress } from "./components/level-ui";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
+import { ResearchLabsSection } from "./components/research-labs-section";
 import { SiteFooter } from "./components/site-footer";
 import { ThemeToggle } from "./components/theme-toggle";
 import { WalletButton } from "./components/wallet-button";
@@ -81,7 +81,7 @@ import {
   getVerifyAndCloseLevel3InstructionAsync,
 } from "./generated/vault";
 
-type RootSection = "levels" | "case-studies" | "profile";
+type RootSection = "levels" | "research-labs" | "profile";
 
 type StageConfig = {
   badge: string;
@@ -1679,7 +1679,7 @@ export default function Home() {
 
             {activeSection !== "levels" || activeLevelsView !== "landing" ? (
               <HeaderCourseNav
-                onSelectCaseStudies={() => setActiveSection("case-studies")}
+                onSelectResearchLabs={() => setActiveSection("research-labs")}
                 onSelectLevel={(level) => {
                   setActiveSection("levels");
                   setActiveLevelsView(level);
@@ -1773,8 +1773,8 @@ export default function Home() {
                 </div>
               ) : null}
             </div>
-          ) : activeSection === "case-studies" ? (
-            <CaseStudiesSection />
+          ) : activeSection === "research-labs" ? (
+            <ResearchLabsSection />
           ) : (
             <section className="space-y-8">
               <div className="max-w-3xl space-y-4">
