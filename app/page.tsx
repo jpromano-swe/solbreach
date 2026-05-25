@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import {
-  AccountRole,
   address as toAddress,
   isAddress,
   type Address,
@@ -41,6 +40,7 @@ import {
   type LevelsView,
 } from "./lib/levels/course-status";
 import {
+  authorizeLevel1CertificateMint,
   ensureLevel1DemoAuth,
   executeLevel1ExploitTransaction,
   fetchLevel1BackendStatus,
@@ -112,8 +112,6 @@ const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
 const LEVEL_1_LOG_PREFIX = "[SolBreach Level 1]";
 const LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX =
   "solbreach.level1.backendCertificate";
-const MEMO_PROGRAM_ADDRESS =
-  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr" as Address;
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
 ]);
@@ -165,25 +163,6 @@ function toLevel1BackendCertificateSnapshot(
   };
 }
 
-function getLevel1CertificateAuthorizationInstruction({
-  playerAddress,
-}: {
-  playerAddress: Address;
-}): Instruction {
-  return {
-    accounts: [
-      {
-        address: playerAddress,
-        role: AccountRole.READONLY_SIGNER,
-      },
-    ],
-    data: new TextEncoder().encode(
-      `SolBreach Level 1 certification mint:${playerAddress}:${Date.now()}`
-    ),
-    programAddress: MEMO_PROGRAM_ADDRESS,
-  };
-}
-
 function logLevel1FrontendError(label: string, error: unknown) {
   console.error(`${LEVEL_1_LOG_PREFIX} ${label}`, error);
   if (error instanceof Error && error.stack) {
@@ -220,8 +199,7 @@ export default function Home() {
   const [
     level1BackendCertificateOverride,
     setLevel1BackendCertificateOverride,
-  ] =
-    useState<Level1BackendCertificateRecord | null>(null);
+  ] = useState<Level1BackendCertificateRecord | null>(null);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
@@ -904,14 +882,17 @@ export default function Home() {
             ),
           });
         } else if (canMintFromBackendCompletion) {
-          mintAuthorizationSignature = await send({
-            instructions: [
-              getLevel1CertificateAuthorizationInstruction({
-                playerAddress: toAddress(address),
-              }),
-            ],
+          if (!wallet) {
+            throw new Error(
+              "Connect your wallet before minting the Level 1 certification."
+            );
+          }
+
+          mintAuthorizationSignature = await authorizeLevel1CertificateMint({
+            wallet,
           });
-          toast.success(`${title} certification mint authorized.`, {
+
+          toast.success(`${title} certification authorized.`, {
             description: (
               <a
                 href={getExplorerUrl(`/tx/${mintAuthorizationSignature}`)}
@@ -1026,7 +1007,7 @@ export default function Home() {
         setMintingLevel(null);
       }
     },
-    [address, cluster, getExplorerUrl, refreshState, send, signer]
+    [address, cluster, getExplorerUrl, refreshState, send, signer, wallet]
   );
 
   const handleMintLevel0Flag = useCallback(async () => {
