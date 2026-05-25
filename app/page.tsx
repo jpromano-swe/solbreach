@@ -27,24 +27,19 @@ import { WalletButton } from "./components/wallet-button";
 import { useCluster } from "./components/cluster-context";
 import { parseTransactionError } from "./lib/errors";
 import {
-  findCertificatePdaForUser,
   type CertificateCollection,
   type LevelCertificateSnapshot,
 } from "./lib/certificates/certificate-state";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
 import { useBalance } from "./lib/hooks/use-balance";
+import { useCertificateMinting } from "./lib/hooks/use-certificate-minting";
 import { useLevel1BackendExecution } from "./lib/hooks/use-level1-backend-execution";
 import { useLevel2BackendExecution } from "./lib/hooks/use-level2-backend-execution";
 import { useLevelRoute } from "./lib/hooks/use-level-route";
 import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
+import { buildLevelTiles, getStatusLabel } from "./lib/levels/course-status";
 import {
-  buildLevelTiles,
-  getStatusLabel,
-  type LevelId,
-} from "./lib/levels/course-status";
-import {
-  authorizeLevel1CertificateMint,
   ensureLevel1DemoAuth,
   type Level1AuthSession,
 } from "./lib/levels/level1-backend";
@@ -57,11 +52,9 @@ import {
   type Level3Challenge,
 } from "./lib/levels/level3-backend";
 import { type Level1Snapshot } from "./lib/levels/level-state";
-import { getClusterUrl } from "./lib/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import {
-  getClaimLevelCertificateInstructionAsync,
   getDelegateTaskInstructionAsync,
   getDepositTokensInstructionAsync,
   getInitBankInstructionAsync,
@@ -204,7 +197,6 @@ export default function Home() {
   const [level3UserRewardAccount] = useState("");
   const [level3ExternalProgram] = useState("");
   const [level3Amount] = useState("1000000");
-  const [mintingLevel, setMintingLevel] = useState<LevelId | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const {
     backendAuth: level1BackendAuth,
@@ -770,208 +762,48 @@ export default function Home() {
   const isLevel1PanelLoading =
     isLevel1Loading || isLevel1BackendLoading || isLevel1BackendBusy;
 
-  const mintLevelCertificate = useCallback(
-    async ({
-      backendAccessToken,
-      level,
-      levelId,
-      existingCertificate,
-      title,
-    }: {
-      backendAccessToken?: string;
-      level: 0 | 1 | 2 | 3;
-      levelId: LevelId;
-      existingCertificate?: LevelCertificateSnapshot;
-      title: string;
+  const handleLevel1BackendCertificateMinted = useCallback(
+    (payload: {
+      assetId: string;
+      certificatePda: string;
+      leafIndex: number | null;
+      leafNonce: string | null;
+      merkleTree: string | null;
     }) => {
-      if (!signer || !address) {
-        toast.error("Connect the wallet that cleared this level first.");
-        return;
-      }
+      if (!address) return;
 
-      if (cluster === "testnet") {
-        toast.error(
-          "Certificate minting is only configured for devnet, localnet, or mainnet-beta."
-        );
-        return;
-      }
+      const backendCertificateRecord: Level1BackendCertificateRecord = {
+        ...payload,
+        cluster,
+        mintedAt: new Date().toISOString(),
+        walletAddress: address,
+      };
 
-      if (existingCertificate?.minted) {
-        toast.success(`${title} cNFT already minted.`, {
-          description: existingCertificate.assetId ? (
-            <a
-              href={getExplorerUrl(`/address/${existingCertificate.assetId}`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2"
-            >
-              View recorded asset
-            </a>
-          ) : (
-            "The certificate PDA already has a recorded compressed asset."
-          ),
-        });
-        return;
-      }
+      setLevel1BackendCertificateOverride(backendCertificateRecord);
 
-      setMintingLevel(levelId);
-
-      try {
-        const canMintFromBackendCompletion =
-          level === 1 && Boolean(backendAccessToken);
-        let mintAuthorizationSignature: string | undefined;
-
-        if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
-          const claimInstruction =
-            await getClaimLevelCertificateInstructionAsync({
-              user: signer,
-              certificate: findCertificatePdaForUser(address, level),
-              level,
-            });
-
-          const claimSignature = await send({
-            instructions: [claimInstruction],
-          });
-          toast.success(`${title} certificate claimed.`, {
-            description: (
-              <a
-                href={getExplorerUrl(`/tx/${claimSignature}`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                View claim transaction
-              </a>
-            ),
-          });
-        } else if (canMintFromBackendCompletion) {
-          if (!wallet) {
-            throw new Error(
-              "Connect your wallet before minting the Level 1 certification."
-            );
-          }
-
-          mintAuthorizationSignature = await authorizeLevel1CertificateMint({
-            wallet,
-          });
-
-          toast.success(`${title} certification authorized.`, {
-            description: (
-              <a
-                href={getExplorerUrl(`/tx/${mintAuthorizationSignature}`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                View wallet authorization transaction
-              </a>
-            ),
-          });
-        }
-
-        const response = await fetch("/api/nfts/certifications/mint", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            backendAccessToken,
-            cluster: cluster === "mainnet" ? "mainnet-beta" : cluster,
-            level,
-            mintAuthorizationSignature,
-            player: address,
-            rpcUrl: getClusterUrl(cluster),
-          }),
-        });
-
-        const payload = (await response.json()) as
-          | {
-              error?: string;
-            }
-          | {
-              alreadyMinted: boolean;
-              assetId: string;
-              certificatePda: string;
-              leafIndex: number;
-              leafNonce: string;
-              merkleTree: string;
-              mintSignature?: string;
-              recordSignature?: string;
-            };
-
-        if (!response.ok) {
-          throw new Error(
-            "error" in payload && payload.error
-              ? payload.error
-              : "Mint route failed."
-          );
-        }
-
-        await refreshState();
-
-        const assetId = "assetId" in payload ? payload.assetId : undefined;
-        const mintSignature =
-          "mintSignature" in payload ? payload.mintSignature : undefined;
-        const alreadyMinted =
-          "alreadyMinted" in payload ? payload.alreadyMinted : false;
-
-        if (
-          level === 1 &&
-          backendAccessToken &&
-          address &&
-          "assetId" in payload &&
-          "certificatePda" in payload
-        ) {
-          const backendCertificateRecord: Level1BackendCertificateRecord = {
-            assetId: payload.assetId,
-            certificatePda: payload.certificatePda,
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          level1BackendCertificateStorageKey({
             cluster,
-            leafIndex: payload.leafIndex ?? null,
-            leafNonce: payload.leafNonce ?? null,
-            merkleTree: payload.merkleTree ?? null,
-            mintedAt: new Date().toISOString(),
             walletAddress: address,
-          };
-
-          setLevel1BackendCertificateOverride(backendCertificateRecord);
-
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(
-              level1BackendCertificateStorageKey({
-                cluster,
-                walletAddress: address,
-              }),
-              JSON.stringify(backendCertificateRecord)
-            );
-          }
-        }
-
-        toast.success(
-          alreadyMinted
-            ? `${title} cNFT already existed.`
-            : `${title} cNFT minted.`,
-          {
-            description: assetId ? (
-              <a
-                href={getExplorerUrl(`/address/${assetId}`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                {mintSignature
-                  ? "View compressed asset record"
-                  : "View recorded asset"}
-              </a>
-            ) : undefined,
-          }
+          }),
+          JSON.stringify(backendCertificateRecord)
         );
-      } catch (err) {
-        console.error("Certificate mint failed:", err);
-        toast.error(err instanceof Error ? err.message : String(err));
-      } finally {
-        setMintingLevel(null);
       }
     },
-    [address, cluster, getExplorerUrl, refreshState, send, signer, wallet]
+    [address, cluster]
   );
+
+  const { mintingLevel, mintLevelCertificate } = useCertificateMinting({
+    address,
+    cluster,
+    getExplorerUrl,
+    onLevel1BackendCertificateMinted: handleLevel1BackendCertificateMinted,
+    refreshState,
+    send,
+    signer,
+    wallet,
+  });
 
   const handleMintLevel0Flag = useCallback(async () => {
     await mintLevelCertificate({
