@@ -204,18 +204,14 @@ export function Level2Panel({
     level2Completed || backendExecution.completed;
 
   useEffect(() => {
-    if (!observeStarted || labStage !== 1) return;
+    if (observeRunId === 0 || labStage !== 1) return;
 
     const timers = [
-      window.setTimeout(() => {
-        setSimulatedProfileReady(true);
-        setObserveStep(1);
-      }, 260),
-      window.setTimeout(() => setObserveStep(2), 620),
+      window.setTimeout(() => setObserveStep(2), 360),
       window.setTimeout(() => {
         setSimulatedLevel2Ready(true);
         setObserveStep(3);
-      }, 980),
+      }, 720),
       window.setTimeout(() => {
         setManipulation({
           commanderTarget: "wallet",
@@ -223,15 +219,15 @@ export function Level2Panel({
           writer: "connected",
         });
         setObserveStep(4);
-      }, 1340),
+      }, 1080),
       window.setTimeout(() => {
         setManipulationTested(true);
         setObserveStep(5);
-      }, 1720),
+      }, 1460),
     ];
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [labStage, observeRunId, observeStarted]);
+  }, [labStage, observeRunId]);
 
   const effectiveManipulation = commanderCaptured
     ? ({
@@ -385,8 +381,8 @@ export function Level2Panel({
                 setFocusSequence([]);
                 setManipulationTested(false);
                 setObserveStarted(true);
-                setObserveStep(0);
-                setSimulatedProfileReady(false);
+                setObserveStep(1);
+                setSimulatedProfileReady(true);
                 setSimulatedLevel2Ready(false);
                 setManipulation({
                   commanderTarget: commanderCaptured ? "wallet" : "initial",
