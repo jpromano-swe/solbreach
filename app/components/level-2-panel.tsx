@@ -18,6 +18,7 @@ import {
   Handle,
   Position,
   ReactFlow,
+  ViewportPortal,
   type Edge,
   type Node,
   type NodeProps,
@@ -194,13 +195,10 @@ export function Level2Panel({
     backendExecution.completed ||
     (manipulationTested &&
       manipulation.profileScope === "static" &&
-      manipulation.commanderTarget === "wallet" &&
-      manipulation.writer === "connected")
+      manipulation.commanderTarget === "wallet")
   );
   const exploitInspectable =
-    profileReady &&
-    levelStateReady &&
-    (simulatedCommanderCaptured || manipulationTested);
+    profileReady && levelStateReady && simulatedCommanderCaptured;
   const focusSequenceComplete = focusSequence.length === FOCUS_SEQUENCE.length;
   const effectiveLevel2Completed =
     level2Completed || backendExecution.completed;
@@ -412,6 +410,8 @@ export function Level2Panel({
               }}
               onContinue={() => handleStageChange(3)}
               onTest={() => {
+                setSimulatedProfileReady(true);
+                setSimulatedLevel2Ready(true);
                 setManipulationTested(true);
               }}
               readyToInspect={Boolean(exploitInspectable)}
@@ -447,15 +447,19 @@ export function Level2Panel({
           <ProtocolActivityPanel
             activity={activity}
             footer={
-              <Level2StateFooter
-                certificate={certificate}
-                isLoading={isLoading}
-                isMinting={isMinting}
-                level2Completed={effectiveLevel2Completed}
-                level2Error={level2Error}
-                onMint={onMint}
-                status={status}
-              />
+              (status === "connected" && Boolean(isLoading || level2Error)) ||
+              effectiveLevel2Completed ||
+              Boolean(certificate?.minted) ? (
+                <Level2StateFooter
+                  certificate={certificate}
+                  isLoading={isLoading}
+                  isMinting={isMinting}
+                  level2Completed={effectiveLevel2Completed}
+                  level2Error={level2Error}
+                  onMint={onMint}
+                  status={status}
+                />
+              ) : null
             }
           />
         }
@@ -942,6 +946,18 @@ function ProtocolTopology({
     Node<GraphNodeData>,
     Edge
   > | null>(null);
+  const showAuthorityMessage =
+    labStage === 2 && commanderCaptured && manipulationTested;
+  const authorityMessageTarget = layoutNodes.find(
+    (node) => node.id === "verifier"
+  );
+  const authorityMessagePosition =
+    showAuthorityMessage && authorityMessageTarget
+      ? {
+          x: authorityMessageTarget.position.x + 270,
+          y: authorityMessageTarget.position.y + 4,
+        }
+      : null;
 
   const graph = useMemo(
     () =>
@@ -976,8 +992,8 @@ function ProtocolTopology({
         layoutOptions: {
           "elk.algorithm": "layered",
           "elk.direction": "DOWN",
-          "elk.layered.spacing.nodeNodeBetweenLayers": "62",
-          "elk.spacing.nodeNode": "48",
+          "elk.layered.spacing.nodeNodeBetweenLayers": "70",
+          "elk.spacing.nodeNode": "56",
         },
         children: graph.nodes.map((node) => ({
           id: node.id,
@@ -1023,9 +1039,9 @@ function ProtocolTopology({
     const timer = window.setTimeout(() => {
       void flowInstance.fitView({
         duration: 360,
-        maxZoom: labStage === 2 ? 0.9 : 1,
+        maxZoom: labStage === 2 ? 0.84 : 1,
         minZoom: 0.45,
-        padding: labStage === 2 ? 0.12 : 0.18,
+        padding: labStage === 2 ? 0.3 : 0.18,
       });
     }, 40);
 
@@ -1039,7 +1055,7 @@ function ProtocolTopology({
           Interactive protocol topology
         </p>
       </div>
-      <div className="level1-flow h-[680px]">
+      <div className="level1-flow h-[720px]">
         <ReactFlow
           colorMode="dark"
           edges={layoutEdges}
@@ -1058,6 +1074,23 @@ function ProtocolTopology({
           zoomOnScroll={false}
         >
           <Background color="rgba(148, 163, 184, 0.07)" gap={22} size={1} />
+          {authorityMessagePosition ? (
+            <ViewportPortal>
+              <div
+                className="level1-activity-entry pointer-events-none absolute w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md"
+                style={{
+                  transform: `translate(${authorityMessagePosition.x}px, ${authorityMessagePosition.y}px)`,
+                }}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
+                  Protocol vulnerable:
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
+                  Connected Wallet has now program authority
+                </p>
+              </div>
+            </ViewportPortal>
+          ) : null}
         </ReactFlow>
       </div>
     </section>
@@ -1211,6 +1244,15 @@ function Level2StateFooter({
   onMint: () => void;
   status: string;
 }) {
+  const hasFooterContent =
+    (status === "connected" && Boolean(isLoading || level2Error)) ||
+    level2Completed ||
+    Boolean(certificate?.minted);
+
+  if (!hasFooterContent) {
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       {status === "connected" && isLoading ? (
@@ -1406,8 +1448,11 @@ function buildGraph({
       manipulation.profileScope === "static" &&
       manipulation.commanderTarget === "wallet");
   const flowActive = observeStarted || labStage > 1;
+  const stage2ExploitActive =
+    labStage === 2 && hijackActive && manipulationTested;
   const verifierActive =
-    labStage === 3 && (activeFocus === "verifier" || focusSequenceComplete);
+    stage2ExploitActive ||
+    (labStage === 3 && (activeFocus === "verifier" || focusSequenceComplete));
 
   const edges = [
     buildEdge("wallet-profile", "wallet", "profile", {
@@ -1419,7 +1464,7 @@ function buildGraph({
       tone: hijackActive ? "yellow" : "muted",
     }),
     buildEdge("level2-verifier", "level2", "verifier", {
-      active: labStage >= 3,
+      active: stage2ExploitActive || labStage >= 3,
       tone: "green",
     }),
     buildEdge("commander-verifier", "commander", "verifier", {
@@ -1428,7 +1473,7 @@ function buildGraph({
     }),
     buildEdge("verifier-stats", "verifier", "stats", {
       active: verifierActive,
-      tone: verifierActive ? "green" : "muted",
+      tone: stage2ExploitActive ? "yellow" : verifierActive ? "green" : "muted",
     }),
   ];
 
@@ -1591,19 +1636,37 @@ function buildActivity({
     if (manipulation.commanderTarget === "wallet") {
       events.push({
         detail:
-          "The stored commander is being replaced with the connected signer.",
+          manipulation.writer === "outsider"
+            ? "An unrelated signer writes the shared profile, but stores the connected wallet as commander."
+            : "The stored commander is being replaced with the connected wallet.",
         title: "Commander target remapped",
         tone: manipulationTested ? "corrupt" : "active",
       });
     }
 
     if (manipulationTested || commanderCaptured) {
+      const vulnerable =
+        manipulation.profileScope === "static" &&
+        manipulation.commanderTarget === "wallet";
+
       events.push({
-        detail:
-          "The program accepts the signer write because the profile is not user-bound.",
-        title: "Profile overwrite accepted",
-        tone: commanderCaptured ? "done" : "corrupt",
+        detail: vulnerable
+          ? "The verifier will resolve the connected wallet from the overwritten static profile."
+          : "The test does not yet produce the commander relationship needed for verification.",
+        title: vulnerable
+          ? "Profile overwrite accepted"
+          : "Exploit condition incomplete",
+        tone: vulnerable ? "corrupt" : "warning",
       });
+
+      if (vulnerable) {
+        events.push({
+          detail:
+            "The static commander relationship now grants the connected wallet control over the protected program path.",
+          title: "Connected wallet has now program authority",
+          tone: "corrupt",
+        });
+      }
     }
 
     return events;
