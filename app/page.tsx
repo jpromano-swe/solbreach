@@ -16,6 +16,7 @@ import { HeaderCourseNav } from "./components/course-nav";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
 import { Level2Panel } from "./components/level-2-panel";
+import { Level3Panel } from "./components/level-3-panel";
 import { LevelWorkspacePage } from "./components/level-workspace";
 import { compactAddress } from "./components/level-ui";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
@@ -59,6 +60,14 @@ import {
   submitLevel2Proof,
   type Level2Challenge,
 } from "./lib/levels/level2-backend";
+import {
+  executeLevel3ExploitTransaction,
+  fetchLevel3BackendStatus,
+  setupLevel3,
+  startLevel3,
+  submitLevel3Proof,
+  type Level3Challenge,
+} from "./lib/levels/level3-backend";
 import { type Level1Snapshot } from "./lib/levels/level-state";
 import { getClusterUrl } from "./lib/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
@@ -213,6 +222,17 @@ export default function Home() {
   const [level2RuntimeError, setLevel2RuntimeError] = useState<string | null>(
     null
   );
+  const [level3BackendAuth, setLevel3BackendAuth] =
+    useState<Level1AuthSession | null>(null);
+  const [level3Challenge, setLevel3Challenge] =
+    useState<Level3Challenge | null>(null);
+  const [level3TxSignature, setLevel3TxSignature] = useState<string | null>(
+    null
+  );
+  const [isLevel3BackendBusy, setIsLevel3BackendBusy] = useState(false);
+  const [level3RuntimeError, setLevel3RuntimeError] = useState<string | null>(
+    null
+  );
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
   const [level3UserRewardAccount] = useState("");
@@ -308,13 +328,36 @@ export default function Home() {
     { revalidateOnFocus: true }
   );
 
+  const {
+    data: level3BackendStatus,
+    error: level3BackendError,
+    isLoading: isLevel3BackendLoading,
+    mutate: mutateLevel3BackendStatus,
+  } = useSWR(
+    level3BackendAuth
+      ? (["level3-backend-status", level3BackendAuth.accessToken] as const)
+      : null,
+    async (): Promise<Awaited<ReturnType<typeof fetchLevel3BackendStatus>>> => {
+      return fetchLevel3BackendStatus(level3BackendAuth!.accessToken);
+    },
+    { revalidateOnFocus: true }
+  );
+
   const refreshState = useCallback(async () => {
     await Promise.all([
       refreshSnapshots(),
       mutateLevel1BackendStatus(),
+      mutateLevel2BackendStatus(),
+      mutateLevel3BackendStatus(),
       walletBalance.mutate(),
     ]);
-  }, [refreshSnapshots, mutateLevel1BackendStatus, walletBalance]);
+  }, [
+    mutateLevel1BackendStatus,
+    mutateLevel2BackendStatus,
+    mutateLevel3BackendStatus,
+    refreshSnapshots,
+    walletBalance,
+  ]);
 
   const parseAddressInput = useCallback((value: string, label: string) => {
     const trimmed = value.trim();
@@ -665,6 +708,112 @@ export default function Home() {
     wallet,
   ]);
 
+  const ensureLevel3BackendSession = useCallback(async () => {
+    if (status !== "connected" || !address) {
+      throw new Error("Connect your wallet before starting Level 3.");
+    }
+
+    const auth = await ensureLevel1DemoAuth(address);
+    setLevel3BackendAuth(auth);
+    return auth;
+  }, [address, status]);
+
+  const ensureLevel3Started = useCallback(async (accessToken: string) => {
+    try {
+      await startLevel3(accessToken);
+    } catch (error) {
+      const message = parseTransactionError(error).toLowerCase();
+      if (
+        !message.includes("active") &&
+        !message.includes("already") &&
+        !message.includes("started")
+      ) {
+        throw error;
+      }
+    }
+  }, []);
+
+  const handleSetupLevel3Backend = useCallback(async () => {
+    if (!address) return;
+
+    setIsLevel3BackendBusy(true);
+    setLevel3RuntimeError(null);
+    try {
+      const auth = await ensureLevel3BackendSession();
+      await ensureLevel3Started(auth.accessToken);
+      const setup = await setupLevel3(auth.accessToken, address);
+      console.info("[SolBreach Level 3] challenge payload received", setup);
+      setLevel3Challenge(setup.challenge);
+      await mutateLevel3BackendStatus();
+      toast.success("Level 3 exploit challenge prepared.");
+    } catch (error) {
+      logLevel1FrontendError("level 3 challenge setup failed", error);
+      const message = getErrorMessage(error);
+      setLevel3RuntimeError(message);
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLevel3BackendBusy(false);
+    }
+  }, [
+    address,
+    ensureLevel3BackendSession,
+    ensureLevel3Started,
+    mutateLevel3BackendStatus,
+  ]);
+
+  const handleRunLevel3BackendExploit = useCallback(async () => {
+    if (!address || !wallet) return;
+
+    setIsLevel3BackendBusy(true);
+    setLevel3RuntimeError(null);
+    try {
+      const auth = await ensureLevel3BackendSession();
+      await ensureLevel3Started(auth.accessToken);
+      const setup =
+        level3Challenge && level3BackendStatus?.level_session_id
+          ? {
+              challenge: level3Challenge,
+              level_session_id: level3BackendStatus.level_session_id,
+            }
+          : await setupLevel3(auth.accessToken, address);
+
+      console.info("[SolBreach Level 3] challenge payload received", setup);
+      setLevel3Challenge(setup.challenge);
+
+      const signature = await executeLevel3ExploitTransaction({
+        challenge: setup.challenge,
+        wallet,
+      });
+      setLevel3TxSignature(signature);
+
+      await submitLevel3Proof(auth.accessToken, {
+        level_session_id: setup.level_session_id,
+        transaction_signature: signature,
+        wallet_address: address,
+      });
+      await mutateLevel3BackendStatus();
+
+      toast.success("Level 3 exploit verified by backend.");
+    } catch (error) {
+      logLevel1FrontendError("level 3 exploit flow failed", error);
+      const message = getErrorMessage(error);
+      setLevel3RuntimeError(message);
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLevel3BackendBusy(false);
+    }
+  }, [
+    address,
+    ensureLevel3BackendSession,
+    ensureLevel3Started,
+    level3BackendStatus,
+    level3Challenge,
+    mutateLevel3BackendStatus,
+    wallet,
+  ]);
+
   const handleInitGlobalProfile = useCallback(async () => {
     await runInstruction(
       () => {
@@ -813,7 +962,13 @@ export default function Home() {
   );
   const level2Completed =
     Boolean(level0State?.completedLevels[2]) || level2BackendCompleted;
-  const level3Completed = Boolean(level0State?.completedLevels[3]);
+  const level3BackendCompleted = Boolean(
+    level3BackendStatus?.completed ||
+    level3BackendStatus?.state === "completed" ||
+    level3BackendStatus?.certification?.unlock_status === "unlocked"
+  );
+  const level3Completed =
+    Boolean(level0State?.completedLevels[3]) || level3BackendCompleted;
   const level0Certificate = certificateState?.[0];
   const chainLevel1Certificate = certificateState?.[1];
   const level1BackendCertificateSnapshot = useMemo(
@@ -842,8 +997,10 @@ export default function Home() {
     level1BackendCompleted;
   const level2Hijacked = Boolean(address && level2State?.commander === address);
   const level3DelegationReady =
+    level3BackendCompleted ||
+    Boolean(level3Challenge || level3BackendStatus?.challenge_context) ||
     (level3State?.rewardAmount ?? 0n) >=
-    (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET);
+      (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET);
   const level1PanelChallenge =
     level1Challenge ?? level1BackendStatus?.challenge_context ?? null;
   const level1PanelPda =
@@ -1983,6 +2140,32 @@ export default function Home() {
                       onMint={activeLevelStatus.onMint}
                       onUpdateProfile={handleUpdateProfile}
                       onVerify={handleVerifyLevel2}
+                      status={status}
+                    />
+                  ) : activeLevel === "level3" ? (
+                    <Level3Panel
+                      address={address}
+                      backendExecution={{
+                        challengeReady: Boolean(level3Challenge),
+                        completed: level3BackendCompleted,
+                        error:
+                          level3RuntimeError ??
+                          (level3BackendError
+                            ? getErrorMessage(level3BackendError)
+                            : null),
+                        isBusy: isLevel3BackendBusy || isLevel3BackendLoading,
+                        onPrepare: handleSetupLevel3Backend,
+                        onRun: handleRunLevel3BackendExploit,
+                        txSignature: level3TxSignature,
+                      }}
+                      certificate={level3Certificate}
+                      isLoading={isLevel3Loading}
+                      isMinting={mintingLevel === "level3"}
+                      isSending={isSending}
+                      level3Completed={level3Completed}
+                      level3Error={level3Error}
+                      level3State={level3State}
+                      onMint={activeLevelStatus.onMint}
                       status={status}
                     />
                   ) : (
