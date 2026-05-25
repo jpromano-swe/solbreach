@@ -77,7 +77,7 @@ For Level 0:
 - Protocol Activity is the action focus.
 - Code snippet remains visible for credibility.
 
-For Levels 1 and 2:
+For exploit levels (Levels 1, 2, and 3):
 
 - Use stages: Observe, Manipulate, Inspect.
 - Observe is a local simulation.
@@ -145,7 +145,7 @@ Rules:
 - Do not show certification CTA before successful exploit/verification.
 - After completion, show a compact "Certification unlocked" card.
 - CTA label should be "Unlock Certification" unless already minted.
-- Use the solid purple brand button used in Levels 1 and 2.
+- Use the solid purple brand button used in exploit levels.
 
 ## Interaction Tone
 
