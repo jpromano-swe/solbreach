@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   address as toAddress,
   isAddress,
@@ -26,19 +26,19 @@ import { WalletButton } from "./components/wallet-button";
 import { useCluster } from "./components/cluster-context";
 import { parseTransactionError } from "./lib/errors";
 import {
-  fetchCertificateCollection,
   findCertificatePdaForUser,
   type CertificateCollection,
   type LevelCertificateSnapshot,
 } from "./lib/certificates/certificate-state";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
 import { useBalance } from "./lib/hooks/use-balance";
+import { useLevelRoute } from "./lib/hooks/use-level-route";
+import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
 import {
   buildLevelTiles,
   getStatusLabel,
   type LevelId,
-  type LevelsView,
 } from "./lib/levels/course-status";
 import {
   authorizeLevel1CertificateMint,
@@ -59,16 +59,7 @@ import {
   submitLevel2Proof,
   type Level2Challenge,
 } from "./lib/levels/level2-backend";
-import {
-  fetchLevel0Snapshot,
-  fetchLevel1Snapshot,
-  fetchLevel2Snapshot,
-  fetchLevel3Snapshot,
-  type Level0Snapshot,
-  type Level1Snapshot,
-  type Level2Snapshot,
-  type Level3Snapshot,
-} from "./lib/levels/level-state";
+import { type Level1Snapshot } from "./lib/levels/level-state";
 import { getClusterUrl } from "./lib/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
@@ -90,8 +81,6 @@ import {
   getVerifyAndCloseLevel2InstructionAsync,
   getVerifyAndCloseLevel3InstructionAsync,
 } from "./generated/vault";
-
-type RootSection = "levels" | "research-labs" | "profile";
 
 type StageConfig = {
   badge: string;
@@ -124,51 +113,6 @@ const LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX =
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
 ]);
-
-function isLevelView(value: string | null): value is LevelId {
-  return (
-    value === "level0" ||
-    value === "level1" ||
-    value === "level2" ||
-    value === "level3"
-  );
-}
-
-function getInitialRouteState(): {
-  section: RootSection;
-  view: LevelsView;
-} {
-  if (typeof window === "undefined") {
-    return { section: "levels", view: "landing" };
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  const section = params.get("section");
-  const level = params.get("level");
-
-  if (section === "profile" || section === "research-labs") {
-    return { section, view: "landing" };
-  }
-
-  if (isLevelView(level)) {
-    return { section: "levels", view: level };
-  }
-
-  return { section: "levels", view: "landing" };
-}
-
-function buildRouteUrl(section: RootSection, view: LevelsView) {
-  const params = new URLSearchParams();
-
-  if (section === "levels" && view !== "landing") {
-    params.set("level", view);
-  } else if (section !== "levels") {
-    params.set("section", section);
-  }
-
-  const query = params.toString();
-  return query ? `/?${query}` : "/";
-}
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -232,13 +176,12 @@ export default function Home() {
 
   const address = wallet?.account.address;
   const walletBalance = useBalance(address);
-  const initialRouteState = useMemo(() => getInitialRouteState(), []);
-  const [activeSection, setActiveSection] = useState<RootSection>(
-    initialRouteState.section
-  );
-  const [activeLevelsView, setActiveLevelsView] = useState<LevelsView>(
-    initialRouteState.view
-  );
+  const {
+    activeLevelsView,
+    activeSection,
+    setActiveLevelsView,
+    setActiveSection,
+  } = useLevelRoute();
   const [level1ExpectedMint] = useState("");
   const [level1Vault] = useState("");
   const [level1UserTokenAccount] = useState("");
@@ -278,26 +221,6 @@ export default function Home() {
   const [mintingLevel, setMintingLevel] = useState<LevelId | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  useEffect(() => {
-    const nextUrl = buildRouteUrl(activeSection, activeLevelsView);
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-
-    if (currentUrl !== nextUrl) {
-      window.history.replaceState(null, "", nextUrl);
-    }
-  }, [activeLevelsView, activeSection]);
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const nextState = getInitialRouteState();
-      setActiveSection(nextState.section);
-      setActiveLevelsView(nextState.view);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
   const handleCopy = useCallback(async (label: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopied(label);
@@ -329,36 +252,31 @@ export default function Home() {
   }, [address, cluster, level1BackendCertificateOverride]);
 
   const {
-    data: level0State,
-    error: level0Error,
-    isLoading: isLevel0Loading,
-    mutate: mutateLevel0State,
-  } = useSWR(
-    signer && address ? (["level0-state", cluster, address] as const) : null,
-    async (): Promise<Level0Snapshot> => {
-      return fetchLevel0Snapshot({
-        rpc: client.rpc,
-        user: signer!,
-      });
-    },
-    { revalidateOnFocus: true }
-  );
-
-  const {
-    data: level1State,
-    error: level1Error,
-    isLoading: isLevel1Loading,
-    mutate: mutateLevel1State,
-  } = useSWR(
-    signer && address ? (["level1-state", cluster, address] as const) : null,
-    async (): Promise<Level1Snapshot> => {
-      return fetchLevel1Snapshot({
-        playerAddress: address!,
-        rpc: client.rpc,
-      });
-    },
-    { revalidateOnFocus: true }
-  );
+    certificateState,
+    isCertificateLoading,
+    isLevel0Loading,
+    isLevel1Loading,
+    isLevel2Loading,
+    isLevel3Loading,
+    level0Error,
+    level0State,
+    level1Error,
+    level1State,
+    level2Error,
+    level2State,
+    level3Error,
+    level3State,
+    mutateLevel0State,
+    mutateLevel2State,
+    mutateLevel3State,
+    refreshSnapshots,
+  } = useLevelSnapshots({
+    address,
+    client,
+    cluster,
+    level3RewardAccountInput: level3UserRewardAccount,
+    signer,
+  });
 
   const {
     data: level1BackendStatus,
@@ -371,22 +289,6 @@ export default function Home() {
       : null,
     async (): Promise<Awaited<ReturnType<typeof fetchLevel1BackendStatus>>> => {
       return fetchLevel1BackendStatus(level1BackendAuth!.accessToken);
-    },
-    { revalidateOnFocus: true }
-  );
-
-  const {
-    data: level2State,
-    error: level2Error,
-    isLoading: isLevel2Loading,
-    mutate: mutateLevel2State,
-  } = useSWR(
-    signer && address ? (["level2-state", cluster, address] as const) : null,
-    async (): Promise<Level2Snapshot> => {
-      return fetchLevel2Snapshot({
-        playerAddress: address!,
-        rpc: client.rpc,
-      });
     },
     { revalidateOnFocus: true }
   );
@@ -406,64 +308,13 @@ export default function Home() {
     { revalidateOnFocus: true }
   );
 
-  const {
-    data: level3State,
-    error: level3Error,
-    isLoading: isLevel3Loading,
-    mutate: mutateLevel3State,
-  } = useSWR(
-    signer && address
-      ? ([
-          "level3-state",
-          cluster,
-          address,
-          level3UserRewardAccount.trim(),
-        ] as const)
-      : null,
-    async (): Promise<Level3Snapshot> => {
-      return fetchLevel3Snapshot({
-        playerAddress: address!,
-        rewardAccountInput: level3UserRewardAccount,
-        rpc: client.rpc,
-      });
-    },
-    { revalidateOnFocus: true }
-  );
-
-  const {
-    data: certificateState,
-    isLoading: isCertificateLoading,
-    mutate: mutateCertificateState,
-  } = useSWR(
-    address ? (["certificate-state", cluster, address] as const) : null,
-    async (): Promise<CertificateCollection> => {
-      return fetchCertificateCollection({
-        playerAddress: address!,
-        rpc: client.rpc,
-      });
-    },
-    { revalidateOnFocus: true }
-  );
-
   const refreshState = useCallback(async () => {
     await Promise.all([
-      mutateLevel0State(),
-      mutateLevel1State(),
+      refreshSnapshots(),
       mutateLevel1BackendStatus(),
-      mutateLevel2State(),
-      mutateLevel3State(),
-      mutateCertificateState(),
       walletBalance.mutate(),
     ]);
-  }, [
-    mutateCertificateState,
-    mutateLevel0State,
-    mutateLevel1BackendStatus,
-    mutateLevel1State,
-    mutateLevel2State,
-    mutateLevel3State,
-    walletBalance,
-  ]);
+  }, [refreshSnapshots, mutateLevel1BackendStatus, walletBalance]);
 
   const parseAddressInput = useCallback((value: string, label: string) => {
     const trimmed = value.trim();
