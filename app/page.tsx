@@ -33,6 +33,8 @@ import {
 } from "./lib/certificates/certificate-state";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
 import { useBalance } from "./lib/hooks/use-balance";
+import { useLevel1BackendExecution } from "./lib/hooks/use-level1-backend-execution";
+import { useLevel2BackendExecution } from "./lib/hooks/use-level2-backend-execution";
 import { useLevelRoute } from "./lib/hooks/use-level-route";
 import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
@@ -44,22 +46,8 @@ import {
 import {
   authorizeLevel1CertificateMint,
   ensureLevel1DemoAuth,
-  executeLevel1ExploitTransaction,
-  fetchLevel1BackendStatus,
-  setupLevel1,
-  startLevel1,
-  submitLevel1Proof,
   type Level1AuthSession,
-  type Level1Challenge,
 } from "./lib/levels/level1-backend";
-import {
-  executeLevel2ExploitTransaction,
-  fetchLevel2BackendStatus,
-  setupLevel2,
-  startLevel2,
-  submitLevel2Proof,
-  type Level2Challenge,
-} from "./lib/levels/level2-backend";
 import {
   executeLevel3ExploitTransaction,
   fetchLevel3BackendStatus,
@@ -116,7 +104,7 @@ const LEVEL_1_TARGET = 1_000_000n;
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
 const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
-const LEVEL_1_LOG_PREFIX = "[SolBreach Level 1]";
+const LEVEL_3_LOG_PREFIX = "[SolBreach Level 3]";
 const LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX =
   "solbreach.level1.backendCertificate";
 const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
@@ -170,10 +158,10 @@ function toLevel1BackendCertificateSnapshot(
   };
 }
 
-function logLevel1FrontendError(label: string, error: unknown) {
-  console.error(`${LEVEL_1_LOG_PREFIX} ${label}`, error);
+function logLevel3FrontendError(label: string, error: unknown) {
+  console.error(`${LEVEL_3_LOG_PREFIX} ${label}`, error);
   if (error instanceof Error && error.stack) {
-    console.error(`${LEVEL_1_LOG_PREFIX} ${label} stack`, error.stack);
+    console.error(`${LEVEL_3_LOG_PREFIX} ${label} stack`, error.stack);
   }
 }
 
@@ -195,33 +183,11 @@ export default function Home() {
   const [level1Vault] = useState("");
   const [level1UserTokenAccount] = useState("");
   const [level1Amount] = useState("1000000");
-  const [level1BackendAuth, setLevel1BackendAuth] =
-    useState<Level1AuthSession | null>(null);
-  const [level1Challenge, setLevel1Challenge] =
-    useState<Level1Challenge | null>(null);
-  const [level1TxSignature, setLevel1TxSignature] = useState<string | null>(
-    null
-  );
-  const [isLevel1BackendBusy, setIsLevel1BackendBusy] = useState(false);
-  const [level1RuntimeError, setLevel1RuntimeError] = useState<string | null>(
-    null
-  );
   const [
     level1BackendCertificateOverride,
     setLevel1BackendCertificateOverride,
   ] = useState<Level1BackendCertificateRecord | null>(null);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
-  const [level2BackendAuth, setLevel2BackendAuth] =
-    useState<Level1AuthSession | null>(null);
-  const [level2Challenge, setLevel2Challenge] =
-    useState<Level2Challenge | null>(null);
-  const [level2TxSignature, setLevel2TxSignature] = useState<string | null>(
-    null
-  );
-  const [isLevel2BackendBusy, setIsLevel2BackendBusy] = useState(false);
-  const [level2RuntimeError, setLevel2RuntimeError] = useState<string | null>(
-    null
-  );
   const [level3BackendAuth, setLevel3BackendAuth] =
     useState<Level1AuthSession | null>(null);
   const [level3Challenge, setLevel3Challenge] =
@@ -240,6 +206,33 @@ export default function Home() {
   const [level3Amount] = useState("1000000");
   const [mintingLevel, setMintingLevel] = useState<LevelId | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const {
+    backendAuth: level1BackendAuth,
+    backendCompleted: level1BackendCompleted,
+    backendError: level1BackendError,
+    backendStatus: level1BackendStatus,
+    challenge: level1Challenge,
+    ensureBackendSession: ensureLevel1BackendSession,
+    isBackendLoading: isLevel1BackendLoading,
+    isBusy: isLevel1BackendBusy,
+    mutateBackendStatus: mutateLevel1BackendStatus,
+    prepare: handleSetupLevel1Backend,
+    run: handleRunLevel1BackendExploit,
+    runtimeError: level1RuntimeError,
+    txSignature: level1TxSignature,
+  } = useLevel1BackendExecution({ address, status, wallet });
+  const {
+    backendCompleted: level2BackendCompleted,
+    backendError: level2BackendError,
+    challenge: level2Challenge,
+    isBackendLoading: isLevel2BackendLoading,
+    isBusy: isLevel2BackendBusy,
+    mutateBackendStatus: mutateLevel2BackendStatus,
+    prepare: handleSetupLevel2Backend,
+    run: handleRunLevel2BackendExploit,
+    runtimeError: level2RuntimeError,
+    txSignature: level2TxSignature,
+  } = useLevel2BackendExecution({ address, status, wallet });
 
   const handleCopy = useCallback(async (label: string, value: string) => {
     await navigator.clipboard.writeText(value);
@@ -297,36 +290,6 @@ export default function Home() {
     level3RewardAccountInput: level3UserRewardAccount,
     signer,
   });
-
-  const {
-    data: level1BackendStatus,
-    error: level1BackendError,
-    isLoading: isLevel1BackendLoading,
-    mutate: mutateLevel1BackendStatus,
-  } = useSWR(
-    level1BackendAuth
-      ? (["level1-backend-status", level1BackendAuth.accessToken] as const)
-      : null,
-    async (): Promise<Awaited<ReturnType<typeof fetchLevel1BackendStatus>>> => {
-      return fetchLevel1BackendStatus(level1BackendAuth!.accessToken);
-    },
-    { revalidateOnFocus: true }
-  );
-
-  const {
-    data: level2BackendStatus,
-    error: level2BackendError,
-    isLoading: isLevel2BackendLoading,
-    mutate: mutateLevel2BackendStatus,
-  } = useSWR(
-    level2BackendAuth
-      ? (["level2-backend-status", level2BackendAuth.accessToken] as const)
-      : null,
-    async (): Promise<Awaited<ReturnType<typeof fetchLevel2BackendStatus>>> => {
-      return fetchLevel2BackendStatus(level2BackendAuth!.accessToken);
-    },
-    { revalidateOnFocus: true }
-  );
 
   const {
     data: level3BackendStatus,
@@ -491,223 +454,6 @@ export default function Home() {
     );
   }, [runInstruction, signer]);
 
-  const ensureLevel1BackendSession = useCallback(async () => {
-    if (status !== "connected" || !address) {
-      throw new Error("Connect your wallet before starting Level 1.");
-    }
-
-    const auth = await ensureLevel1DemoAuth(address);
-    setLevel1BackendAuth(auth);
-    return auth;
-  }, [address, status]);
-
-  const ensureLevel1Started = useCallback(async (accessToken: string) => {
-    try {
-      await startLevel1(accessToken);
-    } catch (error) {
-      const message = parseTransactionError(error).toLowerCase();
-      if (
-        !message.includes("active") &&
-        !message.includes("already") &&
-        !message.includes("started")
-      ) {
-        throw error;
-      }
-    }
-  }, []);
-
-  const handleSetupLevel1Backend = useCallback(async () => {
-    if (!address) return;
-
-    setIsLevel1BackendBusy(true);
-    setLevel1RuntimeError(null);
-    try {
-      const auth = await ensureLevel1BackendSession();
-      await ensureLevel1Started(auth.accessToken);
-      const setup = await setupLevel1(auth.accessToken, address);
-      console.info(`${LEVEL_1_LOG_PREFIX} challenge payload received`, setup);
-      setLevel1Challenge(setup.challenge);
-      await mutateLevel1BackendStatus();
-      toast.success("Level 1 exploit challenge prepared.");
-    } catch (error) {
-      logLevel1FrontendError("challenge setup failed", error);
-      const message = getErrorMessage(error);
-      setLevel1RuntimeError(message);
-      toast.error(message);
-      throw error;
-    } finally {
-      setIsLevel1BackendBusy(false);
-    }
-  }, [
-    address,
-    ensureLevel1BackendSession,
-    ensureLevel1Started,
-    mutateLevel1BackendStatus,
-  ]);
-
-  const handleRunLevel1BackendExploit = useCallback(async () => {
-    if (!address || !wallet) return;
-
-    setIsLevel1BackendBusy(true);
-    setLevel1RuntimeError(null);
-    try {
-      const auth = await ensureLevel1BackendSession();
-      await ensureLevel1Started(auth.accessToken);
-      const setup =
-        level1Challenge && level1BackendStatus?.level_session_id
-          ? {
-              challenge: level1Challenge,
-              level_session_id: level1BackendStatus.level_session_id,
-            }
-          : await setupLevel1(auth.accessToken, address);
-
-      console.info(`${LEVEL_1_LOG_PREFIX} challenge payload received`, setup);
-      setLevel1Challenge(setup.challenge);
-
-      const signature = await executeLevel1ExploitTransaction({
-        challenge: setup.challenge,
-        wallet,
-      });
-      setLevel1TxSignature(signature);
-
-      console.info(`${LEVEL_1_LOG_PREFIX} backend submit start`, {
-        level_session_id: setup.level_session_id,
-        transaction_signature: signature,
-        wallet_address: address,
-      });
-      await submitLevel1Proof(auth.accessToken, {
-        level_session_id: setup.level_session_id,
-        transaction_signature: signature,
-        wallet_address: address,
-      });
-      await mutateLevel1BackendStatus();
-
-      toast.success("Level 1 exploit verified by backend.");
-    } catch (error) {
-      logLevel1FrontendError("exploit flow failed", error);
-      const message = getErrorMessage(error);
-      setLevel1RuntimeError(message);
-      toast.error(message);
-      throw error;
-    } finally {
-      setIsLevel1BackendBusy(false);
-    }
-  }, [
-    address,
-    ensureLevel1BackendSession,
-    ensureLevel1Started,
-    level1BackendStatus,
-    level1Challenge,
-    mutateLevel1BackendStatus,
-    wallet,
-  ]);
-
-  const ensureLevel2BackendSession = useCallback(async () => {
-    if (status !== "connected" || !address) {
-      throw new Error("Connect your wallet before starting Level 2.");
-    }
-
-    const auth = await ensureLevel1DemoAuth(address);
-    setLevel2BackendAuth(auth);
-    return auth;
-  }, [address, status]);
-
-  const ensureLevel2Started = useCallback(async (accessToken: string) => {
-    try {
-      await startLevel2(accessToken);
-    } catch (error) {
-      const message = parseTransactionError(error).toLowerCase();
-      if (
-        !message.includes("active") &&
-        !message.includes("already") &&
-        !message.includes("started")
-      ) {
-        throw error;
-      }
-    }
-  }, []);
-
-  const handleSetupLevel2Backend = useCallback(async () => {
-    if (!address) return;
-
-    setIsLevel2BackendBusy(true);
-    setLevel2RuntimeError(null);
-    try {
-      const auth = await ensureLevel2BackendSession();
-      await ensureLevel2Started(auth.accessToken);
-      const setup = await setupLevel2(auth.accessToken, address);
-      console.info("[SolBreach Level 2] challenge payload received", setup);
-      setLevel2Challenge(setup.challenge);
-      await mutateLevel2BackendStatus();
-      toast.success("Level 2 exploit challenge prepared.");
-    } catch (error) {
-      logLevel1FrontendError("level 2 challenge setup failed", error);
-      const message = getErrorMessage(error);
-      setLevel2RuntimeError(message);
-      toast.error(message);
-      throw error;
-    } finally {
-      setIsLevel2BackendBusy(false);
-    }
-  }, [
-    address,
-    ensureLevel2BackendSession,
-    ensureLevel2Started,
-    mutateLevel2BackendStatus,
-  ]);
-
-  const handleRunLevel2BackendExploit = useCallback(async () => {
-    if (!address || !wallet) return;
-
-    setIsLevel2BackendBusy(true);
-    setLevel2RuntimeError(null);
-    try {
-      const auth = await ensureLevel2BackendSession();
-      await ensureLevel2Started(auth.accessToken);
-      const setup =
-        level2Challenge && level2BackendStatus?.level_session_id
-          ? {
-              challenge: level2Challenge,
-              level_session_id: level2BackendStatus.level_session_id,
-            }
-          : await setupLevel2(auth.accessToken, address);
-
-      console.info("[SolBreach Level 2] challenge payload received", setup);
-      setLevel2Challenge(setup.challenge);
-
-      const signature = await executeLevel2ExploitTransaction({
-        challenge: setup.challenge,
-        wallet,
-      });
-      setLevel2TxSignature(signature);
-
-      await submitLevel2Proof(auth.accessToken, {
-        level_session_id: setup.level_session_id,
-        transaction_signature: signature,
-        wallet_address: address,
-      });
-      await mutateLevel2BackendStatus();
-
-      toast.success("Level 2 exploit verified by backend.");
-    } catch (error) {
-      logLevel1FrontendError("level 2 exploit flow failed", error);
-      const message = getErrorMessage(error);
-      setLevel2RuntimeError(message);
-      toast.error(message);
-      throw error;
-    } finally {
-      setIsLevel2BackendBusy(false);
-    }
-  }, [
-    address,
-    ensureLevel2BackendSession,
-    ensureLevel2Started,
-    level2BackendStatus,
-    level2Challenge,
-    mutateLevel2BackendStatus,
-    wallet,
-  ]);
-
   const ensureLevel3BackendSession = useCallback(async () => {
     if (status !== "connected" || !address) {
       throw new Error("Connect your wallet before starting Level 3.");
@@ -742,12 +488,12 @@ export default function Home() {
       const auth = await ensureLevel3BackendSession();
       await ensureLevel3Started(auth.accessToken);
       const setup = await setupLevel3(auth.accessToken, address);
-      console.info("[SolBreach Level 3] challenge payload received", setup);
+      console.info(`${LEVEL_3_LOG_PREFIX} challenge payload received`, setup);
       setLevel3Challenge(setup.challenge);
       await mutateLevel3BackendStatus();
       toast.success("Level 3 exploit challenge prepared.");
     } catch (error) {
-      logLevel1FrontendError("level 3 challenge setup failed", error);
+      logLevel3FrontendError("challenge setup failed", error);
       const message = getErrorMessage(error);
       setLevel3RuntimeError(message);
       toast.error(message);
@@ -778,7 +524,7 @@ export default function Home() {
             }
           : await setupLevel3(auth.accessToken, address);
 
-      console.info("[SolBreach Level 3] challenge payload received", setup);
+      console.info(`${LEVEL_3_LOG_PREFIX} challenge payload received`, setup);
       setLevel3Challenge(setup.challenge);
 
       const signature = await executeLevel3ExploitTransaction({
@@ -796,7 +542,7 @@ export default function Home() {
 
       toast.success("Level 3 exploit verified by backend.");
     } catch (error) {
-      logLevel1FrontendError("level 3 exploit flow failed", error);
+      logLevel3FrontendError("exploit flow failed", error);
       const message = getErrorMessage(error);
       setLevel3RuntimeError(message);
       toast.error(message);
@@ -813,7 +559,6 @@ export default function Home() {
     mutateLevel3BackendStatus,
     wallet,
   ]);
-
   const handleInitGlobalProfile = useCallback(async () => {
     await runInstruction(
       () => {
@@ -952,14 +697,8 @@ export default function Home() {
     );
   }, [level3UserRewardAccount, parseAddressInput, runInstruction, signer]);
 
-  const level1BackendCompleted = Boolean(level1BackendStatus?.completed);
   const level1Completed =
     Boolean(level0State?.completedLevels[1]) || level1BackendCompleted;
-  const level2BackendCompleted = Boolean(
-    level2BackendStatus?.completed ||
-    level2BackendStatus?.state === "completed" ||
-    level2BackendStatus?.certification?.unlock_status === "unlocked"
-  );
   const level2Completed =
     Boolean(level0State?.completedLevels[2]) || level2BackendCompleted;
   const level3BackendCompleted = Boolean(
