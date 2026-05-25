@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   address as toAddress,
   isAddress,
@@ -15,6 +15,7 @@ import { ClusterSelect } from "./components/cluster-select";
 import { HeaderCourseNav } from "./components/course-nav";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
+import { Level2Panel } from "./components/level-2-panel";
 import { LevelWorkspacePage } from "./components/level-workspace";
 import { compactAddress } from "./components/level-ui";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
@@ -50,6 +51,14 @@ import {
   type Level1AuthSession,
   type Level1Challenge,
 } from "./lib/levels/level1-backend";
+import {
+  executeLevel2ExploitTransaction,
+  fetchLevel2BackendStatus,
+  setupLevel2,
+  startLevel2,
+  submitLevel2Proof,
+  type Level2Challenge,
+} from "./lib/levels/level2-backend";
 import {
   fetchLevel0Snapshot,
   fetchLevel1Snapshot,
@@ -116,6 +125,51 @@ const MERCENARY_FOLLOW_ORDERS_DISCRIMINATOR = new Uint8Array([
   222, 50, 96, 140, 105, 24, 81, 44,
 ]);
 
+function isLevelView(value: string | null): value is LevelId {
+  return (
+    value === "level0" ||
+    value === "level1" ||
+    value === "level2" ||
+    value === "level3"
+  );
+}
+
+function getInitialRouteState(): {
+  section: RootSection;
+  view: LevelsView;
+} {
+  if (typeof window === "undefined") {
+    return { section: "levels", view: "landing" };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const section = params.get("section");
+  const level = params.get("level");
+
+  if (section === "profile" || section === "research-labs") {
+    return { section, view: "landing" };
+  }
+
+  if (isLevelView(level)) {
+    return { section: "levels", view: level };
+  }
+
+  return { section: "levels", view: "landing" };
+}
+
+function buildRouteUrl(section: RootSection, view: LevelsView) {
+  const params = new URLSearchParams();
+
+  if (section === "levels" && view !== "landing") {
+    params.set("level", view);
+  } else if (section !== "levels") {
+    params.set("section", section);
+  }
+
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -178,9 +232,13 @@ export default function Home() {
 
   const address = wallet?.account.address;
   const walletBalance = useBalance(address);
-  const [activeSection, setActiveSection] = useState<RootSection>("levels");
-  const [activeLevelsView, setActiveLevelsView] =
-    useState<LevelsView>("landing");
+  const initialRouteState = useMemo(() => getInitialRouteState(), []);
+  const [activeSection, setActiveSection] = useState<RootSection>(
+    initialRouteState.section
+  );
+  const [activeLevelsView, setActiveLevelsView] = useState<LevelsView>(
+    initialRouteState.view
+  );
   const [level1ExpectedMint] = useState("");
   const [level1Vault] = useState("");
   const [level1UserTokenAccount] = useState("");
@@ -201,6 +259,17 @@ export default function Home() {
     setLevel1BackendCertificateOverride,
   ] = useState<Level1BackendCertificateRecord | null>(null);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
+  const [level2BackendAuth, setLevel2BackendAuth] =
+    useState<Level1AuthSession | null>(null);
+  const [level2Challenge, setLevel2Challenge] =
+    useState<Level2Challenge | null>(null);
+  const [level2TxSignature, setLevel2TxSignature] = useState<string | null>(
+    null
+  );
+  const [isLevel2BackendBusy, setIsLevel2BackendBusy] = useState(false);
+  const [level2RuntimeError, setLevel2RuntimeError] = useState<string | null>(
+    null
+  );
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
   const [level3UserRewardAccount] = useState("");
@@ -208,6 +277,26 @@ export default function Home() {
   const [level3Amount] = useState("1000000");
   const [mintingLevel, setMintingLevel] = useState<LevelId | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    const nextUrl = buildRouteUrl(activeSection, activeLevelsView);
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+    if (currentUrl !== nextUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [activeLevelsView, activeSection]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextState = getInitialRouteState();
+      setActiveSection(nextState.section);
+      setActiveLevelsView(nextState.view);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const handleCopy = useCallback(async (label: string, value: string) => {
     await navigator.clipboard.writeText(value);
@@ -298,6 +387,21 @@ export default function Home() {
         playerAddress: address!,
         rpc: client.rpc,
       });
+    },
+    { revalidateOnFocus: true }
+  );
+
+  const {
+    data: level2BackendStatus,
+    error: level2BackendError,
+    isLoading: isLevel2BackendLoading,
+    mutate: mutateLevel2BackendStatus,
+  } = useSWR(
+    level2BackendAuth
+      ? (["level2-backend-status", level2BackendAuth.accessToken] as const)
+      : null,
+    async (): Promise<Awaited<ReturnType<typeof fetchLevel2BackendStatus>>> => {
+      return fetchLevel2BackendStatus(level2BackendAuth!.accessToken);
     },
     { revalidateOnFocus: true }
   );
@@ -604,6 +708,112 @@ export default function Home() {
     wallet,
   ]);
 
+  const ensureLevel2BackendSession = useCallback(async () => {
+    if (status !== "connected" || !address) {
+      throw new Error("Connect your wallet before starting Level 2.");
+    }
+
+    const auth = await ensureLevel1DemoAuth(address);
+    setLevel2BackendAuth(auth);
+    return auth;
+  }, [address, status]);
+
+  const ensureLevel2Started = useCallback(async (accessToken: string) => {
+    try {
+      await startLevel2(accessToken);
+    } catch (error) {
+      const message = parseTransactionError(error).toLowerCase();
+      if (
+        !message.includes("active") &&
+        !message.includes("already") &&
+        !message.includes("started")
+      ) {
+        throw error;
+      }
+    }
+  }, []);
+
+  const handleSetupLevel2Backend = useCallback(async () => {
+    if (!address) return;
+
+    setIsLevel2BackendBusy(true);
+    setLevel2RuntimeError(null);
+    try {
+      const auth = await ensureLevel2BackendSession();
+      await ensureLevel2Started(auth.accessToken);
+      const setup = await setupLevel2(auth.accessToken, address);
+      console.info("[SolBreach Level 2] challenge payload received", setup);
+      setLevel2Challenge(setup.challenge);
+      await mutateLevel2BackendStatus();
+      toast.success("Level 2 exploit challenge prepared.");
+    } catch (error) {
+      logLevel1FrontendError("level 2 challenge setup failed", error);
+      const message = getErrorMessage(error);
+      setLevel2RuntimeError(message);
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLevel2BackendBusy(false);
+    }
+  }, [
+    address,
+    ensureLevel2BackendSession,
+    ensureLevel2Started,
+    mutateLevel2BackendStatus,
+  ]);
+
+  const handleRunLevel2BackendExploit = useCallback(async () => {
+    if (!address || !wallet) return;
+
+    setIsLevel2BackendBusy(true);
+    setLevel2RuntimeError(null);
+    try {
+      const auth = await ensureLevel2BackendSession();
+      await ensureLevel2Started(auth.accessToken);
+      const setup =
+        level2Challenge && level2BackendStatus?.level_session_id
+          ? {
+              challenge: level2Challenge,
+              level_session_id: level2BackendStatus.level_session_id,
+            }
+          : await setupLevel2(auth.accessToken, address);
+
+      console.info("[SolBreach Level 2] challenge payload received", setup);
+      setLevel2Challenge(setup.challenge);
+
+      const signature = await executeLevel2ExploitTransaction({
+        challenge: setup.challenge,
+        wallet,
+      });
+      setLevel2TxSignature(signature);
+
+      await submitLevel2Proof(auth.accessToken, {
+        level_session_id: setup.level_session_id,
+        transaction_signature: signature,
+        wallet_address: address,
+      });
+      await mutateLevel2BackendStatus();
+
+      toast.success("Level 2 exploit verified by backend.");
+    } catch (error) {
+      logLevel1FrontendError("level 2 exploit flow failed", error);
+      const message = getErrorMessage(error);
+      setLevel2RuntimeError(message);
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLevel2BackendBusy(false);
+    }
+  }, [
+    address,
+    ensureLevel2BackendSession,
+    ensureLevel2Started,
+    level2BackendStatus,
+    level2Challenge,
+    mutateLevel2BackendStatus,
+    wallet,
+  ]);
+
   const handleInitGlobalProfile = useCallback(async () => {
     await runInstruction(
       () => {
@@ -745,7 +955,13 @@ export default function Home() {
   const level1BackendCompleted = Boolean(level1BackendStatus?.completed);
   const level1Completed =
     Boolean(level0State?.completedLevels[1]) || level1BackendCompleted;
-  const level2Completed = Boolean(level0State?.completedLevels[2]);
+  const level2BackendCompleted = Boolean(
+    level2BackendStatus?.completed ||
+    level2BackendStatus?.state === "completed" ||
+    level2BackendStatus?.certification?.unlock_status === "unlocked"
+  );
+  const level2Completed =
+    Boolean(level0State?.completedLevels[2]) || level2BackendCompleted;
   const level3Completed = Boolean(level0State?.completedLevels[3]);
   const level0Certificate = certificateState?.[0];
   const chainLevel1Certificate = certificateState?.[1];
@@ -1885,6 +2101,37 @@ export default function Home() {
                       onInitLevel1={handleInitLevel1}
                       onVerify={handleVerifyLevel1}
                       stage={level1Stage}
+                      status={status}
+                    />
+                  ) : activeLevel === "level2" ? (
+                    <Level2Panel
+                      address={address}
+                      backendExecution={{
+                        challengeReady: Boolean(level2Challenge),
+                        completed: level2BackendCompleted,
+                        error:
+                          level2RuntimeError ??
+                          (level2BackendError
+                            ? getErrorMessage(level2BackendError)
+                            : null),
+                        isBusy: isLevel2BackendBusy || isLevel2BackendLoading,
+                        onPrepare: handleSetupLevel2Backend,
+                        onRun: handleRunLevel2BackendExploit,
+                        txSignature: level2TxSignature,
+                      }}
+                      certificate={level2Certificate}
+                      isLoading={isLevel2Loading}
+                      isMinting={mintingLevel === "level2"}
+                      isSending={isSending}
+                      level2Completed={level2Completed}
+                      level2Error={level2Error}
+                      level2InitialCommander={level2InitialCommander}
+                      level2State={level2State}
+                      onInitGlobalProfile={handleInitGlobalProfile}
+                      onInitLevel2={handleInitLevel2}
+                      onMint={activeLevelStatus.onMint}
+                      onUpdateProfile={handleUpdateProfile}
+                      onVerify={handleVerifyLevel2}
                       status={status}
                     />
                   ) : (
