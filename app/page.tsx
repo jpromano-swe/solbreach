@@ -34,7 +34,16 @@ import { useWallet } from "./lib/wallet/context";
 
 const LEVEL_1_TARGET = 1_000_000n;
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
+const DEFAULT_LEVEL_1_AMOUNT = "1000000";
+const DEFAULT_LEVEL_1_EXPECTED_MINT = "";
+const DEFAULT_LEVEL_1_USER_TOKEN_ACCOUNT = "";
+const DEFAULT_LEVEL_1_VAULT = "";
 const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
+const DEFAULT_LEVEL_3_AMOUNT = "1000000";
+const DEFAULT_LEVEL_3_BOUNTY_VAULT = "";
+const DEFAULT_LEVEL_3_EXTERNAL_PROGRAM = "";
+const DEFAULT_LEVEL_3_REWARD_ACCOUNT = "";
+const DEFAULT_LEVEL_3_REWARD_MINT = "";
 const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -61,16 +70,6 @@ export default function Home() {
     setActiveLevelsView,
     setActiveSection,
   } = useLevelRoute();
-  const [level1ExpectedMint] = useState("");
-  const [level1Vault] = useState("");
-  const [level1UserTokenAccount] = useState("");
-  const [level1Amount] = useState("1000000");
-  const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
-  const [level3RewardMint] = useState("");
-  const [level3BountyVault] = useState("");
-  const [level3UserRewardAccount] = useState("");
-  const [level3ExternalProgram] = useState("");
-  const [level3Amount] = useState("1000000");
   const [copied, setCopied] = useState<string | null>(null);
   const {
     backendAuth: level1BackendAuth,
@@ -146,7 +145,7 @@ export default function Home() {
     address,
     client,
     cluster,
-    level3RewardAccountInput: level3UserRewardAccount,
+    level3RewardAccountInput: DEFAULT_LEVEL_3_REWARD_ACCOUNT,
     signer,
   });
 
@@ -185,17 +184,17 @@ export default function Home() {
   } = useLevelChainActions({
     address,
     getExplorerUrl,
-    level1Amount,
-    level1ExpectedMint,
-    level1UserTokenAccount,
-    level1Vault,
-    level2InitialCommander,
-    level3Amount,
-    level3BountyVault,
-    level3ExternalProgram,
-    level3RewardMint,
+    level1Amount: DEFAULT_LEVEL_1_AMOUNT,
+    level1ExpectedMint: DEFAULT_LEVEL_1_EXPECTED_MINT,
+    level1UserTokenAccount: DEFAULT_LEVEL_1_USER_TOKEN_ACCOUNT,
+    level1Vault: DEFAULT_LEVEL_1_VAULT,
+    level2InitialCommander: DEFAULT_LEVEL_2_COMMANDER,
+    level3Amount: DEFAULT_LEVEL_3_AMOUNT,
+    level3BountyVault: DEFAULT_LEVEL_3_BOUNTY_VAULT,
+    level3ExternalProgram: DEFAULT_LEVEL_3_EXTERNAL_PROGRAM,
+    level3RewardMint: DEFAULT_LEVEL_3_REWARD_MINT,
     level3State,
-    level3UserRewardAccount,
+    level3UserRewardAccount: DEFAULT_LEVEL_3_REWARD_ACCOUNT,
     refreshState,
     send,
     signer,
@@ -495,7 +494,7 @@ export default function Home() {
                       isSending={isSending}
                       level2Completed={level2Completed}
                       level2Error={level2Error}
-                      level2InitialCommander={level2InitialCommander}
+                      level2InitialCommander={DEFAULT_LEVEL_2_COMMANDER}
                       level2State={level2State}
                       onInitGlobalProfile={handleInitGlobalProfile}
                       onInitLevel2={handleInitLevel2}
