@@ -2,7 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { address as toAddress, isAddress, type Address } from "@solana/kit";
-import type { LevelCertificateSnapshot } from "../certificates/certificate-state";
+import type {
+  CertificateCollection,
+  LevelCertificateSnapshot,
+} from "../certificates/certificate-state";
 import type { ClusterMoniker } from "../solana-client";
 
 type Level1BackendCertificateRecord = {
@@ -64,9 +67,11 @@ function toSnapshot(
 
 export function useLevel1BackendCertificate({
   address,
+  certificateState,
   cluster,
 }: {
   address?: Address;
+  certificateState?: CertificateCollection;
   cluster: ClusterMoniker;
 }) {
   const [override, setOverride] =
@@ -94,6 +99,17 @@ export function useLevel1BackendCertificate({
   }, [address, cluster, override]);
 
   const snapshot = useMemo(() => toSnapshot(record), [record]);
+  const effectiveCertificateState = useMemo(() => {
+    if (!certificateState) return certificateState;
+    if (!snapshot || certificateState[1]?.minted) {
+      return certificateState;
+    }
+
+    return {
+      ...certificateState,
+      1: snapshot,
+    } satisfies CertificateCollection;
+  }, [certificateState, snapshot]);
 
   const handleMinted = useCallback(
     (payload: BackendCertificatePayload) => {
@@ -122,6 +138,7 @@ export function useLevel1BackendCertificate({
   );
 
   return {
+    effectiveCertificateState,
     level1BackendCertificateSnapshot: snapshot,
     handleLevel1BackendCertificateMinted: handleMinted,
   };

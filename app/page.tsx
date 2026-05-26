@@ -13,7 +13,6 @@ import { ProfileCertificatesSection } from "./components/profile-certificates-se
 import { ResearchLabsSection } from "./components/research-labs-section";
 import { SiteFooter } from "./components/site-footer";
 import { useCluster } from "./components/cluster-context";
-import { type CertificateCollection } from "./lib/certificates/certificate-state";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
 import { useActiveLevelStatus } from "./lib/hooks/use-active-level-status";
 import { useBalance } from "./lib/hooks/use-balance";
@@ -111,11 +110,6 @@ export default function Home() {
     runtimeError: level3RuntimeError,
     txSignature: level3TxSignature,
   } = useLevel3BackendExecution({ address, status, wallet });
-  const {
-    handleLevel1BackendCertificateMinted,
-    level1BackendCertificateSnapshot,
-  } = useLevel1BackendCertificate({ address, cluster });
-
   const handleCopy = useCallback(async (label: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopied(label);
@@ -148,6 +142,11 @@ export default function Home() {
     level3RewardAccountInput: DEFAULT_LEVEL_3_REWARD_ACCOUNT,
     signer,
   });
+  const {
+    effectiveCertificateState,
+    handleLevel1BackendCertificateMinted,
+    level1BackendCertificateSnapshot,
+  } = useLevel1BackendCertificate({ address, certificateState, cluster });
 
   const refreshState = useCallback(async () => {
     await Promise.all([
@@ -213,17 +212,6 @@ export default function Home() {
     : (level1BackendCertificateSnapshot ?? chainLevel1Certificate);
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
-  const effectiveCertificateState = useMemo(() => {
-    if (!certificateState) return certificateState;
-    if (!level1BackendCertificateSnapshot || certificateState[1]?.minted) {
-      return certificateState;
-    }
-
-    return {
-      ...certificateState,
-      1: level1BackendCertificateSnapshot,
-    } satisfies CertificateCollection;
-  }, [certificateState, level1BackendCertificateSnapshot]);
   const level1CertificationMinted = Boolean(level1Certificate?.minted);
   const level1DepositReady =
     (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET ||
