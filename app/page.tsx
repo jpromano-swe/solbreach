@@ -1,11 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { address as toAddress, isAddress, type Address } from "@solana/kit";
+import { AppHeader } from "./components/app-header";
 import { GridBackground } from "./components/grid-background";
-import { ClusterSelect } from "./components/cluster-select";
-import { HeaderCourseNav } from "./components/course-nav";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
 import { Level2Panel } from "./components/level-2-panel";
@@ -14,8 +12,6 @@ import { LevelWorkspacePage } from "./components/level-workspace";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
 import { ResearchLabsSection } from "./components/research-labs-section";
 import { SiteFooter } from "./components/site-footer";
-import { ThemeToggle } from "./components/theme-toggle";
-import { WalletButton } from "./components/wallet-button";
 import { useCluster } from "./components/cluster-context";
 import { type CertificateCollection } from "./lib/certificates/certificate-state";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
@@ -446,61 +442,21 @@ export default function Home() {
       <GridBackground />
 
       <div className="relative z-10">
-        <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-            <div className="flex justify-center lg:justify-start">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSection("levels");
-                  setActiveLevelsView("landing");
-                }}
-                className="rounded-[18px] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                aria-label="Open SolBreach landing page"
-              >
-                <Image
-                  src="/logo_crop.png"
-                  alt="SolBreach"
-                  width={1480}
-                  height={304}
-                  className="h-20 w-auto sm:h-20 lg:h-20"
-                  priority
-                />
-              </button>
-            </div>
-
-            {activeSection !== "levels" || activeLevelsView !== "landing" ? (
-              <HeaderCourseNav
-                onSelectResearchLabs={() => setActiveSection("research-labs")}
-                onSelectLevel={(level) => {
-                  setActiveSection("levels");
-                  setActiveLevelsView(level);
-                }}
-              />
-            ) : (
-              <div className="hidden lg:block" aria-hidden="true" />
-            )}
-
-            <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
-              <ClusterSelect />
-              <WalletButton />
-              {status === "connected" ? (
-                <button
-                  type="button"
-                  onClick={() => setActiveSection("profile")}
-                  className={`min-h-11 rounded-full border px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                    activeSection === "profile"
-                      ? "border-foreground/20 bg-foreground text-background"
-                      : "border-border bg-card/70 text-foreground hover:bg-accent"
-                  }`}
-                >
-                  My Profile
-                </button>
-              ) : null}
-              <ThemeToggle />
-            </div>
-          </div>
-        </header>
+        <AppHeader
+          activeLevelsView={activeLevelsView}
+          activeSection={activeSection}
+          onOpenLanding={() => {
+            setActiveSection("levels");
+            setActiveLevelsView("landing");
+          }}
+          onOpenProfile={() => setActiveSection("profile")}
+          onSelectResearchLabs={() => setActiveSection("research-labs")}
+          onSelectLevel={(level) => {
+            setActiveSection("levels");
+            setActiveLevelsView(level);
+          }}
+          walletStatus={status}
+        />
 
         <main className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">
           {activeSection === "levels" ? (
