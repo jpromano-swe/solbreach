@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { type Address } from "@solana/kit";
 import { AppHeader } from "./components/app-header";
 import { GridBackground } from "./components/grid-background";
@@ -27,11 +27,9 @@ import { useLevelRoute } from "./lib/hooks/use-level-route";
 import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useLevelStageConfigs } from "./lib/hooks/use-level-stage-configs";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
-import { buildLevelTiles } from "./lib/levels/course-status";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 
-const LEVEL_1_TARGET = 1_000_000n;
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_1_AMOUNT = "1000000";
 const DEFAULT_LEVEL_1_EXPECTED_MINT = "";
@@ -213,9 +211,6 @@ export default function Home() {
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
   const level1CertificationMinted = Boolean(level1Certificate?.minted);
-  const level1DepositReady =
-    (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET ||
-    level1BackendCompleted;
   const level2Hijacked = Boolean(address && level2State?.commander === address);
   const level3DelegationReady =
     level3BackendCompleted ||
@@ -256,8 +251,8 @@ export default function Home() {
       wallet,
     });
 
-  const { level1Stage, level2Stage, level3Stage, stage } = useLevelStageConfigs(
-    {
+  const { level1Stage, level2Stage, level3Stage, levelTiles, stage } =
+    useLevelStageConfigs({
       address,
       cluster,
       handleDelegateTask,
@@ -288,6 +283,7 @@ export default function Home() {
       level1Completed,
       level1RuntimeError,
       level1SessionReady: Boolean(level1BackendStatus?.level_session_id),
+      level1State,
       level1TxSignature,
       level2Completed,
       level2Error,
@@ -302,40 +298,7 @@ export default function Home() {
       mutateLevel2State,
       mutateLevel3State,
       status,
-    }
-  );
-
-  const levelTiles = useMemo(() => {
-    return buildLevelTiles({
-      level0Completed: level0State?.isCompleted,
-      level0HasLevelState: level0State?.hasLevel0State,
-      level1Completed,
-      level1DepositReady,
-      level1HasLevelState: level1State?.hasLevel1State,
-      level2Completed,
-      level2HasLevelState: level2State?.hasLevel2State,
-      level2HasProfile: level2State?.hasProfile,
-      level2Hijacked,
-      level3Completed,
-      level3DelegationReady,
-      level3HasGuildAuthority: level3State?.hasGuildAuthority,
-      level3HasLevelState: level3State?.hasLevel3State,
     });
-  }, [
-    level0State?.hasLevel0State,
-    level0State?.isCompleted,
-    level1Completed,
-    level1DepositReady,
-    level1State?.hasLevel1State,
-    level2Completed,
-    level2Hijacked,
-    level2State?.hasLevel2State,
-    level2State?.hasProfile,
-    level3Completed,
-    level3DelegationReady,
-    level3State?.hasGuildAuthority,
-    level3State?.hasLevel3State,
-  ]);
 
   const activeLevel = activeLevelsView === "landing" ? null : activeLevelsView;
   const activeGuide = activeLevel ? LEVEL_GUIDES[activeLevel] : null;
