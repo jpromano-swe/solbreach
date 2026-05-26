@@ -4,10 +4,14 @@ import { useMemo } from "react";
 import type { Address } from "@solana/kit";
 import type {
   Level0Snapshot,
+  Level1Snapshot,
   Level2Snapshot,
   Level3Snapshot,
 } from "../levels/level-state";
+import { buildLevelTiles } from "../levels/course-status";
 import type { ClusterMoniker } from "../solana-client";
+
+const LEVEL_1_TARGET = 1_000_000n;
 
 export type StageConfig = {
   badge: string;
@@ -58,6 +62,7 @@ export function useLevelStageConfigs({
   level1Completed,
   level1RuntimeError,
   level1SessionReady,
+  level1State,
   level1TxSignature,
   level2Completed,
   level2Error,
@@ -103,6 +108,7 @@ export function useLevelStageConfigs({
   level1Completed: boolean;
   level1RuntimeError?: string | null;
   level1SessionReady: boolean;
+  level1State?: Level1Snapshot;
   level1TxSignature?: string | null;
   level2Completed: boolean;
   level2Error?: unknown;
@@ -570,10 +576,46 @@ export function useLevelStageConfigs({
     status,
   ]);
 
+  const levelTiles = useMemo(() => {
+    const level1DepositReady =
+      (level1State?.depositedAmount ?? 0n) >= LEVEL_1_TARGET || level1Completed;
+
+    return buildLevelTiles({
+      level0Completed: level0State?.isCompleted,
+      level0HasLevelState: level0State?.hasLevel0State,
+      level1Completed,
+      level1DepositReady,
+      level1HasLevelState: level1State?.hasLevel1State,
+      level2Completed,
+      level2HasLevelState: level2State?.hasLevel2State,
+      level2HasProfile: level2State?.hasProfile,
+      level2Hijacked,
+      level3Completed,
+      level3DelegationReady,
+      level3HasGuildAuthority: level3State?.hasGuildAuthority,
+      level3HasLevelState: level3State?.hasLevel3State,
+    });
+  }, [
+    level0State?.hasLevel0State,
+    level0State?.isCompleted,
+    level1Completed,
+    level1State?.depositedAmount,
+    level1State?.hasLevel1State,
+    level2Completed,
+    level2Hijacked,
+    level2State?.hasLevel2State,
+    level2State?.hasProfile,
+    level3Completed,
+    level3DelegationReady,
+    level3State?.hasGuildAuthority,
+    level3State?.hasLevel3State,
+  ]);
+
   return {
     level1Stage,
     level2Stage,
     level3Stage,
+    levelTiles,
     stage,
   };
 }
