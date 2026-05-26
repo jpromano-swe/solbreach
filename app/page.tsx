@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { address as toAddress, isAddress, type Address } from "@solana/kit";
+import { type Address } from "@solana/kit";
 import { AppHeader } from "./components/app-header";
 import { GridBackground } from "./components/grid-background";
 import { LandingPageSection } from "./components/landing-page-section";
@@ -21,6 +21,7 @@ import { useCertificateMinting } from "./lib/hooks/use-certificate-minting";
 import { useLevelChainActions } from "./lib/hooks/use-level-chain-actions";
 import { useLevel1BackendCertificate } from "./lib/hooks/use-level1-backend-certificate";
 import { useLevel1BackendExecution } from "./lib/hooks/use-level1-backend-execution";
+import { useLevel1PanelState } from "./lib/hooks/use-level1-panel-state";
 import { useLevel2BackendExecution } from "./lib/hooks/use-level2-backend-execution";
 import { useLevel3BackendExecution } from "./lib/hooks/use-level3-backend-execution";
 import { useLevelRoute } from "./lib/hooks/use-level-route";
@@ -28,7 +29,6 @@ import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useLevelStageConfigs } from "./lib/hooks/use-level-stage-configs";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
 import { buildLevelTiles } from "./lib/levels/course-status";
-import { type Level1Snapshot } from "./lib/levels/level-state";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 
@@ -235,35 +235,19 @@ export default function Home() {
     Boolean(level3Challenge || level3BackendStatus?.challenge_context) ||
     (level3State?.rewardAmount ?? 0n) >=
       (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET);
-  const level1PanelChallenge =
-    level1Challenge ?? level1BackendStatus?.challenge_context ?? null;
-  const level1PanelPda =
-    level1PanelChallenge?.challenge_pda &&
-    isAddress(level1PanelChallenge.challenge_pda)
-      ? toAddress(level1PanelChallenge.challenge_pda)
-      : (level1State?.bankPda ?? DEFAULT_LEVEL_2_COMMANDER);
-  const level1PanelExpectedMint =
-    level1PanelChallenge?.official_mint &&
-    isAddress(level1PanelChallenge.official_mint)
-      ? toAddress(level1PanelChallenge.official_mint)
-      : (level1State?.expectedMint ?? null);
-  const level1PanelState: Level1Snapshot | undefined = level1PanelChallenge
-    ? {
-        bankPda: level1PanelPda,
-        depositedAmount: level1BackendCompleted
-          ? LEVEL_1_TARGET
-          : (level1State?.depositedAmount ?? 0n),
-        expectedMint: level1PanelExpectedMint,
-        hasBank: true,
-        hasLevel1State: Boolean(
-          level1BackendStatus?.level_session_id || level1State?.hasLevel1State
-        ),
-        level1StatePda: level1PanelPda,
-      }
-    : level1State;
-  const level1PanelError = level1BackendError ?? level1Error;
-  const isLevel1PanelLoading =
-    isLevel1Loading || isLevel1BackendLoading || isLevel1BackendBusy;
+  const { isLevel1PanelLoading, level1PanelError, level1PanelState } =
+    useLevel1PanelState({
+      defaultBankPda: DEFAULT_LEVEL_2_COMMANDER,
+      isLevel1BackendBusy,
+      isLevel1BackendLoading,
+      isLevel1Loading,
+      level1BackendCompleted,
+      level1BackendError,
+      level1BackendStatus,
+      level1Challenge,
+      level1Error,
+      level1State,
+    });
 
   const { mintingLevel, mintLevelCertificate } = useCertificateMinting({
     address,
