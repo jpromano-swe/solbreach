@@ -11,7 +11,6 @@ import { Level1Panel } from "./components/level-1-panel";
 import { Level2Panel } from "./components/level-2-panel";
 import { Level3Panel } from "./components/level-3-panel";
 import { LevelWorkspacePage } from "./components/level-workspace";
-import { compactAddress } from "./components/level-ui";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
 import { ResearchLabsSection } from "./components/research-labs-section";
 import { SiteFooter } from "./components/site-footer";
@@ -20,6 +19,7 @@ import { WalletButton } from "./components/wallet-button";
 import { useCluster } from "./components/cluster-context";
 import { type CertificateCollection } from "./lib/certificates/certificate-state";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
+import { useActiveLevelStatus } from "./lib/hooks/use-active-level-status";
 import { useBalance } from "./lib/hooks/use-balance";
 import { useCertificateMinting } from "./lib/hooks/use-certificate-minting";
 import { useLevelChainActions } from "./lib/hooks/use-level-chain-actions";
@@ -30,7 +30,7 @@ import { useLevel3BackendExecution } from "./lib/hooks/use-level3-backend-execut
 import { useLevelRoute } from "./lib/hooks/use-level-route";
 import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
-import { buildLevelTiles, getStatusLabel } from "./lib/levels/course-status";
+import { buildLevelTiles } from "./lib/levels/course-status";
 import { type Level1Snapshot } from "./lib/levels/level-state";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
@@ -795,15 +795,6 @@ export default function Home() {
     level0State,
   ]);
 
-  const progressValue = useMemo(() => {
-    if (status !== "connected" || !address) return 0;
-    if (isLevel0Loading || level0Error) return 15;
-    if (!level0State?.hasUserStats) return 33;
-    if (!level0State.hasLevel0State && !level0State.isCompleted) return 66;
-    if (level0State.isCompleted) return 100;
-    return 92;
-  }, [address, isLevel0Loading, level0Error, level0State, status]);
-
   const levelTiles = useMemo(() => {
     return buildLevelTiles({
       level0Completed: level0State?.isCompleted,
@@ -838,241 +829,35 @@ export default function Home() {
 
   const activeLevel = activeLevelsView === "landing" ? null : activeLevelsView;
   const activeGuide = activeLevel ? LEVEL_GUIDES[activeLevel] : null;
-  const activeTile = activeLevel
-    ? (levelTiles.find((tile) => tile.id === activeLevel) ?? null)
-    : null;
-  const activeCertificate = activeLevel
-    ? ({
-        level0: level0Certificate,
-        level1: level1Certificate,
-        level2: level2Certificate,
-        level3: level3Certificate,
-      }[activeLevel] ?? null)
-    : null;
-  const activeLevelStatus = useMemo(() => {
-    if (!activeLevel) return null;
-    const activeLevelCertificateMinted =
-      activeLevel === "level1"
-        ? level1CertificationMinted
-        : Boolean(activeCertificate?.minted);
-    const mintState = activeLevelCertificateMinted
-      ? {
-          mintDisabled: true,
-          mintLabel: "Certification Minted",
-          onMint: () => {},
-        }
-      : activeLevel === "level0"
-        ? {
-            mintDisabled:
-              !level0State?.isCompleted || mintingLevel === "level0",
-            mintLabel:
-              mintingLevel === "level0"
-                ? "Minting..."
-                : level0State?.isCompleted
-                  ? "Unlock Certification"
-                  : "Mint Locked",
-            onMint: () => {
-              void handleMintLevel0Flag();
-            },
-          }
-        : activeLevel === "level1"
-          ? {
-              mintDisabled: !level1Completed || mintingLevel === "level1",
-              mintLabel:
-                mintingLevel === "level1"
-                  ? "Minting..."
-                  : level1Completed
-                    ? "Unlock Certification"
-                    : "Mint Locked",
-              onMint: () => {
-                void handleMintLevel1Flag();
-              },
-            }
-          : activeLevel === "level2"
-            ? {
-                mintDisabled: !level2Completed || mintingLevel === "level2",
-                mintLabel:
-                  mintingLevel === "level2"
-                    ? "Minting..."
-                    : level2Completed
-                      ? "Unlock Certification"
-                      : "Mint Locked",
-                onMint: () => {
-                  void handleMintLevel2Flag();
-                },
-              }
-            : {
-                mintDisabled: !level3Completed || mintingLevel === "level3",
-                mintLabel:
-                  mintingLevel === "level3"
-                    ? "Minting..."
-                    : level3Completed
-                      ? "Unlock Certification"
-                      : "Mint Locked",
-                onMint: () => {
-                  void handleMintLevel3Flag();
-                },
-              };
-    switch (activeLevel) {
-      case "level0":
-        return {
-          badge: stage.badge,
-          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
-          ...mintState,
-          progressValue,
-          rows: [
-            { label: "Cluster", value: cluster },
-            {
-              label: "Wallet",
-              value:
-                status === "connected"
-                  ? compactAddress(address ?? "")
-                  : "Detached",
-            },
-            {
-              label: "PDA state",
-              value: level0State?.hasLevel0State
-                ? "Live"
-                : level0State?.isCompleted
-                  ? "Closed"
-                  : "Pending",
-            },
-            {
-              label: "Win condition",
-              value: level0State?.isCompleted
-                ? "1 / 1 cleared"
-                : "0 / 1 cleared",
-            },
-          ],
-        };
-      case "level1":
-        return {
-          badge: level1Stage.badge,
-          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
-          ...mintState,
-          progressValue: Math.min(
-            Number(
-              ((level1State?.depositedAmount ?? 0n) * 100n) / LEVEL_1_TARGET
-            ),
-            100
-          ),
-          rows: [
-            { label: "Cluster", value: cluster },
-            {
-              label: "Wallet",
-              value:
-                status === "connected"
-                  ? compactAddress(address ?? "")
-                  : "Detached",
-            },
-            {
-              label: "PDA state",
-              value: level1Completed
-                ? "Closed"
-                : level1State?.hasLevel1State
-                  ? "Live"
-                  : "Pending",
-            },
-            {
-              label: "Win condition",
-              value: `${(level1State?.depositedAmount ?? 0n).toString()} / ${LEVEL_1_TARGET.toString()}`,
-            },
-          ],
-        };
-      case "level2":
-        return {
-          badge: level2Stage.badge,
-          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
-          ...mintState,
-          progressValue: level2Completed ? 100 : level2Hijacked ? 66 : 20,
-          rows: [
-            { label: "Cluster", value: cluster },
-            {
-              label: "Wallet",
-              value:
-                status === "connected"
-                  ? compactAddress(address ?? "")
-                  : "Detached",
-            },
-            {
-              label: "PDA state",
-              value: level2Completed
-                ? "Closed"
-                : level2State?.hasLevel2State
-                  ? "Live"
-                  : "Pending",
-            },
-            {
-              label: "Win condition",
-              value: level2Hijacked
-                ? "Commander overwritten"
-                : "Commander unchanged",
-            },
-          ],
-        };
-      case "level3":
-        return {
-          badge: level3Stage.badge,
-          chipLabel: activeTile ? getStatusLabel(activeTile.status) : "Ready",
-          ...mintState,
-          progressValue: Math.min(
-            Number(
-              ((level3State?.rewardAmount ?? 0n) * 100n) /
-                (level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET)
-            ),
-            100
-          ),
-          rows: [
-            { label: "Cluster", value: cluster },
-            {
-              label: "Wallet",
-              value:
-                status === "connected"
-                  ? compactAddress(address ?? "")
-                  : "Detached",
-            },
-            {
-              label: "PDA state",
-              value: level3Completed
-                ? "Closed"
-                : level3State?.hasLevel3State
-                  ? "Live"
-                  : "Pending",
-            },
-            {
-              label: "Win condition",
-              value: `${(level3State?.rewardAmount ?? 0n).toString()} / ${(level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET).toString()}`,
-            },
-          ],
-        };
-    }
-  }, [
+  const activeLevelStatus = useActiveLevelStatus({
     activeLevel,
-    activeCertificate,
-    activeTile,
     address,
     cluster,
-    handleMintLevel0Flag,
-    handleMintLevel1Flag,
-    handleMintLevel2Flag,
-    handleMintLevel3Flag,
-    level1CertificationMinted,
+    level0Certificate,
     level0State,
+    level1Certificate,
+    level1CertificationMinted,
     level1Completed,
-    level1Stage.badge,
+    level1StageBadge: level1Stage.badge,
     level1State,
+    level2Certificate,
     level2Completed,
     level2Hijacked,
-    level2Stage.badge,
+    level2StageBadge: level2Stage.badge,
     level2State,
+    level3Certificate,
     level3Completed,
-    level3Stage.badge,
+    level3StageBadge: level3Stage.badge,
     level3State,
+    levelTiles,
     mintingLevel,
-    progressValue,
-    stage.badge,
+    onMintLevel0: handleMintLevel0Flag,
+    onMintLevel1: handleMintLevel1Flag,
+    onMintLevel2: handleMintLevel2Flag,
+    onMintLevel3: handleMintLevel3Flag,
+    stageBadge: stage.badge,
     status,
-  ]);
+  });
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
