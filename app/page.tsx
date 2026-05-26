@@ -236,64 +236,25 @@ export default function Home() {
       level1State,
     });
 
-  const { mintingLevel, mintLevelCertificate } = useCertificateMinting({
-    address,
-    cluster,
-    getExplorerUrl,
-    onLevel1BackendCertificateMinted: handleLevel1BackendCertificateMinted,
-    refreshState,
-    send,
-    signer,
-    wallet,
-  });
-
-  const handleMintLevel0Flag = useCallback(async () => {
-    await mintLevelCertificate({
-      level: 0,
-      levelId: "level0",
-      existingCertificate: level0Certificate,
-      title: "Hello SolBreach",
+  const { mintingLevel, mintLevel0, mintLevel1, mintLevel2, mintLevel3 } =
+    useCertificateMinting({
+      address,
+      certificates: {
+        level0Certificate,
+        level1Certificate,
+        level2Certificate,
+        level3Certificate,
+      },
+      cluster,
+      ensureLevel1BackendSession,
+      getExplorerUrl,
+      level1BackendCompleted,
+      onLevel1BackendCertificateMinted: handleLevel1BackendCertificateMinted,
+      refreshState,
+      send,
+      signer,
+      wallet,
     });
-  }, [level0Certificate, mintLevelCertificate]);
-
-  const handleMintLevel1Flag = useCallback(async () => {
-    const auth = level1BackendCompleted
-      ? await ensureLevel1BackendSession()
-      : null;
-
-    await mintLevelCertificate({
-      backendAccessToken: level1BackendCompleted
-        ? auth?.accessToken
-        : undefined,
-      level: 1,
-      levelId: "level1",
-      existingCertificate: level1Certificate,
-      title: "Level 1",
-    });
-  }, [
-    ensureLevel1BackendSession,
-    level1BackendCompleted,
-    level1Certificate,
-    mintLevelCertificate,
-  ]);
-
-  const handleMintLevel2Flag = useCallback(async () => {
-    await mintLevelCertificate({
-      level: 2,
-      levelId: "level2",
-      existingCertificate: level2Certificate,
-      title: "Level 2",
-    });
-  }, [level2Certificate, mintLevelCertificate]);
-
-  const handleMintLevel3Flag = useCallback(async () => {
-    await mintLevelCertificate({
-      level: 3,
-      levelId: "level3",
-      existingCertificate: level3Certificate,
-      title: "Level 3",
-    });
-  }, [level3Certificate, mintLevelCertificate]);
 
   const { level1Stage, level2Stage, level3Stage, stage } = useLevelStageConfigs(
     {
@@ -400,10 +361,10 @@ export default function Home() {
     level3State,
     levelTiles,
     mintingLevel,
-    onMintLevel0: handleMintLevel0Flag,
-    onMintLevel1: handleMintLevel1Flag,
-    onMintLevel2: handleMintLevel2Flag,
-    onMintLevel3: handleMintLevel3Flag,
+    onMintLevel0: mintLevel0,
+    onMintLevel1: mintLevel1,
+    onMintLevel2: mintLevel2,
+    onMintLevel3: mintLevel3,
     stageBadge: stage.badge,
     status,
   });

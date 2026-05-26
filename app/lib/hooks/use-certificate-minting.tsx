@@ -37,8 +37,11 @@ type CertificateSigner = Parameters<
 
 export function useCertificateMinting({
   address,
+  certificates,
   cluster,
+  ensureLevel1BackendSession,
   getExplorerUrl,
+  level1BackendCompleted,
   onLevel1BackendCertificateMinted,
   refreshState,
   send,
@@ -46,8 +49,16 @@ export function useCertificateMinting({
   wallet,
 }: {
   address?: Address;
+  certificates: {
+    level0Certificate?: LevelCertificateSnapshot;
+    level1Certificate?: LevelCertificateSnapshot;
+    level2Certificate?: LevelCertificateSnapshot;
+    level3Certificate?: LevelCertificateSnapshot;
+  };
   cluster: ClusterMoniker;
+  ensureLevel1BackendSession: () => Promise<{ accessToken: string } | null>;
   getExplorerUrl: (path: string) => string;
+  level1BackendCompleted: boolean;
   onLevel1BackendCertificateMinted?: (payload: {
     assetId: string;
     certificatePda: string;
@@ -245,5 +256,59 @@ export function useCertificateMinting({
     ]
   );
 
-  return { mintingLevel, mintLevelCertificate };
+  const mintLevel0 = useCallback(async () => {
+    await mintLevelCertificate({
+      level: 0,
+      levelId: "level0",
+      existingCertificate: certificates.level0Certificate,
+      title: "Hello SolBreach",
+    });
+  }, [certificates.level0Certificate, mintLevelCertificate]);
+
+  const mintLevel1 = useCallback(async () => {
+    const auth = level1BackendCompleted
+      ? await ensureLevel1BackendSession()
+      : null;
+
+    await mintLevelCertificate({
+      backendAccessToken: level1BackendCompleted
+        ? auth?.accessToken
+        : undefined,
+      level: 1,
+      levelId: "level1",
+      existingCertificate: certificates.level1Certificate,
+      title: "Level 1",
+    });
+  }, [
+    certificates.level1Certificate,
+    ensureLevel1BackendSession,
+    level1BackendCompleted,
+    mintLevelCertificate,
+  ]);
+
+  const mintLevel2 = useCallback(async () => {
+    await mintLevelCertificate({
+      level: 2,
+      levelId: "level2",
+      existingCertificate: certificates.level2Certificate,
+      title: "Level 2",
+    });
+  }, [certificates.level2Certificate, mintLevelCertificate]);
+
+  const mintLevel3 = useCallback(async () => {
+    await mintLevelCertificate({
+      level: 3,
+      levelId: "level3",
+      existingCertificate: certificates.level3Certificate,
+      title: "Level 3",
+    });
+  }, [certificates.level3Certificate, mintLevelCertificate]);
+
+  return {
+    mintingLevel,
+    mintLevel0,
+    mintLevel1,
+    mintLevel2,
+    mintLevel3,
+  };
 }
