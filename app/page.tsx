@@ -18,14 +18,12 @@ import { SiteFooter } from "./components/site-footer";
 import { ThemeToggle } from "./components/theme-toggle";
 import { WalletButton } from "./components/wallet-button";
 import { useCluster } from "./components/cluster-context";
-import {
-  type CertificateCollection,
-  type LevelCertificateSnapshot,
-} from "./lib/certificates/certificate-state";
+import { type CertificateCollection } from "./lib/certificates/certificate-state";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
 import { useBalance } from "./lib/hooks/use-balance";
 import { useCertificateMinting } from "./lib/hooks/use-certificate-minting";
 import { useLevelChainActions } from "./lib/hooks/use-level-chain-actions";
+import { useLevel1BackendCertificate } from "./lib/hooks/use-level1-backend-certificate";
 import { useLevel1BackendExecution } from "./lib/hooks/use-level1-backend-execution";
 import { useLevel2BackendExecution } from "./lib/hooks/use-level2-backend-execution";
 import { useLevel3BackendExecution } from "./lib/hooks/use-level3-backend-execution";
@@ -47,23 +45,10 @@ type StageConfig = {
   onAction?: () => Promise<void>;
 };
 
-type Level1BackendCertificateRecord = {
-  assetId: string;
-  certificatePda: string;
-  cluster: string;
-  leafIndex: number | null;
-  leafNonce: string | null;
-  merkleTree: string | null;
-  mintedAt: string;
-  walletAddress: string;
-};
-
 const LEVEL_1_TARGET = 1_000_000n;
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_2_COMMANDER = "11111111111111111111111111111111" as Address;
 const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
-const LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX =
-  "solbreach.level1.backendCertificate";
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -73,42 +58,6 @@ function getErrorMessage(error: unknown) {
   } catch {
     return String(error);
   }
-}
-
-function level1BackendCertificateStorageKey({
-  cluster,
-  walletAddress,
-}: {
-  cluster: string;
-  walletAddress: string;
-}) {
-  return `${LEVEL_1_BACKEND_CERTIFICATE_STORAGE_PREFIX}:${cluster}:${walletAddress}`;
-}
-
-function toLevel1BackendCertificateSnapshot(
-  record: Level1BackendCertificateRecord | null
-): LevelCertificateSnapshot | null {
-  if (
-    !record ||
-    !isAddress(record.assetId) ||
-    !isAddress(record.certificatePda)
-  ) {
-    return null;
-  }
-
-  return {
-    assetId: toAddress(record.assetId),
-    certificatePda: toAddress(record.certificatePda),
-    exists: true,
-    leafIndex: record.leafIndex,
-    leafNonce: record.leafNonce ? BigInt(record.leafNonce) : null,
-    level: 1,
-    merkleTree:
-      record.merkleTree && isAddress(record.merkleTree)
-        ? toAddress(record.merkleTree)
-        : null,
-    minted: true,
-  };
 }
 
 export default function Home() {
@@ -129,10 +78,6 @@ export default function Home() {
   const [level1Vault] = useState("");
   const [level1UserTokenAccount] = useState("");
   const [level1Amount] = useState("1000000");
-  const [
-    level1BackendCertificateOverride,
-    setLevel1BackendCertificateOverride,
-  ] = useState<Level1BackendCertificateRecord | null>(null);
   const [level2InitialCommander] = useState<string>(DEFAULT_LEVEL_2_COMMANDER);
   const [level3RewardMint] = useState("");
   const [level3BountyVault] = useState("");
@@ -180,36 +125,16 @@ export default function Home() {
     runtimeError: level3RuntimeError,
     txSignature: level3TxSignature,
   } = useLevel3BackendExecution({ address, status, wallet });
+  const {
+    handleLevel1BackendCertificateMinted,
+    level1BackendCertificateSnapshot,
+  } = useLevel1BackendCertificate({ address, cluster });
 
   const handleCopy = useCallback(async (label: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopied(label);
     window.setTimeout(() => setCopied(null), 1600);
   }, []);
-
-  const level1BackendCertificate = useMemo(() => {
-    if (!address) return null;
-    if (
-      level1BackendCertificateOverride?.walletAddress === address &&
-      level1BackendCertificateOverride.cluster === cluster
-    ) {
-      return level1BackendCertificateOverride;
-    }
-
-    if (typeof window === "undefined") return null;
-
-    try {
-      const raw = window.localStorage.getItem(
-        level1BackendCertificateStorageKey({
-          cluster,
-          walletAddress: address,
-        })
-      );
-      return raw ? (JSON.parse(raw) as Level1BackendCertificateRecord) : null;
-    } catch {
-      return null;
-    }
-  }, [address, cluster, level1BackendCertificateOverride]);
 
   const {
     certificateState,
@@ -297,10 +222,6 @@ export default function Home() {
     Boolean(level0State?.completedLevels[3]) || level3BackendCompleted;
   const level0Certificate = certificateState?.[0];
   const chainLevel1Certificate = certificateState?.[1];
-  const level1BackendCertificateSnapshot = useMemo(
-    () => toLevel1BackendCertificateSnapshot(level1BackendCertificate),
-    [level1BackendCertificate]
-  );
   const level1Certificate = chainLevel1Certificate?.minted
     ? chainLevel1Certificate
     : (level1BackendCertificateSnapshot ?? chainLevel1Certificate);
@@ -356,38 +277,6 @@ export default function Home() {
   const level1PanelError = level1BackendError ?? level1Error;
   const isLevel1PanelLoading =
     isLevel1Loading || isLevel1BackendLoading || isLevel1BackendBusy;
-
-  const handleLevel1BackendCertificateMinted = useCallback(
-    (payload: {
-      assetId: string;
-      certificatePda: string;
-      leafIndex: number | null;
-      leafNonce: string | null;
-      merkleTree: string | null;
-    }) => {
-      if (!address) return;
-
-      const backendCertificateRecord: Level1BackendCertificateRecord = {
-        ...payload,
-        cluster,
-        mintedAt: new Date().toISOString(),
-        walletAddress: address,
-      };
-
-      setLevel1BackendCertificateOverride(backendCertificateRecord);
-
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(
-          level1BackendCertificateStorageKey({
-            cluster,
-            walletAddress: address,
-          }),
-          JSON.stringify(backendCertificateRecord)
-        );
-      }
-    },
-    [address, cluster]
-  );
 
   const { mintingLevel, mintLevelCertificate } = useCertificateMinting({
     address,
