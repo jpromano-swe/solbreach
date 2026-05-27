@@ -43,6 +43,8 @@ import {
   listResearchLabs,
   resetResearchLabSession,
   runResearchLabTests,
+  verifyResearchLabObjective,
+  submitResearchLabTransaction,
   saveResearchLabReportDraft,
   submitResearchLabReport,
   type ResearchLabFile,
@@ -332,6 +334,34 @@ export function ResearchLabsSection() {
     setRevealedHints([...revealedHints, nextHint.id]);
   };
 
+  const executeTransaction = async (payloadText: string) => {
+    if (!activeLab || !session || isRunning) return;
+    try {
+      const auth = activeBackendAuth ?? (await ensureLabAuth());
+      let parsedPayload;
+      try {
+        parsedPayload = JSON.parse(payloadText);
+      } catch {
+        throw new Error("Invalid JSON payload");
+      }
+      
+      const beforeRunSequence = session.latestTerminalSequence;
+      await submitResearchLabTransaction(auth.accessToken, session.sessionId, parsedPayload);
+      
+      toast.success("Transaction sent to sandbox");
+      
+      // Fetch latest logs if available
+      const nextSession = await pollTerminal(auth, session, beforeRunSequence);
+      if (nextSession.terminalLines.length > session.terminalLines.length) {
+        setConsoleOpen(true);
+        setActiveTab("txlogs");
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      throw error;
+    }
+  };
+
   const proveImpact = async () => {
     if (!activeLab || !session || isRunning) return;
     setIsRunning(true);
@@ -343,23 +373,50 @@ export function ResearchLabsSection() {
       const runningSession = { ...session, status: "running_tests" as const, stage: "report" as const };
       setSession(runningSession);
 
-      const result = await runResearchLabTests(auth.accessToken, runningSession.sessionId);
-      const testedSession = applyRunResult(runningSession, result);
-      const nextSession = await pollTerminal(auth, testedSession, beforeRunSequence);
-
-      if (result.status === "passed" || nextSession.status === "passed") {
-        const nextReport = await loadReport(auth, nextSession);
-        if (result.lab_completed || nextReport.labCompleted) {
-          setActiveTab("report");
-          toast.success(`Research lab completed. ${result.xp_awarded ?? nextReport.xpAwarded ?? activeLab.xpReward} XP awarded.`);
+      let isVerifyResult = false;
+      let result;
+      try {
+        result = await runResearchLabTests(auth.accessToken, runningSession.sessionId);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("exploit verification")) {
+          result = await verifyResearchLabObjective(auth.accessToken, runningSession.sessionId);
+          isVerifyResult = true;
         } else {
+          throw err;
+        }
+      }
+
+      if (isVerifyResult) {
+        const passed = Boolean((result as Record<string, unknown>).passed);
+        const nextSession = await pollTerminal(auth, { ...runningSession, status: "active" as const }, beforeRunSequence);
+        if (passed) {
+          await loadReport(auth, nextSession);
           setActiveTab("report");
           toast.success("Impact verified. Finding report unlocked.");
+        } else {
+          toast.error("Exploit proof did not verify", {
+            description: "Review the runtime output and transaction evidence before trying again.",
+          });
         }
       } else {
-        toast.error("Exploit proof did not verify", {
-          description: "Review the runtime output and transaction evidence before trying again.",
-        });
+        const testedSession = applyRunResult(runningSession, result);
+        const nextSession = await pollTerminal(auth, testedSession, beforeRunSequence);
+
+        if (result.status === "passed" || nextSession.status === "passed") {
+          const nextReport = await loadReport(auth, nextSession);
+          if (result.lab_completed || nextReport.labCompleted) {
+            setActiveTab("report");
+            toast.success(`Research lab completed. ${result.xp_awarded ?? nextReport.xpAwarded ?? activeLab.xpReward} XP awarded.`);
+          } else {
+            setActiveTab("report");
+            toast.success("Impact verified. Finding report unlocked.");
+          }
+        } else {
+          toast.error("Exploit proof did not verify", {
+            description: "Review the runtime output and transaction evidence before trying again.",
+          });
+        }
       }
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -476,6 +533,7 @@ export function ResearchLabsSection() {
             session={session}
             onChangeReportFields={setReportFields}
             onProveImpact={proveImpact}
+            onExecuteTransaction={executeTransaction}
             onSaveReport={saveReportDraft}
             onSelectFile={setActiveFilePath}
             onSubmitReport={submitReport}
@@ -758,6 +816,7 @@ function ResearchLabWorkspace({
   session,
   onChangeReportFields,
   onProveImpact,
+  onExecuteTransaction,
   onSaveReport,
   onSelectFile,
   onSubmitReport,
@@ -778,6 +837,7 @@ function ResearchLabWorkspace({
   session: ResearchLabSession;
   onChangeReportFields: (fields: ResearchLabReportFields) => void;
   onProveImpact: () => void;
+  onExecuteTransaction: (payload: string) => Promise<void>;
   onSaveReport: () => Promise<ResearchLabReport | null>;
   onSelectFile: (path: string) => void;
   onSubmitReport: () => void;
@@ -799,7 +859,7 @@ function ResearchLabWorkspace({
         ) : null}
         {activeTab === "accounts" ? <AccountsTab accounts={accounts} /> : null}
         {activeTab === "exploit" ? (
-          <ExploitTab isRunning={isRunning} session={session} onProveImpact={onProveImpact} />
+          <ExploitTab isRunning={isRunning} session={session} onProveImpact={onProveImpact} onExecuteTransaction={onExecuteTransaction} />
         ) : null}
         {activeTab === "txlogs" ? <TransactionsLogsTab results={results} session={session} /> : null}
         {activeTab === "report" ? (
@@ -1035,12 +1095,25 @@ function ExploitTab({
   isRunning,
   session,
   onProveImpact,
+  onExecuteTransaction,
 }: {
   isRunning: boolean;
   session: ResearchLabSession;
   onProveImpact: () => void;
+  onExecuteTransaction: (payload: string) => Promise<void>;
 }) {
+  const [txPayload, setTxPayload] = useState("{\n  \n}");
+  const [isSendingTx, setIsSendingTx] = useState(false);
   const hasAttempt = session.status === "passed" || session.status === "failed" || session.status === "running_tests";
+
+  const handleSendTx = async () => {
+    setIsSendingTx(true);
+    try {
+      await onExecuteTransaction(txPayload);
+    } finally {
+      setIsSendingTx(false);
+    }
+  };
 
   return (
     <div className="grid h-full gap-5 overflow-auto p-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -1053,6 +1126,27 @@ function ExploitTab({
           Use the provided sandbox action to submit a controlled proof attempt. The frontend does not mark impact as verified locally; it waits for backend session evidence.
         </p>
 
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <p className="text-sm font-semibold text-zinc-300">Transaction Payload (JSON)</p>
+          <p className="mt-2 text-xs leading-6 text-zinc-500">
+            Submit a raw transaction or instruction payload to the sandbox before verifying impact.
+          </p>
+          <textarea
+            value={txPayload}
+            onChange={(e) => setTxPayload(e.target.value)}
+            disabled={isRunning || isSendingTx}
+            className="mt-3 w-full h-32 resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm font-mono text-zinc-300 outline-none transition focus:border-[#14f195]/45 disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={handleSendTx}
+            disabled={isRunning || isSendingTx}
+            className="mt-3 rounded-xl border border-[#14f195]/20 bg-[#14f195]/10 px-4 py-2 text-sm font-medium text-[#8fffd0] transition hover:bg-[#14f195]/15 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSendingTx ? "Sending..." : "Send Transaction"}
+          </button>
+        </div>
+
         <div className="mt-6 rounded-2xl border border-[#9945ff]/20 bg-[#9945ff]/8 p-4">
           <p className="text-sm font-semibold text-[#c7a6ff]">Current attempt surface</p>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
@@ -1061,7 +1155,7 @@ function ExploitTab({
           <button
             type="button"
             onClick={onProveImpact}
-            disabled={isRunning}
+            disabled={isRunning || isSendingTx}
             className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#9945ff] to-[#14f195] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Play className="h-4 w-4" />

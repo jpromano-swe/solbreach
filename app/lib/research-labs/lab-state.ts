@@ -258,6 +258,42 @@ export async function runResearchLabTests(
   );
 }
 
+export async function verifyResearchLabObjective(
+  accessToken: string,
+  sessionId: string
+) {
+  return researchLabsRequest<{
+    status?: ResearchLabTestStatus;
+    results?: unknown;
+    objective_progress?: number;
+    session_status?: ResearchLabSessionStatus;
+    lab_completed?: boolean;
+    report_status?: ResearchLabReportStatus;
+    xp_awarded?: number;
+  }>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/verify-objective`,
+    {
+      accessToken,
+      method: "POST",
+    }
+  );
+}
+
+export async function submitResearchLabTransaction(
+  accessToken: string,
+  sessionId: string,
+  payload: unknown
+) {
+  return researchLabsRequest<Record<string, unknown>>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/transactions`,
+    {
+      accessToken,
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
 export async function getResearchLabReport(
   accessToken: string,
   sessionId: string
