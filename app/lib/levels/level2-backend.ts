@@ -86,18 +86,19 @@ async function backendRequest<T>(
   path: string,
   options: RequestInit & { accessToken?: string } = {}
 ): Promise<T> {
-  const headers = new Headers(options.headers);
+  const { accessToken, ...fetchOptions } = options;
+  const headers = new Headers(fetchOptions.headers);
 
-  if (!headers.has("content-type") && options.body) {
+  if (!headers.has("content-type") && fetchOptions.body) {
     headers.set("content-type", "application/json");
   }
 
-  if (options.accessToken) {
-    headers.set("authorization", `Bearer ${options.accessToken}`);
+  if (accessToken) {
+    headers.set("authorization", `Bearer ${accessToken}`);
   }
 
   const response = await fetch(`${SOLBREACH_BACKEND_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
@@ -115,7 +116,9 @@ async function backendRequest<T>(
             : JSON.stringify(body.detail ?? body)) ||
           response.statusText
         : response.statusText;
-    throw new Error(message);
+    throw new Error(
+      response.status === 401 ? `Unauthorized: ${message}` : message
+    );
   }
 
   return body as T;

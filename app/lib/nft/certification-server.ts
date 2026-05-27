@@ -51,13 +51,13 @@ function loadAuthorityKeypair() {
   if (inlineSecret) {
     if (inlineSecret.startsWith("[")) {
       return Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(inlineSecret) as number[]),
+        Uint8Array.from(JSON.parse(inlineSecret) as number[])
       );
     }
   }
 
   throw new Error(
-    "ADMIN_PRIVATE_KEY is required for UI cNFT minting. Set it to a JSON array secret key in .env.local.",
+    "ADMIN_PRIVATE_KEY is required for UI cNFT minting. Set it to a JSON array secret key in .env.local."
   );
 }
 
@@ -72,7 +72,7 @@ function rpcUrlFromInput(rpcUrl?: string) {
 
 function vaultProgramId() {
   return new PublicKey(
-    process.env.VAULT_PROGRAM_ID?.trim() || VAULT_PROGRAM_ADDRESS,
+    process.env.VAULT_PROGRAM_ID?.trim() || VAULT_PROGRAM_ADDRESS
   );
 }
 
@@ -80,7 +80,7 @@ function merkleTreeFromInput(merkleTree?: string) {
   const value = merkleTree ?? process.env.MERKLE_TREE_ADDRESS?.trim();
   if (!value) {
     throw new Error(
-      "Merkle tree address is missing. Set MERKLE_TREE_ADDRESS or provide merkleTree in the request.",
+      "Merkle tree address is missing. Set MERKLE_TREE_ADDRESS or provide merkleTree in the request."
     );
   }
   return new PublicKey(value);
@@ -113,14 +113,18 @@ function encodeU64(value: bigint) {
 function findCertificationAuthorityPda(programId: PublicKey) {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("certification_authority")],
-    programId,
+    programId
   );
 }
 
-function findCertificatePda(programId: PublicKey, player: PublicKey, level: number) {
+function findCertificatePda(
+  programId: PublicKey,
+  player: PublicKey,
+  level: number
+) {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("certificate"), player.toBuffer(), Buffer.from([level])],
-    programId,
+    programId
   );
 }
 
@@ -188,7 +192,7 @@ function buildRecordCertificateAssetInstruction({
 async function sendInstruction(
   connection: Connection,
   signer: Keypair,
-  instruction: TransactionInstruction,
+  instruction: TransactionInstruction
 ) {
   const latestBlockhash = await connection.getLatestBlockhash("confirmed");
   const transaction = new Transaction({
@@ -244,19 +248,21 @@ function parseLevelCertificateAccount(data: Buffer): ParsedCertificate {
 async function ensureCertificationAuthority(
   connection: Connection,
   signer: Keypair,
-  programId: PublicKey,
+  programId: PublicKey
 ) {
   const [certificationAuthorityPda] = findCertificationAuthorityPda(programId);
   const authorityAccount = await connection.getAccountInfo(
     certificationAuthorityPda,
-    "confirmed",
+    "confirmed"
   );
 
   if (authorityAccount) {
-    const { authority } = parseCertificationAuthorityAccount(authorityAccount.data);
+    const { authority } = parseCertificationAuthorityAccount(
+      authorityAccount.data
+    );
     if (!authority.equals(signer.publicKey)) {
       throw new Error(
-        `Certification authority PDA is bound to ${authority.toBase58()}, not the configured signer ${signer.publicKey.toBase58()}.`,
+        `Certification authority PDA is bound to ${authority.toBase58()}, not the configured signer ${signer.publicKey.toBase58()}.`
       );
     }
 
@@ -287,7 +293,7 @@ function metadataUri({
 }) {
   const url = new URL(
     `/api/nfts/certifications/${level}/${player.toBase58()}`,
-    `${baseUrl}/`,
+    `${baseUrl}/`
   );
   if (cluster !== "devnet") {
     url.searchParams.set("cluster", cluster);
@@ -325,11 +331,11 @@ export async function mintCertificateAsset(params: {
   const [certificatePda] = findCertificatePda(programId, player, level);
   const certificateAccount = await connection.getAccountInfo(
     certificatePda,
-    "confirmed",
+    "confirmed"
   );
   if (!certificateAccount && !params.allowMissingCertificate) {
     throw new Error(
-      `Certificate PDA ${certificatePda.toBase58()} does not exist. Claim the certificate first.`,
+      `Certificate PDA ${certificatePda.toBase58()} does not exist. Claim the certificate first.`
     );
   }
 
@@ -347,7 +353,7 @@ export async function mintCertificateAsset(params: {
 
       console.warn(
         `Certificate PDA ${certificatePda.toBase58()} exists but is not initialized as a LevelCertificate. Skipping on-chain asset recording for backend-completed Level ${level}.`,
-        error,
+        error
       );
     }
   }
@@ -370,7 +376,7 @@ export async function mintCertificateAsset(params: {
   const treeConfig = await fetchTreeConfigFromSeeds(
     umi,
     { merkleTree: publicKey(merkleTree.toBase58()) },
-    { commitment: "confirmed" },
+    { commitment: "confirmed" }
   );
   const nextLeafIndex = Number(treeConfig.numMinted);
   const predictedAssetId = findLeafAssetIdPda(umi, {
@@ -430,14 +436,16 @@ export async function mintCertificateAsset(params: {
       leafNonce = BigInt(leaf.nonce);
     } else {
       console.warn(
-        `Parsed cNFT asset id ${parsedAssetId.toBase58()} did not match predicted asset id ${predictedAssetKey.toBase58()}. Using predicted asset id.`,
+        `Parsed cNFT asset id ${parsedAssetId.toBase58()} did not match predicted asset id ${predictedAssetKey.toBase58()}. Using predicted asset id.`
       );
     }
   } catch (error) {
-    console.warn(
-      `Could not parse Bubblegum leaf from mint transaction ${mintSignature}. Using predicted asset id ${predictedAssetKey.toBase58()}.`,
-      error,
-    );
+    if (process.env.SOLBREACH_DEBUG_MINT === "true") {
+      console.debug(
+        `Bubblegum leaf parsing unavailable for mint transaction ${mintSignature}; using deterministic predicted asset id ${predictedAssetKey.toBase58()}.`,
+        error
+      );
+    }
   }
 
   const recordSignature = shouldRecordCertificateAsset
@@ -449,7 +457,7 @@ export async function mintCertificateAsset(params: {
           certificationAuthority: await ensureCertificationAuthority(
             connection,
             signer,
-            programId,
+            programId
           ),
           certificate: certificatePda,
           merkleTree,
@@ -457,7 +465,7 @@ export async function mintCertificateAsset(params: {
           leafIndex: nextLeafIndex,
           leafNonce,
           programId,
-        }),
+        })
       )
     : undefined;
 

@@ -12,12 +12,13 @@ export const SOLBREACH_BACKEND_URL =
 export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
-const AUTH_STORAGE_KEY = "solbreach.level1.backendAuth";
+const AUTH_STORAGE_KEY = "solbreach.backend.walletAuth";
 const LOG_PREFIX = "[SolBreach Level 1]";
 
 export type Level1AuthSession = {
   accessToken: string;
   refreshToken: string;
+  role?: string;
   walletAddress: string;
 };
 
@@ -63,10 +64,21 @@ export type Level1SubmitResponse = {
 };
 
 type AuthResponse = {
+  user?: {
+    role?: string;
+    wallet_address?: string | null;
+  };
   tokens: {
     access_token: string;
     refresh_token: string;
   };
+};
+
+type WalletNonceResponse = {
+  wallet_address: string;
+  nonce: string;
+  message: string;
+  expires_at: string;
 };
 
 function getStoredAuth(walletAddress: string): Level1AuthSession | null {
@@ -77,7 +89,20 @@ function getStoredAuth(walletAddress: string): Level1AuthSession | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Level1AuthSession;
-    return parsed.walletAddress === walletAddress ? parsed : null;
+    if (
+      parsed.walletAddress !== walletAddress ||
+      !parsed.accessToken ||
+      !parsed.refreshToken
+    ) {
+      return null;
+    }
+
+    if (isJwtExpiredOrNearExpiry(parsed.accessToken)) {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+
+    return parsed;
   } catch {
     return null;
   }
@@ -88,33 +113,50 @@ function storeAuth(session: Level1AuthSession) {
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 }
 
-function demoCredentials(walletAddress: string) {
-  const normalized = walletAddress.toLowerCase();
-  const suffix = normalized.slice(0, 16);
+export function clearBackendWalletAuth(walletAddress?: string) {
+  if (typeof window === "undefined") return;
 
-  return {
-    email: `demo-${suffix}@solbreach.app`,
-    password: "SolBreachDemo2026!",
-    username: `demo_${normalized.slice(0, 12)}`,
-  };
+  if (!walletAddress) {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    return;
+  }
+
+  const stored = getStoredAuth(walletAddress);
+  if (stored?.walletAddress === walletAddress) {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+}
+
+export function isBackendAuthError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : JSON.stringify(error);
+
+  return /unauthorized|invalid token|missing bearer|not authenticated|401/i.test(
+    message
+  );
 }
 
 async function backendRequest<T>(
   path: string,
   options: RequestInit & { accessToken?: string } = {}
 ): Promise<T> {
-  const headers = new Headers(options.headers);
+  const { accessToken, ...fetchOptions } = options;
+  const headers = new Headers(fetchOptions.headers);
 
-  if (!headers.has("content-type") && options.body) {
+  if (!headers.has("content-type") && fetchOptions.body) {
     headers.set("content-type", "application/json");
   }
 
-  if (options.accessToken) {
-    headers.set("authorization", `Bearer ${options.accessToken}`);
+  if (accessToken) {
+    headers.set("authorization", `Bearer ${accessToken}`);
   }
 
   const response = await fetch(`${SOLBREACH_BACKEND_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
@@ -132,24 +174,70 @@ async function backendRequest<T>(
             : JSON.stringify(body.detail ?? body)) ||
           response.statusText
         : response.statusText;
-    throw new Error(message);
+    throw new Error(
+      response.status === 401 ? `Unauthorized: ${message}` : message
+    );
   }
 
   return body as T;
 }
 
-async function loginLevel1Demo(walletAddress: string) {
-  const credentials = demoCredentials(walletAddress);
-  const auth = await backendRequest<AuthResponse>("/api/v1/auth/login", {
+async function requestWalletNonce(walletAddress: string) {
+  return backendRequest<WalletNonceResponse>("/api/v1/auth/wallet/nonce", {
+    body: JSON.stringify({ wallet_address: walletAddress }),
+    method: "POST",
+  });
+}
+
+async function verifyWalletLogin({
+  nonce,
+  signature,
+  walletAddress,
+}: {
+  nonce: string;
+  signature: string;
+  walletAddress: string;
+}) {
+  return backendRequest<AuthResponse>("/api/v1/auth/wallet/verify", {
     body: JSON.stringify({
-      email: credentials.email,
-      password: credentials.password,
+      nonce,
+      signature,
+      wallet_address: walletAddress,
     }),
     method: "POST",
   });
+}
 
+export async function ensureBackendWalletAuth(
+  wallet: WalletSession,
+  options: { force?: boolean } = {}
+) {
+  const walletAddress = wallet.account.address;
+  const stored = options.force ? null : getStoredAuth(walletAddress);
+  if (stored) return stored;
+
+  if (options.force) {
+    clearBackendWalletAuth(walletAddress);
+  }
+
+  if (!wallet.signMessage) {
+    throw new Error(
+      "Connected wallet cannot sign authentication messages. Use a wallet with message signing support."
+    );
+  }
+
+  const challenge = await requestWalletNonce(walletAddress);
+  const messageBytes = new TextEncoder().encode(challenge.message);
+  const signatureBytes = await wallet.signMessage(messageBytes);
+  const signature = getBase58Decoder().decode(signatureBytes);
+  const auth = await verifyWalletLogin({
+    nonce: challenge.nonce,
+    signature,
+    walletAddress,
+  });
   const session = {
     accessToken: auth.tokens.access_token,
+    role: auth.user?.role,
     refreshToken: auth.tokens.refresh_token,
     walletAddress,
   };
@@ -157,26 +245,30 @@ async function loginLevel1Demo(walletAddress: string) {
   return session;
 }
 
-export async function ensureLevel1DemoAuth(walletAddress: string) {
-  const stored = getStoredAuth(walletAddress);
-  if (stored) return stored;
+function isJwtExpiredOrNearExpiry(token: string) {
+  const payload = decodeJwtPayload(token);
+  if (!payload) return false;
 
-  const credentials = demoCredentials(walletAddress);
+  const exp = typeof payload.exp === "number" ? payload.exp : undefined;
+  if (!exp) return false;
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  return exp <= nowInSeconds + 30;
+}
+
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  const payload = token.split(".")[1];
+  if (!payload || typeof window === "undefined") return null;
 
   try {
-    const auth = await backendRequest<AuthResponse>("/api/v1/auth/register", {
-      body: JSON.stringify(credentials),
-      method: "POST",
-    });
-    const session = {
-      accessToken: auth.tokens.access_token,
-      refreshToken: auth.tokens.refresh_token,
-      walletAddress,
-    };
-    storeAuth(session);
-    return session;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "="
+    );
+    return JSON.parse(window.atob(padded)) as { exp?: number };
   } catch {
-    return loginLevel1Demo(walletAddress);
+    return null;
   }
 }
 

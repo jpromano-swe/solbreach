@@ -353,7 +353,13 @@ export default function Home() {
           walletStatus={status}
         />
 
-        <main className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">
+        <main
+          className={
+            activeSection === "research-labs"
+              ? "w-full pb-0 pt-0"
+              : "mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10"
+          }
+        >
           {activeSection === "levels" ? (
             <div className="space-y-8">
               {activeLevelsView === "landing" ? (
