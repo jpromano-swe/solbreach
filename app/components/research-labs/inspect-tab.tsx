@@ -59,6 +59,7 @@ function CodeTab({
   onSelectFile: (path: string) => void;
 }) {
   const shouldShowTree = files.length > 1;
+  const displayedFileContent = formatInspectSnippetComment(activeFileContent);
 
   return (
     <div className={`grid h-full ${shouldShowTree ? "grid-cols-[280px_minmax(0,1fr)]" : "grid-cols-1"}`}>
@@ -81,7 +82,7 @@ function CodeTab({
               theme="vs-dark"
               language={activeFile.language}
               path={activeFile.path}
-              value={activeFileContent}
+              value={displayedFileContent}
               options={{
                 readOnly: true,
                 minimap: { enabled: false },
@@ -103,6 +104,17 @@ function CodeTab({
         </div>
       </div>
     </div>
+  );
+}
+
+function formatInspectSnippetComment(content: string) {
+  return content.replace(
+    "// Credit the attacker's position based on the deposited amount",
+    [
+      "// The position is credited from the provided collateral account.",
+      "// Review which assumptions this instruction makes about that account",
+      "// before credit is assigned.",
+    ].join("\n")
   );
 }
 
