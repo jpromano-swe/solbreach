@@ -18,17 +18,13 @@ import {
   fetchResearchLabTerminal,
   getResearchLab,
   getResearchLabAccounts,
-  getResearchLabReport,
   listResearchLabs,
   resetResearchLabSession,
   verifyResearchLabObjective,
   submitResearchLabTransaction,
-  saveResearchLabReportDraft,
-  submitResearchLabReport,
   type LabTransactionPayload,
   type ResearchLabManifest,
   type ResearchLabReport,
-  type ResearchLabReportFields,
   type ResearchLabSession,
   type SandboxAccountSummary,
 } from "../lib/research-labs/lab-state";
@@ -42,20 +38,13 @@ import {
 } from "./research-labs/lab-shell";
 import { RuntimeConsoleDrawer } from "./research-labs/runtime-console";
 import { ResearchLabWorkspace } from "./research-labs/workspace";
-import {
-  defaultReportMetaFields,
-  emptyReportFields,
-  suggestedReportMetaFields,
-  suggestedReportText,
-} from "./research-labs/report-utils";
 import { useFindingReview } from "./research-labs/use-finding-review";
+import { useResearchLabReport } from "./research-labs/use-research-lab-report";
 import type {
   AccountEvidence,
-  AuditReportStage,
   EnrichedTransactionResult,
   ExecuteExploitView,
   LabPhase,
-  ReportMetaFields,
   SandboxStatus,
   WorkspaceTab,
 } from "./research-labs/types";
@@ -90,32 +79,53 @@ export function ResearchLabsSection() {
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [revealedHints, setRevealedHints] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [report, setReport] = useState<ResearchLabReport | null>(null);
-  const [reportFields, setReportFields] = useState<ResearchLabReportFields>(emptyReportFields);
-  const [reportMetaFields, setReportMetaFields] = useState<ReportMetaFields>(defaultReportMetaFields);
-  const [auditReportStage, setAuditReportStage] = useState<AuditReportStage>("BUILDER");
-  const [isReportSaving, setIsReportSaving] = useState(false);
-  const [isReportSubmitting, setIsReportSubmitting] = useState(false);
   const [txResults, setTxResults] = useState<EnrichedTransactionResult[]>([]);
   const [evidenceAccounts, setEvidenceAccounts] = useState<SandboxAccountSummary[]>([]);
 
-  const populateReportDefaults = useCallback(() => {
-    setReportFields((fields) => ({
-      ...fields,
-      vulnerabilityCategory:
-        fields.vulnerabilityCategory ?? "arithmetic_safety",
-      affectedArea: fields.affectedArea ?? "vault_health_calculation",
-      severity: fields.severity ?? "medium",
-      rootCause: fields.rootCause || suggestedReportText.rootCause,
-      impact: fields.impact || suggestedReportText.impact,
-      proof: fields.proof || suggestedReportText.proof,
-      recommendedFix: fields.recommendedFix || suggestedReportText.recommendedFix,
-    }));
-    setReportMetaFields((fields) => ({
-      title: fields.title || suggestedReportMetaFields.title,
-      likelihood: fields.likelihood || suggestedReportMetaFields.likelihood,
-    }));
-  }, []);
+  const activeBackendAuth =
+    backendAuth &&
+    walletStatus === "connected" &&
+    wallet?.account.address === backendAuth.walletAddress
+      ? backendAuth
+      : null;
+  const isBackendAuthenticated = Boolean(activeBackendAuth?.accessToken);
+
+  const ensureLabAuth = useCallback(async () => {
+    if (walletStatus !== "connected" || !wallet) {
+      throw new Error("Connect your wallet before opening Research Labs.");
+    }
+
+    const auth = await ensureBackendWalletAuth(wallet);
+    setBackendAuth(auth);
+    return auth;
+  }, [wallet, walletStatus]);
+
+  const getActiveAuth = useCallback(
+    async () => activeBackendAuth ?? (await ensureLabAuth()),
+    [activeBackendAuth, ensureLabAuth]
+  );
+
+  const {
+    auditReportStage,
+    isReportSaving,
+    isReportSubmitting,
+    loadReport,
+    populateReportDefaults,
+    report,
+    reportFields,
+    reportMetaFields,
+    resetReport,
+    saveReportDraft,
+    setAuditReportStage,
+    setReportFields,
+    setReportMetaFields,
+    submitReport,
+  } = useResearchLabReport({
+    activeLab,
+    getAuth: getActiveAuth,
+    onSessionChange: setSession,
+    session,
+  });
 
   const {
     criticalAnsweredCount,
@@ -142,14 +152,6 @@ export function ResearchLabsSection() {
     onPopulateReportDefaults: populateReportDefaults,
     onResetAuditReportStage: () => setAuditReportStage("BUILDER"),
   });
-
-  const activeBackendAuth =
-    backendAuth &&
-    walletStatus === "connected" &&
-    wallet?.account.address === backendAuth.walletAddress
-      ? backendAuth
-      : null;
-  const isBackendAuthenticated = Boolean(activeBackendAuth?.accessToken);
 
   const activeFile = useMemo(() => {
     if (!activeLab || !session || !activeFilePath) return null;
@@ -193,16 +195,6 @@ export function ResearchLabsSection() {
     session,
   });
 
-  const ensureLabAuth = useCallback(async () => {
-    if (walletStatus !== "connected" || !wallet) {
-      throw new Error("Connect your wallet before opening Research Labs.");
-    }
-
-    const auth = await ensureBackendWalletAuth(wallet);
-    setBackendAuth(auth);
-    return auth;
-  }, [wallet, walletStatus]);
-
   const loadCatalog = useCallback(async () => {
     setIsCatalogLoading(true);
     setCatalogError(null);
@@ -237,24 +229,6 @@ export function ResearchLabsSection() {
       );
       setSession(nextSession);
       return nextSession;
-    },
-    []
-  );
-
-  const loadReport = useCallback(
-    async (auth: Level1AuthSession, currentSession: ResearchLabSession) => {
-      const nextReport = await getResearchLabReport(
-        auth.accessToken,
-        currentSession.sessionId
-      );
-      setReport(nextReport);
-      setReportFields(nextReport.fields ?? emptyReportFields);
-      setReportMetaFields((fields) => ({
-        title: fields.title || suggestedReportMetaFields.title,
-        likelihood: fields.likelihood || suggestedReportMetaFields.likelihood,
-      }));
-      setAuditReportStage(nextReport.status === "accepted" ? "SUBMITTED" : "BUILDER");
-      return nextReport;
     },
     []
   );
@@ -300,7 +274,7 @@ export function ResearchLabsSection() {
     if (!activeLab || !session) return;
     setIsRunning(true);
     try {
-      const auth = activeBackendAuth ?? (await ensureLabAuth());
+      const auth = await getActiveAuth();
       const nextSession = await resetResearchLabSession(auth.accessToken, session.sessionId);
       setSession(nextSession);
       setActiveLab({ ...activeLab, files: nextSession.fileEntries });
@@ -313,10 +287,7 @@ export function ResearchLabsSection() {
       setExecuteExploitView("HYPOTHESIS");
       setConsoleOpen(false);
       setRevealedHints([]);
-      setReport(null);
-      setReportFields(emptyReportFields);
-      setReportMetaFields(defaultReportMetaFields);
-      setAuditReportStage("BUILDER");
+      resetReport();
       setTxResults([]);
       setEvidenceAccounts([]);
       resetFindingReview();
@@ -337,10 +308,7 @@ export function ResearchLabsSection() {
     setExecuteExploitView("HYPOTHESIS");
     setConsoleOpen(false);
     setRevealedHints([]);
-    setReport(null);
-    setReportFields(emptyReportFields);
-    setReportMetaFields(defaultReportMetaFields);
-    setAuditReportStage("BUILDER");
+    resetReport();
     setTxResults([]);
     setEvidenceAccounts([]);
     resetFindingReview();
@@ -368,7 +336,7 @@ export function ResearchLabsSection() {
   const executeTransaction = async (payload: LabTransactionPayload) => {
     if (!activeLab || !session || isRunning) return;
     try {
-      const auth = activeBackendAuth ?? (await ensureLabAuth());
+      const auth = await getActiveAuth();
 
       const enrichedInputs = {
         collateralSourceRef: payload.action_type === "DEPOSIT_COLLATERAL"
@@ -435,7 +403,7 @@ export function ResearchLabsSection() {
     setIsRunning(true);
       setConsoleOpen(true);
     try {
-      const auth = activeBackendAuth ?? (await ensureLabAuth());
+      const auth = await getActiveAuth();
       const beforeRunSequence = session.latestTerminalSequence;
 
       const result = await verifyResearchLabObjective(auth.accessToken, session.sessionId);
@@ -464,74 +432,6 @@ export function ResearchLabsSection() {
       toast.error(getErrorMessage(error));
     } finally {
       setIsRunning(false);
-    }
-  };
-
-  const saveReportDraft = async () => {
-    if (!session) return null;
-    setIsReportSaving(true);
-    try {
-      const auth = activeBackendAuth ?? (await ensureLabAuth());
-      const nextReport = await saveResearchLabReportDraft({
-        accessToken: auth.accessToken,
-        fields: reportFields,
-        sessionId: session.sessionId,
-      });
-      setReport(nextReport);
-      toast.message("Report draft saved");
-      return nextReport;
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-      return null;
-    } finally {
-      setIsReportSaving(false);
-    }
-  };
-
-  const submitReport = async () => {
-    if (!activeLab || !session || isReportSubmitting) return;
-    if (!reportMetaFields.title.trim() || !reportMetaFields.likelihood) {
-      toast.error("Complete the finding title and likelihood before submitting.");
-      return;
-    }
-    setIsReportSubmitting(true);
-    try {
-      const auth = activeBackendAuth ?? (await ensureLabAuth());
-      const saved = await saveResearchLabReportDraft({
-        accessToken: auth.accessToken,
-        fields: reportFields,
-        sessionId: session.sessionId,
-      });
-      setReport(saved);
-
-      const submitted = await submitResearchLabReport(auth.accessToken, session.sessionId);
-      setReport(submitted);
-      setSession({
-        ...session,
-        labCompleted: Boolean(submitted.labCompleted),
-        objectiveProgress: submitted.labCompleted
-          ? activeLab.objectives.length
-          : session.objectiveProgress,
-        reportStatus: submitted.status,
-        stage: "report",
-        xpAwarded: submitted.xpAwarded,
-      });
-
-      if (submitted.status === "accepted" && submitted.labCompleted) {
-        setAuditReportStage("SUBMITTED");
-        toast.success(`Report accepted. ${submitted.xpAwarded ?? activeLab.xpReward} XP awarded.`);
-      } else {
-        setAuditReportStage("BUILDER");
-        toast.error("Report needs revision", {
-          description:
-            submitted.feedback ??
-            "The report needs clearer vulnerability, impact, and remediation details.",
-        });
-      }
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setIsReportSubmitting(false);
     }
   };
 
