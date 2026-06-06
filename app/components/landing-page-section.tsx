@@ -618,7 +618,7 @@ function FeatureShowcaseSection() {
         <FeatureMiniItem
           icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Review Rooms"
+          title="Breach Rooms"
           body="Challenge environments for first-flights, and review writeup training."
         />
       </div>

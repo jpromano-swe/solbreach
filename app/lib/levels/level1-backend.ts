@@ -8,7 +8,7 @@ import {
 import type { WalletSession } from "../wallet/types";
 
 export const SOLBREACH_BACKEND_URL =
-  "https://api-solbreach.56.125.190.174.nip.io";
+  "https://1t2iexn742.execute-api.sa-east-1.amazonaws.com/backend-testing";
 export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";

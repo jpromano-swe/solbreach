@@ -51,7 +51,11 @@ function buildRouteUrl(section: RootSection, view: LevelsView) {
 }
 
 export function useLevelRoute() {
-  const initialRouteState = useMemo(() => getInitialRouteState(), []);
+  const initialRouteState = useMemo(
+    () => ({ section: "levels" as RootSection, view: "landing" as LevelsView }),
+    []
+  );
+  const [hasHydratedRoute, setHasHydratedRoute] = useState(false);
   const [activeSection, setActiveSection] = useState<RootSection>(
     initialRouteState.section
   );
@@ -60,13 +64,26 @@ export function useLevelRoute() {
   );
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const nextState = getInitialRouteState();
+      setActiveSection(nextState.section);
+      setActiveLevelsView(nextState.view);
+      setHasHydratedRoute(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedRoute) return;
+
     const nextUrl = buildRouteUrl(activeSection, activeLevelsView);
     const currentUrl = `${window.location.pathname}${window.location.search}`;
 
     if (currentUrl !== nextUrl) {
       window.history.replaceState(null, "", nextUrl);
     }
-  }, [activeLevelsView, activeSection]);
+  }, [activeLevelsView, activeSection, hasHydratedRoute]);
 
   useEffect(() => {
     const handlePopState = () => {

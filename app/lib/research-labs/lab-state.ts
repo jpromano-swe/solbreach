@@ -258,19 +258,28 @@ export async function runResearchLabTests(
   );
 }
 
+export type VerifyObjectiveResponse = {
+  session_id?: string;
+  objective_ref?: string;
+  passed?: boolean;
+  phase?: string;
+  exploitVerified?: boolean;
+  reportUnlocked?: boolean;
+  userFacingEvidence?: string[];
+  status?: ResearchLabTestStatus;
+  results?: unknown;
+  objective_progress?: number;
+  session_status?: ResearchLabSessionStatus;
+  lab_completed?: boolean;
+  report_status?: ResearchLabReportStatus;
+  xp_awarded?: number;
+};
+
 export async function verifyResearchLabObjective(
   accessToken: string,
   sessionId: string
 ) {
-  return researchLabsRequest<{
-    status?: ResearchLabTestStatus;
-    results?: unknown;
-    objective_progress?: number;
-    session_status?: ResearchLabSessionStatus;
-    lab_completed?: boolean;
-    report_status?: ResearchLabReportStatus;
-    xp_awarded?: number;
-  }>(
+  return researchLabsRequest<VerifyObjectiveResponse>(
     `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/verify-objective`,
     {
       accessToken,
@@ -282,15 +291,101 @@ export async function verifyResearchLabObjective(
 export async function submitResearchLabTransaction(
   accessToken: string,
   sessionId: string,
-  payload: unknown
+  payload: LabTransactionPayload
 ) {
-  return researchLabsRequest<Record<string, unknown>>(
+  const { action_type, ...parameters } = payload;
+  return researchLabsRequest<TransactionResult>(
     `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/transactions`,
     {
       accessToken,
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ action_type, parameters }),
     }
+  );
+}
+
+export type SandboxAccountSummary = {
+  ref: string;
+  label: string;
+  owner: string;
+  lamports: number;
+  data: Record<string, unknown>;
+};
+
+export type SandboxAccountSnapshot = {
+  ref: string;
+  label: string;
+  owner: string;
+  lamports: number;
+  data: Record<string, unknown>;
+};
+
+export type DepositCollateralPayload = {
+  action_type: "DEPOSIT_COLLATERAL";
+  amount: number;
+  collateral_account_ref: string;
+  vault_account_ref: string;
+};
+
+export type WithdrawAgainstCreditPayload = {
+  action_type: "WITHDRAW_AGAINST_CREDIT";
+  amount: number;
+};
+
+export type LabTransactionPayload =
+  | DepositCollateralPayload
+  | WithdrawAgainstCreditPayload;
+
+export type TransactionResult = {
+  transactionRef: string;
+  transaction_ref: string;
+  instructionType: string;
+  instruction_type: string;
+  executionStatus: "success" | "failure";
+  execution_status: "success" | "failure";
+  logs: string[];
+  userFacingEvidence?: string[];
+};
+
+export async function getResearchLabAccounts(
+  accessToken: string,
+  sessionId: string
+) {
+  return researchLabsRequest<{ accounts: SandboxAccountSummary[] }>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/accounts`,
+    { accessToken }
+  );
+}
+
+export async function getResearchLabAccount(
+  accessToken: string,
+  sessionId: string,
+  accountRef: string
+) {
+  return researchLabsRequest<{ account: SandboxAccountSnapshot }>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/accounts/${encodeURIComponent(accountRef)}`,
+    { accessToken }
+  );
+}
+
+export async function getResearchLabTransactionLogs(
+  accessToken: string,
+  sessionId: string,
+  transactionRef: string
+) {
+  return researchLabsRequest<{ logs: string[] }>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/transactions/${encodeURIComponent(transactionRef)}/logs`,
+    { accessToken }
+  );
+}
+
+export async function listResearchLabTransactions(
+  accessToken: string,
+  sessionId: string
+) {
+  return researchLabsRequest<{ transactions: TransactionResult[] }>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/transactions`,
+    { accessToken }
   );
 }
 

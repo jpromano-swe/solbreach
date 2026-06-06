@@ -2,7 +2,6 @@
 
 import { useCallback, useState, type ComponentType } from "react";
 import {
-  ArrowRight,
   ChevronDown,
   Cpu,
   FileCode2,
@@ -25,13 +24,6 @@ type CourseMenuItem = {
 type CourseMenuSection = {
   items: CourseMenuItem[];
   title: string;
-};
-
-type CourseMenuKey = "vulnerabilities" | "research-labs";
-
-const COURSE_MENU_ORDER: Record<CourseMenuKey, number> = {
-  vulnerabilities: 0,
-  "research-labs": 1,
 };
 
 const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
@@ -100,29 +92,6 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
   },
 ];
 
-const RESEARCH_LAB_MENU_SECTIONS: CourseMenuSection[] = [
-  {
-    title: "Research Labs",
-    items: [
-      {
-        icon: ShieldCheck,
-        title: "Vault Mirage",
-        description: "Oracle manipulation and vault health distortion",
-      },
-      {
-        icon: LockKeyhole,
-        title: "Governance Takeover",
-        description: "Durable nonce abuse and authority escalation",
-      },
-      {
-        icon: FileCode2,
-        title: "Lending Market Manipulation",
-        description: "Collateral validation flaw and liquidity drain",
-      },
-    ],
-  },
-];
-
 export function HeaderCourseNav({
   onSelectResearchLabs,
   onSelectLevel,
@@ -131,11 +100,8 @@ export function HeaderCourseNav({
   onSelectLevel: (level: CourseLevelTarget) => void;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeMenu, setActiveMenu] =
-    useState<CourseMenuKey>("vulnerabilities");
 
-  const openCourseMenu = useCallback((nextMenu: CourseMenuKey) => {
-    setActiveMenu(nextMenu);
+  const openCourseMenu = useCallback(() => {
     setIsMenuOpen(true);
   }, []);
 
@@ -147,23 +113,18 @@ export function HeaderCourseNav({
     >
       <HeaderMenuTrigger
         label="Vulnerabilities"
-        open={isMenuOpen && activeMenu === "vulnerabilities"}
-        onClick={() => {
-          setActiveMenu("vulnerabilities");
-          setIsMenuOpen(!(isMenuOpen && activeMenu === "vulnerabilities"));
-        }}
-        onMouseEnter={() => openCourseMenu("vulnerabilities")}
+        open={isMenuOpen}
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        onMouseEnter={openCourseMenu}
       />
-      <HeaderMenuTrigger
+      <HeaderDirectButton
         label="Research Labs"
-        open={isMenuOpen && activeMenu === "research-labs"}
         onClick={() => {
-          setActiveMenu("research-labs");
-          setIsMenuOpen(!(isMenuOpen && activeMenu === "research-labs"));
+          onSelectResearchLabs();
+          setIsMenuOpen(false);
         }}
-        onMouseEnter={() => openCourseMenu("research-labs")}
       />
-      <HeaderNavButton disabled label="Review Rooms" locked />
+      <HeaderNavButton disabled label="Breach Rooms" locked />
 
       <div
         className={`absolute left-0 right-0 top-full h-4 ${
@@ -181,27 +142,11 @@ export function HeaderCourseNav({
         onMouseEnter={() => setIsMenuOpen(true)}
       >
         <div className="relative overflow-hidden">
-          <div
-            className="grid w-[200%] grid-cols-2 motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-in-out motion-reduce:transition-none"
-            style={{
-              transform: `translateX(-${COURSE_MENU_ORDER[activeMenu] * 50}%)`,
-            }}
-          >
-            <CourseMenuContent
-              menu="vulnerabilities"
-              onClose={() => setIsMenuOpen(false)}
-              onSelectResearchLabs={onSelectResearchLabs}
-              onSelectLevel={onSelectLevel}
-              sections={VULNERABILITY_MENU_SECTIONS}
-            />
-            <CourseMenuContent
-              menu="research-labs"
-              onClose={() => setIsMenuOpen(false)}
-              onSelectResearchLabs={onSelectResearchLabs}
-              onSelectLevel={onSelectLevel}
-              sections={RESEARCH_LAB_MENU_SECTIONS}
-            />
-          </div>
+          <CourseMenuContent
+            onClose={() => setIsMenuOpen(false)}
+            onSelectLevel={onSelectLevel}
+            sections={VULNERABILITY_MENU_SECTIONS}
+          />
         </div>
       </div>
     </nav>
@@ -209,15 +154,11 @@ export function HeaderCourseNav({
 }
 
 function CourseMenuContent({
-  menu,
   onClose,
-  onSelectResearchLabs,
   onSelectLevel,
   sections,
 }: {
-  menu: CourseMenuKey;
   onClose: () => void;
-  onSelectResearchLabs: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
   sections: CourseMenuSection[];
 }) {
@@ -248,9 +189,7 @@ function CourseMenuContent({
                   key={item.title}
                   type="button"
                   onClick={() => {
-                    if (menu === "research-labs") {
-                      onSelectResearchLabs();
-                    } else if (item.target) {
+                    if (item.target) {
                       onSelectLevel(item.target);
                     }
 
@@ -275,24 +214,6 @@ function CourseMenuContent({
           </div>
         </div>
       ))}
-      {menu === "research-labs" ? (
-        <div className="border-t border-border px-4 py-3">
-          <button
-            type="button"
-            onClick={() => {
-              onSelectResearchLabs();
-              onClose();
-            }}
-            className="group inline-flex min-h-11 w-full items-center justify-between rounded-xl px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <span>Show all research labs</span>
-            <ArrowRight
-              className="h-4 w-4 text-muted motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1"
-              aria-hidden="true"
-            />
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -327,6 +248,24 @@ function HeaderMenuTrigger({
         }`}
         aria-hidden="true"
       />
+    </button>
+  );
+}
+
+function HeaderDirectButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium text-muted transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      {label}
     </button>
   );
 }
