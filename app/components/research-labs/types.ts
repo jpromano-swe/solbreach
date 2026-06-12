@@ -17,11 +17,6 @@ export type SandboxStatus =
   | "EXPIRED"
   | "ERROR";
 
-export type ReportMetaFields = {
-  title: string;
-  likelihood: string;
-};
-
 export type AuditReportStage = "BUILDER" | "PREVIEW" | "SUBMITTED";
 
 export type AuditReportPreview = {

@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useState, type ComponentType } from "react";
 import {
   ChevronDown,
@@ -94,9 +92,11 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
 
 export function HeaderCourseNav({
   onSelectResearchLabs,
+  onSelectVulnerabilities,
   onSelectLevel,
 }: {
   onSelectResearchLabs: () => void;
+  onSelectVulnerabilities: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -114,15 +114,15 @@ export function HeaderCourseNav({
       <HeaderMenuTrigger
         label="Vulnerabilities"
         open={isMenuOpen}
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        onClick={() => {
+          onSelectVulnerabilities();
+          setIsMenuOpen(false);
+        }}
         onMouseEnter={openCourseMenu}
       />
       <HeaderDirectButton
         label="Research Labs"
-        onClick={() => {
-          onSelectResearchLabs();
-          setIsMenuOpen(false);
-        }}
+        onClick={onSelectResearchLabs}
       />
       <HeaderNavButton disabled label="Breach Rooms" locked />
 

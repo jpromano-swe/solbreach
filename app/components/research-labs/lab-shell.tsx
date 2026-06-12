@@ -7,10 +7,10 @@ import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
 import type { LabPhase, SandboxStatus } from "./types";
 
 const LAB_SHELL_COPY = {
-  labCode: "RL-001",
+  labCode: "RL1",
   titleFallback: "Configured Research Lab",
   scenario:
-    "A protocol has reported state transitions that should not satisfy its normal account requirements. Review the source, inspect account relationships, test an exploit hypothesis, and document the cause if you can prove impact.",
+    "A borrow market appears to trust caller-supplied account relationships more than its approved custody configuration. Review the source, inspect the account path, test an exploit hypothesis, and document the cause if you can prove impact.",
 };
 
 export function ResearchLabSessionHeader({
@@ -44,7 +44,7 @@ export function ResearchLabSessionHeader({
         <div className="min-w-0">
           <div className="flex items-center gap-3">
             <p className="truncate text-sm font-semibold text-white">
-              {(lab.id || LAB_SHELL_COPY.labCode).toUpperCase()}:{" "}
+              {displayLabCode(lab)}:{" "}
               {lab.title || LAB_SHELL_COPY.titleFallback}
             </p>
             <PhaseBadge phase={phase} />
@@ -94,6 +94,11 @@ export function ResearchLabSessionHeader({
   );
 }
 
+function displayLabCode(lab: ResearchLabManifest) {
+  if (lab.slug === "account-substitution") return "RL1";
+  return (lab.id || LAB_SHELL_COPY.labCode).toUpperCase();
+}
+
 export function LabScenarioBriefing({
   lab,
   phase,
@@ -112,9 +117,7 @@ export function LabScenarioBriefing({
             Investigate the protocol behavior.
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-            {lab.summary && !/arithmetic|oracle|health/i.test(lab.summary)
-              ? lab.summary
-              : LAB_SHELL_COPY.scenario}
+            {lab.summary || LAB_SHELL_COPY.scenario}
           </p>
         </div>
         <InvestigationStepper phase={phase} />

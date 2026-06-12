@@ -40,6 +40,34 @@ export type ResearchLabManifest = {
   files: ResearchLabFile[];
 };
 
+const RL1_MANIFEST_OVERRIDES = {
+  title: "Account Substitution",
+  summary:
+    "A borrow market accepts caller-supplied collateral accounts without binding them to the approved vault configuration. Inspect the deposit path, test the non-canonical account route, and document the resulting treasury exposure.",
+  objective:
+    "Determine whether a counterfeit deposit path can create position credit and support a real treasury withdrawal.",
+  successCriteria:
+    "Verified evidence must show that a non-canonical deposit path changed position credit and enabled a treasury withdrawal before the report is accepted.",
+  objectives: [
+    "Inspect the deposit instruction and the trusted account boundary",
+    "Identify the missing binding between source, vault, and approved config",
+    "Execute the non-canonical deposit and borrow path",
+    "Review the sandbox evidence and document the finding",
+  ],
+  hints: [
+    {
+      id: "account-binding",
+      title: "Hint 1",
+      body: "Start by comparing the collateral account you provide with the vault that receives it.",
+    },
+    {
+      id: "non-canonical-credit",
+      title: "Hint 2",
+      body: "Watch whether position credit changes even when the collateral route is not the canonical one the protocol should enforce.",
+    },
+  ] satisfies ResearchLabHint[],
+};
+
 export type ResearchLabSessionStatus =
   | "provisioning"
   | "active"
@@ -79,19 +107,25 @@ export type ResearchLabReportStatus =
   | "accepted";
 
 export type ResearchLabReportFields = {
-  vulnerabilityCategory: string | null;
-  affectedArea: string | null;
-  rootCause: string;
-  impact: string;
-  proof: string;
-  recommendedFix: string;
-  severity: string | null;
+  titleOptionId: string | null;
+  categoryOptionId: string | null;
+  severityOptionId: string | null;
+  likelihoodOptionId: string | null;
+  rootCauseOptionId: string | null;
+  proofOfImpactOptionId: string | null;
+  recommendedMitigationOptionId: string | null;
+  verifiedEvidenceRefs: string[];
+  optionalNotes: string;
 };
 
 export type ResearchLabReportAllowedValues = {
-  vulnerabilityCategory: string[];
-  affectedArea: string[];
-  severity: string[];
+  titleOptionId: string[];
+  categoryOptionId: string[];
+  severityOptionId: string[];
+  likelihoodOptionId: string[];
+  rootCauseOptionId: string[];
+  proofOfImpactOptionId: string[];
+  recommendedMitigationOptionId: string[];
 };
 
 export type ResearchLabReport = {
@@ -109,7 +143,7 @@ export type ResearchLabSession = {
   sessionId: string;
   labId: string;
   status: ResearchLabSessionStatus;
-  stage: "setup" | "investigate" | "fix" | "report";
+  stage: "setup" | "investigate" | "report";
   expiresAt: string;
   files: Record<string, string>;
   fileEntries: ResearchLabFile[];
@@ -121,6 +155,11 @@ export type ResearchLabSession = {
   reportStatus?: ResearchLabReportStatus;
   xpAwarded?: number;
   labCompleted?: boolean;
+  impactVerified?: boolean;
+  reportUnlocked?: boolean;
+  findingReviewPassed?: boolean;
+  certificateUnlockable?: boolean;
+  verifiedEvidenceRefs?: string[];
 };
 
 type ApiEnvelope<T> = {
@@ -139,41 +178,22 @@ type RawResearchLabReport = Record<string, unknown>;
 
 export const FALLBACK_RESEARCH_LABS: ResearchLabManifest[] = [
   {
-    id: "rl-007",
-    slug: "vault-mirage",
-    title: "Vault Mirage",
+    id: "rl1-account-substitution",
+    slug: "account-substitution",
+    title: RL1_MANIFEST_OVERRIDES.title,
     difficulty: "Intermediate",
     estimatedTime: "2-4 hours",
     xpReward: 250,
     status: "active",
-    summary:
-      "A lending protocol reports suspicious vault health calculations. Review the deposit path and repair the arithmetic trust boundary.",
-    objective:
-      "Identify and fix the arithmetic flaw that lets attacker-controlled oracle input distort collateral health.",
-    allowedFiles: ["programs/vault_mirage/src/lib.rs"],
-    entryFile: "programs/vault_mirage/src/lib.rs",
+    summary: RL1_MANIFEST_OVERRIDES.summary,
+    objective: RL1_MANIFEST_OVERRIDES.objective,
+    allowedFiles: ["programs/account_substitution/src/lib.rs"],
+    entryFile: "programs/account_substitution/src/lib.rs",
     testCommand: "anchor test --skip-deploy",
-    successCriteria:
-      "Collateral value must use checked multiplication and checked division before the health comparison.",
-    templateRef: "research-labs/vault-mirage@v1",
-    objectives: [
-      "Inspect the vault health calculation",
-      "Identify the unchecked arithmetic boundary",
-      "Patch the vulnerable code fragment",
-      "Run the sandboxed lab tests",
-    ],
-    hints: [
-      {
-        id: "health-calculation",
-        title: "Hint 1",
-        body: "Focus on the line that multiplies deposited amount by oracle price before scaling.",
-      },
-      {
-        id: "checked-arithmetic",
-        title: "Hint 2",
-        body: "The safe pattern should make overflow impossible before the health comparison executes.",
-      },
-    ],
+    successCriteria: RL1_MANIFEST_OVERRIDES.successCriteria,
+    templateRef: "research-labs/account-substitution@v1",
+    objectives: RL1_MANIFEST_OVERRIDES.objectives,
+    hints: RL1_MANIFEST_OVERRIDES.hints,
     files: [],
   },
 ];
@@ -241,6 +261,12 @@ export async function runResearchLabTests(
   sessionId: string
 ) {
   return researchLabsRequest<{
+    impact_verified?: boolean;
+    impactVerified?: boolean;
+    report_unlocked?: boolean;
+    reportUnlocked?: boolean;
+    verified_evidence_refs?: string[];
+    verifiedEvidenceRefs?: string[];
     test_run_id?: string;
     status?: ResearchLabTestStatus;
     results?: unknown;
@@ -263,9 +289,12 @@ export type VerifyObjectiveResponse = {
   objective_ref?: string;
   passed?: boolean;
   phase?: string;
-  exploitVerified?: boolean;
+  impact_verified?: boolean;
+  impactVerified?: boolean;
+  report_unlocked?: boolean;
   reportUnlocked?: boolean;
-  userFacingEvidence?: string[];
+  verified_evidence_refs?: string[];
+  verifiedEvidenceRefs?: string[];
   status?: ResearchLabTestStatus;
   results?: unknown;
   objective_progress?: number;
@@ -344,7 +373,6 @@ export type TransactionResult = {
   executionStatus: "success" | "failure";
   execution_status: "success" | "failure";
   logs: string[];
-  userFacingEvidence?: string[];
 };
 
 export async function getResearchLabAccounts(
@@ -525,11 +553,20 @@ async function researchLabsRequest<T>(
 function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
   const objectives = normalizeStringArray(raw.objectives);
   const hints = normalizeHints(raw.hints);
+  const id =
+    stringValue(raw.id) || stringValue(raw.slug) || "rl1-account-substitution";
+  const slug =
+    stringValue(raw.slug) || stringValue(raw.id) || "account-substitution";
+  const isRl1Template =
+    id === "rl1-account-substitution" || slug === "account-substitution";
 
   return {
-    id: stringValue(raw.id) || stringValue(raw.slug) || "rl-007",
-    slug: stringValue(raw.slug) || stringValue(raw.id) || "vault-mirage",
-    title: stringValue(raw.title) || "Vault Mirage",
+    id,
+    slug,
+    title:
+      (isRl1Template ? RL1_MANIFEST_OVERRIDES.title : undefined) ||
+      stringValue(raw.title) ||
+      FALLBACK_RESEARCH_LABS[0].title,
     difficulty: titleCase(
       stringValue(raw.difficulty) ||
         stringValue(raw.difficulty_level) ||
@@ -542,10 +579,12 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
     xpReward: numberValue(raw.xp_reward ?? raw.xpReward, 250),
     status: (stringValue(raw.status) as ResearchLabStatus | "") || "active",
     summary:
+      (isRl1Template ? RL1_MANIFEST_OVERRIDES.summary : undefined) ||
       stringValue(raw.summary) ||
       stringValue(raw.description) ||
       FALLBACK_RESEARCH_LABS[0].summary,
     objective:
+      (isRl1Template ? RL1_MANIFEST_OVERRIDES.objective : undefined) ||
       stringValue(raw.objective) ||
       stringValue(raw.lab_objective) ||
       FALLBACK_RESEARCH_LABS[0].objective,
@@ -561,6 +600,7 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
       stringValue(raw.testCommand) ||
       FALLBACK_RESEARCH_LABS[0].testCommand,
     successCriteria:
+      (isRl1Template ? RL1_MANIFEST_OVERRIDES.successCriteria : undefined) ||
       stringValue(raw.success_criteria) ||
       stringValue(raw.successCriteria) ||
       FALLBACK_RESEARCH_LABS[0].successCriteria,
@@ -568,10 +608,18 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
       stringValue(raw.template_ref) ||
       stringValue(raw.templateRef) ||
       FALLBACK_RESEARCH_LABS[0].templateRef,
-    objectives: objectives.length
-      ? objectives
-      : FALLBACK_RESEARCH_LABS[0].objectives,
-    hints: hints.length ? hints : FALLBACK_RESEARCH_LABS[0].hints,
+    objectives:
+      isRl1Template && RL1_MANIFEST_OVERRIDES.objectives.length
+        ? RL1_MANIFEST_OVERRIDES.objectives
+        : objectives.length
+          ? objectives
+          : FALLBACK_RESEARCH_LABS[0].objectives,
+    hints:
+      isRl1Template && RL1_MANIFEST_OVERRIDES.hints.length
+        ? RL1_MANIFEST_OVERRIDES.hints
+        : hints.length
+          ? hints
+          : FALLBACK_RESEARCH_LABS[0].hints,
     files: normalizeFiles(raw.files),
   };
 }
@@ -596,9 +644,12 @@ function normalizeSession(raw: RawResearchLabSession): ResearchLabSession {
       stringValue(raw.session_id) ||
       stringValue(raw.sessionId) ||
       stringValue(raw.id),
-    labId: stringValue(raw.lab_id) || stringValue(raw.labId) || "rl-007",
+    labId:
+      stringValue(raw.lab_id) ||
+      stringValue(raw.labId) ||
+      "rl1-account-substitution",
     status,
-    stage: stageFromStatus(status, objectiveProgress),
+    stage: stageFromStatus(status),
     expiresAt:
       stringValue(raw.expires_at) ||
       stringValue(raw.expiresAt) ||
@@ -615,6 +666,22 @@ function normalizeSession(raw: RawResearchLabSession): ResearchLabSession {
     ),
     xpAwarded: numberOrUndefined(raw.xp_awarded ?? raw.xpAwarded),
     labCompleted: Boolean(raw.lab_completed ?? raw.labCompleted),
+    impactVerified: booleanOrUndefined(
+      raw.impact_verified ?? raw.impactVerified
+    ),
+    reportUnlocked: booleanOrUndefined(
+      raw.report_unlocked ?? raw.reportUnlocked
+    ),
+    findingReviewPassed: booleanOrUndefined(
+      raw.finding_review_passed ?? raw.findingReviewPassed
+    ),
+    certificateUnlockable: booleanOrUndefined(
+      raw.certificate_unlockable ?? raw.certificateUnlockable
+    ),
+    verifiedEvidenceRefs:
+      normalizeStringArray(
+        raw.verified_evidence_refs ?? raw.verifiedEvidenceRefs
+      ) ?? [],
   };
 }
 
@@ -660,10 +727,20 @@ export function applyRunResult(
     labCompleted: Boolean(result.lab_completed),
     objectiveProgress,
     reportStatus: normalizeOptionalReportStatus(result.report_status),
-    stage: stageFromStatus(status, objectiveProgress),
+    stage: stageFromStatus(status),
     status,
     testResults: normalizeRunTestResults(result),
     xpAwarded: numberOrUndefined(result.xp_awarded),
+    impactVerified:
+      booleanOrUndefined(result.impact_verified ?? result.impactVerified) ??
+      session.impactVerified,
+    reportUnlocked:
+      booleanOrUndefined(result.report_unlocked ?? result.reportUnlocked) ??
+      session.reportUnlocked,
+    verifiedEvidenceRefs:
+      normalizeStringArray(
+        result.verified_evidence_refs ?? result.verifiedEvidenceRefs
+      ) ?? session.verifiedEvidenceRefs,
   };
 }
 
@@ -685,22 +762,40 @@ function normalizeReportFields(raw: unknown): ResearchLabReportFields | null {
   const fields = raw as Record<string, unknown>;
 
   return {
-    vulnerabilityCategory:
-      stringValue(fields.vulnerability_category) ||
-      stringValue(fields.vulnerabilityCategory) ||
+    titleOptionId:
+      stringValue(fields.title_option_id) ||
+      stringValue(fields.titleOptionId) ||
       null,
-    affectedArea:
-      stringValue(fields.affected_area) ||
-      stringValue(fields.affectedArea) ||
+    categoryOptionId:
+      stringValue(fields.category_option_id) ||
+      stringValue(fields.categoryOptionId) ||
       null,
-    rootCause:
-      stringValue(fields.root_cause) || stringValue(fields.rootCause),
-    impact: stringValue(fields.impact),
-    proof: stringValue(fields.proof),
-    recommendedFix:
-      stringValue(fields.recommended_fix) ||
-      stringValue(fields.recommendedFix),
-    severity: stringValue(fields.severity) || null,
+    severityOptionId:
+      stringValue(fields.severity_option_id) ||
+      stringValue(fields.severityOptionId) ||
+      null,
+    likelihoodOptionId:
+      stringValue(fields.likelihood_option_id) ||
+      stringValue(fields.likelihoodOptionId) ||
+      null,
+    rootCauseOptionId:
+      stringValue(fields.root_cause_option_id) ||
+      stringValue(fields.rootCauseOptionId) ||
+      null,
+    proofOfImpactOptionId:
+      stringValue(fields.proof_of_impact_option_id) ||
+      stringValue(fields.proofOfImpactOptionId) ||
+      null,
+    recommendedMitigationOptionId:
+      stringValue(fields.recommended_mitigation_option_id) ||
+      stringValue(fields.recommendedMitigationOptionId) ||
+      null,
+    verifiedEvidenceRefs: normalizeStringArray(
+      fields.verified_evidence_refs ?? fields.verifiedEvidenceRefs
+    ),
+    optionalNotes:
+      stringValue(fields.optional_notes) ||
+      stringValue(fields.optionalNotes),
   };
 }
 
@@ -708,35 +803,74 @@ function normalizeReportAllowedValues(
   raw: unknown
 ): ResearchLabReportAllowedValues {
   const fallback = {
-    vulnerabilityCategory: ["missing_validation", "arithmetic_safety"],
-    affectedArea: ["deposit_instruction", "vault_health_calculation"],
-    severity: ["low", "medium", "high"],
+    titleOptionId: ["missing_constraints_counterfeit_credit"],
+    categoryOptionId: ["account_substitution"],
+    severityOptionId: ["high_treasury_loss", "medium", "high"],
+    likelihoodOptionId: [
+      "low",
+      "medium",
+      "medium_high_attacker_supplied_accounts",
+      "high",
+    ],
+    rootCauseOptionId: ["missing_account_binding"],
+    proofOfImpactOptionId: ["counterfeit_credit_withdraws_treasury"],
+    recommendedMitigationOptionId: ["bind_accounts_to_approved_config"],
   };
 
   if (!raw || typeof raw !== "object") return fallback;
   const values = raw as Record<string, unknown>;
 
   return {
-    vulnerabilityCategory:
-      normalizeStringArray(
-        values.vulnerability_category ?? values.vulnerabilityCategory
-      ) ?? fallback.vulnerabilityCategory,
-    affectedArea:
-      normalizeStringArray(values.affected_area ?? values.affectedArea) ??
-      fallback.affectedArea,
-    severity: normalizeStringArray(values.severity) ?? fallback.severity,
+    titleOptionId:
+      nonEmptyStringArray(values.title_option_id ?? values.titleOptionId) ??
+      fallback.titleOptionId,
+    categoryOptionId:
+      nonEmptyStringArray(values.category_option_id ?? values.categoryOptionId) ??
+      fallback.categoryOptionId,
+    severityOptionId:
+      nonEmptyStringArray(values.severity_option_id ?? values.severityOptionId) ??
+      fallback.severityOptionId,
+    likelihoodOptionId:
+      nonEmptyStringArray(
+        values.likelihood_option_id ?? values.likelihoodOptionId
+      ) ?? fallback.likelihoodOptionId,
+    rootCauseOptionId:
+      nonEmptyStringArray(
+        values.root_cause_option_id ?? values.rootCauseOptionId
+      ) ?? fallback.rootCauseOptionId,
+    proofOfImpactOptionId:
+      nonEmptyStringArray(
+        values.proof_of_impact_option_id ?? values.proofOfImpactOptionId
+      ) ?? fallback.proofOfImpactOptionId,
+    recommendedMitigationOptionId:
+      nonEmptyStringArray(
+        values.recommended_mitigation_option_id ??
+          values.recommendedMitigationOptionId
+      ) ?? fallback.recommendedMitigationOptionId,
   };
 }
 
 function denormalizeReportFields(fields: ResearchLabReportFields) {
   return {
-    vulnerability_category: fields.vulnerabilityCategory,
-    affected_area: fields.affectedArea,
-    root_cause: fields.rootCause,
-    impact: fields.impact,
-    proof: fields.proof,
-    recommended_fix: fields.recommendedFix,
-    severity: fields.severity,
+    titleOptionId: fields.titleOptionId,
+    severityOptionId: fields.severityOptionId,
+    likelihoodOptionId: fields.likelihoodOptionId,
+    categoryOptionId: fields.categoryOptionId,
+    rootCauseOptionId: fields.rootCauseOptionId,
+    proofOfImpactOptionId: fields.proofOfImpactOptionId,
+    recommendedMitigationOptionId: fields.recommendedMitigationOptionId,
+    verifiedEvidenceRefs: fields.verifiedEvidenceRefs,
+    optionalNotes: fields.optionalNotes,
+    title_option_id: fields.titleOptionId,
+    severity_option_id: fields.severityOptionId,
+    likelihood_option_id: fields.likelihoodOptionId,
+    category_option_id: fields.categoryOptionId,
+    root_cause_option_id: fields.rootCauseOptionId,
+    proof_of_impact_option_id: fields.proofOfImpactOptionId,
+    recommended_mitigation_option_id:
+      fields.recommendedMitigationOptionId,
+    verified_evidence_refs: fields.verifiedEvidenceRefs,
+    optional_notes: fields.optionalNotes,
   };
 }
 
@@ -877,20 +1011,21 @@ function normalizeOptionalReportStatus(
 }
 
 function stageFromStatus(
-  status: ResearchLabSessionStatus,
-  objectiveProgress: number
+  status: ResearchLabSessionStatus
 ): ResearchLabSession["stage"] {
   if (status === "provisioning") return "setup";
   if (status === "passed") return "report";
-  if (status === "dirty" || status === "failed" || objectiveProgress >= 3) {
-    return "fix";
-  }
   return "investigate";
 }
 
 function normalizeStringArray(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw.map(stringValue).filter(Boolean);
+}
+
+function nonEmptyStringArray(raw: unknown): string[] | undefined {
+  const values = normalizeStringArray(raw);
+  return values.length ? values : undefined;
 }
 
 function languageFromPath(path: string): ResearchLabFile["language"] {
@@ -930,6 +1065,10 @@ function numberOrUndefined(value: unknown) {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function booleanOrUndefined(value: unknown) {
+  return typeof value === "boolean" ? value : undefined;
 }
 
 function titleCase(value: string) {

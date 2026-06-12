@@ -1,98 +1,108 @@
-import { test, expect, type Page, type Route } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 
-const SESSION_ID = "e2e-mock-session-001";
-const AUTH_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJtb2NrIn0.no-exp-claim"; // jwt with no exp
+const SESSION_ID = "e2e-rl1-session-001";
+const AUTH_TOKEN = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJtb2NrIn0.";
+const WALLET_ADDRESS = "9xQeQgcg6GxLxnP46gfK1CmVs5PKoYpFrc59KJdkw4Xt";
 
-// Fake JWT: header + payload (no exp field) + signature — never "expired"
-const FAKE_JWT = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJtb2NrIn0.";
+type PendingTransaction = {
+  instructionType: "DEPOSIT_COLLATERAL" | "WITHDRAW_AGAINST_CREDIT";
+  status: "success" | "failure";
+  logs: string[];
+};
 
-type TxDef = { instructionType: string; status: "success" | "failure"; logs: string[] };
-type VerifyDef = { passed: boolean; reportUnlocked: boolean };
+type PendingVerify = {
+  passed: boolean;
+  reportUnlocked: boolean;
+  verifiedEvidenceRefs: string[];
+};
 
-let pendingTx: TxDef | null = null;
-let pendingVerify: VerifyDef | null = null;
-let isReset = false;
+let pendingTransaction: PendingTransaction | null = null;
+let pendingVerify: PendingVerify | null = null;
 
-function resetState() { pendingTx = null; pendingVerify = null; isReset = false; }
-function scheduleTx(def: TxDef) { pendingTx = def; }
-function scheduleVerify(def: VerifyDef) { pendingVerify = def; }
+function resetState() {
+  pendingTransaction = null;
+  pendingVerify = null;
+}
 
 async function seedAuth(page: Page) {
-  await page.addInitScript((token: string) => {
-    // Seed localStorage with valid auth (skips API auth calls)
-    const auth = JSON.stringify({
-      accessToken: token,
-      refreshToken: token,
-      walletAddress: "9xQeQgcg6GxLxnP46gfK1CmVs5PKoYpFrc59KJdkw4Xt",
-    });
-    localStorage.setItem("solbreach.backend.walletAuth", auth);
+  await page.addInitScript(
+    ({ token, walletAddress }) => {
+      localStorage.setItem(
+        "solbreach.backend.walletAuth",
+        JSON.stringify({
+          accessToken: token,
+          refreshToken: token,
+          walletAddress,
+        })
+      );
+      localStorage.setItem("solana:last-connector", "E2E Mock Wallet");
 
-    // Set auto-connect key so WalletProvider automatically connects our mock wallet
-    localStorage.setItem("solana:last-connector", "E2E Mock Wallet");
-
-    // Register mock wallet via the wallet-standard protocol.
-    // @wallet-standard/app's getWallets() dispatches 'wallet-standard:app-ready'
-    // on first call (during useState initializer in WalletProvider).
-    // This listener fires synchronously at that point and registers the wallet.
-    window.addEventListener("wallet-standard:app-ready", (event) => {
-      const register = (event as CustomEvent).detail.register;
-      register({
-        version: "1.0.0",
-        name: "E2E Mock Wallet",
-        icon:
-          "data:image/svg+xml;base64," +
-          btoa(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#9945FF"/></svg>'
-          ),
-        chains: ["solana:mainnet"],
-        features: {
-          "standard:connect": {
-            version: "1.0.0",
-            connect: async () => ({
-              accounts: [
-                {
-                  address: "9xQeQgcg6GxLxnP46gfK1CmVs5PKoYpFrc59KJdkw4Xt",
-                  publicKey: new Uint8Array(32),
-                  chains: ["solana:mainnet"],
-                  features: [
-                    "solana:signTransaction",
-                    "solana:signMessage",
-                  ],
-                },
-              ],
-            }),
-          },
-          "standard:disconnect": {
-            version: "1.0.0",
-            disconnect: async () => {},
-          },
-          "solana:signTransaction": {
-            version: "1.0.0",
-            signTransaction: async ({ transaction }: { transaction: Uint8Array }) => ({
-              signedTransaction: transaction,
-            }),
-          },
-          "solana:signAndSendTransaction": {
-            version: "1.0.0",
-            signAndSendTransaction: async () => {
-              const sig = new Uint8Array(64);
-              sig.fill(42);
-              return { signature: sig };
+      window.addEventListener("wallet-standard:app-ready", (event) => {
+        const register = (event as CustomEvent).detail.register;
+        register({
+          version: "1.0.0",
+          name: "E2E Mock Wallet",
+          icon:
+            "data:image/svg+xml;base64," +
+            btoa(
+              '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#9945FF"/></svg>'
+            ),
+          chains: ["solana:mainnet"],
+          features: {
+            "standard:connect": {
+              version: "1.0.0",
+              connect: async () => ({
+                accounts: [
+                  {
+                    address: walletAddress,
+                    publicKey: new Uint8Array(32),
+                    chains: ["solana:mainnet"],
+                    features: [
+                      "solana:signTransaction",
+                      "solana:signAndSendTransaction",
+                      "solana:signMessage",
+                    ],
+                  },
+                ],
+              }),
+            },
+            "standard:disconnect": {
+              version: "1.0.0",
+              disconnect: async () => {},
+            },
+            "solana:signTransaction": {
+              version: "1.0.0",
+              signTransaction: async ({
+                transaction,
+              }: {
+                transaction: Uint8Array;
+              }) => ({
+                signedTransaction: transaction,
+              }),
+            },
+            "solana:signAndSendTransaction": {
+              version: "1.0.0",
+              signAndSendTransaction: async () => {
+                const sig = new Uint8Array(64);
+                sig.fill(42);
+                return { signature: sig };
+              },
+            },
+            "solana:signMessage": {
+              version: "1.0.0",
+              signMessage: async () => {
+                const sig = new Uint8Array(64);
+                sig.fill(42);
+                return [{ signature: sig }];
+              },
             },
           },
-          "solana:signMessage": {
-            version: "1.0.0",
-            signMessage: async () => {
-              const sig = new Uint8Array(64);
-              sig.fill(42);
-              return [{ signature: sig }];
-            },
-          },
-        },
-        accounts: [],
+          accounts: [],
+        });
       });
-    });
-  }, FAKE_JWT);
+    },
+    { token: AUTH_TOKEN, walletAddress: WALLET_ADDRESS }
+  );
 }
 
 async function setupApiMocks(page: Page) {
@@ -102,105 +112,345 @@ async function setupApiMocks(page: Page) {
     const url = route.request().url();
     const method = route.request().method();
 
-    // Auth endpoints — should not be hit with pre-seeded auth, but handle gracefully
-    if (url.includes("/auth/nonce") || url.includes("/auth/verify") || url.includes("/auth/refresh")) {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ user: { role: "hacker", wallet_address: "9xQeQgcg6GxLxnP46gfK1CmVs5PKoYpFrc59KJdkw4Xt" }, tokens: { access_token: AUTH_TOKEN, refresh_token: AUTH_TOKEN } }) });
+    if (
+      url.includes("/auth/nonce") ||
+      url.includes("/auth/verify") ||
+      url.includes("/auth/refresh")
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          user: { role: "user", wallet_address: WALLET_ADDRESS },
+          tokens: { access_token: AUTH_TOKEN, refresh_token: AUTH_TOKEN },
+        }),
+      });
     }
 
-    // Research Labs catalog
     if (url.match(/\/api\/v1\/research-labs$/) && method === "GET") {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: [{
-          id: "rl-007", slug: "vault-mirage", title: "Vault Mirage", difficulty: "intermediate",
-          estimated_time: "2-4 hours", xp_reward: 250, status: "active",
-          summary: "A lending protocol reports suspicious vault health calculations.",
-          objective: "Identify and fix the arithmetic flaw.",
-          allowed_files: ["programs/vault_mirage/src/lib.rs"],
-          entry_file: "programs/vault_mirage/src/lib.rs",
-          test_command: "anchor test --skip-deploy",
-          success_criteria: "Collateral value must use checked arithmetic.",
-          template_ref: "research-labs/vault-mirage@v1",
-          objectives: ["Inspect", "Fix"],
-          hints: [{ id: "hint-1", title: "Hint 1", body: "Focus on the deposit path." }],
-          files: [{ path: "programs/vault_mirage/src/lib.rs", language: "rust", content: "// mock", writable: true }],
-        }] }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: [
+            {
+              id: "rl1-account-substitution",
+              slug: "account-substitution",
+              title: "Account Substitution",
+              difficulty: "intermediate",
+              estimated_time: "2-4 hours",
+              xp_reward: 250,
+              status: "active",
+              summary:
+                "A borrow market accepts caller-supplied collateral accounts without binding them to the approved vault configuration.",
+              objective:
+                "Determine whether a counterfeit deposit path can create position credit and support a real treasury withdrawal.",
+              allowed_files: ["programs/account_substitution/src/lib.rs"],
+              entry_file: "programs/account_substitution/src/lib.rs",
+              test_command: "anchor test --skip-deploy",
+              success_criteria:
+                "Verified evidence must show that a non-canonical deposit path changed position credit and enabled a treasury withdrawal before the report is accepted.",
+              template_ref: "research-labs/account-substitution@v1",
+              objectives: [
+                "Inspect the deposit instruction and the trusted account boundary",
+                "Identify the missing binding between source, vault, and approved config",
+                "Execute the non-canonical deposit and borrow path",
+                "Review the sandbox evidence and document the finding",
+              ],
+              hints: [
+                {
+                  id: "account-binding",
+                  title: "Hint 1",
+                  body: "Start by comparing the collateral account you provide with the vault that receives it.",
+                },
+              ],
+              files: [
+                {
+                  path: "programs/account_substitution/src/lib.rs",
+                  language: "rust",
+                  content: "#[program]\npub mod account_substitution {}\n",
+                  writable: true,
+                },
+              ],
+            },
+          ],
+          error: null,
+        }),
+      });
     }
 
-    // Lab detail
-    if (url.includes("/research-labs/rl-007") && !url.includes("/sessions")) {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: { id: "rl-007", slug: "vault-mirage", title: "Vault Mirage", difficulty: "intermediate", estimated_time: "2-4 hours", xp_reward: 250, status: "active", summary: "Test vault behavior.", objective: "Test protocol state transitions.", allowed_files: ["programs/vault_mirage/src/lib.rs"], entry_file: "programs/vault_mirage/src/lib.rs", test_command: "anchor test", success_criteria: "Must use checked arithmetic.", template_ref: "test", objectives: ["Inspect", "Fix"], hints: [], files: [] } }) });
+    if (
+      url.includes("/research-labs/rl1-account-substitution") &&
+      !url.includes("/sessions")
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            id: "rl1-account-substitution",
+            slug: "account-substitution",
+            title: "Account Substitution",
+            difficulty: "intermediate",
+            estimated_time: "2-4 hours",
+            xp_reward: 250,
+            status: "active",
+            summary:
+              "A borrow market accepts caller-supplied collateral accounts without binding them to the approved vault configuration.",
+            objective:
+              "Determine whether a counterfeit deposit path can create position credit and support a real treasury withdrawal.",
+            allowed_files: ["programs/account_substitution/src/lib.rs"],
+            entry_file: "programs/account_substitution/src/lib.rs",
+            test_command: "anchor test --skip-deploy",
+            success_criteria:
+              "Verified evidence must show that a non-canonical deposit path changed position credit and enabled a treasury withdrawal before the report is accepted.",
+            template_ref: "research-labs/account-substitution@v1",
+            objectives: [
+              "Inspect the deposit instruction and the trusted account boundary",
+              "Identify the missing binding between source, vault, and approved config",
+            ],
+            hints: [],
+            files: [],
+          },
+          error: null,
+        }),
+      });
     }
 
-    // Verify objective — must come BEFORE /sessions POST since both match
     if (url.includes("/verify-objective")) {
-      const v = pendingVerify ?? { passed: false, reportUnlocked: false };
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: {
-          session_id: SESSION_ID, passed: v.passed, phase: v.passed ? "REPORT" : "PROVE_IMPACT",
-          exploitVerified: v.passed, reportUnlocked: v.reportUnlocked,
-          userFacingEvidence: v.passed ? ["Unauthorized state transition detected"] : [],
-          status: v.passed ? "passed" : "failed", objective_progress: v.passed ? 2 : 1,
-          session_status: v.passed ? "passed" : "failed", report_status: v.reportUnlocked ? "draft" : "locked",
-        } }) });
+      const verify =
+        pendingVerify ?? {
+          passed: false,
+          reportUnlocked: false,
+          verifiedEvidenceRefs: [],
+        };
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            session_id: SESSION_ID,
+            passed: verify.passed,
+            impactVerified: verify.passed,
+            reportUnlocked: verify.reportUnlocked,
+            verifiedEvidenceRefs: verify.verifiedEvidenceRefs,
+            status: verify.passed ? "passed" : "failed",
+            objective_progress: verify.passed ? 4 : 2,
+            session_status: verify.passed ? "passed" : "failed",
+            report_status: verify.reportUnlocked ? "draft" : "locked",
+          },
+          error: null,
+        }),
+      });
     }
 
-    // Reset session — must come BEFORE /sessions POST since reset uses POST + /sessions
+    if (url.endsWith("/report/submit")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            session_id: SESSION_ID,
+            status: "accepted",
+            lab_completed: true,
+            xp_awarded: 250,
+            feedback:
+              "Report accepted. Vulnerability, impact, and remediation are correctly identified.",
+          },
+          error: null,
+        }),
+      });
+    }
+
+    if (url.endsWith("/report") && method === "PUT") {
+      const body = route.request().postDataJSON() as {
+        fields: Record<string, unknown>;
+      };
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            session_id: SESSION_ID,
+            status: "draft",
+            fields: body.fields,
+            feedback: null,
+            updated_at: new Date().toISOString(),
+          },
+          error: null,
+        }),
+      });
+    }
+
+    if (url.endsWith("/report") && method === "GET") {
+      const unlocked = pendingVerify?.reportUnlocked ?? false;
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: unlocked
+            ? {
+                session_id: SESSION_ID,
+                status: "draft",
+                fields: {
+                  titleOptionId: null,
+                  categoryOptionId: null,
+                  severityOptionId: null,
+                  likelihoodOptionId: null,
+                  rootCauseOptionId: null,
+                  proofOfImpactOptionId: null,
+                  recommendedMitigationOptionId: null,
+                  verifiedEvidenceRefs:
+                    pendingVerify?.verifiedEvidenceRefs ?? [],
+                  optionalNotes: "",
+                },
+                allowed_values: {
+                  title_option_id: [
+                    "missing_constraints_counterfeit_credit",
+                  ],
+                  category_option_id: ["account_substitution"],
+                  severity_option_id: ["high_treasury_loss", "high"],
+                  likelihood_option_id: [
+                    "medium_high_attacker_supplied_accounts",
+                  ],
+                  root_cause_option_id: ["missing_account_binding"],
+                  proof_of_impact_option_id: [
+                    "counterfeit_credit_withdraws_treasury",
+                  ],
+                  recommended_mitigation_option_id: [
+                    "bind_accounts_to_approved_config",
+                  ],
+                },
+                feedback: null,
+              }
+            : {
+                session_id: SESSION_ID,
+                status: "locked",
+                fields: null,
+                allowed_values: null,
+                feedback: "Pass impact verification to unlock the report.",
+              },
+          error: null,
+        }),
+      });
+    }
+
     if (url.includes("/reset")) {
-      isReset = true; pendingTx = null; pendingVerify = null;
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: { ...sessionPayload(), status: "active", stage: "investigate", objective_progress: 0 } }) });
+      resetState();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: sessionPayload(),
+          error: null,
+        }),
+      });
     }
 
-    // Create session
-    if (url.includes("/sessions") && method === "POST" && !url.includes("/transactions")) {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: sessionPayload() }) });
+    if (
+      url.includes("/sessions") &&
+      method === "POST" &&
+      !url.includes("/transactions")
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: sessionPayload(),
+          error: null,
+        }),
+      });
     }
 
-    // Get session
-    if (url.includes(SESSION_ID) && method === "GET" && !url.includes("/terminal") && !url.includes("/report") && !url.includes("/accounts") && !url.includes("/transactions")) {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: sessionPayload() }) });
+    if (
+      url.includes(SESSION_ID) &&
+      method === "GET" &&
+      !url.includes("/terminal") &&
+      !url.includes("/report") &&
+      !url.includes("/accounts") &&
+      !url.includes("/transactions")
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: sessionPayload(),
+          error: null,
+        }),
+      });
     }
 
-    // Terminal
     if (url.includes("/terminal")) {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: { events: [], latest_sequence: 0 } }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: { events: [], latest_sequence: 0 },
+          error: null,
+        }),
+      });
     }
 
-    // Report
-    if (url.includes("/report") && !url.includes("verify") && !url.includes("object")) {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: isReset
-          ? { session_id: SESSION_ID, status: "locked", fields: null, allowed_values: {}, feedback: null }
-          : pendingVerify?.reportUnlocked
-            ? { session_id: SESSION_ID, status: "draft", fields: null, allowed_values: { vulnerability_category: ["missing_validation", "arithmetic_safety"], affected_area: ["deposit_instruction", "vault_health_calculation"], severity: ["low", "medium", "high"] }, feedback: null }
-            : { session_id: SESSION_ID, status: "locked", fields: null, allowed_values: {}, feedback: null } }) });
-    }
-
-    // Submit transaction
     if (url.includes("/transactions") && method === "POST") {
-      const tx = pendingTx ?? { instructionType: "DEPOSIT_COLLATERAL", status: "success", logs: ["Mock OK"] };
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: {
-          transaction_ref: `mock-${Date.now()}`, transactionRef: `mock-${Date.now()}`,
-          instruction_type: tx.instructionType, instructionType: tx.instructionType,
-          execution_status: tx.status, executionStatus: tx.status,
-          logs: tx.logs, userFacingEvidence: [],
-        } }) });
+      const tx =
+        pendingTransaction ?? {
+          instructionType: "DEPOSIT_COLLATERAL" as const,
+          status: "success" as const,
+          logs: ["Mock sandbox success"],
+        };
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            transaction_ref: `mock-${tx.instructionType.toLowerCase()}`,
+            instruction_type: tx.instructionType,
+            execution_status: tx.status,
+            logs: tx.logs,
+          },
+          error: null,
+        }),
+      });
     }
 
-    // Accounts
     if (url.includes("/accounts")) {
-      return route.fulfill({ status: 200, contentType: "application/json",
-        body: JSON.stringify({ success: true, data: { accounts: [
-          { ref: "official_vault_account", label: "Protocol Collateral Vault", owner: "Lab Program", lamports: 1_000_000, data: {} },
-          { ref: "attacker_collateral_account", label: "Candidate Collateral Account", owner: "Lab Program", lamports: 500_000, data: {} },
-          { ref: "credit_position", label: "Credit Position", owner: "Lab Program", lamports: 0, data: { credit_position: "10,000" } },
-        ] } }) });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            accounts: [
+              {
+                ref: "official_vault_account",
+                label: "Protocol USDC Vault",
+                owner: "Lab Program",
+                lamports: 1_000_000,
+                data: { liquidity: "100000 USDC" },
+              },
+              {
+                ref: "attacker_collateral_account",
+                label: "Injected IJC Source",
+                owner: "Attacker",
+                lamports: 500_000,
+                data: { amount: "50000 IJC" },
+              },
+            ],
+          },
+          error: null,
+        }),
+      });
     }
 
     return route.fulfill({ status: 404, body: "Not mocked" });
@@ -209,232 +459,102 @@ async function setupApiMocks(page: Page) {
 
 function sessionPayload() {
   return {
-    session_id: SESSION_ID, lab_id: "rl-007", status: "active", stage: "investigate",
-    expires_at: new Date(Date.now() + 7200000).toISOString(),
-    files: [{ path: "programs/vault_mirage/src/lib.rs", language: "rust", content: "// mock", writable: true }],
-    terminal: [], latest_sequence: 0, test_results: [], objective_progress: 1,
+    session_id: SESSION_ID,
+    lab_id: "rl1-account-substitution",
+    status: "active",
+    stage: "investigate",
+    expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    files: [
+      {
+        path: "programs/account_substitution/src/lib.rs",
+        language: "rust",
+        content: "#[program]\npub mod account_substitution {}\n",
+        writable: true,
+      },
+    ],
+    terminal: [],
+    latest_sequence: 0,
+    test_results: [],
+    objective_progress: 1,
+    report_status: "locked",
   };
 }
 
-async function navigateToExploitTab(page: Page) {
-  await page.goto("/?section=research-labs", { waitUntil: "networkidle", timeout: 30000 });
-  await page.waitForTimeout(2000);
-
-  // Should see the catalog. Find the "Refresh labs" or "Authenticate wallet" button.
-  // With pre-seeded auth, the button says "Refresh labs"
-  const refreshBtn = page.locator("button", { hasText: /Refresh labs|Authenticate/ });
-  if (await refreshBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await refreshBtn.click();
-    await page.waitForTimeout(3000);
-  }
-
-  // Click the Vault Mirage lab card in the catalog (use RL-007 to avoid matching the sidebar entry)
-  const labCard = page.locator("button", { hasText: /^RL-007/ });
-  await expect(labCard).toBeVisible({ timeout: 10000 });
-  await labCard.click();
-  await page.waitForTimeout(3000);
-
-  // Switch to Exploit tab (tabs are plain buttons without role=tab)
-  const exploitTab = page.locator("button", { hasText: "Exploit" }).first();
-  await expect(exploitTab).toBeVisible({ timeout: 5000 });
-  await exploitTab.click();
-  await page.waitForTimeout(800);
+async function openResearchLab(page: Page) {
+  await page.goto("/?section=research-labs", {
+    waitUntil: "networkidle",
+    timeout: 30000,
+  });
+  await expect(page.getByText("Supported protocol investigations.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /RL1/i })).toBeVisible();
+  await page.getByRole("button", { name: /RL1/i }).click();
+  await expect(page.getByRole("button", { name: "Execute Exploit" })).toBeVisible();
 }
 
-// ════════════════════════════════════════════════════════
-test("matrix 1: dropdowns have no preselected value, neutral labels only", async ({ page }) => {
+test("RL1 catalog and workspace use account substitution copy", async ({
+  page,
+}) => {
   await seedAuth(page);
   await setupApiMocks(page);
-  await navigateToExploitTab(page);
+  await openResearchLab(page);
 
-  const selects = page.locator("select");
-  await expect(selects.nth(0)).toHaveValue("");
-  await expect(selects.nth(1)).toHaveValue("");
-
-  // Verify neutral labels are present in <option> elements (hidden until dropdown opens)
-  await expect(selects.nth(0).locator("option")).toHaveText([
-    "Select a collateral source account",
-    "Approved Collateral Account",
-    "Candidate Collateral Account",
-  ]);
-  await expect(selects.nth(1).locator("option")).toHaveText([
-    "Select a vault destination account",
-    "Protocol Collateral Vault",
-    "External Vault Candidate",
-  ]);
-
-  await expect(page.locator("button", { hasText: "Deposit Collateral" })).toBeDisabled();
-  await expect(page.locator("button", { hasText: "Withdraw Against Credit" })).toBeDisabled();
+  await expect(page.getByText("Account Substitution")).toBeVisible();
+  await expect(
+    page.getByText(/caller-supplied collateral accounts/i)
+  ).toBeVisible();
+  await expect(
+    page.getByText("Build Audit Report")
+  ).not.toBeVisible();
+  await expect(page.getByText("Vault Mirage")).toHaveCount(0);
+  await expect(page.getByText(/arithmetic safety/i)).toHaveCount(0);
 });
 
-// ════════════════════════════════════════════════════════
-test("matrix 2: official deposit + withdrawal fails verify", async ({ page }) => {
+test("RL1 verify flow unlocks deterministic report builder", async ({
+  page,
+}) => {
   await seedAuth(page);
   await setupApiMocks(page);
-  await navigateToExploitTab(page);
+  await openResearchLab(page);
 
-  await page.locator("select").nth(0).selectOption("official_collateral_account");
-  await page.locator("select").nth(1).selectOption("official_vault_account");
+  pendingTransaction = {
+    instructionType: "DEPOSIT_COLLATERAL",
+    status: "success",
+    logs: ["Deposit executed"],
+  };
 
-  scheduleTx({ instructionType: "DEPOSIT_COLLATERAL", status: "success", logs: ["Program log: deposit executed"] });
-  await page.locator("button", { hasText: "Deposit Collateral" }).click();
-  await page.waitForTimeout(1500);
-  await expect(page.getByText("Executed")).toBeVisible({ timeout: 3000 });
+  await page.getByRole("button", { name: "Execute Exploit" }).click();
+  await page.getByLabel("Token").selectOption("attacker_collateral_account");
+  await page.getByLabel("Vault").selectOption("counterfeit_vault_account");
+  await page.getByRole("button", { name: "Deposit" }).click();
 
-  scheduleTx({ instructionType: "WITHDRAW_AGAINST_CREDIT", status: "success", logs: ["Program log: withdrawal executed"] });
-  await expect(page.locator("button", { hasText: "Withdraw Against Credit" })).not.toBeDisabled({ timeout: 3000 });
-  await page.locator("button", { hasText: "Withdraw Against Credit" }).click();
-  await page.waitForTimeout(1500);
+  pendingTransaction = {
+    instructionType: "WITHDRAW_AGAINST_CREDIT",
+    status: "success",
+    logs: ["Borrow executed"],
+  };
 
-  scheduleVerify({ passed: false, reportUnlocked: false });
-  await page.locator("button", { hasText: "Verify Impact" }).click();
-  await page.waitForTimeout(2000);
-  await expect(page.getByRole("button", { name: "Report", exact: true })).not.toBeVisible({ timeout: 3000 });
-});
+  await page.getByRole("button", { name: /Borrow/i }).click();
+  await page.getByRole("button", { name: /Review Evidence/i }).click();
 
-// ════════════════════════════════════════════════════════
-test("matrix 3: mint-mismatch paths display runtime failure logs", async ({ page }) => {
-  await seedAuth(page);
-  await setupApiMocks(page);
-  await navigateToExploitTab(page);
+  pendingVerify = {
+    passed: true,
+    reportUnlocked: true,
+    verifiedEvidenceRefs: ["deposit_tx", "borrow_tx"],
+  };
 
-  await page.locator("select").nth(0).selectOption("official_collateral_account");
-  await page.locator("select").nth(1).selectOption("counterfeit_vault_account");
-  scheduleTx({ instructionType: "DEPOSIT_COLLATERAL", status: "failure",
-    logs: ["Program log: mint address mismatch", "Program log: expected mint Gz3r but received HoLp", "Instruction failed: custom error 0x1771"] });
-  await page.locator("button", { hasText: "Deposit Collateral" }).click();
-  await page.waitForTimeout(1500);
-  await expect(page.getByText("Failed")).toBeVisible();
+  await page.getByRole("button", { name: "Verify Impact" }).click();
+  await page.getByRole("button", { name: /Continue to Submit Finding/i }).click();
+  await page.getByRole("button", { name: /Build Audit Report/i }).click();
 
-  // Expand transaction card to verify failure log content
-  await page.getByText("Transaction Results").locator("..").locator("button").filter({ has: page.locator("svg") }).first().click();
-  await page.waitForTimeout(200);
-  await expect(page.getByText("mint address mismatch")).toBeVisible({ timeout: 3000 });
-
-  await page.locator("select").nth(0).selectOption("attacker_collateral_account");
-  await page.locator("select").nth(1).selectOption("official_vault_account");
-  scheduleTx({ instructionType: "DEPOSIT_COLLATERAL", status: "failure",
-    logs: ["Program log: mint authority check failed", "Program log: collateral mint does not match vault mint", "Instruction failed: custom error 0x1772"] });
-  await page.locator("button", { hasText: "Deposit Collateral" }).click();
-  await page.waitForTimeout(1500);
-  await expect(page.getByText("Failed")).toBeVisible();
-  // Expand second transaction card
-  await page.getByText("Transaction Results").locator("..").locator("button").filter({ has: page.locator("svg") }).nth(1).click();
-  await page.waitForTimeout(200);
-  await expect(page.getByText("mint authority check failed")).toBeVisible({ timeout: 3000 });
-  await expect(page.getByText("collateral mint does not match vault mint")).toBeVisible();
-});
-
-// ════════════════════════════════════════════════════════
-test("matrix 4: counterfeit deposit succeeds, report stays locked", async ({ page }) => {
-  await seedAuth(page);
-  await setupApiMocks(page);
-  await navigateToExploitTab(page);
-
-  await page.locator("select").nth(0).selectOption("attacker_collateral_account");
-  await page.locator("select").nth(1).selectOption("counterfeit_vault_account");
-  scheduleTx({ instructionType: "DEPOSIT_COLLATERAL", status: "success",
-    logs: ["Program log: deposit executed against external vault", "Program log: credit position updated"] });
-  await page.locator("button", { hasText: "Deposit Collateral" }).click();
-  await page.waitForTimeout(1500);
-  await expect(page.getByText("Executed")).toBeVisible({ timeout: 3000 });
-  // Logs are inside collapsed expandable section — check DOM presence not visibility
-  await expect(page.getByText("credit position updated")).toBeAttached();
-  await expect(page.getByRole("button", { name: "Report", exact: true })).not.toBeVisible({ timeout: 3000 });
-});
-
-// ════════════════════════════════════════════════════════
-test("matrix 5: counterfeit deposit only fails verify impact", async ({ page }) => {
-  await seedAuth(page);
-  await setupApiMocks(page);
-  await navigateToExploitTab(page);
-
-  await page.locator("select").nth(0).selectOption("attacker_collateral_account");
-  await page.locator("select").nth(1).selectOption("counterfeit_vault_account");
-  scheduleTx({ instructionType: "DEPOSIT_COLLATERAL", status: "success", logs: ["Deposit OK"] });
-  await page.locator("button", { hasText: "Deposit Collateral" }).click();
-  await page.waitForTimeout(1500);
-  scheduleVerify({ passed: false, reportUnlocked: false });
-  await page.locator("button", { hasText: "Verify Impact" }).click();
-  await page.waitForTimeout(2000);
-  await expect(page.getByRole("button", { name: "Report", exact: true })).not.toBeVisible({ timeout: 3000 });
-});
-
-// ════════════════════════════════════════════════════════
-test("matrix 6: counterfeit deposit + withdrawal passes verify, unlocks report", async ({ page }) => {
-  await seedAuth(page);
-  await setupApiMocks(page);
-  await navigateToExploitTab(page);
-
-  await page.locator("select").nth(0).selectOption("attacker_collateral_account");
-  await page.locator("select").nth(1).selectOption("counterfeit_vault_account");
-  scheduleTx({ instructionType: "DEPOSIT_COLLATERAL", status: "success", logs: ["Deposit: counterfeit OK"] });
-  await page.locator("button", { hasText: "Deposit Collateral" }).click();
-  await page.waitForTimeout(1500);
-  await expect(page.getByText("Executed")).toBeVisible({ timeout: 3000 });
-
-  scheduleTx({ instructionType: "WITHDRAW_AGAINST_CREDIT", status: "success", logs: ["Withdrawal: against credit OK"] });
-  await expect(page.locator("button", { hasText: "Withdraw Against Credit" })).not.toBeDisabled({ timeout: 3000 });
-  await page.locator("button", { hasText: "Withdraw Against Credit" }).click();
-  await page.waitForTimeout(1500);
-
-  scheduleVerify({ passed: true, reportUnlocked: true });
-  await page.locator("button", { hasText: "Verify Impact" }).click();
-  await page.waitForTimeout(3000);
-
-  const reportTab = page.getByRole("button", { name: "Report", exact: true });
-  await reportTab.click();
-  await page.waitForTimeout(800);
-  await expect(page.getByText("Document the verified protocol failure")).toBeVisible({ timeout: 3000 });
-});
-
-// ════════════════════════════════════════════════════════
-test("matrix 7: reset relocks report and restores clean state", async ({ page }) => {
-  await seedAuth(page);
-  await setupApiMocks(page);
-  await navigateToExploitTab(page);
-
-  await page.locator("select").nth(0).selectOption("attacker_collateral_account");
-  await page.locator("select").nth(1).selectOption("counterfeit_vault_account");
-  scheduleTx({ instructionType: "DEPOSIT_COLLATERAL", status: "success", logs: ["Deposit OK"] });
-  await page.locator("button", { hasText: "Deposit Collateral" }).click();
-  await page.waitForTimeout(1000);
-
-  scheduleTx({ instructionType: "WITHDRAW_AGAINST_CREDIT", status: "success", logs: ["Withdrawal OK"] });
-  await page.locator("button", { hasText: "Withdraw Against Credit" }).click();
-  await page.waitForTimeout(1000);
-
-  scheduleVerify({ passed: true, reportUnlocked: true });
-  await page.locator("button", { hasText: "Verify Impact" }).click();
-  await page.waitForTimeout(2000);
-
-  const reportTab = page.getByRole("button", { name: "Report", exact: true });
-  await expect(reportTab).toBeVisible({ timeout: 3000 });
-
-  await page.locator("button[aria-label='Session options']").click();
-  await page.waitForTimeout(500);
-  await page.locator("button", { hasText: "Reset session" }).click();
-  await page.waitForTimeout(2000);
-
-  await expect(reportTab).not.toBeVisible({ timeout: 3000 });
-  await expect(page.getByText("Transaction Results")).not.toBeVisible({ timeout: 3000 });
-  await expect(page.getByText("Evidence State")).not.toBeVisible({ timeout: 3000 });
-});
-
-// ════════════════════════════════════════════════════════
-test("verify impact uses backend-only verification", async ({ page }) => {
-  await seedAuth(page);
-  await setupApiMocks(page);
-  await navigateToExploitTab(page);
-
-  let verifyHit = false;
-  await page.route(`**/api/v1/research-labs/sessions/${SESSION_ID}/verify-objective`, async (route) => {
-    verifyHit = true;
-    await route.fulfill({ status: 200, contentType: "application/json",
-      body: JSON.stringify({ success: true, data: { session_id: SESSION_ID, passed: false, phase: "PROVE_IMPACT", exploitVerified: false, reportUnlocked: false, userFacingEvidence: [], status: "failed", objective_progress: 1, session_status: "failed", report_status: "locked" } }) });
-  });
-
-  await page.locator("button", { hasText: "Verify Impact" }).click();
-  await page.waitForTimeout(2000);
-  expect(verifyHit).toBe(true);
+  await expect(
+    page.getByRole("heading", { name: "Build Audit Report" })
+  ).toBeVisible();
+  await expect(
+    page.getByText("Missing Constraints Allow Counterfeit Credit")
+  ).toBeVisible();
+  await expect(
+    page.getByText("Bind accounts to approved config")
+  ).toBeVisible();
+  await expect(page.getByText("Vault Mirage")).toHaveCount(0);
+  await expect(page.getByText(/vault health calculation/i)).toHaveCount(0);
 });

@@ -12,6 +12,7 @@ import { LevelWorkspacePage } from "./components/level-workspace";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
 import { ResearchLabsSection } from "./components/research-labs-section";
 import { SiteFooter } from "./components/site-footer";
+import { VulnerabilitiesSection } from "./components/vulnerabilities-section";
 import { useCluster } from "./components/cluster-context";
 import { LEVEL_GUIDES } from "./lib/levels/level-guides";
 import { useActiveLevelStatus } from "./lib/hooks/use-active-level-status";
@@ -346,6 +347,7 @@ export default function Home() {
           }}
           onOpenProfile={() => setActiveSection("profile")}
           onSelectResearchLabs={() => setActiveSection("research-labs")}
+          onSelectVulnerabilities={() => setActiveSection("vulnerabilities")}
           onSelectLevel={(level) => {
             setActiveSection("levels");
             setActiveLevelsView(level);
@@ -355,7 +357,8 @@ export default function Home() {
 
         <main
           className={
-            activeSection === "research-labs"
+            activeSection === "research-labs" ||
+            activeSection === "vulnerabilities"
               ? "w-full pb-0 pt-0"
               : "mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10"
           }
@@ -481,6 +484,13 @@ export default function Home() {
             </div>
           ) : activeSection === "research-labs" ? (
             <ResearchLabsSection />
+          ) : activeSection === "vulnerabilities" ? (
+            <VulnerabilitiesSection
+              onSelectLevel={(level) => {
+                setActiveSection("levels");
+                setActiveLevelsView(level);
+              }}
+            />
           ) : (
             <section className="space-y-8">
               <div className="max-w-3xl space-y-4">

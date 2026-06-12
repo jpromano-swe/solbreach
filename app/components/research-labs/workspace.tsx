@@ -7,7 +7,7 @@ import type { LabTransactionPayload, ResearchLabFile, ResearchLabReport, Researc
 import { ExploitTab } from "./execute-exploit-tab";
 import { InspectTab } from "./inspect-tab";
 import { ReportTab } from "./report-tab";
-import type { AccountEvidence, AuditReportStage, EnrichedTransactionResult, ExecuteExploitView, ReportMetaFields, ReviewMode, WorkspaceTab } from "./types";
+import type { AccountEvidence, AuditReportStage, EnrichedTransactionResult, ExecuteExploitView, ReviewMode, WorkspaceTab } from "./types";
 import { AnimatedContentSwitch, RESEARCH_LAB_TAB_TRANSITION_ORDER, WorkspaceTabs } from "./workspace-tabs";
 
 export function ResearchLabWorkspace({
@@ -33,11 +33,9 @@ export function ResearchLabWorkspace({
   reviewStarted,
   report,
   reportFields,
-  reportMetaFields,
   txResults,
   onChangeExecuteExploitView,
   onChangeReportFields,
-  onChangeReportMetaFields,
   onChangeAuditReportStage,
   onProveImpact,
   onExecuteTransaction,
@@ -76,11 +74,9 @@ export function ResearchLabWorkspace({
   reviewStarted: boolean;
   report: ResearchLabReport | null;
   reportFields: ResearchLabReportFields;
-  reportMetaFields: ReportMetaFields;
   txResults: EnrichedTransactionResult[];
   onChangeExecuteExploitView: (view: ExecuteExploitView) => void;
   onChangeReportFields: (fields: ResearchLabReportFields) => void;
-  onChangeReportMetaFields: (fields: ReportMetaFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onProveImpact: () => void;
   onExecuteTransaction: (payload: LabTransactionPayload) => Promise<void>;
@@ -142,9 +138,7 @@ export function ResearchLabWorkspace({
         reviewMode={reviewMode}
         reviewStarted={reviewStarted}
         report={report}
-        reportMetaFields={reportMetaFields}
         onChange={onChangeReportFields}
-        onChangeMeta={onChangeReportMetaFields}
         onChangeAuditReportStage={onChangeAuditReportStage}
         onQuestionnaireAnswer={onQuestionnaireAnswer}
         onQuestionnaireRetry={onQuestionnaireRetry}
@@ -171,5 +165,4 @@ export function ResearchLabWorkspace({
     </div>
   );
 }
-
 

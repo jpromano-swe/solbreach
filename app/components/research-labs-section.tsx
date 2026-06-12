@@ -17,20 +17,15 @@ import {
   FALLBACK_RESEARCH_LABS,
   fetchResearchLabTerminal,
   getResearchLab,
-  getResearchLabAccounts,
   listResearchLabs,
   resetResearchLabSession,
-  verifyResearchLabObjective,
-  submitResearchLabTransaction,
-  type LabTransactionPayload,
   type ResearchLabManifest,
   type ResearchLabReport,
   type ResearchLabSession,
-  type SandboxAccountSummary,
 } from "../lib/research-labs/lab-state";
 import { useWallet } from "../lib/wallet/context";
 import { ResearchLabCatalog } from "./research-labs/catalog";
-import { NEUTRAL_LABELS } from "./research-labs/execute-exploit-tab";
+import { buildAccountEvidence } from "./research-labs/account-evidence";
 import { LabContextPanel } from "./research-labs/context-panel";
 import {
   LabScenarioBriefing,
@@ -40,14 +35,15 @@ import { RuntimeConsoleDrawer } from "./research-labs/runtime-console";
 import { ResearchLabWorkspace } from "./research-labs/workspace";
 import { useFindingReview } from "./research-labs/use-finding-review";
 import { useResearchLabReport } from "./research-labs/use-research-lab-report";
+import { useResearchLabTransactions } from "./research-labs/use-research-lab-transactions";
 import type {
-  AccountEvidence,
-  EnrichedTransactionResult,
   ExecuteExploitView,
   LabPhase,
   SandboxStatus,
   WorkspaceTab,
 } from "./research-labs/types";
+
+const AVAILABLE_TABS: WorkspaceTab[] = ["inspect", "exploit", "report"];
 
 // Research lab motion storyboard:
 //   000ms old section fades down/out while new section slides up/in
@@ -78,9 +74,6 @@ export function ResearchLabsSection() {
     useState<ExecuteExploitView>("HYPOTHESIS");
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [revealedHints, setRevealedHints] = useState<string[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [txResults, setTxResults] = useState<EnrichedTransactionResult[]>([]);
-  const [evidenceAccounts, setEvidenceAccounts] = useState<SandboxAccountSummary[]>([]);
 
   const activeBackendAuth =
     backendAuth &&
@@ -113,12 +106,10 @@ export function ResearchLabsSection() {
     populateReportDefaults,
     report,
     reportFields,
-    reportMetaFields,
     resetReport,
     saveReportDraft,
     setAuditReportStage,
     setReportFields,
-    setReportMetaFields,
     submitReport,
   } = useResearchLabReport({
     activeLab,
@@ -166,34 +157,27 @@ export function ResearchLabsSection() {
   const activeFileContent =
     activeFile && session ? (session.files[activeFile.path] ?? activeFile.content) : "";
 
-  const sandboxStatus = deriveSandboxStatus(session, isRunning);
   const impactVerified = Boolean(
-    session?.labCompleted ||
-      session?.status === "passed" ||
-      session?.reportStatus ||
-      report?.status === "draft" ||
+    session?.impactVerified ??
+      session?.labCompleted ??
+      (report?.status === "accepted" ? true : false)
+  );
+  const reportUnlocked = Boolean(
+    session?.reportUnlocked ??
+      (report?.status === "draft" ||
       report?.status === "retry" ||
-      report?.status === "accepted"
+      report?.status === "accepted")
   );
   const findingReviewPassed = Boolean(
-    questionnaireResult?.passed || report?.status === "accepted" || session?.labCompleted
+    session?.findingReviewPassed ??
+      questionnaireResult?.passed ??
+      (report?.status === "accepted" || session?.labCompleted)
   );
-  const availableTabs = useMemo(
-    () => ["inspect", "exploit", "report"] as WorkspaceTab[],
-    []
-  );
-  const resolvedActiveTab = availableTabs.includes(activeTab)
+  const resolvedActiveTab = AVAILABLE_TABS.includes(activeTab)
     ? activeTab
     : activeTab === "verify"
       ? "exploit"
       : "inspect";
-  const phase = deriveLabPhase({
-    activeTab: resolvedActiveTab,
-    impactVerified,
-    isRunning,
-    report,
-    session,
-  });
 
   const loadCatalog = useCallback(async () => {
     setIsCatalogLoading(true);
@@ -230,8 +214,47 @@ export function ResearchLabsSection() {
       setSession(nextSession);
       return nextSession;
     },
-    []
+    [setSession]
   );
+
+  const {
+    evidenceAccounts,
+    executeTransaction,
+    isRunning,
+    proveImpact,
+    resetTransactions,
+    txResults,
+  } = useResearchLabTransactions({
+    activeLab,
+    getAuth: getActiveAuth,
+    loadReport,
+    onConsoleClose: () => setConsoleOpen(false),
+    onConsoleOpen: () => setConsoleOpen(true),
+    onSessionChange: setSession,
+    pollTerminal,
+    session,
+  });
+
+  const resetLocalState = useCallback(() => {
+    setActiveFilePath("");
+    setActiveTab("inspect");
+    setExecuteExploitView("HYPOTHESIS");
+    setConsoleOpen(false);
+    setRevealedHints([]);
+    resetReport();
+    resetTransactions();
+    resetFindingReview();
+  }, [resetFindingReview, resetReport, resetTransactions]);
+
+  const sandboxStatus = deriveSandboxStatus(session, isRunning);
+  const phase = deriveLabPhase({
+    activeTab: resolvedActiveTab,
+    executeExploitView,
+    impactVerified,
+    isRunning,
+    report,
+    session,
+  });
 
   const openLab = async (lab: ResearchLabManifest) => {
     setIsCatalogLoading(true);
@@ -253,11 +276,7 @@ export function ResearchLabsSection() {
           nextSession.fileEntries[0]?.path ??
           nextLab.entryFile
       );
-      setActiveTab("inspect");
-      setExecuteExploitView("HYPOTHESIS");
-      setConsoleOpen(false);
-      setRevealedHints([]);
-      resetFindingReview();
+      resetLocalState();
       await pollTerminal(auth, nextSession, 0);
       await loadReport(auth, nextSession);
       toast.success("Research lab session created");
@@ -272,7 +291,6 @@ export function ResearchLabsSection() {
 
   const resetEnvironment = async () => {
     if (!activeLab || !session) return;
-    setIsRunning(true);
     try {
       const auth = await getActiveAuth();
       const nextSession = await resetResearchLabSession(auth.accessToken, session.sessionId);
@@ -283,35 +301,18 @@ export function ResearchLabsSection() {
           nextSession.fileEntries[0]?.path ??
           activeLab.entryFile
       );
-      setActiveTab("inspect");
-      setExecuteExploitView("HYPOTHESIS");
-      setConsoleOpen(false);
-      setRevealedHints([]);
-      resetReport();
-      setTxResults([]);
-      setEvidenceAccounts([]);
-      resetFindingReview();
+      resetLocalState();
       await loadReport(auth, nextSession);
       toast.message("Sandbox session reset");
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setIsRunning(false);
     }
   };
 
   const leaveLab = () => {
+    resetLocalState();
     setActiveLab(null);
     setSession(null);
-    setActiveFilePath("");
-    setActiveTab("inspect");
-    setExecuteExploitView("HYPOTHESIS");
-    setConsoleOpen(false);
-    setRevealedHints([]);
-    resetReport();
-    setTxResults([]);
-    setEvidenceAccounts([]);
-    resetFindingReview();
   };
 
   const revealHint = () => {
@@ -319,120 +320,6 @@ export function ResearchLabsSection() {
     const nextHint = activeLab.hints.find((hint) => !revealedHints.includes(hint.id));
     if (!nextHint) return;
     setRevealedHints([...revealedHints, nextHint.id]);
-  };
-
-  const fetchAccountEvidence = useCallback(
-    async (auth: Level1AuthSession) => {
-      try {
-        const response = await getResearchLabAccounts(auth.accessToken, session!.sessionId);
-        setEvidenceAccounts(response.accounts ?? []);
-      } catch {
-        // silent — evidence fetch is non-critical
-      }
-    },
-    [session]
-  );
-
-  const executeTransaction = async (payload: LabTransactionPayload) => {
-    if (!activeLab || !session || isRunning) return;
-    try {
-      const auth = await getActiveAuth();
-
-      const enrichedInputs = {
-        collateralSourceRef: payload.action_type === "DEPOSIT_COLLATERAL"
-          ? payload.collateral_account_ref
-          : undefined,
-        collateralSourceLabel: payload.action_type === "DEPOSIT_COLLATERAL"
-          ? NEUTRAL_LABELS[payload.collateral_account_ref] ?? payload.collateral_account_ref
-          : undefined,
-        vaultDestinationRef: payload.action_type === "DEPOSIT_COLLATERAL"
-          ? payload.vault_account_ref
-          : undefined,
-        vaultDestinationLabel: payload.action_type === "DEPOSIT_COLLATERAL"
-          ? NEUTRAL_LABELS[payload.vault_account_ref] ?? payload.vault_account_ref
-          : undefined,
-        amount: payload.amount,
-      };
-
-      const result = await submitResearchLabTransaction(auth.accessToken, session.sessionId, payload);
-
-      const enriched: EnrichedTransactionResult = { ...result, inputs: enrichedInputs };
-
-      setTxResults((prev) => [enriched, ...prev]);
-
-      const beforeRunSequence = session.latestTerminalSequence;
-      const nextSession = await pollTerminal(auth, session, beforeRunSequence);
-
-      if (result.executionStatus === "success") {
-        toast.success(
-          payload.action_type === "DEPOSIT_COLLATERAL"
-            ? "Deposit submitted to sandbox"
-            : "Withdrawal submitted to sandbox"
-        );
-        await fetchAccountEvidence(auth);
-      } else {
-        const lastLog = result.logs?.at(-1);
-        if (lastLog?.toLowerCase().includes("simulation") || lastLog?.toLowerCase().includes("instruction")) {
-          toast.error("Transaction simulation failed", { description: lastLog });
-        } else if (lastLog?.toLowerCase().includes("session") || lastLog?.toLowerCase().includes("expired")) {
-          toast.error("Session error", { description: lastLog });
-        } else {
-          toast.error("Transaction failed", {
-            description: lastLog ?? "Check transaction logs for details",
-          });
-        }
-      }
-
-      if (nextSession.terminalLines.length > session.terminalLines.length) {
-        setConsoleOpen(true);
-      }
-    } catch (error) {
-      const message = getErrorMessage(error);
-      if (message.toLowerCase().includes("validation") || message.toLowerCase().includes("invalid")) {
-        toast.error("Invalid request", { description: message });
-      } else if (message.toLowerCase().includes("network") || message.toLowerCase().includes("fetch")) {
-        toast.error("Network error", { description: "Check your connection and try again." });
-      } else {
-        toast.error(message);
-      }
-    }
-  };
-
-  const proveImpact = async () => {
-    if (!activeLab || !session || isRunning) return;
-    setIsRunning(true);
-      setConsoleOpen(true);
-    try {
-      const auth = await getActiveAuth();
-      const beforeRunSequence = session.latestTerminalSequence;
-
-      const result = await verifyResearchLabObjective(auth.accessToken, session.sessionId);
-
-      const nextSession = await pollTerminal(auth, session, beforeRunSequence);
-
-      if (result.passed) {
-        setSession({
-          ...nextSession,
-          status: "passed",
-          stage: "report",
-          objectiveProgress: activeLab.objectives.length,
-        });
-        await loadReport(auth, nextSession);
-        setConsoleOpen(false);
-        toast.success("Impact Verified", {
-          description:
-            "Unauthorized treasury withdrawal reproduced. Continue to Submit Finding when ready.",
-        });
-      } else {
-        toast.error("Exploit proof did not verify", {
-          description: "Review the runtime output and transaction evidence before trying again.",
-        });
-      }
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setIsRunning(false);
-    }
   };
 
   if (!activeLab || !session) {
@@ -473,7 +360,7 @@ export function ResearchLabsSection() {
             activeTab={resolvedActiveTab}
             accounts={buildAccountEvidence(session, impactVerified)}
             auditReportStage={auditReportStage}
-            availableTabs={availableTabs}
+            availableTabs={AVAILABLE_TABS}
             impactVerified={impactVerified}
             findingReviewPassed={findingReviewPassed}
             files={session.fileEntries}
@@ -488,12 +375,10 @@ export function ResearchLabsSection() {
             reviewStarted={reviewStarted}
             report={report}
             reportFields={reportFields}
-            reportMetaFields={reportMetaFields}
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
             executeExploitView={executeExploitView}
             onChangeReportFields={setReportFields}
-            onChangeReportMetaFields={setReportMetaFields}
             onChangeAuditReportStage={setAuditReportStage}
             onChangeExecuteExploitView={setExecuteExploitView}
             onProveImpact={proveImpact}
@@ -520,6 +405,7 @@ export function ResearchLabsSection() {
             executeExploitView={executeExploitView}
             findingReviewPassed={findingReviewPassed}
             impactVerified={impactVerified}
+            reportUnlocked={reportUnlocked}
             questionnaireResult={questionnaireResult}
             report={report}
             reportOpened={reportOpened}
@@ -556,23 +442,32 @@ export function ResearchLabsSection() {
 
 function deriveLabPhase({
   activeTab,
+  executeExploitView,
   impactVerified,
   isRunning,
   report,
   session,
 }: {
   activeTab: WorkspaceTab;
+  executeExploitView: ExecuteExploitView;
   impactVerified: boolean;
   isRunning: boolean;
   report: ResearchLabReport | null;
   session: ResearchLabSession | null;
 }): LabPhase {
   if (session?.labCompleted || report?.status === "accepted") return "COMPLETED";
-  if (activeTab === "verify" || isRunning || session?.status === "running_tests" || session?.status === "failed") {
+  if (activeTab === "report") return "SUBMIT_FINDING";
+  if (
+    activeTab === "verify" ||
+    activeTab === "exploit" && executeExploitView === "EVIDENCE_REVIEW" ||
+    isRunning ||
+    session?.status === "running_tests" ||
+    session?.status === "failed"
+  ) {
     return "VERIFY_IMPACT";
   }
   if (activeTab === "exploit") return "EXECUTE_EXPLOIT";
-  if (activeTab === "report" || impactVerified) return "SUBMIT_FINDING";
+  if (impactVerified && activeTab !== "inspect") return "SUBMIT_FINDING";
   return "INSPECT";
 }
 
@@ -588,43 +483,4 @@ function deriveSandboxStatus(session: ResearchLabSession | null, isRunning: bool
     default:
       return "READY";
   }
-}
-
-function buildAccountEvidence(session: ResearchLabSession, verified: boolean): AccountEvidence[] {
-  const wallet = session.sessionId.slice(0, 4) || "9xQe";
-  return [
-    {
-      id: "signer",
-      label: "Investigator Wallet",
-      address: `${wallet}...wallet`,
-      owner: "System Program",
-      role: "Transaction signer",
-      authority: "Connected wallet",
-      state: [{ label: "Signer", value: "Available" }],
-    },
-    {
-      id: "protocol-state",
-      label: "Protocol State",
-      address: "PDA...state",
-      owner: "Lab Program",
-      role: "State account under investigation",
-      authority: verified ? "Unexpected authority accepted" : "Expected authority unknown",
-      state: [
-        { label: "Transition", value: "Unverified", after: verified ? "Unauthorized transition observed" : undefined },
-        { label: "Evidence", value: "Pending", after: verified ? "Captured" : undefined },
-      ],
-    },
-    {
-      id: "treasury",
-      label: "Protocol Treasury",
-      address: "Vault...1111",
-      owner: "Lab Program",
-      role: "Value-bearing account",
-      mint: "Scenario-defined asset",
-      state: [
-        { label: "Pre-state", value: "Stable" },
-        { label: "Post-state", value: "Pending", after: verified ? "State delta detected" : undefined },
-      ],
-    },
-  ];
 }

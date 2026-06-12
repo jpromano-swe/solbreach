@@ -5,69 +5,143 @@ import {
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReportFields } from "../../lib/research-labs/lab-state";
-import type { AuditReportPreview, ReportMetaFields, ReviewMode } from "./types";
+import type { AuditReportPreview, ReviewMode } from "./types";
+
+export type ReportOption = {
+  id: string;
+  label: string;
+  helper?: string;
+  previewBody?: string;
+};
+
+export const reportTitleOptions: ReportOption[] = [
+  {
+    id: "missing_constraints_counterfeit_credit",
+    label: "Missing Constraints Allow Counterfeit Credit",
+  },
+  {
+    id: "account_substitution_illegitimate_credit",
+    label: "Account Substitution Creates Illegitimate Borrow Credit",
+  },
+  {
+    id: "non_canonical_deposit_treasury_withdrawal",
+    label: "Non-Canonical Deposit Path Enables Treasury Withdrawal",
+  },
+];
+
+export const reportCategoryOptions: ReportOption[] = [
+  {
+    id: "account_substitution",
+    label: "Account Substitution",
+    previewBody:
+      "caller-supplied accounts can bypass canonical vault binding and create borrow credit from a non-approved collateral route.",
+  },
+  {
+    id: "missing_validation",
+    label: "Missing Validation",
+    previewBody:
+      "the protocol accepts a caller-controlled account relationship without proving it matches the approved market configuration.",
+  },
+];
+
+export const reportSeverityOptions: ReportOption[] = [
+  { id: "high_treasury_loss", label: "High Treasury Loss" },
+  { id: "high", label: "High" },
+  { id: "medium", label: "Medium" },
+  { id: "low", label: "Low" },
+];
+
+export const reportLikelihoodOptions: ReportOption[] = [
+  { id: "medium_high_attacker_supplied_accounts", label: "Medium High" },
+  { id: "high", label: "High" },
+  { id: "medium", label: "Medium" },
+  { id: "low", label: "Low" },
+];
+
+export const reportRootCauseOptions: ReportOption[] = [
+  {
+    id: "missing_account_binding",
+    label: "Missing account binding",
+    previewBody:
+      "The deposit instruction accepts caller-supplied token and vault accounts without proving that they belong to the canonical collateral configuration. That missing account binding lets a non-approved route generate credit as if it were backed by real protocol collateral.",
+  },
+  {
+    id: "caller_controlled_vault_route",
+    label: "Caller-controlled vault route",
+    previewBody:
+      "The program trusts the caller to supply a matching token source and vault without checking that both accounts belong to the approved collateral route.",
+  },
+  {
+    id: "unbound_credit_assignment",
+    label: "Unbound credit assignment",
+    previewBody:
+      "Credit assignment depends on account shape and instruction success, but the protocol never binds the provided accounts back to canonical market custody.",
+  },
+];
+
+export const reportProofOfImpactOptions: ReportOption[] = [
+  {
+    id: "counterfeit_credit_withdraws_treasury",
+    label: "Counterfeit credit withdrew treasury liquidity",
+    previewBody:
+      "The verified sandbox evidence shows a non-canonical deposit path changing position credit before a borrow action reduces treasury liquidity.",
+  },
+  {
+    id: "non_canonical_path_position_credit",
+    label: "Non-canonical path changed position credit",
+    previewBody:
+      "The transaction timeline shows the deposit path using a non-canonical account route before the borrow action changes treasury balance.",
+  },
+  {
+    id: "backend_verified_trust_boundary_crossed",
+    label: "Backend verified trust-boundary failure",
+    previewBody:
+      "Backend verification confirms that account substitution, not transaction success alone, crossed the trust boundary and enabled the withdrawal.",
+  },
+];
+
+export const reportMitigationOptions: ReportOption[] = [
+  {
+    id: "bind_accounts_to_approved_config",
+    label: "Bind accounts to approved config",
+    previewBody:
+      "Bind the provided token source and vault accounts to the approved market configuration before assigning credit, and reject any account path that is not canonical for the market.",
+  },
+  {
+    id: "resolve_market_accounts_before_credit",
+    label: "Resolve canonical accounts before credit",
+    previewBody:
+      "Resolve the approved vault and collateral configuration from market state, then compare every caller-supplied account against those canonical addresses before credit is assigned.",
+  },
+  {
+    id: "reject_caller_controlled_custody",
+    label: "Reject caller-controlled custody paths",
+    previewBody:
+      "Reject deposits when the token source, vault, or custody relationship is caller-controlled instead of program-approved.",
+  },
+];
 
 export const emptyReportFields: ResearchLabReportFields = {
-  vulnerabilityCategory: null,
-  affectedArea: null,
-  rootCause: "",
-  impact: "",
-  proof: "",
-  recommendedFix: "",
-  severity: null,
+  titleOptionId: null,
+  categoryOptionId: null,
+  severityOptionId: null,
+  likelihoodOptionId: null,
+  rootCauseOptionId: null,
+  proofOfImpactOptionId: null,
+  recommendedMitigationOptionId: null,
+  verifiedEvidenceRefs: [],
+  optionalNotes: "",
 };
 
-export const defaultReportMetaFields: ReportMetaFields = {
-  title: "",
-  likelihood: "",
+export const suggestedReportFieldDefaults: Partial<ResearchLabReportFields> = {
+  titleOptionId: "missing_constraints_counterfeit_credit",
+  categoryOptionId: "account_substitution",
+  severityOptionId: "high_treasury_loss",
+  likelihoodOptionId: "medium_high_attacker_supplied_accounts",
+  rootCauseOptionId: "missing_account_binding",
+  proofOfImpactOptionId: "counterfeit_credit_withdraws_treasury",
+  recommendedMitigationOptionId: "bind_accounts_to_approved_config",
 };
-
-export const suggestedReportMetaFields: ReportMetaFields = {
-  title:
-    "Unchecked Vault Health Arithmetic Allows Collateral Distortion",
-  likelihood: "medium_high",
-};
-
-export const suggestedReportText = {
-  rootCause:
-    "The vault health calculation performs unsafe arithmetic before scaling and comparison, allowing overflow or distorted collateral values before the protocol evaluates health.",
-  impact:
-    "An attacker can distort collateral value and health factor calculations, making an unhealthy or manipulated position appear acceptable to the protocol.",
-  proof:
-    "The sandbox evidence shows the vulnerable health calculation boundary and passes after the unsafe arithmetic path is replaced with checked arithmetic.",
-  recommendedFix:
-    "Use checked arithmetic before the health comparison and fail safely when multiplication, division, or scaling would overflow or produce invalid collateral values.",
-};
-
-export const reportTitleOptions = [
-  suggestedReportMetaFields.title,
-  "Arithmetic Safety Failure in Vault Health Calculation",
-  "Vault Mirage Health Factor Can Be Distorted Before Validation",
-];
-
-export const reportRootCauseOptions = [
-  suggestedReportText.rootCause,
-  "The protocol calculates vault health with unchecked multiplication or division, so invalid intermediate values can affect the final health comparison.",
-  "The health factor path trusts arithmetic output before proving that scaling and bounds checks completed safely.",
-];
-
-export const reportImpactOptions = [
-  suggestedReportText.impact,
-  "A manipulated health factor can make collateral appear safer than it is, weakening liquidation and solvency assumptions.",
-  "Distorted collateral accounting can let protocol state accept an invalid vault health result as if it were healthy.",
-];
-
-export const reportProofOptions = [
-  suggestedReportText.proof,
-  "The passing lab evidence demonstrates that replacing unsafe arithmetic with checked operations prevents the distorted health calculation.",
-  "The verification path confirms that the issue is the arithmetic trust boundary, not transaction success alone.",
-];
-
-export const reportFixOptions = [
-  suggestedReportText.recommendedFix,
-  "Replace unchecked arithmetic with checked_mul, checked_div, and checked_add style operations before using the value in health decisions.",
-  "Reject the instruction when the vault health calculation cannot be completed safely within expected numeric bounds.",
-];
 
 export function isRequiredQuestion(question: QuestionnaireQuestion) {
   return question.type !== "free_text_optional";
@@ -151,13 +225,14 @@ export function getFeedbackTopics(questionIds: string[]) {
 
 export function isReportComplete(fields: ResearchLabReportFields) {
   return Boolean(
-    fields.vulnerabilityCategory &&
-      fields.affectedArea &&
-      fields.severity &&
-      fields.rootCause.trim().length >= 24 &&
-      fields.impact.trim().length >= 24 &&
-      fields.proof.trim().length >= 16 &&
-      fields.recommendedFix.trim().length >= 24
+    fields.titleOptionId &&
+      fields.categoryOptionId &&
+      fields.severityOptionId &&
+      fields.likelihoodOptionId &&
+      fields.rootCauseOptionId &&
+      fields.proofOfImpactOptionId &&
+      fields.recommendedMitigationOptionId &&
+      fields.verifiedEvidenceRefs.length > 0
   );
 }
 
@@ -169,27 +244,71 @@ export function formatReportValue(value: string) {
     .join(" ");
 }
 
+export function getOptionLabel(
+  options: ReportOption[],
+  id: string | null | undefined,
+  fallback = "Unavailable"
+) {
+  if (!id) return fallback;
+  return options.find((option) => option.id === id)?.label ?? formatReportValue(id);
+}
+
+export function getOptionBody(
+  options: ReportOption[],
+  id: string | null | undefined,
+  fallback = ""
+) {
+  if (!id) return fallback;
+  return options.find((option) => option.id === id)?.previewBody ?? fallback;
+}
+
 export function buildAuditReportPreview(
-  metaFields: ReportMetaFields,
   fields: ResearchLabReportFields
 ): AuditReportPreview {
-  const severity = fields.severity ? formatReportValue(fields.severity) : "High";
-  const likelihood = metaFields.likelihood
-    ? formatReportValue(metaFields.likelihood)
-    : "Medium High";
-  const title = metaFields.title.trim() || suggestedReportMetaFields.title;
+  const title = getOptionLabel(
+    reportTitleOptions,
+    fields.titleOptionId,
+    "Missing Constraints Allow Counterfeit Credit"
+  );
+  const severity = getOptionLabel(
+    reportSeverityOptions,
+    fields.severityOptionId,
+    "High"
+  );
+  const likelihood = getOptionLabel(
+    reportLikelihoodOptions,
+    fields.likelihoodOptionId,
+    "Medium High"
+  );
+  const category = getOptionLabel(
+    reportCategoryOptions,
+    fields.categoryOptionId,
+    "Account Substitution"
+  );
+  const categoryBody = getOptionBody(
+    reportCategoryOptions,
+    fields.categoryOptionId,
+    "caller-supplied accounts can bypass canonical vault binding and create borrow credit from a non-approved collateral route."
+  );
 
   return {
     title,
     severity,
     likelihood,
-    category: fields.vulnerabilityCategory
-      ? formatReportValue(fields.vulnerabilityCategory)
-      : "Arithmetic Safety",
-    description: `This audit report documents ${fields.vulnerabilityCategory ? formatReportValue(fields.vulnerabilityCategory) : "arithmetic safety"} in RL-007, where unsafe vault health arithmetic can distort collateral accounting before the protocol evaluates health.`,
-    rootCause: fields.rootCause.trim(),
-    proofOfImpact: fields.impact.trim(),
-    evidence: fields.proof.trim(),
-    recommendedMitigation: fields.recommendedFix.trim(),
+    category,
+    description: `This audit report documents ${category.toLowerCase()} in Research Lab 1, where ${categoryBody}`,
+    rootCause: getOptionBody(reportRootCauseOptions, fields.rootCauseOptionId),
+    proofOfImpact: getOptionBody(
+      reportProofOfImpactOptions,
+      fields.proofOfImpactOptionId
+    ),
+    evidence:
+      fields.verifiedEvidenceRefs.length > 0
+        ? `Verified evidence references: ${fields.verifiedEvidenceRefs.join(", ")}`
+        : "No verified evidence references recorded.",
+    recommendedMitigation: getOptionBody(
+      reportMitigationOptions,
+      fields.recommendedMitigationOptionId
+    ),
   };
 }

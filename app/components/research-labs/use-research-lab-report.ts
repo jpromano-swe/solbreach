@@ -14,12 +14,10 @@ import {
   type ResearchLabSession,
 } from "../../lib/research-labs/lab-state";
 import {
-  defaultReportMetaFields,
   emptyReportFields,
-  suggestedReportMetaFields,
-  suggestedReportText,
+  suggestedReportFieldDefaults,
 } from "./report-utils";
-import type { AuditReportStage, ReportMetaFields } from "./types";
+import type { AuditReportStage } from "./types";
 
 type UseResearchLabReportOptions = {
   activeLab: ResearchLabManifest | null;
@@ -37,8 +35,6 @@ export function useResearchLabReport({
   const [report, setReport] = useState<ResearchLabReport | null>(null);
   const [reportFields, setReportFields] =
     useState<ResearchLabReportFields>(emptyReportFields);
-  const [reportMetaFields, setReportMetaFields] =
-    useState<ReportMetaFields>(defaultReportMetaFields);
   const [auditReportStage, setAuditReportStage] =
     useState<AuditReportStage>("BUILDER");
   const [isReportSaving, setIsReportSaving] = useState(false);
@@ -47,26 +43,42 @@ export function useResearchLabReport({
   const populateReportDefaults = useCallback(() => {
     setReportFields((fields) => ({
       ...fields,
-      vulnerabilityCategory:
-        fields.vulnerabilityCategory ?? "arithmetic_safety",
-      affectedArea: fields.affectedArea ?? "vault_health_calculation",
-      severity: fields.severity ?? "medium",
-      rootCause: fields.rootCause || suggestedReportText.rootCause,
-      impact: fields.impact || suggestedReportText.impact,
-      proof: fields.proof || suggestedReportText.proof,
-      recommendedFix:
-        fields.recommendedFix || suggestedReportText.recommendedFix,
+      titleOptionId:
+        fields.titleOptionId ?? suggestedReportFieldDefaults.titleOptionId ?? null,
+      categoryOptionId:
+        fields.categoryOptionId ??
+        suggestedReportFieldDefaults.categoryOptionId ??
+        null,
+      severityOptionId:
+        fields.severityOptionId ??
+        suggestedReportFieldDefaults.severityOptionId ??
+        null,
+      likelihoodOptionId:
+        fields.likelihoodOptionId ??
+        suggestedReportFieldDefaults.likelihoodOptionId ??
+        null,
+      rootCauseOptionId:
+        fields.rootCauseOptionId ??
+        suggestedReportFieldDefaults.rootCauseOptionId ??
+        null,
+      proofOfImpactOptionId:
+        fields.proofOfImpactOptionId ??
+        suggestedReportFieldDefaults.proofOfImpactOptionId ??
+        null,
+      recommendedMitigationOptionId:
+        fields.recommendedMitigationOptionId ??
+        suggestedReportFieldDefaults.recommendedMitigationOptionId ??
+        null,
+      verifiedEvidenceRefs:
+        fields.verifiedEvidenceRefs.length
+          ? fields.verifiedEvidenceRefs
+          : session?.verifiedEvidenceRefs ?? [],
     }));
-    setReportMetaFields((fields) => ({
-      title: fields.title || suggestedReportMetaFields.title,
-      likelihood: fields.likelihood || suggestedReportMetaFields.likelihood,
-    }));
-  }, []);
+  }, [session?.verifiedEvidenceRefs]);
 
   const resetReport = useCallback(() => {
     setReport(null);
     setReportFields(emptyReportFields);
-    setReportMetaFields(defaultReportMetaFields);
     setAuditReportStage("BUILDER");
   }, []);
 
@@ -77,11 +89,21 @@ export function useResearchLabReport({
         currentSession.sessionId
       );
       setReport(nextReport);
-      setReportFields(nextReport.fields ?? emptyReportFields);
-      setReportMetaFields((fields) => ({
-        title: fields.title || suggestedReportMetaFields.title,
-        likelihood: fields.likelihood || suggestedReportMetaFields.likelihood,
-      }));
+      setReportFields(
+        nextReport.fields
+          ? {
+              ...emptyReportFields,
+              ...nextReport.fields,
+              verifiedEvidenceRefs:
+                nextReport.fields.verifiedEvidenceRefs.length
+                  ? nextReport.fields.verifiedEvidenceRefs
+                  : currentSession.verifiedEvidenceRefs ?? [],
+            }
+          : {
+              ...emptyReportFields,
+              verifiedEvidenceRefs: currentSession.verifiedEvidenceRefs ?? [],
+            }
+      );
       setAuditReportStage(
         nextReport.status === "accepted" ? "SUBMITTED" : "BUILDER"
       );
@@ -97,7 +119,13 @@ export function useResearchLabReport({
       const auth = await getAuth();
       const nextReport = await saveResearchLabReportDraft({
         accessToken: auth.accessToken,
-        fields: reportFields,
+        fields: {
+          ...reportFields,
+          verifiedEvidenceRefs:
+            reportFields.verifiedEvidenceRefs.length
+              ? reportFields.verifiedEvidenceRefs
+              : session.verifiedEvidenceRefs ?? [],
+        },
         sessionId: session.sessionId,
       });
       setReport(nextReport);
@@ -113,7 +141,7 @@ export function useResearchLabReport({
 
   const submitReport = useCallback(async () => {
     if (!activeLab || !session || isReportSubmitting) return;
-    if (!reportMetaFields.title.trim() || !reportMetaFields.likelihood) {
+    if (!reportFields.titleOptionId || !reportFields.likelihoodOptionId) {
       toast.error("Complete the finding title and likelihood before submitting.");
       return;
     }
@@ -123,7 +151,13 @@ export function useResearchLabReport({
       const auth = await getAuth();
       const saved = await saveResearchLabReportDraft({
         accessToken: auth.accessToken,
-        fields: reportFields,
+        fields: {
+          ...reportFields,
+          verifiedEvidenceRefs:
+            reportFields.verifiedEvidenceRefs.length
+              ? reportFields.verifiedEvidenceRefs
+              : session.verifiedEvidenceRefs ?? [],
+        },
         sessionId: session.sessionId,
       });
       setReport(saved);
@@ -135,10 +169,15 @@ export function useResearchLabReport({
       setReport(submitted);
       onSessionChange({
         ...session,
+        certificateUnlockable:
+          submitted.status === "accepted" ? true : session.certificateUnlockable,
+        findingReviewPassed:
+          submitted.status === "accepted" ? true : session.findingReviewPassed,
         labCompleted: Boolean(submitted.labCompleted),
         objectiveProgress: submitted.labCompleted
           ? activeLab.objectives.length
           : session.objectiveProgress,
+        reportUnlocked: true,
         reportStatus: submitted.status,
         stage: "report",
         xpAwarded: submitted.xpAwarded,
@@ -168,8 +207,6 @@ export function useResearchLabReport({
     isReportSubmitting,
     onSessionChange,
     reportFields,
-    reportMetaFields.likelihood,
-    reportMetaFields.title,
     session,
   ]);
 
@@ -181,12 +218,10 @@ export function useResearchLabReport({
     populateReportDefaults,
     report,
     reportFields,
-    reportMetaFields,
     resetReport,
     saveReportDraft,
     setAuditReportStage,
     setReportFields,
-    setReportMetaFields,
     submitReport,
   };
 }

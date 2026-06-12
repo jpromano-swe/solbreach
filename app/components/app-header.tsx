@@ -15,6 +15,7 @@ export function AppHeader({
   onOpenProfile,
   onSelectLevel,
   onSelectResearchLabs,
+  onSelectVulnerabilities,
   walletStatus,
 }: {
   activeLevelsView: LevelsView;
@@ -23,6 +24,7 @@ export function AppHeader({
   onOpenProfile: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
   onSelectResearchLabs: () => void;
+  onSelectVulnerabilities: () => void;
   walletStatus: string;
 }) {
   return (
@@ -49,6 +51,7 @@ export function AppHeader({
         {activeSection !== "levels" || activeLevelsView !== "landing" ? (
           <HeaderCourseNav
             onSelectResearchLabs={onSelectResearchLabs}
+            onSelectVulnerabilities={onSelectVulnerabilities}
             onSelectLevel={onSelectLevel}
           />
         ) : (

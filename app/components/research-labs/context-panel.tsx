@@ -21,6 +21,7 @@ export function LabContextPanel({
   phase,
   questionnaireResult,
   report,
+  reportUnlocked,
   reportOpened,
   retryQuestionIds,
   reviewMode,
@@ -47,6 +48,7 @@ export function LabContextPanel({
   phase: LabPhase;
   questionnaireResult: QuestionnaireResult | null;
   report: ResearchLabReport | null;
+  reportUnlocked: boolean;
   reportOpened: boolean;
   retryQuestionIds: string[];
   reviewMode: ReviewMode;
@@ -84,8 +86,8 @@ export function LabContextPanel({
       {phase === "EXECUTE_EXPLOIT" ? (
         <ExecuteExploitContext
           activeView={executeExploitView}
-          reportUnlocked={Boolean(session.reportStatus) || impactVerified}
-          session={session}
+          impactVerified={impactVerified}
+          reportUnlocked={reportUnlocked}
           txResults={txResults}
         />
       ) : phase === "VERIFY_IMPACT" ? (
@@ -201,13 +203,13 @@ function SubmitFindingContextSupport({
 
 function ExecuteExploitContext({
   activeView,
+  impactVerified,
   reportUnlocked,
-  session,
   txResults,
 }: {
   activeView: ExecuteExploitView;
+  impactVerified: boolean;
   reportUnlocked: boolean;
-  session: ResearchLabSession;
   txResults: EnrichedTransactionResult[];
 }) {
   const [revealedChainHints, setRevealedChainHints] = useState(0);
@@ -221,7 +223,6 @@ function ExecuteExploitContext({
       result.instructionType.includes("WITHDRAW") &&
       result.executionStatus === "success"
   );
-  const impactVerified = session.status === "passed" || Boolean(session.labCompleted);
   const chainHints = [
     "Start by comparing the token account you provide with the vault that receives it.",
     "After deposit, inspect whether position credit changed even though the account path was not canonical.",
@@ -298,9 +299,7 @@ function EvidenceReviewContext() {
   return (
     <ContextBlock title="Scope">
       <p className="text-sm leading-6 text-zinc-400">
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse
-        protocol evidence, account relationships, and impact notes will be
-        reviewed here.
+        Review transaction ordering, runtime evidence, and account state deltas here before deciding whether the backend has enough proof to unlock the finding workflow.
       </p>
     </ContextBlock>
   );

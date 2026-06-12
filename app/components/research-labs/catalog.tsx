@@ -54,12 +54,6 @@ export function ResearchLabCatalog({
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const isWalletConnected = walletStatus === "connected";
   const shouldGateLabs = !isAuthenticated;
-  const authCopy =
-    !isWalletConnected
-      ? "Connect your wallet before loading authenticated labs."
-      : isAuthenticated
-        ? "Authenticated sandbox access is active."
-        : "Sign a wallet auth message before loading sandbox labs.";
 
   const handleCatalogAction = () => {
     if (!isWalletConnected) {
@@ -77,10 +71,7 @@ export function ResearchLabCatalog({
 
       <div className="relative mx-auto max-w-7xl">
         <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.42em] text-zinc-500">
-            Research Labs
-          </p>
-          <h1 className="mt-5 text-5xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
+          <h1 className="text-5xl font-semibold tracking-[-0.04em] text-white md:text-6xl">
             Supported protocol investigations.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-400">
@@ -94,24 +85,6 @@ export function ResearchLabCatalog({
             {catalogError}
           </div>
         ) : null}
-
-        <div className="mt-8 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleCatalogAction}
-            disabled={isLoading}
-            className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-4 py-2 text-sm font-semibold text-[#b892ff] transition hover:bg-[#9945ff]/16 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isLoading
-              ? "Loading labs"
-              : !isWalletConnected
-                ? "Connect wallet"
-                : isAuthenticated
-                  ? "Refresh labs"
-                  : "Authenticate wallet"}
-          </button>
-          <span className="text-sm text-zinc-500">{authCopy}</span>
-        </div>
 
         <div className="relative mt-8">
           <div
@@ -132,7 +105,7 @@ export function ResearchLabCatalog({
               >
                 <div className="flex items-center justify-between gap-4">
                   <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-3 py-1 text-xs font-semibold text-[#b892ff]">
-                    {lab.id.toUpperCase()}
+                    {displayLabCode(lab)}
                   </span>
                   <span className="flex items-center gap-2 rounded-full border border-[#14f195]/20 bg-[#14f195]/10 px-3 py-1 text-xs font-medium text-[#8fffd0]">
                     <Wifi className="h-3.5 w-3.5" />
@@ -195,7 +168,7 @@ export function ResearchLabCatalog({
                   <LockKeyhole className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
-                  Connect wallet to unlock Research Labs.
+                  Unlock Research Labs.
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-zinc-400">
                   Labs unlock from wallet-bound badges and sandbox access is
@@ -207,11 +180,7 @@ export function ResearchLabCatalog({
                   disabled={isLoading}
                   className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#9945ff] px-5 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#101014] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {!isWalletConnected
-                    ? "Connect Wallet"
-                    : isLoading
-                      ? "Authenticating..."
-                      : "Authenticate Wallet"}
+                  {isLoading ? "Resolving access..." : "Unlock labs"}
                 </button>
               </div>
             </div>
@@ -224,6 +193,11 @@ export function ResearchLabCatalog({
       />
     </section>
   );
+}
+
+function displayLabCode(lab: ResearchLabManifest) {
+  if (lab.slug === "account-substitution") return "RL1";
+  return lab.id.toUpperCase();
 }
 
 function ResearchLabWalletConnectorDialog({

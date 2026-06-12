@@ -5,22 +5,24 @@ import { useState } from "react";
 
 import { rl1FindingQuestionnaire, type QuestionnaireAnswer, type QuestionnaireQuestion, type QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReport, ResearchLabReportFields } from "../../lib/research-labs/lab-state";
-import type { AuditReportPreview, AuditReportStage, ReportMetaFields, ReviewMode } from "./types";
+import type { AuditReportPreview, AuditReportStage, ReviewMode } from "./types";
 import { AnimatedContentSwitch } from "./workspace-tabs";
 import {
   buildAuditReportPreview,
-  formatReportValue,
   getFeedbackTopics,
   getIncorrectRequiredQuestionIds,
   getReviewQuestions,
   isQuestionAnswered,
   isReportComplete,
   isRequiredQuestion,
-  reportFixOptions,
-  reportImpactOptions,
-  reportProofOptions,
+  reportCategoryOptions,
+  reportLikelihoodOptions,
+  reportMitigationOptions,
+  reportProofOfImpactOptions,
   reportRootCauseOptions,
+  reportSeverityOptions,
   reportTitleOptions,
+  type ReportOption,
 } from "./report-utils";
 
 export function ReportTab({
@@ -39,9 +41,7 @@ export function ReportTab({
   reviewMode,
   reviewStarted,
   report,
-  reportMetaFields,
   onChange,
-  onChangeMeta,
   onChangeAuditReportStage,
   onQuestionnaireAnswer,
   onQuestionnaireRetry,
@@ -53,7 +53,6 @@ export function ReportTab({
   onSubmit,
 }: {
   report: ResearchLabReport | null;
-  reportMetaFields: ReportMetaFields;
   fields: ResearchLabReportFields;
   findingReviewPassed: boolean;
   impactVerified: boolean;
@@ -69,7 +68,6 @@ export function ReportTab({
   reviewMode: ReviewMode;
   reviewStarted: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
-  onChangeMeta: (fields: ReportMetaFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onQuestionnaireAnswer: (answer: QuestionnaireAnswer) => void;
   onQuestionnaireRetry: () => void;
@@ -183,9 +181,7 @@ export function ReportTab({
           isSaving={isSaving}
           isSubmitting={isSubmitting}
           report={report}
-          reportMetaFields={reportMetaFields}
           onChange={onChange}
-          onChangeMeta={onChangeMeta}
           onChangeAuditReportStage={onChangeAuditReportStage}
           onSave={onSave}
           onSubmit={onSubmit}
@@ -608,12 +604,10 @@ function ReportForm({
   auditReportStage,
   report,
   fields,
-  reportMetaFields,
   isSaving,
   isSubmitting,
   onChange,
   onChangeAuditReportStage,
-  onChangeMeta,
   onSave,
   onSubmit,
   expanded = false,
@@ -621,12 +615,10 @@ function ReportForm({
   auditReportStage: AuditReportStage;
   report: ResearchLabReport | null;
   fields: ResearchLabReportFields;
-  reportMetaFields: ReportMetaFields;
   isSaving: boolean;
   isSubmitting: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
-  onChangeMeta: (fields: ReportMetaFields) => void;
   onSave: () => Promise<ResearchLabReport | null>;
   onSubmit: () => void;
   expanded?: boolean;
@@ -637,25 +629,23 @@ function ReportForm({
   const isLocked = status === "locked";
   const isAccepted = status === "accepted";
   const isEditable = !isLocked && !isAccepted;
-  const isMetaComplete = Boolean(
-    reportMetaFields.title.trim() && reportMetaFields.likelihood
-  );
   const allowedValues = report?.allowedValues ?? {
-    vulnerabilityCategory: ["missing_validation", "arithmetic_safety"],
-    affectedArea: ["deposit_instruction", "vault_health_calculation"],
-    severity: ["low", "medium", "high"],
+    titleOptionId: reportTitleOptions.map((option) => option.id),
+    categoryOptionId: reportCategoryOptions.map((option) => option.id),
+    severityOptionId: reportSeverityOptions.map((option) => option.id),
+    likelihoodOptionId: reportLikelihoodOptions.map((option) => option.id),
+    rootCauseOptionId: reportRootCauseOptions.map((option) => option.id),
+    proofOfImpactOptionId: reportProofOfImpactOptions.map((option) => option.id),
+    recommendedMitigationOptionId: reportMitigationOptions.map(
+      (option) => option.id
+    ),
   };
   const updateFields = (nextFields: ResearchLabReportFields) => {
     setAuditReportPreview(null);
     onChangeAuditReportStage("BUILDER");
     onChange(nextFields);
   };
-  const updateMeta = (nextFields: ReportMetaFields) => {
-    setAuditReportPreview(null);
-    onChangeAuditReportStage("BUILDER");
-    onChangeMeta(nextFields);
-  };
-  const reportComplete = isReportComplete(fields) && isMetaComplete;
+  const reportComplete = isReportComplete(fields);
 
   if (isLocked) {
     return (
@@ -673,8 +663,7 @@ function ReportForm({
   }
 
   if (auditReportStage === "PREVIEW") {
-    const preview =
-      auditReportPreview ?? buildAuditReportPreview(reportMetaFields, fields);
+    const preview = auditReportPreview ?? buildAuditReportPreview(fields);
 
     return (
       <AuditReportPreviewScreen
@@ -708,79 +697,148 @@ function ReportForm({
       ) : null}
 
       <div className="mt-7 space-y-7">
-          <section className="border-b border-white/10 pb-7">
-            <h3 className="text-sm font-semibold text-white">1. Finding Summary</h3>
-            <div className="mt-4 grid gap-5">
-              <ReportChoiceGroup
-                disabled={!isEditable}
-                helper="Name the arithmetic boundary and impact."
-                label="Title"
-                options={reportTitleOptions}
-                value={reportMetaFields.title}
-                onChange={(value) => updateMeta({ ...reportMetaFields, title: value })}
-              />
-              <ReportSelect
-                disabled={!isEditable}
-                label="Category"
-                value={fields.vulnerabilityCategory ?? ""}
-                values={allowedValues.vulnerabilityCategory}
-                onChange={(value) => updateFields({ ...fields, vulnerabilityCategory: value || null })}
-              />
-            </div>
-          </section>
+        <section className="border-b border-white/10 pb-7">
+          <h3 className="text-sm font-semibold text-white">1. Finding Summary</h3>
+          <div className="mt-4 grid gap-5">
+            <ReportChoiceGroup
+              disabled={!isEditable}
+              helper="Name the missing binding or account-substitution failure that enabled the exploit."
+              label="Title"
+              options={filterReportOptions(
+                reportTitleOptions,
+                allowedValues.titleOptionId
+              )}
+              value={fields.titleOptionId ?? ""}
+              onChange={(value) =>
+                updateFields({ ...fields, titleOptionId: value || null })
+              }
+            />
+            <ReportChoiceGroup
+              disabled={!isEditable}
+              helper="Classify the vulnerability family that best matches the verified exploit path."
+              label="Category"
+              options={filterReportOptions(
+                reportCategoryOptions,
+                allowedValues.categoryOptionId
+              )}
+              value={fields.categoryOptionId ?? ""}
+              onChange={(value) =>
+                updateFields({ ...fields, categoryOptionId: value || null })
+              }
+            />
+          </div>
+        </section>
 
-          <section className="border-b border-white/10 pb-7">
-            <h3 className="text-sm font-semibold text-white">2. Severity & Likelihood</h3>
-            <div className="mt-4 grid gap-5 md:grid-cols-2">
-              <ReportSelect
-                disabled={!isEditable}
-                label="Severity"
-                value={fields.severity ?? ""}
-                values={allowedValues.severity}
-                onChange={(value) => updateFields({ ...fields, severity: value || null })}
-              />
-              <ReportSelect
-                disabled={!isEditable}
-                label="Likelihood"
-                value={reportMetaFields.likelihood}
-                values={["low", "medium", "medium_high", "high"]}
-                onChange={(value) => updateMeta({ ...reportMetaFields, likelihood: value })}
-              />
-            </div>
-          </section>
+        <section className="border-b border-white/10 pb-7">
+          <h3 className="text-sm font-semibold text-white">2. Severity & Likelihood</h3>
+          <div className="mt-4 grid gap-5 md:grid-cols-2">
+            <ReportSelect
+              disabled={!isEditable}
+              label="Severity"
+              value={fields.severityOptionId ?? ""}
+              options={filterReportOptions(
+                reportSeverityOptions,
+                allowedValues.severityOptionId
+              )}
+              onChange={(value) =>
+                updateFields({ ...fields, severityOptionId: value || null })
+              }
+            />
+            <ReportSelect
+              disabled={!isEditable}
+              label="Likelihood"
+              value={fields.likelihoodOptionId ?? ""}
+              options={filterReportOptions(
+                reportLikelihoodOptions,
+                allowedValues.likelihoodOptionId
+              )}
+              onChange={(value) =>
+                updateFields({ ...fields, likelihoodOptionId: value || null })
+              }
+            />
+          </div>
+        </section>
 
-          <ReportChoiceGroup
-            disabled={!isEditable}
-            helper="Explain where unsafe arithmetic affects the health calculation."
-            label="3. Root Cause"
-            options={reportRootCauseOptions}
-            value={fields.rootCause}
-            onChange={(value) => updateFields({ ...fields, rootCause: value })}
-          />
-          <ReportChoiceGroup
-            disabled={!isEditable}
-            helper="Describe how distorted health accounting affects protocol safety."
-            label="4. Proof of Impact"
-            options={reportImpactOptions}
-            value={fields.impact}
-            onChange={(value) => updateFields({ ...fields, impact: value })}
-          />
-          <ReportChoiceGroup
-            disabled={!isEditable}
-            helper="These notes sit alongside evidence captured from your verified sandbox execution."
-            label="5. Evidence Notes"
-            options={reportProofOptions}
-            value={fields.proof}
-            onChange={(value) => updateFields({ ...fields, proof: value })}
-          />
-          <ReportChoiceGroup
-            disabled={!isEditable}
-            helper="Describe how arithmetic should fail safely before health decisions."
-            label="6. Recommended Fix"
-            options={reportFixOptions}
-            value={fields.recommendedFix}
-            onChange={(value) => updateFields({ ...fields, recommendedFix: value })}
-          />
+        <ReportChoiceGroup
+          disabled={!isEditable}
+          helper="Explain which account relationship was trusted without being bound to the approved market configuration."
+          label="3. Root Cause"
+          options={filterReportOptions(
+            reportRootCauseOptions,
+            allowedValues.rootCauseOptionId
+          )}
+          value={fields.rootCauseOptionId ?? ""}
+          onChange={(value) =>
+            updateFields({ ...fields, rootCauseOptionId: value || null })
+          }
+        />
+        <ReportChoiceGroup
+          disabled={!isEditable}
+          helper="Describe how non-canonical credit creation affected protocol safety and treasury exposure."
+          label="4. Proof of Impact"
+          options={filterReportOptions(
+            reportProofOfImpactOptions,
+            allowedValues.proofOfImpactOptionId
+          )}
+          value={fields.proofOfImpactOptionId ?? ""}
+          onChange={(value) =>
+            updateFields({ ...fields, proofOfImpactOptionId: value || null })
+          }
+        />
+        <ReportChoiceGroup
+          disabled={!isEditable}
+          helper="Describe how the protocol should bind source and vault accounts before assigning credit."
+          label="5. Recommended Fix"
+          options={filterReportOptions(
+            reportMitigationOptions,
+            allowedValues.recommendedMitigationOptionId
+          )}
+          value={fields.recommendedMitigationOptionId ?? ""}
+          onChange={(value) =>
+            updateFields({
+              ...fields,
+              recommendedMitigationOptionId: value || null,
+            })
+          }
+        />
+        <section className="border-b border-white/10 pb-7">
+          <h3 className="text-sm font-semibold text-white">6. Verified Evidence</h3>
+          <p className="mt-1.5 text-sm leading-6 text-zinc-500">
+            These references come from backend-verified evidence after impact review.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {fields.verifiedEvidenceRefs.length ? (
+              fields.verifiedEvidenceRefs.map((ref) => (
+                <span
+                  key={ref}
+                  className="rounded-full border border-[#14f195]/20 bg-[#14f195]/8 px-3 py-1 text-xs font-medium text-[#8fffd0]"
+                >
+                  {ref}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-zinc-500">
+                No verified evidence references recorded yet.
+              </span>
+            )}
+          </div>
+          <label className="mt-5 block">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+              Optional Notes
+            </span>
+            <textarea
+              value={fields.optionalNotes}
+              rows={4}
+              disabled={!isEditable}
+              placeholder="Add concise auditor notes that complement the verified evidence."
+              spellCheck
+              onChange={(event) =>
+                updateFields({ ...fields, optionalNotes: event.target.value })
+              }
+              className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm leading-6 text-zinc-200 outline-none transition placeholder:text-zinc-700 focus:border-[#9945ff]/45 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </label>
+        </section>
 
         <div className="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-2">
           <button
@@ -794,9 +852,7 @@ function ReportForm({
           <button
             type="button"
             onClick={() => {
-              setAuditReportPreview(
-                buildAuditReportPreview(reportMetaFields, fields)
-              );
+              setAuditReportPreview(buildAuditReportPreview(fields));
               onChangeAuditReportStage("PREVIEW");
             }}
             disabled={!isEditable || !reportComplete || isSaving || isSubmitting}
@@ -814,13 +870,13 @@ function ReportSelect({
   disabled,
   label,
   value,
-  values,
+  options,
   onChange,
 }: {
   disabled: boolean;
   label: string;
   value: string;
-  values: string[];
+  options: ReportOption[];
   onChange: (value: string) => void;
 }) {
   return (
@@ -833,9 +889,9 @@ function ReportSelect({
         className="mt-2 min-h-10 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-zinc-200 outline-none transition focus:border-[#9945ff]/45 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <option value="">Select {label.toLowerCase()}</option>
-        {values.map((item) => (
-          <option key={item} value={item}>
-            {formatReportValue(item)}
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
           </option>
         ))}
       </select>
@@ -919,7 +975,7 @@ function AuditReportSubmitted() {
           Audit Report Submitted
         </p>
         <p className="mt-3 text-sm leading-6 text-zinc-400">
-          RL-001 completion is recorded. The final audit report has been submitted.
+          Research Lab 1 completion is recorded. The final audit report has been submitted.
         </p>
       </div>
     </section>
@@ -957,7 +1013,7 @@ function ReportChoiceGroup({
   disabled: boolean;
   helper?: string;
   label: string;
-  options: string[];
+  options: ReportOption[];
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -971,10 +1027,10 @@ function ReportChoiceGroup({
       {helper ? <p className="mt-1.5 text-sm leading-6 text-zinc-500">{helper}</p> : null}
       <div className="mt-4 grid gap-2">
         {options.map((option) => {
-          const selected = value === option;
+          const selected = value === option.id;
           return (
             <label
-              key={option}
+              key={option.id}
               className={`flex min-h-10 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-sm leading-6 transition ${
                 selected
                   ? "border-[#9945ff]/40 bg-[#9945ff]/12 text-zinc-100"
@@ -986,14 +1042,19 @@ function ReportChoiceGroup({
                 disabled={disabled}
                 name={fieldName}
                 type="radio"
-                onChange={() => onChange(option)}
+                onChange={() => onChange(option.id)}
                 className="mt-1 h-4 w-4 accent-[#9945ff]"
               />
-              <span>{option}</span>
+              <span>{option.label}</span>
             </label>
           );
         })}
       </div>
     </fieldset>
   );
+}
+
+function filterReportOptions(options: ReportOption[], allowedIds: string[]) {
+  const allowed = new Set(allowedIds);
+  return options.filter((option) => allowed.has(option.id));
 }
