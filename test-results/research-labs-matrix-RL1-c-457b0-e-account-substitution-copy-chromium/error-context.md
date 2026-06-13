@@ -14,14 +14,14 @@
 ```
 Error: expect(locator).toBeVisible() failed
 
-Locator: getByRole('button', { name: /RL-001/i })
+Locator: getByRole('button', { name: /RL1/i })
 Expected: visible
 Timeout: 5000ms
 Error: element(s) not found
 
 Call log:
   - Expect "toBeVisible" with timeout 5000ms
-  - waiting for getByRole('button', { name: /RL-001/i })
+  - waiting for getByRole('button', { name: /RL1/i })
 
 ```
 
@@ -145,7 +145,7 @@ Call log:
   460 | function sessionPayload() {
   461 |   return {
   462 |     session_id: SESSION_ID,
-  463 |     lab_id: "rl-001",
+  463 |     lab_id: "rl1-account-substitution",
   464 |     status: "active",
   465 |     stage: "investigate",
   466 |     expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
@@ -171,9 +171,9 @@ Call log:
   486 |     timeout: 30000,
   487 |   });
   488 |   await expect(page.getByText("Supported protocol investigations.")).toBeVisible();
-> 489 |   await expect(page.getByRole("button", { name: /RL-001/i })).toBeVisible();
-      |                                                               ^ Error: expect(locator).toBeVisible() failed
-  490 |   await page.getByRole("button", { name: /RL-001/i }).click();
+> 489 |   await expect(page.getByRole("button", { name: /RL1/i })).toBeVisible();
+      |                                                            ^ Error: expect(locator).toBeVisible() failed
+  490 |   await page.getByRole("button", { name: /RL1/i }).click();
   491 |   await expect(page.getByRole("button", { name: "Execute Exploit" })).toBeVisible();
   492 | }
   493 | 
@@ -195,7 +195,7 @@ Call log:
   509 |   await expect(page.getByText(/arithmetic safety/i)).toHaveCount(0);
   510 | });
   511 | 
-  512 | test("RL1 verify flow unlocks deterministic report builder", async ({
+  512 | test("RL1 official deposit unlocks canonical borrow without proving exploit", async ({
   513 |   page,
   514 | }) => {
   515 |   await seedAuth(page);
@@ -205,44 +205,72 @@ Call log:
   519 |   pendingTransaction = {
   520 |     instructionType: "DEPOSIT_COLLATERAL",
   521 |     status: "success",
-  522 |     logs: ["Deposit executed"],
+  522 |     logs: ["Canonical deposit executed"],
   523 |   };
   524 | 
   525 |   await page.getByRole("button", { name: "Execute Exploit" }).click();
-  526 |   await page.getByLabel("Token").selectOption("attacker_collateral_account");
-  527 |   await page.getByLabel("Vault").selectOption("counterfeit_vault_account");
+  526 |   await page.getByLabel("Token").selectOption("official_collateral_account");
+  527 |   await page.getByLabel("Vault").selectOption("official_vault_account");
   528 |   await page.getByRole("button", { name: "Deposit" }).click();
   529 | 
-  530 |   pendingTransaction = {
-  531 |     instructionType: "WITHDRAW_AGAINST_CREDIT",
-  532 |     status: "success",
-  533 |     logs: ["Borrow executed"],
-  534 |   };
-  535 | 
-  536 |   await page.getByRole("button", { name: /Borrow/i }).click();
-  537 |   await page.getByRole("button", { name: /Review Evidence/i }).click();
-  538 | 
-  539 |   pendingVerify = {
-  540 |     passed: true,
-  541 |     reportUnlocked: true,
-  542 |     verifiedEvidenceRefs: ["deposit_tx", "borrow_tx"],
-  543 |   };
-  544 | 
-  545 |   await page.getByRole("button", { name: "Verify Impact" }).click();
-  546 |   await page.getByRole("button", { name: /Continue to Submit Finding/i }).click();
-  547 |   await page.getByRole("button", { name: /Build Audit Report/i }).click();
+  530 |   await expect(
+  531 |     page.getByText("Regular deposit executed · Pool liquidity increased")
+  532 |   ).toBeVisible();
+  533 |   await expect(
+  534 |     page.getByText(/Legitimate collateral deposited\./i)
+  535 |   ).toBeVisible();
+  536 | 
+  537 |   await page.getByRole("button", { name: "Max" }).click();
+  538 |   await expect(page.getByLabel("Borrow Amount")).toHaveValue("36000");
+  539 |   await expect(page.getByRole("button", { name: /^Borrow$/i })).toBeEnabled();
+  540 | });
+  541 | 
+  542 | test("RL1 verify flow unlocks deterministic report builder", async ({
+  543 |   page,
+  544 | }) => {
+  545 |   await seedAuth(page);
+  546 |   await setupApiMocks(page);
+  547 |   await openResearchLab(page);
   548 | 
-  549 |   await expect(
-  550 |     page.getByRole("heading", { name: "Build Audit Report" })
-  551 |   ).toBeVisible();
-  552 |   await expect(
-  553 |     page.getByText("Missing Constraints Allow Counterfeit Credit")
-  554 |   ).toBeVisible();
-  555 |   await expect(
-  556 |     page.getByText("Bind accounts to approved config")
-  557 |   ).toBeVisible();
-  558 |   await expect(page.getByText("Vault Mirage")).toHaveCount(0);
-  559 |   await expect(page.getByText(/vault health calculation/i)).toHaveCount(0);
-  560 | });
+  549 |   pendingTransaction = {
+  550 |     instructionType: "DEPOSIT_COLLATERAL",
+  551 |     status: "success",
+  552 |     logs: ["Deposit executed"],
+  553 |   };
+  554 | 
+  555 |   await page.getByRole("button", { name: "Execute Exploit" }).click();
+  556 |   await page.getByLabel("Token").selectOption("attacker_collateral_account");
+  557 |   await page.getByLabel("Vault").selectOption("counterfeit_vault_account");
+  558 |   await page.getByRole("button", { name: "Deposit" }).click();
+  559 |   await page.getByRole("button", { name: "Max" }).click();
+  560 |   await expect(page.getByLabel("Borrow Amount")).toHaveValue("36000");
   561 | 
+  562 |   pendingTransaction = {
+  563 |     instructionType: "WITHDRAW_AGAINST_CREDIT",
+  564 |     status: "success",
+  565 |     logs: ["Borrow executed"],
+  566 |   };
+  567 | 
+  568 |   await page.getByRole("button", { name: /Borrow/i }).click();
+  569 |   await page.getByRole("button", { name: /Review Evidence/i }).click();
+  570 | 
+  571 |   pendingVerify = {
+  572 |     passed: true,
+  573 |     reportUnlocked: true,
+  574 |     verifiedEvidenceRefs: ["deposit_tx", "borrow_tx"],
+  575 |   };
+  576 | 
+  577 |   await page.getByRole("button", { name: "Verify Impact" }).click();
+  578 |   await page.getByRole("button", { name: /Continue to Submit Finding/i }).click();
+  579 |   await page.getByRole("button", { name: /Build Audit Report/i }).click();
+  580 | 
+  581 |   await expect(
+  582 |     page.getByRole("heading", { name: "Build Audit Report" })
+  583 |   ).toBeVisible();
+  584 |   await expect(
+  585 |     page.getByText("Missing Constraints Allow Counterfeit Credit")
+  586 |   ).toBeVisible();
+  587 |   await expect(
+  588 |     page.getByText("Bind accounts to approved config")
+  589 |   ).toBeVisible();
 ```

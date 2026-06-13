@@ -509,6 +509,36 @@ test("RL1 catalog and workspace use account substitution copy", async ({
   await expect(page.getByText(/arithmetic safety/i)).toHaveCount(0);
 });
 
+test("RL1 official deposit unlocks canonical borrow without proving exploit", async ({
+  page,
+}) => {
+  await seedAuth(page);
+  await setupApiMocks(page);
+  await openResearchLab(page);
+
+  pendingTransaction = {
+    instructionType: "DEPOSIT_COLLATERAL",
+    status: "success",
+    logs: ["Canonical deposit executed"],
+  };
+
+  await page.getByRole("button", { name: "Execute Exploit" }).click();
+  await page.getByLabel("Token").selectOption("official_collateral_account");
+  await page.getByLabel("Vault").selectOption("official_vault_account");
+  await page.getByRole("button", { name: "Deposit" }).click();
+
+  await expect(
+    page.getByText("Regular deposit executed · Pool liquidity increased")
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Legitimate collateral deposited\./i)
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Max" }).click();
+  await expect(page.getByLabel("Borrow Amount")).toHaveValue("36000");
+  await expect(page.getByRole("button", { name: /^Borrow$/i })).toBeEnabled();
+});
+
 test("RL1 verify flow unlocks deterministic report builder", async ({
   page,
 }) => {
@@ -526,6 +556,8 @@ test("RL1 verify flow unlocks deterministic report builder", async ({
   await page.getByLabel("Token").selectOption("attacker_collateral_account");
   await page.getByLabel("Vault").selectOption("counterfeit_vault_account");
   await page.getByRole("button", { name: "Deposit" }).click();
+  await page.getByRole("button", { name: "Max" }).click();
+  await expect(page.getByLabel("Borrow Amount")).toHaveValue("36000");
 
   pendingTransaction = {
     instructionType: "WITHDRAW_AGAINST_CREDIT",

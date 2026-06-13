@@ -118,6 +118,27 @@ export function ResearchLabsSection() {
     session,
   });
 
+  const resolveDefaultFilePath = useCallback(
+    (
+      lab: ResearchLabManifest | null,
+      currentSession: ResearchLabSession | null,
+      selectedPath?: string
+    ) => {
+      if (!lab || !currentSession) return "";
+
+      return (
+        (selectedPath
+          ? currentSession.fileEntries.find((file) => file.path === selectedPath)?.path
+          : undefined) ??
+        currentSession.fileEntries.find((file) => file.path === lab.entryFile)?.path ??
+        currentSession.fileEntries[0]?.path ??
+        lab.entryFile ??
+        ""
+      );
+    },
+    []
+  );
+
   const {
     criticalAnsweredCount,
     criticalTotal,
@@ -145,14 +166,15 @@ export function ResearchLabsSection() {
   });
 
   const activeFile = useMemo(() => {
-    if (!activeLab || !session || !activeFilePath) return null;
+    if (!activeLab || !session) return null;
+
+    const resolvedPath = resolveDefaultFilePath(activeLab, session, activeFilePath);
+
     return (
-      session.fileEntries.find((file) => file.path === activeFilePath) ??
-      session.fileEntries.find((file) => file.path === activeLab.entryFile) ??
-      session.fileEntries[0] ??
+      session.fileEntries.find((file) => file.path === resolvedPath) ??
       null
     );
-  }, [activeFilePath, activeLab, session]);
+  }, [activeFilePath, activeLab, resolveDefaultFilePath, session]);
 
   const activeFileContent =
     activeFile && session ? (session.files[activeFile.path] ?? activeFile.content) : "";
@@ -265,18 +287,14 @@ export function ResearchLabsSection() {
         throw new Error("Authenticate your wallet before opening a Research Lab.");
       }
 
+      resetLocalState();
       const labDetail = await getResearchLab(auth.accessToken, lab.id);
       const nextSession = await createResearchLabSession(auth.accessToken, labDetail.id);
       const nextLab = { ...labDetail, files: nextSession.fileEntries };
 
       setActiveLab(nextLab);
       setSession(nextSession);
-      setActiveFilePath(
-        nextSession.fileEntries.find((file) => file.path === nextLab.entryFile)?.path ??
-          nextSession.fileEntries[0]?.path ??
-          nextLab.entryFile
-      );
-      resetLocalState();
+      setActiveFilePath(resolveDefaultFilePath(nextLab, nextSession));
       await pollTerminal(auth, nextSession, 0);
       await loadReport(auth, nextSession);
       toast.success("Research lab session created");
@@ -289,25 +307,32 @@ export function ResearchLabsSection() {
     }
   };
 
-  const resetEnvironment = async () => {
+  const resetEnvironment = useCallback(async () => {
     if (!activeLab || !session) return;
     try {
       const auth = await getActiveAuth();
-      const nextSession = await resetResearchLabSession(auth.accessToken, session.sessionId);
-      setSession(nextSession);
-      setActiveLab({ ...activeLab, files: nextSession.fileEntries });
-      setActiveFilePath(
-        nextSession.fileEntries.find((file) => file.path === activeLab.entryFile)?.path ??
-          nextSession.fileEntries[0]?.path ??
-          activeLab.entryFile
-      );
       resetLocalState();
+      const nextSession = await resetResearchLabSession(
+        auth.accessToken,
+        session.sessionId
+      );
+      const nextLab = { ...activeLab, files: nextSession.fileEntries };
+      setSession(nextSession);
+      setActiveLab(nextLab);
+      setActiveFilePath(resolveDefaultFilePath(nextLab, nextSession));
       await loadReport(auth, nextSession);
       toast.message("Sandbox session reset");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
-  };
+  }, [
+    activeLab,
+    getActiveAuth,
+    loadReport,
+    resetLocalState,
+    resolveDefaultFilePath,
+    session,
+  ]);
 
   const leaveLab = () => {
     resetLocalState();

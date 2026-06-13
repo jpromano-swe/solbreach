@@ -5,7 +5,10 @@ import { useState, type ReactNode } from "react";
 
 import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabFile, ResearchLabManifest, ResearchLabReport, ResearchLabSession } from "../../lib/research-labs/lab-state";
-import { EvidenceCheck } from "./execute-exploit-tab";
+import {
+  EvidenceCheck,
+  deriveProtocolState,
+} from "./execute-exploit-tab";
 import type { AuditReportStage, EnrichedTransactionResult, ExecuteExploitView, LabPhase, ReviewMode } from "./types";
 
 const contextObjective =
@@ -213,16 +216,9 @@ function ExecuteExploitContext({
   txResults: EnrichedTransactionResult[];
 }) {
   const [revealedChainHints, setRevealedChainHints] = useState(0);
-  const depositSubmitted = txResults.some(
-    (result) =>
-      result.instructionType.includes("DEPOSIT") &&
-      result.executionStatus === "success"
-  );
-  const withdrawalSubmitted = txResults.some(
-    (result) =>
-      result.instructionType.includes("WITHDRAW") &&
-      result.executionStatus === "success"
-  );
+  const protocolState = deriveProtocolState(txResults);
+  const depositSubmitted = protocolState.hasDeposit;
+  const withdrawalSubmitted = protocolState.borrowedAmount > 0;
   const chainHints = [
     "Start by comparing the token account you provide with the vault that receives it.",
     "After deposit, inspect whether position credit changed even though the account path was not canonical.",
@@ -249,8 +245,30 @@ function ExecuteExploitContext({
       <ContextBlock title="Attempt State">
         <div className="space-y-3">
           <AttemptStep label="Hypothesis selected" active />
-          <AttemptStep label="Deposit submitted" active={depositSubmitted} />
-          <AttemptStep label="Withdrawal submitted" active={withdrawalSubmitted} />
+          <AttemptStep
+            label={
+              !depositSubmitted
+                ? "Deposit not submitted"
+                : protocolState.depositKind === "regular"
+                  ? "Canonical collateral deposited"
+                  : protocolState.depositKind === "exploit"
+                    ? "Non-canonical credit route created"
+                    : "Unsupported deposit path observed"
+            }
+            active={depositSubmitted}
+          />
+          <AttemptStep
+            label={
+              !withdrawalSubmitted
+                ? "Borrow not submitted"
+                : protocolState.depositKind === "regular"
+                  ? "Canonical borrow executed"
+                  : protocolState.hasMaxDrain
+                    ? "Treasury drain path executed"
+                    : "Borrow executed against observed credit"
+            }
+            active={withdrawalSubmitted}
+          />
           <AttemptStep label="Impact verified" active={impactVerified} />
           <AttemptStep label="Report unlocked" active={reportUnlocked} />
         </div>
