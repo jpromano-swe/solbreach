@@ -47,9 +47,19 @@ export type QuestionnaireResult = {
   }>;
 };
 
-export const rl1FindingQuestionnaire = {
-  id: "rl1-treasury-mirage-finding-questionnaire",
-  labId: "research-lab-1-treasury-mirage",
+export type QuestionnaireDefinition = {
+  id: string;
+  labId: string;
+  title: string;
+  passingScore: number;
+  totalPoints: number;
+  requireCriticalCorrect: boolean;
+  questions: QuestionnaireQuestion[];
+};
+
+export const rl1FindingQuestionnaire: QuestionnaireDefinition = {
+  id: "rl1-account-substitution-finding-questionnaire",
+  labId: "rl1-account-substitution",
   title: "Finding Review",
   passingScore: 80,
   totalPoints: 100,
@@ -64,12 +74,12 @@ export const rl1FindingQuestionnaire = {
       critical: true,
       options: [
         {
-          id: "oracle_price_manipulation",
-          label: "Oracle price abuse inflates accepted collateral value",
+          id: "account_substitution",
+          label: "Account substitution caused by missing account binding",
         },
         {
-          id: "failure_to_bind_accounts",
-          label: "Missing account binding for supplied vault and collateral",
+          id: "oracle_price_manipulation",
+          label: "Oracle price abuse inflates accepted collateral value",
         },
         {
           id: "integer_overflow",
@@ -80,73 +90,65 @@ export const rl1FindingQuestionnaire = {
           label: "Arbitrary CPI path reaches attacker-controlled program",
         },
       ],
-      correctOptionId: "failure_to_bind_accounts",
-      explanation:
-        "The exploit works because the protocol accepts caller-supplied token account relationships without proving that they match the approved collateral configuration.",
-    },
-    {
-      id: "q2_attack_vector_name",
-      section: "Vulnerability Identification",
-      type: "single_choice",
-      prompt: "Which common Solana security concept best describes the root issue?",
-      points: 10,
-      options: [
-        {
-          id: "account_substitution",
-          label: "Account substitution from missing account constraint",
-        },
-        {
-          id: "reentrancy",
-          label: "Reentrancy through repeated callback-style execution",
-        },
-        {
-          id: "signature_malleability",
-          label: "Signature malleability in transaction authorization",
-        },
-        {
-          id: "compute_budget_exhaustion",
-          label: "Compute budget exhaustion during instruction routing",
-        },
-      ],
       correctOptionId: "account_substitution",
       explanation:
-        "The attacker substitutes accounts that satisfy part of the instruction flow but are not the canonical accounts the protocol should trust.",
+        "The exploit is an account-substitution problem. The protocol trusts caller-supplied accounts without binding them to the approved collateral route.",
     },
     {
-      id: "q3_incorrect_trust",
+      id: "q2_invalid_inputs",
       section: "Vulnerability Identification",
-      type: "multi_select",
-      prompt: "What did the vulnerable deposit flow trust incorrectly?",
+      type: "single_choice",
+      prompt: "Which attacker-controlled inputs made the invalid deposit path possible?",
       points: 10,
       options: [
         {
-          id: "caller_collateral_source",
-          label: "Caller-provided collateral source token account",
+          id: "candidate_collateral_and_external_vault",
+          label: "A candidate collateral account and an external vault path",
         },
         {
-          id: "caller_vault_destination",
-          label: "Caller-provided destination vault token account",
+          id: "oracle_price_and_liquidation_queue",
+          label: "An oracle price account and a liquidation queue",
         },
         {
-          id: "current_slot",
-          label: "Current Solana slot recorded during instruction flow",
+          id: "treasury_authority_and_fee_receiver",
+          label: "The treasury authority and the fee receiver",
         },
         {
-          id: "collateral_credit_relationship",
-          label: "Collateral-to-credit relationship used for accounting",
-        },
-        {
-          id: "wallet_ui_theme",
-          label: "Wallet adapter theme selected during reviewed action",
+          id: "rent_sysvar_and_clock",
+          label: "The rent sysvar and the clock account",
         },
       ],
-      correctOptionIds: [
-        "caller_collateral_source",
-        "caller_vault_destination",
-        "collateral_credit_relationship",
-      ],
+      correctOptionId: "candidate_collateral_and_external_vault",
       explanation:
-        "The vulnerable flow trusted caller-supplied token accounts and credited the position without proving the source and destination matched the approved protocol configuration.",
+        "The exploit depends on supplying a collateral account and vault route that satisfy the token transfer but are not the canonical protocol accounts.",
+    },
+    {
+      id: "q3_credit_origin",
+      section: "Vulnerability Identification",
+      type: "single_choice",
+      prompt: "Where did the illegitimate borrow credit come from?",
+      points: 10,
+      options: [
+        {
+          id: "invalid_account_relationship_created_credit",
+          label: "An invalid account relationship was treated as approved collateral",
+        },
+        {
+          id: "oracle_price_feed_changed_credit",
+          label: "An oracle price feed directly inflated user credit",
+        },
+        {
+          id: "rounding_error_minted_credit",
+          label: "A rounding error minted protocol credit",
+        },
+        {
+          id: "reward_pool_rebate_created_credit",
+          label: "A reward-pool rebate created the extra credit",
+        },
+      ],
+      correctOptionId: "invalid_account_relationship_created_credit",
+      explanation:
+        "The position received credit because the protocol never proved that the supplied accounts belonged to the approved collateral configuration.",
     },
     {
       id: "q4_exploit_sequence",
@@ -157,12 +159,12 @@ export const rl1FindingQuestionnaire = {
       critical: true,
       options: [
         {
-          id: "oracle_inflate_liquidate",
-          label: "Oracle manipulation inflates collateral, then liquidates users",
+          id: "invalid_deposit_then_treasury_withdrawal",
+          label: "Invalid deposit creates credit, then real treasury funds are borrowed out",
         },
         {
-          id: "counterfeit_deposit_then_withdraw",
-          label: "Counterfeit deposit creates credit, then withdraws treasury",
+          id: "oracle_inflate_liquidate",
+          label: "Oracle manipulation inflates collateral, then liquidates users",
         },
         {
           id: "arbitrary_cpi_steal_signer",
@@ -173,37 +175,37 @@ export const rl1FindingQuestionnaire = {
           label: "Amount overflow bypasses checks, then mints reward NFTs",
         },
       ],
-      correctOptionId: "counterfeit_deposit_then_withdraw",
+      correctOptionId: "invalid_deposit_then_treasury_withdrawal",
       explanation:
-        "The exploit requires creating invalid credit from an unapproved collateral relationship, then withdrawing legitimate treasury value using that credit.",
+        "The exploit path is invalid deposit first, treasury withdrawal second. Credit is created before the real protocol value leaves the treasury.",
     },
     {
-      id: "q5_counterfeit_deposit_success",
+      id: "q5_treasury_impact",
       section: "Exploit Path Understanding",
       type: "single_choice",
-      prompt: "Why could the counterfeit deposit transaction succeed?",
+      prompt: "What proves the protocol impact is real rather than cosmetic?",
       points: 10,
       options: [
         {
-          id: "fake_source_and_fake_vault_same_mint",
-          label: "Fake source and fake vault shared one counterfeit mint",
+          id: "real_protocol_value_left_treasury",
+          label: "Real protocol value left the treasury after invalid credit was used",
         },
         {
-          id: "spl_allows_any_mint",
-          label: "SPL Token accepted different mints for the transfer",
+          id: "frontend_showed_success_toast",
+          label: "The frontend showed a success toast after the transaction",
         },
         {
-          id: "disabled_spl_validation",
-          label: "Attacker disabled SPL mint checks inside token code",
+          id: "position_credit_changed_only",
+          label: "Only the position credit changed, with no treasury movement",
         },
         {
-          id: "sol_direct_deposit",
-          label: "Treasury accepted direct SOL payment from attacker",
+          id: "logs_contained_program_success",
+          label: "The runtime logs contained a program success line",
         },
       ],
-      correctOptionId: "fake_source_and_fake_vault_same_mint",
+      correctOptionId: "real_protocol_value_left_treasury",
       explanation:
-        "The SPL transfer can succeed if the source and destination token accounts use the same mint. The protocol bug is that it grants legitimate credit without proving that this mint is the approved collateral mint.",
+        "The impact is real only when invalid credit results in actual treasury value leaving protocol custody.",
     },
     {
       id: "q6_impact_proven",
@@ -214,78 +216,69 @@ export const rl1FindingQuestionnaire = {
       critical: true,
       options: [
         {
-          id: "code_opened",
-          label: "Opening the vulnerable code file confirms treasury loss",
+          id: "only_after_invalid_credit_enables_real_withdrawal",
+          label: "Only after invalid credit enables a real treasury withdrawal",
         },
         {
-          id: "any_deposit_success",
-          label: "Any successful deposit transaction confirms full impact",
+          id: "when_code_is_inspected",
+          label: "As soon as the vulnerable instruction is identified in code",
         },
         {
-          id: "counterfeit_credit_withdraws_treasury",
-          label: "Counterfeit credit is spent to withdraw real treasury value",
+          id: "after_any_deposit_succeeds",
+          label: "As soon as any deposit transaction succeeds",
         },
         {
-          id: "success_log_only",
-          label: "Any log line showing success confirms treasury movement",
+          id: "when_ui_renders_verified_state",
+          label: "When the UI renders the verified state badge",
         },
       ],
-      correctOptionId: "counterfeit_credit_withdraws_treasury",
+      correctOptionId: "only_after_invalid_credit_enables_real_withdrawal",
       explanation:
-        "A successful transaction alone does not prove impact. Impact is proven when illegitimate credit causes unauthorized treasury value movement.",
+        "Impact is not proven by code inspection or a successful transaction alone. It is proven when invalid credit is used to move real treasury value.",
     },
     {
-      id: "q7_supporting_evidence",
+      id: "q7_evidence_source",
       section: "State and Evidence",
-      type: "multi_select",
-      prompt: "Which evidence best supports the finding?",
+      type: "single_choice",
+      prompt: "What evidence should support the final finding?",
       points: 10,
       options: [
         {
-          id: "unapproved_collateral_source",
-          label: "Deposit source was outside approved collateral config",
+          id: "transaction_and_account_evidence",
+          label: "Transaction timeline and account state evidence together",
         },
         {
-          id: "noncanonical_vault_destination",
-          label: "Destination vault was not the canonical protocol vault",
+          id: "frontend_toasts_only",
+          label: "Frontend notifications and local UI state only",
         },
         {
-          id: "position_credit_increased",
-          label: "Position credit increased after counterfeit deposit",
+          id: "source_code_only",
+          label: "Source code review alone without runtime evidence",
         },
         {
-          id: "treasury_balance_decreased",
-          label: "Treasury balance decreased after withdrawal action",
-        },
-        {
-          id: "dark_mode",
-          label: "Page interface used dark mode during reviewed action",
+          id: "wallet_signature_only",
+          label: "A wallet signature proving the attacker sent a transaction",
         },
       ],
-      correctOptionIds: [
-        "unapproved_collateral_source",
-        "noncanonical_vault_destination",
-        "position_credit_increased",
-        "treasury_balance_decreased",
-      ],
+      correctOptionId: "transaction_and_account_evidence",
       explanation:
-        "The report should connect account substitution, invalid credit assignment, and final treasury impact.",
+        "The backend expects the finding to be supported by runtime transaction evidence plus account-state changes, not by UI state alone.",
     },
     {
       id: "q8_recommended_fix",
       section: "State and Evidence",
       type: "single_choice",
       prompt: "Which remediation best addresses the vulnerability?",
-      points: 15,
+      points: 20,
       critical: true,
       options: [
         {
-          id: "increase_compute_budget",
-          label: "Increase compute budget before token transfer routing",
-        },
-        {
           id: "bind_accounts_to_approved_config",
           label: "Bind source and vault to approved mint and canonical vault",
+        },
+        {
+          id: "increase_compute_budget",
+          label: "Increase compute budget before token transfer routing",
         },
         {
           id: "hide_frontend_button",
@@ -300,134 +293,11 @@ export const rl1FindingQuestionnaire = {
       explanation:
         "The protocol must verify account relationships before assigning credit. This can include approved mint checks, canonical vault checks, PDA constraints, and ownership/authority validation.",
     },
-    {
-      id: "q9_not_proof",
-      section: "State and Evidence",
-      type: "single_choice",
-      prompt: "Which item alone is not sufficient proof that the vulnerability was exploited?",
-      points: 5,
-      options: [
-        {
-          id: "successful_log_alone",
-          label: "A successful deposit transaction log by itself",
-        },
-        {
-          id: "counterfeit_credit_assignment",
-          label: "Counterfeit deposit followed by invalid credit",
-        },
-        {
-          id: "invalid_credit_withdrawal",
-          label: "Treasury withdrawal caused by invalid account credit",
-        },
-        {
-          id: "noncanonical_vault_evidence",
-          label: "Evidence that the vault destination was non-canonical",
-        },
-      ],
-      correctOptionId: "successful_log_alone",
-      explanation:
-        "A transaction can succeed without proving unauthorized impact. The finding needs state evidence and exploit provenance.",
-    },
-    {
-      id: "q10_severity",
-      section: "Severity and Report Reasoning",
-      type: "single_choice",
-      prompt: "What severity best fits this finding in the simulated protocol?",
-      points: 5,
-      options: [
-        {
-          id: "informational_no_impact",
-          label: "Informational - no funds or protocol state affected",
-        },
-        {
-          id: "low_ui_only",
-          label: "Low - only interface display values are affected",
-        },
-        {
-          id: "high_treasury_loss",
-          label: "High - invalid credit can withdraw treasury value",
-        },
-        {
-          id: "none_expected_behavior",
-          label: "None - expected behavior with no protocol issue found",
-        },
-      ],
-      correctOptionId: "high_treasury_loss",
-      explanation:
-        "Because the exploit can lead to unauthorized treasury withdrawal, High severity is appropriate in this simulated environment.",
-    },
-    {
-      id: "q11_likelihood",
-      section: "Severity and Report Reasoning",
-      type: "single_choice",
-      prompt:
-        "Assuming an attacker can freely choose instruction accounts, what is the most reasonable likelihood rating?",
-      points: 5,
-      options: [
-        {
-          id: "low_break_spl",
-          label: "Low, because the attack requires breaking SPL Token",
-        },
-        {
-          id: "medium_high_attacker_supplied_accounts",
-          label: "Medium to High, using attacker-supplied account links",
-        },
-        {
-          id: "impossible_anchor_prevents_all",
-          label: "Impossible, because Anchor blocks all substitutions",
-        },
-        {
-          id: "informational_no_transaction",
-          label: "Informational, because no transaction is required",
-        },
-      ],
-      correctOptionId: "medium_high_attacker_supplied_accounts",
-      explanation:
-        "The exploit does not require breaking SPL Token. It abuses missing validation in the vulnerable protocol's account constraints.",
-    },
-    {
-      id: "q12_best_title",
-      section: "Severity and Report Reasoning",
-      type: "single_choice",
-      prompt: "Which title best describes the finding?",
-      points: 5,
-      options: [
-        {
-          id: "missing_constraints_counterfeit_credit",
-          label: "Missing Constraints Create Withdrawable Fake Credit",
-        },
-        {
-          id: "button_click_too_fast",
-          label: "Deposit Button Allows Repeated Fast Submission",
-        },
-        {
-          id: "compute_budget_low",
-          label: "Compute Budget Too Low During Vault Deposit Flow",
-        },
-        {
-          id: "oracle_rounding_liquidation",
-          label: "Oracle Rounding Error Allows Bad Liquidation Flow",
-        },
-      ],
-      correctOptionId: "missing_constraints_counterfeit_credit",
-      explanation:
-        "A good finding title should clearly identify the vulnerable condition and the impact.",
-    },
-    {
-      id: "q13_optional_reflection",
-      section: "Optional Reflection",
-      type: "free_text_optional",
-      prompt:
-        "In one or two sentences, explain why validating only that a token transfer succeeds is not enough for this protocol.",
-      points: 0,
-      explanation:
-        "A strong answer should mention that SPL transfer success does not prove the asset is approved collateral or that the destination is the canonical protocol vault.",
-    },
   ] satisfies QuestionnaireQuestion[],
 };
 
 export function gradeQuestionnaire(
-  questionnaire: typeof rl1FindingQuestionnaire,
+  questionnaire: QuestionnaireDefinition,
   answers: QuestionnaireAnswer[]
 ): QuestionnaireResult {
   const answerMap = new Map(

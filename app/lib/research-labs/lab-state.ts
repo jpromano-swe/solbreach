@@ -302,6 +302,28 @@ export type VerifyObjectiveResponse = {
   lab_completed?: boolean;
   report_status?: ResearchLabReportStatus;
   xp_awarded?: number;
+  evidence?: Record<string, unknown>;
+  failureReason?: string;
+  userFacingEvidence?: string[];
+};
+
+export type FindingReviewResponse = {
+  session_id?: string;
+  status?: "locked" | "draft" | "retry" | "passed";
+  findingReviewPassed?: boolean;
+  finding_review_passed?: boolean;
+  findingReviewAttempts?: number;
+  finding_review_attempts?: number;
+  failedQuestionIds?: string[];
+  failed_question_ids?: string[];
+  criticalQuestionsPassed?: boolean;
+  critical_questions_passed?: boolean;
+  score?: number;
+  feedback?: string;
+  reportUnlocked?: boolean;
+  report_unlocked?: boolean;
+  certificateUnlockable?: boolean;
+  certificate_unlockable?: boolean;
 };
 
 export async function verifyResearchLabObjective(
@@ -313,6 +335,27 @@ export async function verifyResearchLabObjective(
     {
       accessToken,
       method: "POST",
+    }
+  );
+}
+
+export async function submitResearchLabFindingReview({
+  accessToken,
+  answers,
+  sessionId,
+}: {
+  accessToken: string;
+  answers: Record<string, string>;
+  sessionId: string;
+}) {
+  return researchLabsRequest<FindingReviewResponse>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(
+      sessionId
+    )}/finding-review/submit`,
+    {
+      accessToken,
+      method: "POST",
+      body: JSON.stringify({ answers }),
     }
   );
 }
@@ -373,6 +416,14 @@ export type TransactionResult = {
   executionStatus: "success" | "failure";
   execution_status: "success" | "failure";
   logs: string[];
+  accountDeltas?: Array<Record<string, unknown>>;
+  account_deltas?: Array<Record<string, unknown>>;
+  evidenceRefs?: string[];
+  evidence_refs?: string[];
+  protocolState?: Record<string, unknown>;
+  submittedAt?: string;
+  submitted_at?: string;
+  userFacingEvidence?: string[];
 };
 
 export async function getResearchLabAccounts(

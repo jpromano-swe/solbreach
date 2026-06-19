@@ -104,6 +104,11 @@ export function useResearchLabTransactions({
         );
         const enriched: EnrichedTransactionResult = {
           ...result,
+          instructionType:
+            result.instructionType ?? result.instruction_type ?? "",
+          executionStatus:
+            result.executionStatus ?? result.execution_status ?? "failure",
+          logs: result.logs ?? [],
           inputs: enrichedInputs,
         };
 
@@ -116,7 +121,7 @@ export function useResearchLabTransactions({
           beforeRunSequence
         );
 
-        if (result.executionStatus === "success") {
+        if (enriched.executionStatus === "success") {
           toast.success(
             payload.action_type === "DEPOSIT_COLLATERAL"
               ? "Deposit submitted to sandbox"
@@ -124,7 +129,7 @@ export function useResearchLabTransactions({
           );
           await fetchAccountEvidence(auth);
         } else {
-          showTransactionFailureToast(result.logs?.at(-1));
+          showTransactionFailureToast(enriched.logs.at(-1));
         }
 
         if (nextSession.terminalLines.length > session.terminalLines.length) {
@@ -190,6 +195,8 @@ export function useResearchLabTransactions({
       } else {
         toast.error("Exploit proof did not verify", {
           description:
+            result.failureReason ??
+            result.userFacingEvidence?.[0] ??
             "Review the runtime output and transaction evidence before trying again.",
         });
       }

@@ -9,6 +9,12 @@ import {
   type QuestionnaireAnswer,
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
+import type { Level1AuthSession } from "../../lib/levels/level1-backend";
+import {
+  submitResearchLabFindingReview,
+  type ResearchLabReport,
+  type ResearchLabSession,
+} from "../../lib/research-labs/lab-state";
 import type { ReviewMode } from "./types";
 import {
   getAnswerForQuestion,
@@ -19,15 +25,26 @@ import {
 } from "./report-utils";
 
 type UseFindingReviewOptions = {
+  getAuth: () => Promise<Level1AuthSession>;
+  loadReport: (
+    auth: Level1AuthSession,
+    currentSession: ResearchLabSession
+  ) => Promise<ResearchLabReport>;
   onOpenReportTab: () => void;
+  onSessionChange: (session: ResearchLabSession) => void;
   onPopulateReportDefaults: () => void;
   onResetAuditReportStage: () => void;
+  session: ResearchLabSession | null;
 };
 
 export function useFindingReview({
+  getAuth,
+  loadReport,
   onOpenReportTab,
+  onSessionChange,
   onPopulateReportDefaults,
   onResetAuditReportStage,
+  session,
 }: UseFindingReviewOptions) {
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState<QuestionnaireAnswer[]>([]);
   const [questionnaireResult, setQuestionnaireResult] = useState<QuestionnaireResult | null>(null);
@@ -108,7 +125,7 @@ export function useFindingReview({
     onOpenReportTab();
   }, [onOpenReportTab]);
 
-  const submitQuestionnaire = useCallback(() => {
+  const submitQuestionnaire = useCallback(async () => {
     const unansweredQuestions = visibleReviewQuestions.filter(
       (question) =>
         isRequiredQuestion(question) &&
@@ -123,32 +140,86 @@ export function useFindingReview({
       return;
     }
 
+    if (!session) {
+      toast.error("Open an active Research Lab session before submitting the review.");
+      return;
+    }
+
     const result = gradeQuestionnaire(
       rl1FindingQuestionnaire,
       questionnaireAnswers
     );
-    const incorrectIds = getIncorrectRequiredQuestionIds(result);
+    const auth = await getAuth();
+    const backendAnswers = serializeQuestionnaireAnswers(questionnaireAnswers);
 
-    setQuestionnaireResult(result);
-    setRetryQuestionIds(incorrectIds);
-    setReviewAttempts((attempts) => attempts + 1);
+    try {
+      const review = await submitResearchLabFindingReview({
+        accessToken: auth.accessToken,
+        answers: backendAnswers,
+        sessionId: session.sessionId,
+      });
+      const incorrectIds =
+        review.failedQuestionIds ??
+        review.failed_question_ids ??
+        getIncorrectRequiredQuestionIds(result);
+      const attempts =
+        review.findingReviewAttempts ??
+        review.finding_review_attempts ??
+        reviewAttempts + 1;
+      const passed = Boolean(
+        review.findingReviewPassed ?? review.finding_review_passed
+      );
 
-    if (result.passed) {
-      onPopulateReportDefaults();
-      setReviewMode("full");
+      setQuestionnaireResult(result);
+      setRetryQuestionIds(incorrectIds);
+      setReviewAttempts(attempts);
+
+      const nextSession = {
+        ...session,
+        certificateUnlockable:
+          review.certificateUnlockable ??
+          review.certificate_unlockable ??
+          session.certificateUnlockable,
+        findingReviewPassed: passed,
+        reportUnlocked:
+          review.reportUnlocked ??
+          review.report_unlocked ??
+          session.reportUnlocked,
+      };
+      onSessionChange(nextSession);
+
+      if (passed) {
+        await loadReport(auth, nextSession);
+        onPopulateReportDefaults();
+        setReviewMode("full");
+        setReviewIndex(0);
+        setReportOpened(false);
+        toast.success(
+          review.feedback ?? "Finding review passed. Final report unlocked."
+        );
+        return;
+      }
+
+      setReviewMode("retry");
       setReviewIndex(0);
       setReportOpened(false);
-      toast.success("Finding review passed. Final report unlocked.");
-      return;
+      toast.error("Finding review needs revision", {
+        description:
+          review.feedback ?? "Retry only the missed required questions.",
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     }
-
-    setReviewMode("retry");
-    setReviewIndex(0);
-    setReportOpened(false);
-    toast.error("Finding review needs revision", {
-      description: "Retry only the missed required questions.",
-    });
-  }, [onPopulateReportDefaults, questionnaireAnswers, visibleReviewQuestions]);
+  }, [
+    getAuth,
+    loadReport,
+    onPopulateReportDefaults,
+    onSessionChange,
+    questionnaireAnswers,
+    reviewAttempts,
+    session,
+    visibleReviewQuestions,
+  ]);
 
   const retryQuestionnaire = useCallback(() => {
     if (questionnaireResult && !retryQuestionIds.length) {
@@ -183,4 +254,29 @@ export function useFindingReview({
     submitQuestionnaire,
     updateQuestionnaireAnswer,
   };
+}
+
+function serializeQuestionnaireAnswers(answers: QuestionnaireAnswer[]) {
+  return Object.fromEntries(
+    answers.flatMap((answer) => {
+      if ("selectedOptionId" in answer) {
+        return [[answer.questionId, answer.selectedOptionId]];
+      }
+      if ("selectedOptionIds" in answer) {
+        return [[answer.questionId, [...answer.selectedOptionIds].sort().join(",")]];
+      }
+      return [];
+    })
+  );
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Finding review request failed.";
+  }
 }

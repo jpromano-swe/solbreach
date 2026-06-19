@@ -659,7 +659,14 @@ function ReportForm({
   }
 
   if (isAccepted || auditReportStage === "SUBMITTED") {
-    return <AuditReportSubmitted />;
+    const submittedPreview = buildAuditReportPreview(fields);
+
+    return (
+      <AuditReportSubmitted
+        report={submittedPreview}
+        feedback={report?.feedback ?? null}
+      />
+    );
   }
 
   if (auditReportStage === "PREVIEW") {
@@ -966,18 +973,47 @@ function AuditReportPreviewScreen({
   );
 }
 
-function AuditReportSubmitted() {
+function AuditReportSubmitted({
+  feedback,
+  report,
+}: {
+  feedback: string | null;
+  report: AuditReportPreview;
+}) {
   return (
-    <section className="flex min-h-[440px] items-center justify-center text-center">
-      <div className="max-w-xl">
-        <p className="flex items-center justify-center gap-2 text-2xl font-semibold text-white">
+    <section className="w-full">
+      <div className="rounded-2xl border border-[#14f195]/20 bg-[#14f195]/8 p-5">
+        <p className="flex items-center gap-2 text-lg font-semibold text-white">
           <Check className="h-5 w-5 text-[#14f195]" />
           Audit Report Submitted
         </p>
-        <p className="mt-3 text-sm leading-6 text-zinc-400">
+        <p className="mt-3 text-sm leading-6 text-zinc-300">
           Research Lab 1 completion is recorded. The final audit report has been submitted.
         </p>
+        {feedback ? (
+          <p className="mt-2 text-sm leading-6 text-[#8fffd0]">{feedback}</p>
+        ) : null}
       </div>
+      <article className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-6">
+        <h4 className="text-2xl font-semibold tracking-[-0.03em] text-white">
+          {report.title}
+        </h4>
+        <div className="mt-5 grid gap-4 border-y border-white/10 py-4 sm:grid-cols-3">
+          <ReportFact label="Severity" value={report.severity} />
+          <ReportFact label="Likelihood" value={report.likelihood} />
+          <ReportFact label="Category" value={report.category} />
+        </div>
+        <div className="mt-6 space-y-6">
+          <AuditReportSection title="Description" body={report.description} />
+          <AuditReportSection title="Root Cause" body={report.rootCause} />
+          <AuditReportSection title="Proof of Impact" body={report.proofOfImpact} />
+          <AuditReportSection title="Evidence" body={report.evidence} />
+          <AuditReportSection
+            title="Recommended Mitigation"
+            body={report.recommendedMitigation}
+          />
+        </div>
+      </article>
     </section>
   );
 }

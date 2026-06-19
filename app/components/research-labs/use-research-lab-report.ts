@@ -40,41 +40,50 @@ export function useResearchLabReport({
   const [isReportSaving, setIsReportSaving] = useState(false);
   const [isReportSubmitting, setIsReportSubmitting] = useState(false);
 
-  const populateReportDefaults = useCallback(() => {
-    setReportFields((fields) => ({
+  const resolveReportFields = useCallback(
+    (fields?: Partial<ResearchLabReportFields> | null) => ({
+      ...emptyReportFields,
       ...fields,
       titleOptionId:
-        fields.titleOptionId ?? suggestedReportFieldDefaults.titleOptionId ?? null,
+        fields?.titleOptionId ??
+        suggestedReportFieldDefaults.titleOptionId ??
+        null,
       categoryOptionId:
-        fields.categoryOptionId ??
+        fields?.categoryOptionId ??
         suggestedReportFieldDefaults.categoryOptionId ??
         null,
       severityOptionId:
-        fields.severityOptionId ??
+        fields?.severityOptionId ??
         suggestedReportFieldDefaults.severityOptionId ??
         null,
       likelihoodOptionId:
-        fields.likelihoodOptionId ??
+        fields?.likelihoodOptionId ??
         suggestedReportFieldDefaults.likelihoodOptionId ??
         null,
       rootCauseOptionId:
-        fields.rootCauseOptionId ??
+        fields?.rootCauseOptionId ??
         suggestedReportFieldDefaults.rootCauseOptionId ??
         null,
       proofOfImpactOptionId:
-        fields.proofOfImpactOptionId ??
+        fields?.proofOfImpactOptionId ??
         suggestedReportFieldDefaults.proofOfImpactOptionId ??
         null,
       recommendedMitigationOptionId:
-        fields.recommendedMitigationOptionId ??
+        fields?.recommendedMitigationOptionId ??
         suggestedReportFieldDefaults.recommendedMitigationOptionId ??
         null,
       verifiedEvidenceRefs:
-        fields.verifiedEvidenceRefs.length
+        fields?.verifiedEvidenceRefs?.length
           ? fields.verifiedEvidenceRefs
           : session?.verifiedEvidenceRefs ?? [],
-    }));
-  }, [session?.verifiedEvidenceRefs]);
+      optionalNotes: fields?.optionalNotes ?? "",
+    }),
+    [session?.verifiedEvidenceRefs]
+  );
+
+  const populateReportDefaults = useCallback(() => {
+    setReportFields((fields) => resolveReportFields(fields));
+  }, [resolveReportFields]);
 
   const resetReport = useCallback(() => {
     setReport(null);
@@ -89,27 +98,13 @@ export function useResearchLabReport({
         currentSession.sessionId
       );
       setReport(nextReport);
-      setReportFields(
-        nextReport.fields
-          ? {
-              ...emptyReportFields,
-              ...nextReport.fields,
-              verifiedEvidenceRefs:
-                nextReport.fields.verifiedEvidenceRefs.length
-                  ? nextReport.fields.verifiedEvidenceRefs
-                  : currentSession.verifiedEvidenceRefs ?? [],
-            }
-          : {
-              ...emptyReportFields,
-              verifiedEvidenceRefs: currentSession.verifiedEvidenceRefs ?? [],
-            }
-      );
+      setReportFields(resolveReportFields(nextReport.fields));
       setAuditReportStage(
         nextReport.status === "accepted" ? "SUBMITTED" : "BUILDER"
       );
       return nextReport;
     },
-    []
+    [resolveReportFields]
   );
 
   const saveReportDraft = useCallback(async () => {
@@ -117,18 +112,14 @@ export function useResearchLabReport({
     setIsReportSaving(true);
     try {
       const auth = await getAuth();
+      const resolvedFields = resolveReportFields(reportFields);
       const nextReport = await saveResearchLabReportDraft({
         accessToken: auth.accessToken,
-        fields: {
-          ...reportFields,
-          verifiedEvidenceRefs:
-            reportFields.verifiedEvidenceRefs.length
-              ? reportFields.verifiedEvidenceRefs
-              : session.verifiedEvidenceRefs ?? [],
-        },
+        fields: resolvedFields,
         sessionId: session.sessionId,
       });
       setReport(nextReport);
+      setReportFields(resolveReportFields(nextReport.fields ?? resolvedFields));
       toast.message("Report draft saved");
       return nextReport;
     } catch (error) {
@@ -137,7 +128,7 @@ export function useResearchLabReport({
     } finally {
       setIsReportSaving(false);
     }
-  }, [getAuth, reportFields, session]);
+  }, [getAuth, reportFields, resolveReportFields, session]);
 
   const submitReport = useCallback(async () => {
     if (!activeLab || !session || isReportSubmitting) return;
@@ -149,50 +140,55 @@ export function useResearchLabReport({
     setIsReportSubmitting(true);
     try {
       const auth = await getAuth();
+      const resolvedFields = resolveReportFields(reportFields);
       const saved = await saveResearchLabReportDraft({
         accessToken: auth.accessToken,
-        fields: {
-          ...reportFields,
-          verifiedEvidenceRefs:
-            reportFields.verifiedEvidenceRefs.length
-              ? reportFields.verifiedEvidenceRefs
-              : session.verifiedEvidenceRefs ?? [],
-        },
+        fields: resolvedFields,
         sessionId: session.sessionId,
       });
       setReport(saved);
+      setReportFields(resolveReportFields(saved.fields ?? resolvedFields));
 
       const submitted = await submitResearchLabReport(
         auth.accessToken,
         session.sessionId
       );
-      setReport(submitted);
+      const hydratedSubmitted = {
+        ...submitted,
+        fields: submitted.fields ?? saved.fields ?? resolvedFields,
+      };
+      setReport(hydratedSubmitted);
+      setReportFields(resolveReportFields(hydratedSubmitted.fields));
       onSessionChange({
         ...session,
         certificateUnlockable:
-          submitted.status === "accepted" ? true : session.certificateUnlockable,
+          hydratedSubmitted.status === "accepted"
+            ? true
+            : session.certificateUnlockable,
         findingReviewPassed:
-          submitted.status === "accepted" ? true : session.findingReviewPassed,
-        labCompleted: Boolean(submitted.labCompleted),
-        objectiveProgress: submitted.labCompleted
+          hydratedSubmitted.status === "accepted"
+            ? true
+            : session.findingReviewPassed,
+        labCompleted: Boolean(hydratedSubmitted.labCompleted),
+        objectiveProgress: hydratedSubmitted.labCompleted
           ? activeLab.objectives.length
           : session.objectiveProgress,
         reportUnlocked: true,
-        reportStatus: submitted.status,
+        reportStatus: hydratedSubmitted.status,
         stage: "report",
-        xpAwarded: submitted.xpAwarded,
+        xpAwarded: hydratedSubmitted.xpAwarded,
       });
 
-      if (submitted.status === "accepted" && submitted.labCompleted) {
+      if (hydratedSubmitted.status === "accepted" && hydratedSubmitted.labCompleted) {
         setAuditReportStage("SUBMITTED");
         toast.success(
-          `Report accepted. ${submitted.xpAwarded ?? activeLab.xpReward} XP awarded.`
+          `Report accepted. ${hydratedSubmitted.xpAwarded ?? activeLab.xpReward} XP awarded.`
         );
       } else {
         setAuditReportStage("BUILDER");
         toast.error("Report needs revision", {
           description:
-            submitted.feedback ??
+            hydratedSubmitted.feedback ??
             "The report needs clearer vulnerability, impact, and remediation details.",
         });
       }
@@ -207,6 +203,7 @@ export function useResearchLabReport({
     isReportSubmitting,
     onSessionChange,
     reportFields,
+    resolveReportFields,
     session,
   ]);
 

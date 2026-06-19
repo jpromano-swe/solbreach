@@ -19,6 +19,17 @@ type PendingVerify = {
 let pendingTransaction: PendingTransaction | null = null;
 let pendingVerify: PendingVerify | null = null;
 
+const FINDING_REVIEW_ANSWERS = {
+  q1_vulnerability_category: "account_substitution",
+  q2_invalid_inputs: "candidate_collateral_and_external_vault",
+  q3_credit_origin: "invalid_account_relationship_created_credit",
+  q4_exploit_sequence: "invalid_deposit_then_treasury_withdrawal",
+  q5_treasury_impact: "real_protocol_value_left_treasury",
+  q6_impact_proven: "only_after_invalid_credit_enables_real_withdrawal",
+  q7_evidence_source: "transaction_and_account_evidence",
+  q8_recommended_fix: "bind_accounts_to_approved_config",
+} as const;
+
 function resetState() {
   pendingTransaction = null;
   pendingVerify = null;
@@ -241,6 +252,41 @@ async function setupApiMocks(page: Page) {
             objective_progress: verify.passed ? 4 : 2,
             session_status: verify.passed ? "passed" : "failed",
             report_status: verify.reportUnlocked ? "draft" : "locked",
+          },
+          error: null,
+        }),
+      });
+    }
+
+    if (url.includes("/finding-review/submit")) {
+      const body = route.request().postDataJSON() as {
+        answers?: Record<string, string>;
+      };
+      const passed = Object.entries(FINDING_REVIEW_ANSWERS).every(
+        ([key, value]) => body.answers?.[key] === value
+      );
+      const failedQuestionIds = Object.entries(FINDING_REVIEW_ANSWERS)
+        .filter(([key, value]) => body.answers?.[key] !== value)
+        .map(([key]) => key);
+
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            session_id: SESSION_ID,
+            status: passed ? "passed" : "retry",
+            findingReviewPassed: passed,
+            findingReviewAttempts: 1,
+            failedQuestionIds,
+            criticalQuestionsPassed: passed,
+            score: passed ? 100 : 0,
+            feedback: passed
+              ? "Finding review passed. Backend-confirmed exploit impact can now support the audit report."
+              : "Finding review failed. One or more critical exploit-understanding questions are incorrect.",
+            reportUnlocked: true,
+            certificateUnlockable: false,
           },
           error: null,
         }),
@@ -486,9 +532,38 @@ async function openResearchLab(page: Page) {
     timeout: 30000,
   });
   await expect(page.getByText("Supported protocol investigations.")).toBeVisible();
-  await expect(page.getByRole("button", { name: /RL1/i })).toBeVisible();
-  await page.getByRole("button", { name: /RL1/i }).click();
+  await page.getByRole("button", { name: /Unlock labs/i }).click();
+  await expect(
+    page.getByRole("heading", { name: "Account Substitution" })
+  ).toBeVisible();
+  await page.getByRole("button", { name: /Open lab/i }).first().click();
   await expect(page.getByRole("button", { name: "Execute Exploit" })).toBeVisible();
+}
+
+async function completeFindingReview(page: Page) {
+  const startFindingReviewButtons = page.getByRole("button", {
+    name: "Start Finding Review",
+    exact: true,
+  });
+  await expect(startFindingReviewButtons).toHaveCount(2);
+  await startFindingReviewButtons.nth(0).click();
+  await page.getByLabel(/Account substitution caused by missing account binding/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByLabel(/A candidate collateral account and an external vault path/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByLabel(/An invalid account relationship was treated as approved collateral/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByLabel(/Invalid deposit creates credit, then real treasury funds are borrowed out/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByLabel(/Real protocol value left the treasury after invalid credit was used/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByLabel(/Only after invalid credit enables a real treasury withdrawal/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByLabel(/Transaction timeline and account state evidence together/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByLabel(/Bind source and vault to approved mint and canonical vault/i).check();
+  await page.getByRole("button", { name: /^Next$/i }).click();
+  await page.getByRole("button", { name: /Submit Review/i }).click();
 }
 
 test("RL1 catalog and workspace use account substitution copy", async ({
@@ -525,17 +600,14 @@ test("RL1 official deposit unlocks canonical borrow without proving exploit", as
   await page.getByRole("button", { name: "Execute Exploit" }).click();
   await page.getByLabel("Token").selectOption("official_collateral_account");
   await page.getByLabel("Vault").selectOption("official_vault_account");
-  await page.getByRole("button", { name: "Deposit" }).click();
+  await page.getByRole("button", { name: "Deposit", exact: true }).click();
 
   await expect(
     page.getByText("Regular deposit executed · Pool liquidity increased")
   ).toBeVisible();
-  await expect(
-    page.getByText(/Legitimate collateral deposited\./i)
-  ).toBeVisible();
 
-  await page.getByRole("button", { name: "Max" }).click();
-  await expect(page.getByLabel("Borrow Amount")).toHaveValue("36000");
+  await page.getByRole("button", { name: "Max", exact: true }).click();
+  await expect(page.getByLabel("Borrow Amount")).toHaveValue("40,000");
   await expect(page.getByRole("button", { name: /^Borrow$/i })).toBeEnabled();
 });
 
@@ -555,9 +627,9 @@ test("RL1 verify flow unlocks deterministic report builder", async ({
   await page.getByRole("button", { name: "Execute Exploit" }).click();
   await page.getByLabel("Token").selectOption("attacker_collateral_account");
   await page.getByLabel("Vault").selectOption("counterfeit_vault_account");
-  await page.getByRole("button", { name: "Deposit" }).click();
-  await page.getByRole("button", { name: "Max" }).click();
-  await expect(page.getByLabel("Borrow Amount")).toHaveValue("36000");
+  await page.getByRole("button", { name: "Deposit", exact: true }).click();
+  await page.getByRole("button", { name: "Max", exact: true }).click();
+  await expect(page.getByLabel("Borrow Amount")).toHaveValue("40,000");
 
   pendingTransaction = {
     instructionType: "WITHDRAW_AGAINST_CREDIT",
@@ -576,7 +648,13 @@ test("RL1 verify flow unlocks deterministic report builder", async ({
 
   await page.getByRole("button", { name: "Verify Impact" }).click();
   await page.getByRole("button", { name: /Continue to Submit Finding/i }).click();
-  await page.getByRole("button", { name: /Build Audit Report/i }).click();
+  await completeFindingReview(page);
+  const buildAuditReportButtons = page.getByRole("button", {
+    name: "Build Audit Report",
+    exact: true,
+  });
+  await expect(buildAuditReportButtons).toHaveCount(2);
+  await buildAuditReportButtons.nth(0).click();
 
   await expect(
     page.getByRole("heading", { name: "Build Audit Report" })

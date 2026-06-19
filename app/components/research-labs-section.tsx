@@ -160,9 +160,13 @@ export function ResearchLabsSection() {
     submitQuestionnaire,
     updateQuestionnaireAnswer,
   } = useFindingReview({
+    getAuth: getActiveAuth,
+    loadReport,
     onOpenReportTab: () => setActiveTab("report"),
+    onSessionChange: setSession,
     onPopulateReportDefaults: populateReportDefaults,
     onResetAuditReportStage: () => setAuditReportStage("BUILDER"),
+    session,
   });
 
   const activeFile = useMemo(() => {
@@ -192,7 +196,6 @@ export function ResearchLabsSection() {
   );
   const findingReviewPassed = Boolean(
     session?.findingReviewPassed ??
-      questionnaireResult?.passed ??
       (report?.status === "accepted" || session?.labCompleted)
   );
   const resolvedActiveTab = AVAILABLE_TABS.includes(activeTab)
