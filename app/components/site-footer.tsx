@@ -21,10 +21,10 @@ export function SiteFooter({ repositoryUrl }: { repositoryUrl: string }) {
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/70 px-4 transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="Open SolBreach GitHub repository"
+            aria-label="Open SolBreach documentation"
           >
             <GitHubIcon />
-            <span>GitHub</span>
+            <span>Documentation</span>
           </a>
         </div>
       </div>
