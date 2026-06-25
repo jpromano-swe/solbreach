@@ -41,7 +41,7 @@ const DEFAULT_LEVEL_3_BOUNTY_VAULT = "";
 const DEFAULT_LEVEL_3_EXTERNAL_PROGRAM = "";
 const DEFAULT_LEVEL_3_REWARD_ACCOUNT = "";
 const DEFAULT_LEVEL_3_REWARD_MINT = "";
-const SOLBREACH_REPOSITORY_URL = "https://github.com/jpromano-swe/solbreach";
+const SOLBREACH_DOCUMENTATION_URL = "https://solbreach.gitbook.io/documentation";
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -358,8 +358,7 @@ export default function Home() {
             <div className="space-y-8">
               {activeLevelsView === "landing" ? (
                 <LandingPageSection
-                  repositoryUrl={SOLBREACH_REPOSITORY_URL}
-                  onPlayNow={() => setActiveLevelsView("level0")}
+                  repositoryUrl={SOLBREACH_DOCUMENTATION_URL}
                 />
               ) : activeGuide && activeLevelStatus ? (
                 <div className="space-y-8">
@@ -508,7 +507,7 @@ export default function Home() {
           )}
         </main>
 
-        <SiteFooter repositoryUrl={SOLBREACH_REPOSITORY_URL} />
+        <SiteFooter repositoryUrl={SOLBREACH_DOCUMENTATION_URL} />
       </div>
     </div>
   );
