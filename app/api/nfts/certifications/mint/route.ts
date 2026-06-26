@@ -8,7 +8,10 @@ import {
 
 export const runtime = "nodejs";
 
-const SOLBREACH_BACKEND_URL = "https://1t2iexn742.execute-api.sa-east-1.amazonaws.com/backend-testing";
+const SOLBREACH_BACKEND_URL =
+  process.env.SOLBREACH_BACKEND_URL?.trim() ||
+  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
+  "https://1t2iexn742.execute-api.sa-east-1.amazonaws.com/backend-testing";
 const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 type MintRequestBody = {
