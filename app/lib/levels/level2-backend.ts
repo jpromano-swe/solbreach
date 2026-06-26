@@ -5,6 +5,7 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
+import { applyNgrokBypassHeader } from "../backend/ngrok";
 import { SOLBREACH_BACKEND_URL } from "./level1-backend";
 import type { WalletSession } from "../wallet/types";
 
@@ -96,6 +97,8 @@ async function backendRequest<T>(
   if (accessToken) {
     headers.set("authorization", `Bearer ${accessToken}`);
   }
+
+  applyNgrokBypassHeader(headers, SOLBREACH_BACKEND_URL);
 
   const response = await fetch(`${SOLBREACH_BACKEND_URL}${path}`, {
     ...fetchOptions,

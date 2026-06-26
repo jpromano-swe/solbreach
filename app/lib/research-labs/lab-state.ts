@@ -1,3 +1,4 @@
+import { applyNgrokBypassHeader } from "../backend/ngrok";
 import { SOLBREACH_BACKEND_URL } from "../levels/level1-backend";
 
 export type ResearchLabStatus =
@@ -571,6 +572,7 @@ async function researchLabsRequest<T>(
     headers.set("content-type", "application/json");
   }
   headers.set("authorization", `Bearer ${accessToken}`);
+  applyNgrokBypassHeader(headers, SOLBREACH_BACKEND_URL);
 
   const response = await fetch(`${SOLBREACH_BACKEND_URL}${path}`, {
     ...fetchOptions,

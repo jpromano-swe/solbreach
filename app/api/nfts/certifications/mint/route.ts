@@ -5,6 +5,7 @@ import {
   mintCertificateAsset,
   type MintCertificateCluster,
 } from "@/app/lib/nft/certification-server";
+import { applyNgrokBypassHeader } from "@/app/lib/backend/ngrok";
 
 export const runtime = "nodejs";
 
@@ -95,12 +96,15 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
     };
   }
 
+  const headers = new Headers({
+    authorization: `Bearer ${accessToken}`,
+  });
+  applyNgrokBypassHeader(headers, SOLBREACH_BACKEND_URL);
+
   const response = await fetch(
     `${SOLBREACH_BACKEND_URL}/api/v1/levels/${LEVEL_1_BACKEND_ID}/status`,
     {
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-      },
+      headers,
     }
   );
 
