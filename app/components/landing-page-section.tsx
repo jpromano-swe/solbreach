@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import {
+  ArrowRight,
   Cpu,
   FileCode2,
   LockKeyhole,
@@ -41,8 +42,12 @@ const LANDING_RUST_CODE_KEYWORDS = new Set([
 ]);
 
 export function LandingPageSection({
+  enableAppEntry,
+  onPlayNow,
   repositoryUrl,
 }: {
+  enableAppEntry: boolean;
+  onPlayNow: () => void;
   repositoryUrl: string;
 }) {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
@@ -117,14 +122,28 @@ pub struct DepositTokens<'info> {
           and earn verifiable certifications.
         </p>
 
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 shadow-none opacity-90"
-        >
-          Beta Test Closed
-        </button>
+        {enableAppEntry ? (
+          <button
+            type="button"
+            onClick={onPlayNow}
+            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Play Now
+            <ArrowRight
+              className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+              aria-hidden="true"
+            />
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 shadow-none opacity-90"
+          >
+            Beta Test Closed
+          </button>
+        )}
       </div>
 
       <HeroProductCarousel
@@ -146,14 +165,22 @@ pub struct DepositTokens<'info> {
       </div>
 
       <FeatureShowcaseSection />
-      <LandingCtaSection repositoryUrl={repositoryUrl} />
+      <LandingCtaSection
+        enableAppEntry={enableAppEntry}
+        onGetStarted={onPlayNow}
+        repositoryUrl={repositoryUrl}
+      />
     </section>
   );
 }
 
 function LandingCtaSection({
+  enableAppEntry,
+  onGetStarted,
   repositoryUrl,
 }: {
+  enableAppEntry: boolean;
+  onGetStarted: () => void;
   repositoryUrl: string;
 }) {
   return (
@@ -179,14 +206,28 @@ function LandingCtaSection({
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 opacity-90"
-          >
-            Beta Test Closed
-          </button>
+          {enableAppEntry ? (
+            <button
+              type="button"
+              onClick={onGetStarted}
+              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Get Started
+              <ArrowRight
+                className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+                aria-hidden="true"
+              />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 opacity-90"
+            >
+              Beta Test Closed
+            </button>
+          )}
           <a
             href={repositoryUrl}
             target="_blank"

@@ -43,6 +43,8 @@ const DEFAULT_LEVEL_3_EXTERNAL_PROGRAM = "";
 const DEFAULT_LEVEL_3_REWARD_ACCOUNT = "";
 const DEFAULT_LEVEL_3_REWARD_MINT = "";
 const SOLBREACH_DOCUMENTATION_URL = "https://solbreach.gitbook.io/documentation";
+const ENABLE_APP_ENTRY =
+  process.env.NEXT_PUBLIC_ENABLE_APP_ENTRY === "true";
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -367,6 +369,8 @@ export default function Home() {
             <div className="space-y-8">
               {activeLevelsView === "landing" ? (
                 <LandingPageSection
+                  enableAppEntry={ENABLE_APP_ENTRY}
+                  onPlayNow={() => setActiveLevelsView("level0")}
                   repositoryUrl={SOLBREACH_DOCUMENTATION_URL}
                 />
               ) : activeGuide && activeLevelStatus ? (
