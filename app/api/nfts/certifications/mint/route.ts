@@ -9,15 +9,20 @@ import { applyNgrokBypassHeader } from "@/app/lib/backend/ngrok";
 
 export const runtime = "nodejs";
 
-const SOLBREACH_BACKEND_URL =
-  process.env.SOLBREACH_BACKEND_URL?.trim() ||
-  process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+function getSolbreachBackendUrl() {
+  const backendUrl =
+    process.env.SOLBREACH_BACKEND_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
-if (!SOLBREACH_BACKEND_URL) {
-  throw new Error(
-    "SOLBREACH_BACKEND_URL or NEXT_PUBLIC_API_BASE_URL must be configured."
-  );
+  if (!backendUrl) {
+    throw new Error(
+      "SOLBREACH_BACKEND_URL or NEXT_PUBLIC_API_BASE_URL must be configured."
+    );
+  }
+
+  return backendUrl;
 }
+
 const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 type MintRequestBody = {
@@ -89,6 +94,8 @@ function publicBaseUrl(request: NextRequest) {
 }
 
 async function canMintBackendLevel1Certificate(accessToken: unknown) {
+  const backendUrl = getSolbreachBackendUrl();
+
   if (typeof accessToken !== "string" || !accessToken.trim()) {
     return {
       completed: false,
@@ -99,10 +106,10 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
   const headers = new Headers({
     authorization: `Bearer ${accessToken}`,
   });
-  applyNgrokBypassHeader(headers, SOLBREACH_BACKEND_URL);
+  applyNgrokBypassHeader(headers, backendUrl);
 
   const response = await fetch(
-    `${SOLBREACH_BACKEND_URL}/api/v1/levels/${LEVEL_1_BACKEND_ID}/status`,
+    `${backendUrl}/api/v1/levels/${LEVEL_1_BACKEND_ID}/status`,
     {
       headers,
     }
