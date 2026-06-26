@@ -7,9 +7,13 @@ import {
 } from "@solana/web3.js";
 import type { WalletSession } from "../wallet/types";
 
-export const SOLBREACH_BACKEND_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
-  "https://1t2iexn742.execute-api.sa-east-1.amazonaws.com/backend-testing";
+const envApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+if (!envApiBaseUrl) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured.");
+}
+
+export const SOLBREACH_BACKEND_URL = envApiBaseUrl;
 export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
