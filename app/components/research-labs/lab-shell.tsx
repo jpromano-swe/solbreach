@@ -188,10 +188,15 @@ function SandboxStatusPill({ status }: { status: SandboxStatus }) {
   const live = status === "READY" || status === "RUNNING";
   return (
     <span
-      className={`text-xs font-medium ${
+      className={`inline-flex items-center gap-2 text-xs font-medium ${
         live ? "text-[#8fffd0]" : "text-zinc-400"
       }`}
     >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${
+          live ? "bg-[#14f195]" : "bg-zinc-500"
+        }`}
+      />
       Sandbox {formatShellValue(status.toLowerCase())}
     </span>
   );
