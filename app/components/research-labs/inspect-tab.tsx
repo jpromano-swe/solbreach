@@ -195,7 +195,7 @@ function AccountsTab({
       <div className="mb-5 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">Protocol State</p>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
-          Inspect the accounts involved in the current hypothesis. State changes appear after backend verification.
+          Inspect the accounts involved in the program.
         </p>
       </div>
       <div className={`grid gap-4 ${compact ? "grid-cols-1" : "xl:grid-cols-2 2xl:grid-cols-3"}`}>
@@ -206,7 +206,7 @@ function AccountsTab({
                 <p className="text-sm font-semibold text-white">{account.label}</p>
                 <p className="mt-1 font-mono text-xs text-zinc-500">{account.address}</p>
               </div>
-              <span className="rounded-full border border-[#14f195]/20 bg-[#14f195]/8 px-2.5 py-1 text-[11px] text-[#8fffd0]">
+              <span className="text-[11px] text-[#8fffd0]">
                 Visible
               </span>
             </div>

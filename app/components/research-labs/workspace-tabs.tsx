@@ -148,9 +148,6 @@ export function WorkspaceTabs({
             </button>
           ))}
       </div>
-      <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-xs text-zinc-500">
-        Finding unlocks after verified impact
-      </span>
     </div>
   );
 }
