@@ -124,7 +124,7 @@ export function WorkspaceTabs({
     { id: "inspect", label: "Inspect", icon: <Code2 className="h-4 w-4" /> },
     { id: "exploit", label: "Execute Exploit", icon: <Play className="h-4 w-4" /> },
     { id: "verify", label: "Evidence Review", icon: <ShieldCheck className="h-4 w-4" /> },
-    { id: "report", label: "Submit Finding", icon: <ScrollText className="h-4 w-4" /> },
+    { id: "report", label: "Report Finding", icon: <ScrollText className="h-4 w-4" /> },
   ];
 
   return (

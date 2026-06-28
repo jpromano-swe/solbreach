@@ -131,7 +131,7 @@ function InvestigationStepper({ phase }: { phase: LabPhase }) {
     { id: "INSPECT", label: "Inspect" },
     { id: "EXECUTE_EXPLOIT", label: "Execute Exploit" },
     { id: "VERIFY_IMPACT", label: "Evidence Review" },
-    { id: "SUBMIT_FINDING", label: "Submit Finding" },
+    { id: "SUBMIT_FINDING", label: "Report Finding" },
   ];
   const currentIndex =
     phase === "COMPLETED"
@@ -211,7 +211,7 @@ function phaseLabel(phase: LabPhase) {
     case "VERIFY_IMPACT":
       return "Evidence review";
     case "SUBMIT_FINDING":
-      return "Submit finding";
+      return "Report finding";
     case "COMPLETED":
       return "Completed";
   }

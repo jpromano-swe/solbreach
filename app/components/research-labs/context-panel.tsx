@@ -6,7 +6,6 @@ import { useState, type ReactNode } from "react";
 import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabFile, ResearchLabManifest, ResearchLabReport, ResearchLabSession } from "../../lib/research-labs/lab-state";
 import {
-  EvidenceCheck,
   deriveProtocolState,
 } from "./execute-exploit-tab";
 import type { AuditReportStage, EnrichedTransactionResult, ExecuteExploitView, LabPhase, ReviewMode } from "./types";
@@ -115,11 +114,7 @@ export function LabContextPanel({
         />
       ) : null}
 
-      {phase === "EXECUTE_EXPLOIT" || phase === "VERIFY_IMPACT" ? null : impactVerified ? (
-        <SubmitFindingContextSupport
-          findingReviewPassed={findingReviewPassed}
-        />
-      ) : (
+      {phase === "EXECUTE_EXPLOIT" || phase === "VERIFY_IMPACT" ? null : !impactVerified ? (
         <>
           <ContextBlock title="Current Objective">
             <p className="text-sm leading-6 text-zinc-400">
@@ -154,7 +149,7 @@ export function LabContextPanel({
             />
           </ContextBlock>
         </>
-      )}
+      ) : null}
     </>
   );
 
@@ -177,30 +172,6 @@ export function LabContextPanel({
         {panelContent}
       </div>
     </aside>
-  );
-}
-
-function SubmitFindingContextSupport({
-  findingReviewPassed,
-}: {
-  findingReviewPassed: boolean;
-}) {
-  return (
-    <>
-      <ContextBlock title={findingReviewPassed ? "Verified Evidence" : "Impact Status"}>
-        <div className="space-y-3 text-sm">
-          <EvidenceCheck label="Impact verified" active />
-          {findingReviewPassed ? (
-            <>
-              <EvidenceCheck label="Counterfeit deposit transaction" active />
-              <EvidenceCheck label="Withdrawal transaction" active />
-              <EvidenceCheck label="Position credit changed" active />
-              <EvidenceCheck label="Treasury balance decreased" active />
-            </>
-          ) : null}
-        </div>
-      </ContextBlock>
-    </>
   );
 }
 
@@ -478,16 +449,16 @@ function ReviewContextCard({
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]">
           <div className="h-full rounded-full bg-[#9945ff]" style={{ width: `${percent}%` }} />
         </div>
-        <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-zinc-400">
+        <p className="mt-3 text-sm text-zinc-400">
           Report: Locked until review passed
-        </div>
-        <div className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-zinc-400">
+        </p>
+        <p className="mt-1 text-sm text-zinc-400">
           Critical answered: {criticalAnsweredCount}/{criticalTotal}
-        </div>
+        </p>
         <button
           type="button"
           onClick={onStartReview}
-          className="mt-4 w-full rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18"
+          className="mt-4 inline-flex min-h-10 items-center justify-center self-start rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18"
         >
           Continue Review
         </button>

@@ -249,11 +249,8 @@ function QuestionnairePanel({
         <div className="p-1">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
-              Submit Finding
+              Report Finding
             </p>
-            <span className="rounded-full border border-[#14f195]/20 bg-[#14f195]/8 px-2.5 py-1 text-xs text-[#8fffd0]">
-              Impact verified
-            </span>
           </div>
           <h2 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-white">
             Confirm the finding.
@@ -319,10 +316,7 @@ function QuestionnairePanel({
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
-                Submit Finding
-                <span className="rounded-full border border-[#14f195]/20 bg-[#14f195]/8 px-2 py-0.5 tracking-normal text-[#8fffd0]">
-                  Impact verified
-                </span>
+                Report Finding
               </p>
               <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
                 {isSummaryStep ? "Review summary" : "Finding Review"}

@@ -190,7 +190,7 @@ export function useResearchLabTransactions({
         onConsoleClose();
         toast.success("Impact Verified", {
           description:
-            "Unauthorized treasury withdrawal reproduced. Continue to Submit Finding when ready.",
+            "Unauthorized treasury withdrawal reproduced. Continue to Report Finding when ready.",
         });
       } else {
         toast.error("Exploit proof did not verify", {
