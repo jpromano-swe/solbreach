@@ -147,7 +147,7 @@ export function VulnerabilitiesSection({
                 onClick={() => onSelectLevel(card.target!)}
                 className={
                   card.compact?.imageSrc
-                    ? "group relative self-start overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-7 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
+                    ? "group relative overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-7 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : card.compact
                     ? "group self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
@@ -206,17 +206,17 @@ function CompactVulnerabilityCardContent({
 }) {
   if (compact.imageSrc) {
     return (
-      <div className="relative min-h-[270px] overflow-hidden">
+      <div className="relative min-h-[300px] overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,13,0.99)_0%,rgba(8,9,13,0.92)_38%,rgba(8,9,13,0.44)_66%,rgba(8,9,13,0.14)_100%)]" />
         <Image
           src={compact.imageSrc}
           alt=""
           width={860}
           height={520}
-          className="pointer-events-none absolute bottom-9 right-[-90px] z-0 w-[64%] max-w-[220px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-5 sm:bottom-11 sm:w-[170px] sm:opacity-88 xl:w-[190px]"
+          className="pointer-events-none absolute bottom-9 right-[-96px] z-0 w-[64%] max-w-[220px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-[-34px] sm:bottom-12 sm:w-[176px] sm:opacity-90 xl:right-[-28px] xl:w-[196px]"
         />
 
-        <div className="relative z-10 flex min-h-[270px] flex-col">
+        <div className="relative z-10 flex min-h-[300px] flex-col">
           <div className="flex items-start justify-between gap-4">
             <span className="pt-1 text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
               {compact.levelLabel}
@@ -224,7 +224,7 @@ function CompactVulnerabilityCardContent({
             <AvailableBadge className="px-3 py-1 text-sm" />
           </div>
 
-          <div className="mt-16 max-w-[78%] sm:mt-16 sm:max-w-[54%]">
+          <div className="mt-16 max-w-[74%] sm:mt-16 sm:max-w-[49%]">
             <h2 className="text-2xl font-semibold leading-[1.04] tracking-[-0.06em] text-white">
               {compact.title}
             </h2>
