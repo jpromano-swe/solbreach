@@ -10,6 +10,7 @@ import {
   redeemBetaAccessCode,
   requestBetaAccess,
 } from "../lib/beta-access";
+import { ellipsify } from "../lib/explorer";
 import { ensureBackendWalletAuth } from "../lib/levels/level1-backend";
 import { useWallet } from "../lib/wallet/context";
 import type { WalletSession } from "../lib/wallet/types";
@@ -36,6 +37,7 @@ export function BetaAccessSection({
     text: string;
   } | null>(null);
   const [walletPickerOpen, setWalletPickerOpen] = useState(false);
+  const walletLabel = wallet ? ellipsify(wallet.account.address, 2) : null;
 
   async function authenticateWallet(session: WalletSession) {
     await ensureBackendWalletAuth(session);
@@ -57,7 +59,7 @@ export function BetaAccessSection({
         ? "Your beta request is pending for this wallet."
         : result.status === "revoked"
           ? "Beta access for this wallet is no longer active."
-          : "Wallet connected. Request beta access or redeem an access code.";
+          : "Request beta access or redeem an access code.";
     setStatusMessage({ kind: "info", text: message });
   }
 
@@ -129,6 +131,7 @@ export function BetaAccessSection({
     try {
       const session = await connect(connectorId);
       setWalletPickerOpen(false);
+      setCodeOpen(true);
       await runBetaAction(pendingAction, session);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -140,6 +143,7 @@ export function BetaAccessSection({
 
   function openWalletPicker(action: PendingBetaAction) {
     if (wallet) {
+      setCodeOpen(true);
       void runBetaAction(action, wallet);
       return;
     }
@@ -201,10 +205,25 @@ export function BetaAccessSection({
               type="button"
               onClick={() => openWalletPicker("enter")}
               disabled={isBusy || status === "connecting"}
-              className="inline-flex min-h-11 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+              className={`inline-flex min-h-11 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+                wallet
+                  ? "border-white/10 bg-[#17212b] text-zinc-100 hover:bg-[#1b2834]"
+                  : "border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8b35f6]"
+              }`}
             >
-              <Wallet className="h-4 w-4" />
-              {isBusy && pendingAction === "enter" ? "Checking Access..." : "Connect Wallet"}
+              {wallet ? (
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f7df2f] text-xs font-black text-[#111212]">
+                  SB
+                </span>
+              ) : (
+                <Wallet className="h-4 w-4" />
+              )}
+              {isBusy && pendingAction === "enter"
+                ? "Checking Access..."
+                : walletLabel ?? "Connect Wallet"}
+              {wallet ? (
+                <ChevronDown className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+              ) : null}
             </button>
             <button
               type="button"
@@ -256,70 +275,76 @@ export function BetaAccessSection({
                     : "text-zinc-400"
               }`}
             >
-              {statusMessage.text}
+              <StatusMessageText text={statusMessage.text} />
             </p>
           ) : null}
 
-          <div className="mt-7 border-t border-white/10 pt-5">
-            <button
-              type="button"
-              onClick={() => setCodeOpen((open) => !open)}
-              className="inline-flex w-full items-center justify-between gap-3 text-left text-sm text-zinc-400 transition hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-              aria-expanded={codeOpen}
-            >
-              <span className="inline-flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-[#8fffd0]" />
-                Already have an access code?
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
-                {codeOpen ? "Hide" : "Expand"}
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                    codeOpen ? "rotate-180" : ""
-                  }`}
-                  aria-hidden="true"
-                />
-              </span>
-            </button>
-
-            <div
-              className={`grid transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
-                codeOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
-              }`}
-            >
-              <form
-                className="min-h-0 overflow-hidden"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void runBetaAction("redeem");
-                }}
+          <div
+            className={`grid transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
+              wallet ? "mt-7 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="min-h-0 overflow-hidden border-t border-white/10 pt-5">
+              <button
+                type="button"
+                onClick={() => setCodeOpen((open) => !open)}
+                className="inline-flex w-full items-center justify-between gap-3 text-left text-sm text-zinc-400 transition hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                aria-expanded={codeOpen}
               >
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px]">
-                  <input
-                    autoCapitalize="characters"
-                    autoComplete="off"
-                    inputMode="text"
-                    name="access-code"
-                    onChange={(event) =>
-                      setAccessCode(sanitizeAccessCode(event.target.value))
-                    }
-                    pattern="[A-Z0-9]*"
-                    placeholder="ENTER_ACCESS_CODE"
-                    spellCheck={false}
-                    value={accessCode}
-                    className="min-h-11 rounded-xl border border-white/10 bg-white/[0.045] px-3 font-mono text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
+                <span className="inline-flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-[#8fffd0]" />
+                  Already have an access code?
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                  {codeOpen ? "Hide" : "Expand"}
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                      codeOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden="true"
                   />
-                  <button
-                    type="submit"
-                    disabled={isBusy}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-                  >
-                    {isBusy && pendingAction === "redeem"
-                      ? "Redeeming..."
-                      : "Redeem Code"}
-                  </button>
-                </div>
-              </form>
+                </span>
+              </button>
+
+              <div
+                className={`grid transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
+                  codeOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <form
+                  className="min-h-0 overflow-hidden"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void runBetaAction("redeem");
+                  }}
+                >
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px]">
+                    <input
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      inputMode="text"
+                      name="access-code"
+                      onChange={(event) =>
+                        setAccessCode(sanitizeAccessCode(event.target.value))
+                      }
+                      pattern="[A-Z0-9]*"
+                      placeholder="ENTER_ACCESS_CODE"
+                      spellCheck={false}
+                      value={accessCode}
+                      className="min-h-11 rounded-xl border border-white/10 bg-white/[0.045] px-3 font-mono text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isBusy}
+                      className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                    >
+                      {isBusy && pendingAction === "redeem"
+                        ? "Redeeming..."
+                        : "Redeem Code"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
 
@@ -330,5 +355,19 @@ export function BetaAccessSection({
         </div>
       </section>
     </main>
+  );
+}
+
+function StatusMessageText({ text }: { text: string }) {
+  const highlight = "Request beta access or redeem an access code.";
+
+  if (text !== highlight) {
+    return text;
+  }
+
+  return (
+    <span className="font-medium text-[#c7a6ff]">
+      {highlight}
+    </span>
   );
 }
