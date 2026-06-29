@@ -51,7 +51,7 @@ export function BetaAccessSection({
             <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-zinc-400">
               Connect your wallet
               <br />
-              to enter the current SolBreach beta.
+              to try the current beta.
               <br />
               No access yet? Request an invite below.
             </p>
