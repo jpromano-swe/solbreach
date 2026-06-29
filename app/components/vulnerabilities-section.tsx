@@ -147,7 +147,7 @@ export function VulnerabilitiesSection({
                 onClick={() => onSelectLevel(card.target!)}
                 className={
                   card.compact?.imageSrc
-                    ? "group relative self-start overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-8 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40 lg:col-span-2"
+                    ? "group relative self-start overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-7 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40 lg:col-span-2 lg:w-[60%]"
                     : card.compact
                     ? "group self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
@@ -195,7 +195,7 @@ function CompactVulnerabilityCardContent({
 }) {
   if (compact.imageSrc) {
     return (
-      <div className="relative min-h-[300px] overflow-hidden">
+      <div className="relative min-h-[270px] overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_46%,rgba(153,69,255,0.18),transparent_34%),radial-gradient(circle_at_92%_24%,rgba(20,241,149,0.12),transparent_30%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,13,0.99)_0%,rgba(8,9,13,0.92)_38%,rgba(8,9,13,0.44)_66%,rgba(8,9,13,0.14)_100%)]" />
         <Image
@@ -203,10 +203,10 @@ function CompactVulnerabilityCardContent({
           alt=""
           width={860}
           height={520}
-          className="pointer-events-none absolute bottom-8 right-[-72px] z-0 w-[78%] max-w-[300px] object-contain opacity-30 transition duration-300 group-hover:scale-[1.02] sm:right-12 sm:bottom-9 sm:w-[300px] sm:opacity-95"
+          className="pointer-events-none absolute bottom-8 right-[-72px] z-0 w-[78%] max-w-[300px] object-contain opacity-30 transition duration-300 group-hover:scale-[1.02] sm:right-8 sm:bottom-8 sm:w-[240px] sm:opacity-95 xl:w-[270px]"
         />
 
-        <div className="relative z-10 flex min-h-[300px] flex-col">
+        <div className="relative z-10 flex min-h-[270px] flex-col">
           <div className="flex items-start justify-between gap-4">
             <span className="pt-1 text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
               {compact.levelLabel}
@@ -217,19 +217,19 @@ function CompactVulnerabilityCardContent({
             </span>
           </div>
 
-          <div className="mt-20 max-w-[78%] sm:mt-20 sm:max-w-[46%]">
-            <h2 className="text-3xl font-semibold leading-[1.04] tracking-[-0.06em] text-white">
+          <div className="mt-16 max-w-[78%] sm:mt-16 sm:max-w-[54%]">
+            <h2 className="text-2xl font-semibold leading-[1.04] tracking-[-0.06em] text-white">
               {compact.title}
             </h2>
-            <p className="mt-6 text-base leading-7 text-zinc-400">
+            <p className="mt-5 text-sm leading-6 text-zinc-400">
               {compact.summary}
             </p>
-            <p className="mt-6 text-sm font-semibold text-zinc-500">
+            <p className="mt-5 text-xs font-semibold text-zinc-500">
               {compact.metadata}
             </p>
-            <span className="mt-10 inline-flex items-center gap-4 text-2xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white">
+            <span className="mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white">
               {compact.cta}
-              <ArrowRight className="h-6 w-6" aria-hidden="true" />
+              <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </span>
           </div>
         </div>
