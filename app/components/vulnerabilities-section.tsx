@@ -83,6 +83,15 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     time: "30-45 min",
     theme: "Static PDA authority",
     status: "available",
+    compact: {
+      cta: "Start level",
+      imageSrc: "/vulnerabilities/02-identity-thief.png",
+      levelLabel: "LEVEL 2",
+      metadata: "Intermediate · 30-45 min · Static PDA authority",
+      summary:
+        "Inspect static PDA seeds and understand how shared authority state can be overwritten.",
+      title: "The Identity Thief",
+    },
   },
   {
     id: "level-3",
@@ -94,6 +103,15 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     time: "35-50 min",
     theme: "Delegated CPI",
     status: "available",
+    compact: {
+      cta: "Start level",
+      imageSrc: "/vulnerabilities/03-trojan-horse.png",
+      levelLabel: "LEVEL 3",
+      metadata: "Intermediate · 35-50 min · Delegated CPI",
+      summary:
+        "Reason through arbitrary CPI targets, delegated signer abuse, and external program trust.",
+      title: "The Trojan Horse",
+    },
   },
   {
     id: "supply-chain",
