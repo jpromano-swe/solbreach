@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { LevelId, LevelsView } from "../levels/course-status";
 
-export type RootSection = "levels" | "vulnerabilities" | "research-labs" | "profile";
+export type RootSection =
+  | "levels"
+  | "vulnerabilities"
+  | "research-labs"
+  | "profile"
+  | "beta-access";
 
 function isLevelView(value: string | null): value is LevelId {
   return (
@@ -29,7 +34,8 @@ function getInitialRouteState(): {
   if (
     section === "profile" ||
     section === "research-labs" ||
-    section === "vulnerabilities"
+    section === "vulnerabilities" ||
+    section === "beta-access"
   ) {
     return { section, view: "landing" };
   }

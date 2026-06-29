@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { type Address } from "@solana/kit";
 import { AppHeader } from "./components/app-header";
+import { BetaAccessSection } from "./components/beta-access-section";
 import { GridBackground } from "./components/grid-background";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
@@ -335,6 +336,15 @@ export default function Home() {
     status,
   });
 
+  const enterLevel0FromBeta = useCallback(() => {
+    setActiveSection("levels");
+    setActiveLevelsView("level0");
+  }, [setActiveLevelsView, setActiveSection]);
+
+  if (activeSection === "beta-access") {
+    return <BetaAccessSection onEnterLevel0={enterLevel0FromBeta} />;
+  }
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <GridBackground />
@@ -370,7 +380,7 @@ export default function Home() {
               {activeLevelsView === "landing" ? (
                 <LandingPageSection
                   enableAppEntry={ENABLE_APP_ENTRY}
-                  onPlayNow={() => setActiveLevelsView("level0")}
+                  onPlayNow={() => setActiveSection("beta-access")}
                   repositoryUrl={SOLBREACH_DOCUMENTATION_URL}
                 />
               ) : activeGuide && activeLevelStatus ? (
