@@ -7,7 +7,17 @@ import { lamportsToSolString } from "../lib/lamports";
 import { ellipsify } from "../lib/explorer";
 import { useCluster } from "./cluster-context";
 
-export function WalletButton() {
+export function WalletButton({
+  buttonClassName = "",
+  className = "",
+  connectedButtonClassName,
+  disconnectedButtonClassName,
+}: {
+  buttonClassName?: string;
+  className?: string;
+  connectedButtonClassName?: string;
+  disconnectedButtonClassName?: string;
+} = {}) {
   const { connectors, connect, disconnect, wallet, status, error } =
     useWallet();
 
@@ -41,10 +51,10 @@ export function WalletButton() {
 
   if (status !== "connected") {
     return (
-      <div className="relative" ref={ref}>
+      <div className={`relative ${className}`} ref={ref}>
         <button
           onClick={() => (isOpen ? close() : open())}
-          className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90"
+          className={`cursor-pointer rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90 ${disconnectedButtonClassName ?? buttonClassName}`}
         >
           Connect Wallet
         </button>
@@ -95,10 +105,10 @@ export function WalletButton() {
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className={`relative ${className}`} ref={ref}>
       <button
         onClick={() => (isOpen ? close() : open())}
-        className="flex cursor-pointer items-center gap-2 rounded-lg border border-border-low bg-card px-3 py-2 text-xs font-medium transition hover:bg-cream"
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border border-border-low bg-card px-3 py-2 text-xs font-medium transition hover:bg-cream ${connectedButtonClassName ?? buttonClassName}`}
       >
         <span className="h-2 w-2 rounded-full bg-green-500" />
         <span className="font-mono">{ellipsify(address!, 4)}</span>
