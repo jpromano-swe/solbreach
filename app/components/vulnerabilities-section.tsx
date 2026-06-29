@@ -20,12 +20,12 @@ const GRID_ROW_DIVIDER = "calc(50% - 15px)";
 type VulnerabilityCard = {
   compact?: {
     className?: string;
-    cta: string;
+    cta?: string;
     ctaClassName?: string;
     imageClassName?: string;
     imageSrc?: string;
     levelLabel: string;
-    metadata: string;
+    metadata?: string;
     summary: string;
     title: string;
   };
@@ -55,9 +55,9 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
       imageClassName: "sm:w-[128px] xl:w-[142px]",
       imageSrc: "/vulnerabilities/00-wallet-connection.png",
       levelLabel: "LEVEL 0",
-      metadata: "Warmup · 10-15 min · PDA basics",
+      metadata: "Warmup · 10-15 min ·\nPDA basics",
       summary:
-        "Get familiar with wallet-bound state, PDA flow, and how SolBreach levels work.",
+        "Get familiar with\nwallet-bound state,\nPDA flow, and how\nSolBreach levels work.",
       title: "Hello SolBreach",
     },
   },
@@ -72,14 +72,12 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     theme: "Account substitution",
     status: "available",
     compact: {
-      className: "-translate-y-3",
       cta: "Start level",
-      ctaClassName: "translate-y-6",
       imageSrc: "/vulnerabilities/01-account-substitution.png",
       levelLabel: "LEVEL 1",
       metadata: "Beginner · 15-20 min · Account validation",
       summary:
-        "Learn how untrusted account inputs can alter protocol behavior.",
+        "Learn how untrusted\naccount inputs\ncan alter protocol\nbehavior and break it.",
       title: "The Illusionist",
     },
   },
@@ -125,23 +123,33 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
   },
   {
     id: "supply-chain",
-    title: "Supply Chain Intrusion",
-    summary:
-      "Future modules will cover dependency takeover, CI secrets, and build integrity failures.",
+    title: "To Be Delivered",
+    summary: "Future modules to be added",
     difficulty: "Advanced",
     time: "Coming soon",
     theme: "Build trust",
     status: "locked",
+    compact: {
+      imageSrc: "/vulnerabilities/11-to-be-delivered.png",
+      levelLabel: "TBD",
+      summary: "Future modules to be added",
+      title: "To Be Delivered",
+    },
   },
   {
     id: "wallet-side",
-    title: "Wallet Intent Attacks",
-    summary:
-      "Future modules will cover transaction spoofing, approval drains, and unsafe prompt design.",
+    title: "To Be Delivered",
+    summary: "Future modules to be added",
     difficulty: "Advanced",
     time: "Coming soon",
     theme: "Client trust",
     status: "locked",
+    compact: {
+      imageSrc: "/vulnerabilities/11-to-be-delivered.png",
+      levelLabel: "TBD",
+      summary: "Future modules to be added",
+      title: "To Be Delivered",
+    },
   },
 ];
 
@@ -249,12 +257,25 @@ export function VulnerabilitiesSection({
             ) : (
               <div
                 key={card.id}
-                className="rounded-[22px] border border-white/10 bg-white/[0.025] p-6 opacity-70"
+                className={
+                  card.compact?.imageSrc
+                    ? "group relative p-8 text-left opacity-45 grayscale"
+                    : "rounded-[22px] border border-white/10 bg-white/[0.025] p-6 opacity-70"
+                }
               >
-                <VulnerabilityCardContent card={card} locked />
-                <div className="mt-7 border-t border-white/10 pt-5 text-sm text-zinc-600">
-                  Unlocks in future curriculum tracks
-                </div>
+                {card.compact ? (
+                  <CompactVulnerabilityCardContent
+                    compact={card.compact}
+                    locked
+                  />
+                ) : (
+                  <>
+                    <VulnerabilityCardContent card={card} locked />
+                    <div className="mt-7 border-t border-white/10 pt-5 text-sm text-zinc-600">
+                      Unlocks in future curriculum tracks
+                    </div>
+                  </>
+                )}
               </div>
             )
           )}
@@ -271,6 +292,17 @@ function AvailableBadge({ className = "" }: { className?: string }) {
     >
       <span className="h-2 w-2 rounded-full bg-[#14f195] motion-safe:animate-[availabilityDotBlink_1.35s_ease-in-out_infinite]" />
       Available
+    </span>
+  );
+}
+
+function LockedBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] font-medium text-zinc-500 ${className}`}
+    >
+      <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
+      Locked
     </span>
   );
 }
@@ -296,8 +328,10 @@ function GridCross({
 
 function CompactVulnerabilityCardContent({
   compact,
+  locked = false,
 }: {
   compact: NonNullable<VulnerabilityCard["compact"]>;
+  locked?: boolean;
 }) {
   if (compact.imageSrc) {
     return (
@@ -307,33 +341,53 @@ function CompactVulnerabilityCardContent({
           alt=""
           width={860}
           height={520}
-          className={`pointer-events-none absolute bottom-9 right-[-56px] z-0 w-[58%] max-w-[190px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-1 sm:bottom-12 sm:w-[152px] sm:opacity-90 xl:right-2 xl:w-[168px] ${compact.imageClassName ?? ""}`}
+          className={`pointer-events-none absolute bottom-9 right-[-56px] z-0 w-[58%] max-w-[190px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-1 sm:bottom-12 sm:w-[152px] sm:opacity-90 xl:right-2 xl:w-[168px] ${locked ? "opacity-45 sm:opacity-45" : ""} ${compact.imageClassName ?? ""}`}
         />
 
         <div className="relative z-10 flex min-h-[300px] flex-col">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
+            <span
+              className={`text-sm font-semibold tracking-[0.16em] ${
+                locked ? "text-zinc-500" : "text-[#b892ff]"
+              }`}
+            >
               {compact.levelLabel}
             </span>
-            <AvailableBadge className="px-3 py-1 text-sm" />
+            {locked ? (
+              <LockedBadge className="px-3 py-1 text-sm" />
+            ) : (
+              <AvailableBadge className="px-3 py-1 text-sm" />
+            )}
           </div>
 
           <div className="mt-10 max-w-[74%] sm:mt-10 sm:max-w-[52%]">
-            <h2 className="text-2xl font-semibold leading-[1.04] tracking-[-0.06em] text-white">
+            <h2
+              className={`text-2xl font-semibold leading-[1.04] tracking-[-0.06em] ${
+                locked ? "text-zinc-400" : "text-white"
+              }`}
+            >
               {compact.title}
             </h2>
-            <p className="mt-5 text-sm leading-6 text-zinc-400">
+            <p
+              className={`mt-5 whitespace-pre-line text-sm leading-6 ${
+                locked ? "text-zinc-600" : "text-zinc-400"
+              }`}
+            >
               {compact.summary}
             </p>
-            <p className="mt-5 text-xs font-semibold text-zinc-500">
-              {compact.metadata}
-            </p>
-            <span
-              className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white ${compact.ctaClassName ?? ""}`}
-            >
-              {compact.cta}
-              <ArrowRight className="h-5 w-5" aria-hidden="true" />
-            </span>
+            {compact.metadata ? (
+              <p className="mt-5 whitespace-pre-line text-xs font-semibold text-zinc-500">
+                {compact.metadata}
+              </p>
+            ) : null}
+            {compact.cta ? (
+              <span
+                className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white ${compact.ctaClassName ?? ""}`}
+              >
+                {compact.cta}
+                <ArrowRight className="h-5 w-5" aria-hidden="true" />
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
