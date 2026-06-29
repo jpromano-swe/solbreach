@@ -46,6 +46,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     status: "available",
     compact: {
       cta: "Start warmup",
+      imageSrc: "/vulnerabilities/00-wallet-connection.png",
       levelLabel: "LEVEL 0",
       metadata: "Warmup · 10-15 min · PDA basics",
       summary:
