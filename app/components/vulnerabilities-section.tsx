@@ -14,6 +14,13 @@ import { LEVEL_GUIDES } from "../lib/levels/level-guides";
 import type { LevelId } from "../lib/levels/course-status";
 
 type VulnerabilityCard = {
+  compact?: {
+    cta: string;
+    levelLabel: string;
+    metadata: string;
+    summary: string;
+    title: string;
+  };
   difficulty: string;
   id: string;
   status: "available" | "locked";
@@ -35,6 +42,14 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     time: "10-15 min",
     theme: "PDA lifecycle",
     status: "available",
+    compact: {
+      cta: "Start warmup",
+      levelLabel: "LEVEL 0",
+      metadata: "Warmup · 10-15 min",
+      summary:
+        "Get familiar with wallet-bound state, PDA flow, and how SolBreach levels work.",
+      title: "Hello SolBreach",
+    },
   },
   {
     id: "level-1",
@@ -46,6 +61,14 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     time: "25-35 min",
     theme: "Account substitution",
     status: "available",
+    compact: {
+      cta: "Start level",
+      levelLabel: "LEVEL 1",
+      metadata: "Beginner · 15-20 min",
+      summary:
+        "Learn how untrusted account inputs can alter protocol behavior.",
+      title: "Account Substitution",
+    },
   },
   {
     id: "level-2",
@@ -119,16 +142,28 @@ export function VulnerabilitiesSection({
                 key={card.id}
                 type="button"
                 onClick={() => onSelectLevel(card.target!)}
-                className="group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
+                className={
+                  card.compact
+                    ? "group rounded-[18px] border border-white/10 bg-white/[0.04] p-5 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
+                    : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
+                }
               >
-                <VulnerabilityCardContent card={card} />
-                <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
-                  <span className="text-zinc-500">Interactive level</span>
-                  <span className="inline-flex items-center gap-2 font-medium text-[#b892ff] transition group-hover:text-white">
-                    Open module
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                </div>
+                {card.compact ? (
+                  <CompactVulnerabilityCardContent
+                    compact={card.compact}
+                  />
+                ) : (
+                  <>
+                    <VulnerabilityCardContent card={card} />
+                    <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
+                      <span className="text-zinc-500">Interactive level</span>
+                      <span className="inline-flex items-center gap-2 font-medium text-[#b892ff] transition group-hover:text-white">
+                        Open module
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                    </div>
+                  </>
+                )}
               </button>
             ) : (
               <div
@@ -145,6 +180,41 @@ export function VulnerabilitiesSection({
         </div>
       </div>
     </section>
+  );
+}
+
+function CompactVulnerabilityCardContent({
+  compact,
+}: {
+  compact: NonNullable<VulnerabilityCard["compact"]>;
+}) {
+  return (
+    <div className="flex min-h-[260px] flex-col">
+      <div className="flex items-center justify-between gap-4">
+        <span className="rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#b892ff]">
+          {compact.levelLabel}
+        </span>
+        <span className="rounded-full border border-[#14f195]/15 bg-[#14f195]/5 px-2.5 py-0.5 text-[10px] font-medium text-[#8fffd0]">
+          Available
+        </span>
+      </div>
+
+      <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
+        {compact.title}
+      </h2>
+      <p className="mt-3 text-sm leading-6 text-zinc-400">
+        {compact.summary}
+      </p>
+
+      <p className="mt-6 text-xs font-medium text-zinc-500">
+        {compact.metadata}
+      </p>
+
+      <span className="mt-auto inline-flex items-center gap-2 pt-8 text-sm font-medium text-[#b892ff] transition group-hover:text-white">
+        {compact.cta}
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </span>
+    </div>
   );
 }
 
