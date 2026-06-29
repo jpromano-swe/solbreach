@@ -49,14 +49,14 @@ export function BetaAccessSection({
           <div className="mt-7 space-y-3">
             <AccessAction
               icon={<Wallet className="h-5 w-5" />}
-              label="Initialize Wallet Link"
+              label="Connect Wallet"
               detail="Connect Web3 identity"
               onClick={onEnterLevel0}
             />
             <AccessAction
               icon={<FlaskConical className="h-5 w-5" />}
               label="Request Research Credentials"
-              detail="Apply for lab access"
+              detail="Apply to try beta"
               onClick={onEnterLevel0}
             />
           </div>
@@ -64,7 +64,7 @@ export function BetaAccessSection({
           <div className="my-7 flex items-center gap-4">
             <span className="h-px flex-1 bg-white/10" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-600">
-              Or override
+              Or use code to grant access
             </span>
             <span className="h-px flex-1 bg-white/10" />
           </div>
@@ -78,7 +78,7 @@ export function BetaAccessSection({
           >
             <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
               <KeyRound className="h-4 w-4 text-[#8fffd0]" />
-              Apply Beta Override Code
+              Apply access code to create your account
             </label>
             <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_112px]">
               <input
@@ -97,7 +97,7 @@ export function BetaAccessSection({
 
           <div className="mt-7 flex items-center justify-center gap-2 border-t border-white/10 pt-5 text-xs text-zinc-500">
             <ShieldCheck className="h-4 w-4" />
-            Beta shell active. Backend gate pending.
+            Platform currently in devnet, bugs and issues are expected
           </div>
         </div>
       </section>
