@@ -195,7 +195,7 @@ function CompactVulnerabilityCardContent({
 }) {
   if (compact.imageSrc) {
     return (
-      <div className="relative min-h-[390px] overflow-hidden">
+      <div className="relative min-h-[300px] overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_46%,rgba(153,69,255,0.18),transparent_34%),radial-gradient(circle_at_92%_24%,rgba(20,241,149,0.12),transparent_30%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,13,0.99)_0%,rgba(8,9,13,0.92)_38%,rgba(8,9,13,0.44)_66%,rgba(8,9,13,0.14)_100%)]" />
         <Image
@@ -203,10 +203,10 @@ function CompactVulnerabilityCardContent({
           alt=""
           width={860}
           height={520}
-          className="pointer-events-none absolute bottom-10 right-[-98px] z-0 w-[86%] max-w-[420px] object-contain opacity-30 transition duration-300 group-hover:scale-[1.02] sm:right-8 sm:bottom-8 sm:w-[49%] sm:opacity-95"
+          className="pointer-events-none absolute bottom-8 right-[-72px] z-0 w-[78%] max-w-[300px] object-contain opacity-30 transition duration-300 group-hover:scale-[1.02] sm:right-12 sm:bottom-9 sm:w-[300px] sm:opacity-95"
         />
 
-        <div className="relative z-10 flex min-h-[390px] flex-col">
+        <div className="relative z-10 flex min-h-[300px] flex-col">
           <div className="flex items-start justify-between gap-4">
             <span className="pt-1 text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
               {compact.levelLabel}
@@ -217,21 +217,17 @@ function CompactVulnerabilityCardContent({
             </span>
           </div>
 
-          <div className="mt-20 max-w-[78%] sm:mt-20 sm:max-w-[40%]">
-            <h2 className="text-5xl font-semibold leading-[1.04] tracking-[-0.06em] text-white">
-              {compact.title.split(" ").map((word) => (
-                <span key={word} className="block">
-                  {word}
-                </span>
-              ))}
+          <div className="mt-20 max-w-[78%] sm:mt-20 sm:max-w-[46%]">
+            <h2 className="text-3xl font-semibold leading-[1.04] tracking-[-0.06em] text-white">
+              {compact.title}
             </h2>
-            <p className="mt-7 text-lg leading-7 text-zinc-400">
+            <p className="mt-6 text-base leading-7 text-zinc-400">
               {compact.summary}
             </p>
             <p className="mt-6 text-sm font-semibold text-zinc-500">
               {compact.metadata}
             </p>
-            <span className="mt-14 inline-flex items-center gap-4 text-2xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white">
+            <span className="mt-10 inline-flex items-center gap-4 text-2xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white">
               {compact.cta}
               <ArrowRight className="h-6 w-6" aria-hidden="true" />
             </span>
