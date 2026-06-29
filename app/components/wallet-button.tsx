@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWallet } from "../lib/wallet/context";
 import { useBalance } from "../lib/hooks/use-balance";
@@ -119,6 +120,12 @@ export function WalletButton({
       >
         <span className="h-2 w-2 rounded-full bg-green-500" />
         <span className="font-mono">{ellipsify(address!, 4)}</span>
+        <ChevronDown
+          className={`h-3.5 w-3.5 text-zinc-400 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
       </button>
 
       {isOpen && (

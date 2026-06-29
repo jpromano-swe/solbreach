@@ -207,22 +207,23 @@ export function BetaAccessSection({
               Connect your wallet
               <br />
               to try the current beta.
-              <br />
-              No access yet? Request an invite below.
             </p>
           </div>
 
-          <div className="mt-8 flex flex-col items-center gap-3">
+          <div className="mt-7 flex flex-col items-center gap-3">
             <WalletButton
               className="w-[min(100%,300px)]"
-              disconnectedButtonClassName="inline-flex min-h-11 w-full items-center justify-center border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] hover:bg-[#8b35f6]"
-              connectedButtonClassName="min-h-11 w-full justify-center border-white/10 bg-[#17212b] px-4 text-sm font-semibold text-zinc-100 shadow-[0_14px_38px_-24px_rgba(20,241,149,0.45)] hover:bg-[#1b2834]"
+              disconnectedButtonClassName="inline-flex min-h-10 w-full items-center justify-center border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] hover:bg-[#8b35f6]"
+              connectedButtonClassName="min-h-10 w-full justify-center border-white/10 bg-[#17212b] px-4 text-sm font-semibold text-zinc-100 shadow-[0_14px_38px_-24px_rgba(20,241,149,0.45)] hover:bg-[#1b2834]"
             />
+            <p className="mt-1 w-[min(100%,300px)] text-left text-sm text-zinc-400">
+              No access? Apply for your invite below.
+            </p>
             <button
               type="button"
               onClick={() => void submitAccessRequest()}
               disabled={!wallet || isBusy}
-              className="inline-flex min-h-10 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 transition hover:border-[#14f195]/25 hover:bg-white/[0.065] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+              className="inline-flex min-h-9 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 transition hover:border-[#14f195]/25 hover:bg-white/[0.065] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
             >
               <Ticket className="h-4 w-4 text-[#8fffd0]" />
               {isBusy && pendingAction === "request"
@@ -301,12 +302,12 @@ export function BetaAccessSection({
                       placeholder="ENTER_ACCESS_CODE"
                       spellCheck={false}
                       value={accessCode}
-                      className="min-h-11 rounded-xl border border-white/10 bg-white/[0.045] px-3 font-mono text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
+                      className="min-h-10 rounded-xl border border-white/10 bg-white/[0.045] px-3 font-mono text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
                     />
                     <button
                       type="submit"
                       disabled={isBusy}
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                      className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
                     >
                       {isBusy && pendingAction === "redeem"
                         ? "Redeeming..."
