@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { KeyRound, ShieldCheck, Ticket, Wallet } from "lucide-react";
+import { ChevronDown, KeyRound, ShieldCheck, Ticket, Wallet } from "lucide-react";
 import { useState } from "react";
 
 function sanitizeAccessCode(value: string) {
@@ -45,11 +45,15 @@ export function BetaAccessSection({
           </div>
 
           <div className="mt-8 text-center">
-            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-white">
+            <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[#b892ff] drop-shadow-[0_0_24px_rgba(153,69,255,0.28)]">
               Private Beta Access
             </h1>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-zinc-400">
-              Connect your wallet to enter the current SolBreach beta. No access yet? Request an invite below.
+              Connect your wallet
+              <br />
+              to enter the current SolBreach beta.
+              <br />
+              No access yet? Request an invite below.
             </p>
           </div>
 
@@ -83,12 +87,24 @@ export function BetaAccessSection({
                 <KeyRound className="h-4 w-4 text-[#8fffd0]" />
                 Already have an access code?
               </span>
-              <span className="text-xs text-zinc-500">{codeOpen ? "Hide" : "Expand"}</span>
+              <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                {codeOpen ? "Hide" : "Expand"}
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                    codeOpen ? "rotate-180" : ""
+                  }`}
+                  aria-hidden="true"
+                />
+              </span>
             </button>
 
-            {codeOpen ? (
+            <div
+              className={`grid transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
+                codeOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
+              }`}
+            >
               <form
-                className="mt-4"
+                className="min-h-0 overflow-hidden"
                 onSubmit={(event) => {
                   event.preventDefault();
                   onEnterLevel0();
@@ -117,7 +133,7 @@ export function BetaAccessSection({
                   </button>
                 </div>
               </form>
-            ) : null}
+            </div>
           </div>
 
           <div className="mt-7 flex items-center justify-center gap-2 border-t border-white/10 pt-5 text-xs text-zinc-500">
