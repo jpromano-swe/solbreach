@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   ArrowRight,
   Clock3,
@@ -16,6 +17,7 @@ import type { LevelId } from "../lib/levels/course-status";
 type VulnerabilityCard = {
   compact?: {
     cta: string;
+    imageSrc?: string;
     levelLabel: string;
     metadata: string;
     summary: string;
@@ -63,6 +65,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     status: "available",
     compact: {
       cta: "Start level",
+      imageSrc: "/vulnerabilities/01-account-substitution.png",
       levelLabel: "LEVEL 1",
       metadata: "Beginner · 15-20 min · Account validation",
       summary:
@@ -143,7 +146,9 @@ export function VulnerabilitiesSection({
                 type="button"
                 onClick={() => onSelectLevel(card.target!)}
                 className={
-                  card.compact
+                  card.compact?.imageSrc
+                    ? "group relative self-start overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-8 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40 lg:col-span-2"
+                    : card.compact
                     ? "group self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
                 }
@@ -188,6 +193,50 @@ function CompactVulnerabilityCardContent({
 }: {
   compact: NonNullable<VulnerabilityCard["compact"]>;
 }) {
+  if (compact.imageSrc) {
+    return (
+      <div className="relative min-h-[330px] overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_46%,rgba(153,69,255,0.18),transparent_34%),radial-gradient(circle_at_92%_24%,rgba(20,241,149,0.12),transparent_30%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,13,0.98)_0%,rgba(8,9,13,0.9)_34%,rgba(8,9,13,0.42)_58%,rgba(8,9,13,0.12)_100%)]" />
+        <Image
+          src={compact.imageSrc}
+          alt=""
+          width={860}
+          height={520}
+          className="pointer-events-none absolute bottom-3 right-[-120px] z-0 w-[92%] max-w-[500px] object-contain opacity-35 transition duration-300 group-hover:scale-[1.02] sm:right-[-28px] sm:w-[62%] sm:opacity-95"
+        />
+
+        <div className="relative z-10 flex min-h-[330px] flex-col">
+          <div className="flex items-start justify-between gap-4">
+            <span className="pt-1 text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
+              {compact.levelLabel}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 px-3 py-1 text-sm font-medium text-[#8fffd0]">
+              <span className="h-2 w-2 rounded-full bg-[#14f195]" />
+              Available
+            </span>
+          </div>
+
+          <div className="mt-16 max-w-[72%] sm:mt-20 sm:max-w-[45%]">
+            <h2 className="text-4xl font-semibold leading-[1.04] tracking-[-0.05em] text-white">
+              {compact.title}
+            </h2>
+            <p className="mt-7 text-lg leading-7 text-zinc-400">
+              {compact.summary}
+            </p>
+            <p className="mt-6 text-sm font-semibold text-zinc-500">
+              {compact.metadata}
+            </p>
+            <span className="mt-14 inline-flex items-center gap-4 text-2xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white">
+              {compact.cta}
+              <ArrowRight className="h-6 w-6" aria-hidden="true" />
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-[235px] flex-col">
       <div className="flex items-center justify-between gap-4">
