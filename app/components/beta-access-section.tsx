@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { KeyRound, ShieldCheck, Ticket, Wallet } from "lucide-react";
+import { useState } from "react";
 
 function sanitizeAccessCode(value: string) {
   return value.replace(/[^a-z0-9]/gi, "").toUpperCase();
