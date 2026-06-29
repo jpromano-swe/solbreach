@@ -8,14 +8,21 @@ import {
   LockKeyhole,
   ShieldCheck,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { LEVEL_GUIDES } from "../lib/levels/level-guides";
 import type { LevelId } from "../lib/levels/course-status";
 
+const GRID_DIVIDER_ONE = "calc((100% - 5rem) / 3 + 1.25rem)";
+const GRID_DIVIDER_TWO = "calc(2 * (100% - 5rem) / 3 + 3.75rem)";
+const GRID_ROW_DIVIDER = "calc(50% - 15px)";
+
 type VulnerabilityCard = {
   compact?: {
+    className?: string;
     cta: string;
+    ctaClassName?: string;
+    imageClassName?: string;
     imageSrc?: string;
     levelLabel: string;
     metadata: string;
@@ -45,6 +52,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     status: "available",
     compact: {
       cta: "Start warmup",
+      imageClassName: "sm:w-[128px] xl:w-[142px]",
       imageSrc: "/vulnerabilities/00-wallet-connection.png",
       levelLabel: "LEVEL 0",
       metadata: "Warmup · 10-15 min · PDA basics",
@@ -64,13 +72,15 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     theme: "Account substitution",
     status: "available",
     compact: {
+      className: "-translate-y-3",
       cta: "Start level",
+      ctaClassName: "translate-y-6",
       imageSrc: "/vulnerabilities/01-account-substitution.png",
       levelLabel: "LEVEL 1",
       metadata: "Beginner · 15-20 min · Account validation",
       summary:
         "Learn how untrusted account inputs can alter protocol behavior.",
-      title: "Account Substitution",
+      title: "The Illusionist",
     },
   },
   {
@@ -141,9 +151,9 @@ export function VulnerabilitiesSection({
   onSelectLevel: (level: LevelId) => void;
 }) {
   return (
-    <section className="relative min-h-[calc(100vh-88px)] overflow-hidden border-t border-white/10 bg-[#070808] px-6 py-16 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(153,69,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(20,241,149,0.045)_1px,transparent_1px)] bg-[size:48px_48px] opacity-35" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_24%_18%,rgba(153,69,255,0.14),transparent_32%),radial-gradient(circle_at_74%_30%,rgba(20,241,149,0.1),transparent_35%)]" />
+    <section className="relative min-h-[calc(100vh-88px)] overflow-hidden border-t border-white/10 bg-[#050708] px-6 py-16 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-35" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_12%,rgba(153,69,255,0.16),transparent_28%),radial-gradient(circle_at_82%_10%,rgba(20,241,149,0.12),transparent_34%),linear-gradient(180deg,rgba(5,7,8,0)_0%,rgba(5,7,8,0.58)_58%,#050708_100%)]" />
 
       <div className="relative mx-auto max-w-7xl">
         <div className="max-w-3xl">
@@ -156,7 +166,55 @@ export function VulnerabilitiesSection({
           </p>
         </div>
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+        <div className="relative mt-10 grid gap-x-10 gap-y-14 border-y border-white/[0.13] pb-10 pt-5 lg:grid-cols-3">
+          <span
+            className="pointer-events-none absolute inset-x-0 hidden h-px -translate-y-1/2 bg-white/[0.13] lg:block"
+            style={{ top: GRID_ROW_DIVIDER }}
+          />
+          <span
+            className="pointer-events-none absolute inset-y-0 hidden w-px -translate-x-1/2 bg-white/[0.13] lg:block"
+            style={{ left: GRID_DIVIDER_ONE }}
+          />
+          <span
+            className="pointer-events-none absolute inset-y-0 hidden w-px -translate-x-1/2 bg-white/[0.13] lg:block"
+            style={{ left: GRID_DIVIDER_TWO }}
+          />
+          <GridCross className="left-0 top-0 -translate-x-1/2 -translate-y-1/2" />
+          <GridCross
+            className="top-0 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: GRID_DIVIDER_ONE }}
+          />
+          <GridCross
+            className="top-0 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: GRID_DIVIDER_TWO }}
+          />
+          <GridCross className="right-0 top-0 translate-x-1/2 -translate-y-1/2" />
+          <GridCross
+            className="left-0 -translate-x-1/2 -translate-y-1/2"
+            style={{ top: GRID_ROW_DIVIDER }}
+          />
+          <GridCross
+            className="-translate-x-1/2 -translate-y-1/2"
+            style={{ left: GRID_DIVIDER_ONE, top: GRID_ROW_DIVIDER }}
+          />
+          <GridCross
+            className="-translate-x-1/2 -translate-y-1/2"
+            style={{ left: GRID_DIVIDER_TWO, top: GRID_ROW_DIVIDER }}
+          />
+          <GridCross
+            className="right-0 translate-x-1/2 -translate-y-1/2"
+            style={{ top: GRID_ROW_DIVIDER }}
+          />
+          <GridCross className="bottom-0 left-0 -translate-x-1/2 translate-y-1/2" />
+          <GridCross
+            className="bottom-0 -translate-x-1/2 translate-y-1/2"
+            style={{ left: GRID_DIVIDER_ONE }}
+          />
+          <GridCross
+            className="bottom-0 -translate-x-1/2 translate-y-1/2"
+            style={{ left: GRID_DIVIDER_TWO }}
+          />
+          <GridCross className="bottom-0 right-0 translate-x-1/2 translate-y-1/2" />
           {VULNERABILITY_CARDS.map((card) =>
             card.status === "available" && card.target ? (
               <button
@@ -165,7 +223,7 @@ export function VulnerabilitiesSection({
                 onClick={() => onSelectLevel(card.target!)}
                 className={
                   card.compact?.imageSrc
-                    ? "group relative overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-7 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
+                    ? "group relative p-8 text-left transition duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : card.compact
                     ? "group self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
@@ -217,6 +275,25 @@ function AvailableBadge({ className = "" }: { className?: string }) {
   );
 }
 
+function GridCross({
+  className = "",
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <span
+      className={`pointer-events-none absolute hidden h-4 w-4 lg:block ${className}`}
+      style={style}
+      aria-hidden="true"
+    >
+      <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/35" />
+      <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/35" />
+    </span>
+  );
+}
+
 function CompactVulnerabilityCardContent({
   compact,
 }: {
@@ -224,25 +301,24 @@ function CompactVulnerabilityCardContent({
 }) {
   if (compact.imageSrc) {
     return (
-      <div className="relative min-h-[300px] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,13,0.99)_0%,rgba(8,9,13,0.92)_38%,rgba(8,9,13,0.44)_66%,rgba(8,9,13,0.14)_100%)]" />
+      <div className={`relative min-h-[300px] ${compact.className ?? ""}`}>
         <Image
           src={compact.imageSrc}
           alt=""
           width={860}
           height={520}
-          className="pointer-events-none absolute bottom-9 right-[-56px] z-0 w-[58%] max-w-[190px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-1 sm:bottom-12 sm:w-[152px] sm:opacity-90 xl:right-2 xl:w-[168px]"
+          className={`pointer-events-none absolute bottom-9 right-[-56px] z-0 w-[58%] max-w-[190px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-1 sm:bottom-12 sm:w-[152px] sm:opacity-90 xl:right-2 xl:w-[168px] ${compact.imageClassName ?? ""}`}
         />
 
         <div className="relative z-10 flex min-h-[300px] flex-col">
-          <div className="flex items-start justify-between gap-4">
-            <span className="pt-1 text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
               {compact.levelLabel}
             </span>
             <AvailableBadge className="px-3 py-1 text-sm" />
           </div>
 
-          <div className="mt-16 max-w-[74%] sm:mt-16 sm:max-w-[49%]">
+          <div className="mt-10 max-w-[74%] sm:mt-10 sm:max-w-[52%]">
             <h2 className="text-2xl font-semibold leading-[1.04] tracking-[-0.06em] text-white">
               {compact.title}
             </h2>
@@ -252,7 +328,9 @@ function CompactVulnerabilityCardContent({
             <p className="mt-5 text-xs font-semibold text-zinc-500">
               {compact.metadata}
             </p>
-            <span className="mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white">
+            <span
+              className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white ${compact.ctaClassName ?? ""}`}
+            >
               {compact.cta}
               <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </span>
