@@ -213,7 +213,7 @@ function CompactVulnerabilityCardContent({
           alt=""
           width={860}
           height={520}
-          className="pointer-events-none absolute bottom-9 right-[-96px] z-0 w-[64%] max-w-[220px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-[-34px] sm:bottom-12 sm:w-[176px] sm:opacity-90 xl:right-[-28px] xl:w-[196px]"
+          className="pointer-events-none absolute bottom-9 right-[-56px] z-0 w-[58%] max-w-[190px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-1 sm:bottom-12 sm:w-[152px] sm:opacity-90 xl:right-2 xl:w-[168px]"
         />
 
         <div className="relative z-10 flex min-h-[300px] flex-col">
