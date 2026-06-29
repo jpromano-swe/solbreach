@@ -197,14 +197,13 @@ function CompactVulnerabilityCardContent({
   if (compact.imageSrc) {
     return (
       <div className="relative min-h-[270px] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_46%,rgba(153,69,255,0.18),transparent_34%),radial-gradient(circle_at_92%_24%,rgba(20,241,149,0.12),transparent_30%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,9,13,0.99)_0%,rgba(8,9,13,0.92)_38%,rgba(8,9,13,0.44)_66%,rgba(8,9,13,0.14)_100%)]" />
         <Image
           src={compact.imageSrc}
           alt=""
           width={860}
           height={520}
-          className="pointer-events-none absolute bottom-8 right-[-72px] z-0 w-[78%] max-w-[300px] object-contain opacity-30 transition duration-300 group-hover:scale-[1.02] sm:right-8 sm:bottom-8 sm:w-[240px] sm:opacity-95 xl:w-[270px]"
+          className="pointer-events-none absolute bottom-9 right-[-90px] z-0 w-[64%] max-w-[220px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-5 sm:bottom-11 sm:w-[170px] sm:opacity-88 xl:w-[190px]"
         />
 
         <div className="relative z-10 flex min-h-[270px] flex-col">
