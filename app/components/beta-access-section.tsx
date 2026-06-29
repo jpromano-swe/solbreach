@@ -57,11 +57,11 @@ export function BetaAccessSection({
             </p>
           </div>
 
-          <div className="mt-8 space-y-3">
+          <div className="mt-8 flex flex-col items-center gap-3">
             <button
               type="button"
               onClick={onEnterLevel0}
-              className="mx-auto inline-flex min-h-11 w-full max-w-[300px] items-center justify-center gap-2 rounded-lg border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+              className="inline-flex min-h-11 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
             >
               <Wallet className="h-4 w-4" />
               Connect Wallet
@@ -69,7 +69,7 @@ export function BetaAccessSection({
             <button
               type="button"
               onClick={onEnterLevel0}
-              className="mx-auto inline-flex min-h-10 w-full max-w-[300px] items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 transition hover:border-[#14f195]/25 hover:bg-white/[0.065] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+              className="inline-flex min-h-10 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 transition hover:border-[#14f195]/25 hover:bg-white/[0.065] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
             >
               <Ticket className="h-4 w-4 text-[#8fffd0]" />
               Request Beta Access
