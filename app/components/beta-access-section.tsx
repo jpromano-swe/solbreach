@@ -20,6 +20,7 @@ function sanitizeAccessCode(value: string) {
 
 type PendingBetaAction = "request" | "redeem";
 type StatusKind = "error" | "info" | "success" | "warning";
+type BetaContactMethod = "email" | "telegram";
 
 const NEEDS_ACCESS_MESSAGE = "Request beta access\nor redeem an access code.";
 
@@ -33,6 +34,9 @@ export function BetaAccessSection({
   const [codeOpen, setCodeOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingBetaAction>("request");
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [contactMethod, setContactMethod] = useState<BetaContactMethod>("email");
+  const [contactValue, setContactValue] = useState("");
   const [statusMessage, setStatusMessage] = useState<{
     kind: StatusKind;
     text: string;
@@ -53,6 +57,7 @@ export function BetaAccessSection({
       if (!wallet) {
         setNeedsAccessAction(false);
         setCodeOpen(false);
+        setRequestOpen(false);
         setStatusMessage(null);
         return;
       }
@@ -108,15 +113,39 @@ export function BetaAccessSection({
       return;
     }
 
+    const normalizedContact = contactValue.trim();
+
+    if (!normalizedContact) {
+      setRequestOpen(true);
+      setStatusMessage({
+        kind: "error",
+        text:
+          contactMethod === "email"
+            ? "Enter an email before requesting access."
+            : "Enter a Telegram username before requesting access.",
+      });
+      return;
+    }
+
+    if (contactMethod === "email" && !normalizedContact.includes("@")) {
+      setRequestOpen(true);
+      setStatusMessage({
+        kind: "error",
+        text: "Enter a valid email address.",
+      });
+      return;
+    }
+
     setIsBusy(true);
     setStatusMessage(null);
     try {
       await ensureBackendWalletAuth(wallet);
-      const result = await requestBetaAccess(wallet.account.address);
+      await requestBetaAccess(wallet.account.address, normalizedContact);
       setNeedsAccessAction(true);
       setCodeOpen(true);
-      setStatusMessage({ kind: "success", text: result.message });
-      toast.success(result.message);
+      setRequestOpen(false);
+      setStatusMessage({ kind: "success", text: "Request received." });
+      toast.success("Request received.");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setStatusMessage({ kind: "error", text: message });
@@ -221,15 +250,75 @@ export function BetaAccessSection({
             </p>
             <button
               type="button"
-              onClick={() => void submitAccessRequest()}
+              onClick={() => setRequestOpen((open) => !open)}
               disabled={!wallet || isBusy}
               className="inline-flex min-h-9 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 transition hover:border-[#14f195]/25 hover:bg-white/[0.065] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+              aria-expanded={requestOpen}
             >
               <Ticket className="h-4 w-4 text-[#8fffd0]" />
-              {isBusy && pendingAction === "request"
-                ? "Requesting..."
-                : "Request Beta Access"}
+              Request Beta Access
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${
+                  requestOpen ? "rotate-180" : ""
+                }`}
+                aria-hidden="true"
+              />
             </button>
+
+            <div
+              className={`grid w-[min(100%,300px)] transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
+                wallet && requestOpen
+                  ? "mt-1 grid-rows-[1fr] opacity-100"
+                  : "mt-0 grid-rows-[0fr] opacity-0"
+              }`}
+            >
+              <form
+                className="min-h-0 overflow-hidden"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void submitAccessRequest();
+                }}
+              >
+                <div className="grid gap-2">
+                  <select
+                    value={contactMethod}
+                    onChange={(event) =>
+                      setContactMethod(event.target.value as BetaContactMethod)
+                    }
+                    className="min-h-9 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-sm text-zinc-200 outline-none transition focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
+                  >
+                    <option value="email">Email</option>
+                    <option value="telegram">Telegram</option>
+                  </select>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_96px]">
+                    <input
+                      autoComplete={contactMethod === "email" ? "email" : "off"}
+                      inputMode={contactMethod === "email" ? "email" : "text"}
+                      name="beta-contact"
+                      onChange={(event) => setContactValue(event.target.value)}
+                      placeholder={
+                        contactMethod === "email"
+                          ? "you@example.com"
+                          : "@telegram"
+                      }
+                      spellCheck={false}
+                      type={contactMethod === "email" ? "email" : "text"}
+                      value={contactValue}
+                      className="min-h-9 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isBusy}
+                      className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#9945ff]/35 bg-[#9945ff] px-3 text-sm font-semibold text-white transition hover:bg-[#8b35f6] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                    >
+                      {isBusy && pendingAction === "request"
+                        ? "Sending..."
+                        : "Submit"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
 
           {wallet && statusMessage ? (

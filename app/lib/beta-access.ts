@@ -61,11 +61,11 @@ export function getBetaAccessStatus(walletAddress: string) {
   );
 }
 
-export function requestBetaAccess(walletAddress: string) {
+export function requestBetaAccess(walletAddress: string, nameOrHandle?: string) {
   return betaAccessRequest<BetaAccessRequestResponse>(
     "/api/v1/beta-access/requests",
     {
-      body: JSON.stringify({ walletAddress }),
+      body: JSON.stringify({ nameOrHandle, walletAddress }),
       method: "POST",
     }
   );
