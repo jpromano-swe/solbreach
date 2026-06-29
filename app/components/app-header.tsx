@@ -27,6 +27,8 @@ export function AppHeader({
   onSelectVulnerabilities: () => void;
   walletStatus: string;
 }) {
+  const isLandingView = activeSection === "levels" && activeLevelsView === "landing";
+
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
@@ -60,8 +62,8 @@ export function AppHeader({
 
         <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
           <ClusterSelect />
-          <WalletButton />
-          {walletStatus === "connected" ? (
+          {!isLandingView ? <WalletButton /> : null}
+          {!isLandingView && walletStatus === "connected" ? (
             <button
               type="button"
               onClick={onOpenProfile}
