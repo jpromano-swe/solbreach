@@ -45,7 +45,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     compact: {
       cta: "Start warmup",
       levelLabel: "LEVEL 0",
-      metadata: "Warmup · 10-15 min",
+      metadata: "Warmup · 10-15 min · PDA basics",
       summary:
         "Get familiar with wallet-bound state, PDA flow, and how SolBreach levels work.",
       title: "Hello SolBreach",
@@ -64,7 +64,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     compact: {
       cta: "Start level",
       levelLabel: "LEVEL 1",
-      metadata: "Beginner · 15-20 min",
+      metadata: "Beginner · 15-20 min · Account validation",
       summary:
         "Learn how untrusted account inputs can alter protocol behavior.",
       title: "Account Substitution",
@@ -144,7 +144,7 @@ export function VulnerabilitiesSection({
                 onClick={() => onSelectLevel(card.target!)}
                 className={
                   card.compact
-                    ? "group rounded-[18px] border border-white/10 bg-white/[0.04] p-5 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
+                    ? "group self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
                 }
               >
@@ -189,7 +189,7 @@ function CompactVulnerabilityCardContent({
   compact: NonNullable<VulnerabilityCard["compact"]>;
 }) {
   return (
-    <div className="flex min-h-[260px] flex-col">
+    <div className="flex min-h-[280px] flex-col">
       <div className="flex items-center justify-between gap-4">
         <span className="rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#b892ff]">
           {compact.levelLabel}
@@ -199,10 +199,10 @@ function CompactVulnerabilityCardContent({
         </span>
       </div>
 
-      <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
+      <h2 className="mt-7 text-2xl font-semibold tracking-[-0.03em] text-white">
         {compact.title}
       </h2>
-      <p className="mt-3 text-sm leading-6 text-zinc-400">
+      <p className="mt-3 max-w-[90%] text-sm leading-6 text-zinc-400">
         {compact.summary}
       </p>
 
@@ -210,7 +210,7 @@ function CompactVulnerabilityCardContent({
         {compact.metadata}
       </p>
 
-      <span className="mt-auto inline-flex items-center gap-2 pt-8 text-sm font-medium text-[#b892ff] transition group-hover:text-white">
+      <span className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-[#b892ff] transition group-hover:text-white">
         {compact.cta}
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </span>
