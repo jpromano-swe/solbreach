@@ -3,18 +3,157 @@
 import Image from "next/image";
 import { ChevronDown, KeyRound, ShieldCheck, Ticket, Wallet } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+
+import {
+  getBetaAccessStatus,
+  redeemBetaAccessCode,
+  requestBetaAccess,
+} from "../lib/beta-access";
+import { ensureBackendWalletAuth } from "../lib/levels/level1-backend";
+import { useWallet } from "../lib/wallet/context";
+import type { WalletSession } from "../lib/wallet/types";
 
 function sanitizeAccessCode(value: string) {
   return value.replace(/[^a-z0-9]/gi, "").toUpperCase();
 }
+
+type PendingBetaAction = "enter" | "request" | "redeem";
+type StatusKind = "error" | "info" | "success";
 
 export function BetaAccessSection({
   onEnterLevel0,
 }: {
   onEnterLevel0: () => void;
 }) {
+  const { connect, connectors, status, wallet } = useWallet();
   const [accessCode, setAccessCode] = useState("");
   const [codeOpen, setCodeOpen] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingBetaAction>("enter");
+  const [statusMessage, setStatusMessage] = useState<{
+    kind: StatusKind;
+    text: string;
+  } | null>(null);
+  const [walletPickerOpen, setWalletPickerOpen] = useState(false);
+
+  async function authenticateWallet(session: WalletSession) {
+    await ensureBackendWalletAuth(session);
+    return session.account.address;
+  }
+
+  async function checkAccess(session: WalletSession) {
+    const walletAddress = await authenticateWallet(session);
+    const result = await getBetaAccessStatus(walletAddress);
+
+    if (result.hasAccess && result.status === "approved") {
+      toast.success("Beta access confirmed.");
+      onEnterLevel0();
+      return;
+    }
+
+    const message =
+      result.status === "pending"
+        ? "Your beta request is pending for this wallet."
+        : result.status === "revoked"
+          ? "Beta access for this wallet is no longer active."
+          : "Wallet connected. Request beta access or redeem an access code.";
+    setStatusMessage({ kind: "info", text: message });
+  }
+
+  async function submitAccessRequest(session: WalletSession) {
+    const walletAddress = await authenticateWallet(session);
+    const result = await requestBetaAccess(walletAddress);
+    setStatusMessage({ kind: "success", text: result.message });
+    toast.success(result.message);
+  }
+
+  async function redeemAccessCode(session: WalletSession) {
+    if (!accessCode) {
+      setCodeOpen(true);
+      setStatusMessage({
+        kind: "error",
+        text: "Enter an access code before redeeming.",
+      });
+      return;
+    }
+
+    const walletAddress = await authenticateWallet(session);
+    const result = await redeemBetaAccessCode({ code: accessCode, walletAddress });
+
+    if (result.hasAccess && result.status === "approved") {
+      toast.success("Access code redeemed.");
+      onEnterLevel0();
+      return;
+    }
+
+    setStatusMessage({
+      kind: "info",
+      text: "Access code received, but this wallet is not approved yet.",
+    });
+  }
+
+  async function runBetaAction(
+    action: PendingBetaAction,
+    session = wallet
+  ) {
+    setPendingAction(action);
+
+    if (!session) {
+      setWalletPickerOpen(true);
+      return;
+    }
+
+    setIsBusy(true);
+    setStatusMessage(null);
+    try {
+      if (action === "enter") {
+        await checkAccess(session);
+      } else if (action === "request") {
+        await submitAccessRequest(session);
+      } else {
+        await redeemAccessCode(session);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatusMessage({ kind: "error", text: message });
+      toast.error(message);
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleConnectorSelect(connectorId: string) {
+    setIsBusy(true);
+    setStatusMessage(null);
+    try {
+      const session = await connect(connectorId);
+      setWalletPickerOpen(false);
+      await runBetaAction(pendingAction, session);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatusMessage({ kind: "error", text: message });
+      toast.error(message);
+      setIsBusy(false);
+    }
+  }
+
+  function openWalletPicker(action: PendingBetaAction) {
+    if (wallet) {
+      void runBetaAction(action, wallet);
+      return;
+    }
+
+    setPendingAction(action);
+    setStatusMessage(null);
+
+    if (connectors.length === 1) {
+      void handleConnectorSelect(connectors[0].id);
+      return;
+    }
+
+    setWalletPickerOpen(true);
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050606] text-white">
@@ -60,21 +199,66 @@ export function BetaAccessSection({
           <div className="mt-8 flex flex-col items-center gap-3">
             <button
               type="button"
-              onClick={onEnterLevel0}
+              onClick={() => openWalletPicker("enter")}
+              disabled={isBusy || status === "connecting"}
               className="inline-flex min-h-11 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
             >
               <Wallet className="h-4 w-4" />
-              Connect Wallet
+              {isBusy && pendingAction === "enter" ? "Checking Access..." : "Connect Wallet"}
             </button>
             <button
               type="button"
-              onClick={onEnterLevel0}
+              onClick={() => openWalletPicker("request")}
+              disabled={isBusy || status === "connecting"}
               className="inline-flex min-h-10 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 transition hover:border-[#14f195]/25 hover:bg-white/[0.065] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
             >
               <Ticket className="h-4 w-4 text-[#8fffd0]" />
-              Request Beta Access
+              {isBusy && pendingAction === "request"
+                ? "Requesting..."
+                : "Request Beta Access"}
             </button>
+
+            {walletPickerOpen ? (
+              <div className="w-[min(100%,300px)] rounded-xl border border-white/10 bg-black/35 p-2">
+                <p className="px-2 pb-2 text-xs text-zinc-500">Choose a wallet</p>
+                <div className="space-y-1">
+                  {connectors.map((connector) => (
+                    <button
+                      key={connector.id}
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void handleConnectorSelect(connector.id)}
+                      className="flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-zinc-300 transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center rounded bg-white/[0.06] text-[10px] font-semibold text-[#8fffd0]">
+                        {connector.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      {connector.name}
+                    </button>
+                  ))}
+                  {connectors.length === 0 ? (
+                    <p className="px-2 py-2 text-sm text-zinc-500">
+                      No Solana wallet detected.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
+
+          {statusMessage ? (
+            <p
+              className={`mx-auto mt-4 max-w-[300px] text-center text-sm leading-6 ${
+                statusMessage.kind === "error"
+                  ? "text-red-300"
+                  : statusMessage.kind === "success"
+                    ? "text-[#8fffd0]"
+                    : "text-zinc-400"
+              }`}
+            >
+              {statusMessage.text}
+            </p>
+          ) : null}
 
           <div className="mt-7 border-t border-white/10 pt-5">
             <button
@@ -107,7 +291,7 @@ export function BetaAccessSection({
                 className="min-h-0 overflow-hidden"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  onEnterLevel0();
+                  void runBetaAction("redeem");
                 }}
               >
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px]">
@@ -127,9 +311,12 @@ export function BetaAccessSection({
                   />
                   <button
                     type="submit"
+                    disabled={isBusy}
                     className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
                   >
-                    Redeem Code
+                    {isBusy && pendingAction === "redeem"
+                      ? "Redeeming..."
+                      : "Redeem Code"}
                   </button>
                 </div>
               </form>
