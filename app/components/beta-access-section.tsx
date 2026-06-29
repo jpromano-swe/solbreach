@@ -21,7 +21,7 @@ function sanitizeAccessCode(value: string) {
 type PendingBetaAction = "request" | "redeem";
 type StatusKind = "error" | "info" | "success" | "warning";
 
-const NEEDS_ACCESS_MESSAGE = "Request beta access or redeem an access code.";
+const NEEDS_ACCESS_MESSAGE = "Request beta access\nor redeem an access code.";
 
 export function BetaAccessSection({
   onEnterLevel0,
@@ -335,7 +335,9 @@ function StatusMessageText({ text }: { text: string }) {
 
   return (
     <span className="font-semibold text-yellow-300">
-      {NEEDS_ACCESS_MESSAGE}
+      Request beta access
+      <br />
+      or redeem an access code.
     </span>
   );
 }

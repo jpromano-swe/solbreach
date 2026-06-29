@@ -25,6 +25,8 @@ export function WalletButton({
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const connectedStyles = connectedButtonClassName ?? buttonClassName;
+  const disconnectedStyles = disconnectedButtonClassName ?? buttonClassName;
 
   const address = wallet?.account.address;
   const balance = useBalance(address);
@@ -54,7 +56,10 @@ export function WalletButton({
       <div className={`relative ${className}`} ref={ref}>
         <button
           onClick={() => (isOpen ? close() : open())}
-          className={`cursor-pointer rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90 ${disconnectedButtonClassName ?? buttonClassName}`}
+          className={`cursor-pointer rounded-lg px-4 py-2 text-xs font-medium shadow-xs transition ${
+            disconnectedStyles ||
+            "bg-primary text-primary-foreground hover:bg-primary/90"
+          }`}
         >
           Connect Wallet
         </button>
@@ -108,7 +113,9 @@ export function WalletButton({
     <div className={`relative ${className}`} ref={ref}>
       <button
         onClick={() => (isOpen ? close() : open())}
-        className={`flex cursor-pointer items-center gap-2 rounded-lg border border-border-low bg-card px-3 py-2 text-xs font-medium transition hover:bg-cream ${connectedButtonClassName ?? buttonClassName}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${
+          connectedStyles || "border border-border-low bg-card hover:bg-cream"
+        }`}
       >
         <span className="h-2 w-2 rounded-full bg-green-500" />
         <span className="font-mono">{ellipsify(address!, 4)}</span>
