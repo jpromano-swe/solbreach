@@ -2,13 +2,19 @@
 
 import Image from "next/image";
 import { ArrowRight, FlaskConical, KeyRound, ShieldCheck, Wallet } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+
+function sanitizeAccessCode(value: string) {
+  return value.replace(/[^a-z0-9]/gi, "").toUpperCase();
+}
 
 export function BetaAccessSection({
   onEnterLevel0,
 }: {
   onEnterLevel0: () => void;
 }) {
+  const [accessCode, setAccessCode] = useState("");
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050606] text-white">
       <Image
@@ -50,12 +56,11 @@ export function BetaAccessSection({
             <AccessAction
               icon={<Wallet className="h-5 w-5" />}
               label="Connect Wallet"
-              detail="Connect Web3 identity"
               onClick={onEnterLevel0}
             />
             <AccessAction
               icon={<FlaskConical className="h-5 w-5" />}
-              label="Request Research Credentials"
+              label="Request Credentials"
               detail="Apply to try beta"
               onClick={onEnterLevel0}
             />
@@ -82,8 +87,17 @@ export function BetaAccessSection({
             </label>
             <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_112px]">
               <input
+                autoCapitalize="characters"
+                autoComplete="off"
+                inputMode="text"
                 name="access-code"
+                onChange={(event) =>
+                  setAccessCode(sanitizeAccessCode(event.target.value))
+                }
+                pattern="[A-Z0-9]*"
                 placeholder="ENTER_ACCESS_KEY"
+                spellCheck={false}
+                value={accessCode}
                 className="min-h-12 rounded-xl border border-white/10 bg-white/[0.06] px-3 font-mono text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
               />
               <button
@@ -111,7 +125,7 @@ function AccessAction({
   label,
   onClick,
 }: {
-  detail: string;
+  detail?: string;
   icon: ReactNode;
   label: string;
   onClick: () => void;
@@ -128,9 +142,11 @@ function AccessAction({
         </span>
         <span>
           <span className="block text-base font-semibold text-white">{label}</span>
-          <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            {detail}
-          </span>
+          {detail ? (
+            <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              {detail}
+            </span>
+          ) : null}
         </span>
       </span>
       <ArrowRight className="h-4 w-4 shrink-0 text-zinc-500 transition group-hover:translate-x-0.5 group-hover:text-[#8fffd0]" />
