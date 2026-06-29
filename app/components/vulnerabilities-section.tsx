@@ -189,7 +189,7 @@ function CompactVulnerabilityCardContent({
   compact: NonNullable<VulnerabilityCard["compact"]>;
 }) {
   return (
-    <div className="flex min-h-[280px] flex-col">
+    <div className="flex min-h-[235px] flex-col">
       <div className="flex items-center justify-between gap-4">
         <span className="rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#b892ff]">
           {compact.levelLabel}
@@ -199,18 +199,18 @@ function CompactVulnerabilityCardContent({
         </span>
       </div>
 
-      <h2 className="mt-7 text-2xl font-semibold tracking-[-0.03em] text-white">
+      <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
         {compact.title}
       </h2>
       <p className="mt-3 max-w-[90%] text-sm leading-6 text-zinc-400">
         {compact.summary}
       </p>
 
-      <p className="mt-6 text-xs font-medium text-zinc-500">
+      <p className="mt-6 text-xs font-medium text-zinc-400">
         {compact.metadata}
       </p>
 
-      <span className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-[#b892ff] transition group-hover:text-white">
+      <span className="mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-3 py-1.5 text-sm font-semibold text-[#c7a6ff] transition group-hover:border-[#9945ff]/40 group-hover:bg-[#9945ff]/10 group-hover:text-white">
         {compact.cta}
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </span>
