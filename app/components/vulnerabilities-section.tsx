@@ -7,7 +7,6 @@ import {
   FileCode2,
   LockKeyhole,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -148,7 +147,7 @@ export function VulnerabilitiesSection({
                 onClick={() => onSelectLevel(card.target!)}
                 className={
                   card.compact?.imageSrc
-                    ? "group relative self-start overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-7 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40 lg:col-span-2 lg:w-[60%]"
+                    ? "group relative self-start overflow-hidden rounded-[22px] border border-white/10 bg-[#08090d] p-7 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#0b0d12] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : card.compact
                     ? "group self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
                     : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
@@ -189,6 +188,17 @@ export function VulnerabilitiesSection({
   );
 }
 
+function AvailableBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 font-medium text-[#8fffd0] shadow-[0_0_0_rgba(20,241,149,0)] motion-safe:animate-[availabilityPillBreath_2.8s_ease-in-out_infinite] ${className}`}
+    >
+      <span className="h-2 w-2 rounded-full bg-[#14f195] motion-safe:animate-[availabilityDotBlink_1.35s_ease-in-out_infinite]" />
+      Available
+    </span>
+  );
+}
+
 function CompactVulnerabilityCardContent({
   compact,
 }: {
@@ -211,10 +221,7 @@ function CompactVulnerabilityCardContent({
             <span className="pt-1 text-sm font-semibold tracking-[0.16em] text-[#b892ff]">
               {compact.levelLabel}
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 px-3 py-1 text-sm font-medium text-[#8fffd0]">
-              <span className="h-2 w-2 rounded-full bg-[#14f195]" />
-              Available
-            </span>
+            <AvailableBadge className="px-3 py-1 text-sm" />
           </div>
 
           <div className="mt-16 max-w-[78%] sm:mt-16 sm:max-w-[54%]">
@@ -243,9 +250,7 @@ function CompactVulnerabilityCardContent({
         <span className="rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#b892ff]">
           {compact.levelLabel}
         </span>
-        <span className="rounded-full border border-[#14f195]/15 bg-[#14f195]/5 px-2.5 py-0.5 text-[10px] font-medium text-[#8fffd0]">
-          Available
-        </span>
+        <AvailableBadge className="px-2.5 py-0.5 text-[10px]" />
       </div>
 
       <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
@@ -286,20 +291,14 @@ function VulnerabilityCardContent({
         >
           {card.id.toUpperCase()}
         </span>
-        <span
-          className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
-            locked
-              ? "border-white/10 bg-white/[0.04] text-zinc-500"
-              : "border-[#14f195]/20 bg-[#14f195]/10 text-[#8fffd0]"
-          }`}
-        >
-          {locked ? (
+        {locked ? (
+          <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-zinc-500">
             <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
-          ) : (
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-          )}
-          {locked ? "Locked" : "Available"}
-        </span>
+            Locked
+          </span>
+        ) : (
+          <AvailableBadge className="px-3 py-1 text-xs" />
+        )}
       </div>
       <h2
         className={`mt-5 text-2xl font-semibold tracking-[-0.03em] ${

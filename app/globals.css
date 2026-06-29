@@ -560,6 +560,32 @@
   }
 }
 
+@keyframes availabilityPillBreath {
+  0%,
+  100% {
+    border-color: rgba(20, 241, 149, 0.22);
+    box-shadow: 0 0 0 rgba(20, 241, 149, 0);
+  }
+
+  50% {
+    border-color: rgba(20, 241, 149, 0.48);
+    box-shadow: 0 0 18px rgba(20, 241, 149, 0.16);
+  }
+}
+
+@keyframes availabilityDotBlink {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.86);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .level1-flow .react-flow__node {
     transition: none;
