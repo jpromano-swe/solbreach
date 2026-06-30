@@ -159,8 +159,8 @@ export function LabContextPanel({
 
   if (phase === "INSPECT") {
     return (
-      <aside className="h-full min-w-0">
-        <div className="h-full min-h-0 space-y-4 overflow-auto">
+      <aside className="h-fit min-w-0">
+        <div className="space-y-4">
           <ReviewCheckpointPanel
             activeStep="review"
             criticalTotal={criticalTotal}
@@ -192,8 +192,8 @@ export function LabContextPanel({
 
   if (phase === "EXECUTE_EXPLOIT" || phase === "VERIFY_IMPACT") {
     return (
-      <aside className="h-full min-w-0">
-        <div className="h-full min-h-0 space-y-4 overflow-auto">
+      <aside className="h-fit min-w-0">
+        <div className="space-y-4">
           {panelContent}
         </div>
       </aside>
@@ -202,8 +202,8 @@ export function LabContextPanel({
 
   if (isReportContext) {
     return (
-      <aside className="h-full min-w-0">
-        <div className="h-full min-h-0 space-y-4 overflow-auto">
+      <aside className="h-fit min-w-0">
+        <div className="space-y-4">
           {panelContent}
         </div>
       </aside>

@@ -94,7 +94,7 @@ export function ReportTab({
 
   if (!impactVerified) {
     return (
-      <div className="h-full overflow-auto p-5">
+      <div className="overflow-auto p-5">
         <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-black/15 p-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] text-zinc-500">
             <ShieldCheck className="h-5 w-5" />
@@ -110,7 +110,7 @@ export function ReportTab({
 
   if (!findingReviewPassed) {
     return (
-      <div className="h-full overflow-auto p-5">
+      <div className="overflow-auto p-5">
         <QuestionnairePanel
           answers={questionnaireAnswers}
           result={questionnaireResult}
@@ -139,9 +139,9 @@ export function ReportTab({
 
   if (!reportOpened && report?.status !== "accepted") {
     return (
-      <div className="h-full overflow-auto p-5">
+      <div className="overflow-auto p-5">
         <div className="w-full">
-          <div className="flex min-h-[430px] items-center">
+          <div className="flex py-6">
             <div className="max-w-2xl">
               <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-[#14f195]">
                 <Check className="h-4 w-4" />
@@ -195,7 +195,7 @@ export function ReportTab({
   }
 
   return (
-    <div className="h-full overflow-auto p-5">
+    <div className="overflow-auto p-5">
       <div className="w-full">
         <ReportForm
           expanded

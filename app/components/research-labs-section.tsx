@@ -396,7 +396,7 @@ export function ResearchLabsSection() {
 
         <LabScenarioBriefing lab={activeLab} phase={phase} />
 
-        <div className="mt-3 grid min-h-[920px] grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:min-h-[980px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="mt-3 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
           <ResearchLabWorkspace
             activeFile={activeFile}
             activeFileContent={activeFileContent}

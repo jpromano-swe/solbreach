@@ -99,6 +99,17 @@ export function ResearchLabWorkspace({
     }
   }, [activeTab, onChangeExecuteExploitView]);
 
+  const workspaceHeightClass =
+    activeTab === "inspect"
+      ? "min-h-[720px] 2xl:min-h-[780px]"
+      : "h-fit";
+  const workspaceContentClass =
+    activeTab === "inspect"
+      ? "min-h-0 flex-1 overflow-hidden"
+      : "overflow-visible";
+  const transitionFitClass =
+    activeTab === "inspect" ? "" : "research-lab-transition-fit";
+
   const activeTabContent =
     activeTab === "inspect" ? (
       <InspectTab
@@ -151,10 +162,11 @@ export function ResearchLabWorkspace({
     );
 
   return (
-    <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#111212]/85 shadow-2xl shadow-black/30 backdrop-blur-xl">
+    <div className={`flex min-w-0 flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#111212]/85 shadow-2xl shadow-black/30 backdrop-blur-xl ${workspaceHeightClass}`}>
       <WorkspaceTabs activeTab={activeTab} availableTabs={availableTabs} onTabChange={onTabChange} />
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className={workspaceContentClass}>
         <AnimatedContentSwitch
+          className={transitionFitClass}
           transitionKey={activeTab}
           transitionOrder={RESEARCH_LAB_TAB_TRANSITION_ORDER}
         >

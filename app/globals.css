@@ -606,6 +606,15 @@
   will-change: opacity, transform;
 }
 
+.research-lab-transition-stack.research-lab-transition-fit {
+  height: auto;
+}
+
+.research-lab-transition-stack.research-lab-transition-fit
+  .research-lab-transition-current {
+  height: auto;
+}
+
 .research-lab-transition-exit {
   position: absolute;
   inset: 0;
