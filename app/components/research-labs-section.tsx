@@ -43,7 +43,7 @@ import type {
   WorkspaceTab,
 } from "./research-labs/types";
 
-const AVAILABLE_TABS: WorkspaceTab[] = ["inspect", "exploit", "report"];
+const BASE_TABS: WorkspaceTab[] = ["inspect", "exploit"];
 
 // Research lab motion storyboard:
 //   000ms old section fades down/out while new section slides up/in
@@ -198,11 +198,26 @@ export function ResearchLabsSection() {
     session?.findingReviewPassed ??
       (report?.status === "accepted" || session?.labCompleted)
   );
-  const resolvedActiveTab = AVAILABLE_TABS.includes(activeTab)
+  const availableTabs = useMemo<WorkspaceTab[]>(
+    () => (impactVerified ? [...BASE_TABS, "report"] : BASE_TABS),
+    [impactVerified]
+  );
+  const resolvedActiveTab = availableTabs.includes(activeTab)
     ? activeTab
-    : activeTab === "verify"
+    : activeTab === "verify" || activeTab === "report"
       ? "exploit"
       : "inspect";
+  const changeWorkspaceTab = useCallback(
+    (tab: WorkspaceTab) => {
+      if (tab === "report" && !impactVerified) {
+        setActiveTab("exploit");
+        return;
+      }
+
+      setActiveTab(tab);
+    },
+    [impactVerified]
+  );
 
   const loadCatalog = useCallback(async () => {
     setIsCatalogLoading(true);
@@ -388,7 +403,7 @@ export function ResearchLabsSection() {
             activeTab={resolvedActiveTab}
             accounts={buildAccountEvidence(session, impactVerified)}
             auditReportStage={auditReportStage}
-            availableTabs={AVAILABLE_TABS}
+            availableTabs={availableTabs}
             impactVerified={impactVerified}
             findingReviewPassed={findingReviewPassed}
             files={session.fileEntries}
@@ -414,13 +429,13 @@ export function ResearchLabsSection() {
             onQuestionnaireAnswer={updateQuestionnaireAnswer}
             onQuestionnaireRetry={retryQuestionnaire}
             onQuestionnaireSubmit={submitQuestionnaire}
-            onOpenFindingReport={openFindingReport}
+            onOpenFindingReport={impactVerified ? openFindingReport : () => setActiveTab("exploit")}
             onReviewIndexChange={setReviewIndex}
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
             onSelectFile={setActiveFilePath}
             onSubmitReport={submitReport}
-            onTabChange={setActiveTab}
+            onTabChange={changeWorkspaceTab}
             isReportSaving={isReportSaving}
             isReportSubmitting={isReportSubmitting}
           />
@@ -447,7 +462,7 @@ export function ResearchLabsSection() {
             session={session}
             txResults={txResults}
             onOpenExploit={() => setActiveTab("exploit")}
-            onOpenReport={openFindingReport}
+            onOpenReport={impactVerified ? openFindingReport : () => setActiveTab("exploit")}
             onRevealHint={revealHint}
             onRetryReview={retryQuestionnaire}
             onStartReview={startFindingReview}

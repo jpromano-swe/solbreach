@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
@@ -184,6 +184,16 @@ export function LabContextPanel({
     );
   }
 
+  if (phase === "EXECUTE_EXPLOIT") {
+    return (
+      <aside className="h-full min-w-0">
+        <div className="h-full min-h-0 space-y-4 overflow-auto">
+          {panelContent}
+        </div>
+      </aside>
+    );
+  }
+
   if (isReportContext) {
     return (
       <aside className="h-full min-w-0">
@@ -244,37 +254,33 @@ function ExecuteExploitContext({
 
   return (
     <>
-      <ContextBlock title="Attempt State">
-        <div className="space-y-3">
-          <AttemptStep label="Hypothesis selected" active />
-          <AttemptStep
-            label={
-              !depositSubmitted
-                ? "Deposit not submitted"
-                : protocolState.depositKind === "regular"
-                  ? "Canonical collateral deposited"
-                  : protocolState.depositKind === "exploit"
-                    ? "Non-canonical credit route created"
-                    : "Unsupported deposit path observed"
-            }
-            active={depositSubmitted}
-          />
-          <AttemptStep
-            label={
-              !withdrawalSubmitted
-                ? "Borrow not submitted"
-                : protocolState.depositKind === "regular"
-                  ? "Canonical borrow executed"
-                  : protocolState.hasMaxDrain
-                    ? "Treasury drain path executed"
-                    : "Borrow executed against observed credit"
-            }
-            active={withdrawalSubmitted}
-          />
-          <AttemptStep label="Impact verified" active={impactVerified} />
-          <AttemptStep label="Report unlocked" active={reportUnlocked} />
-        </div>
-      </ContextBlock>
+      <ExploitCheckpointPanel
+        steps={[
+          { label: "Hypothesis selected", active: true },
+          {
+            label: !depositSubmitted
+              ? "Deposit not submitted"
+              : protocolState.depositKind === "regular"
+                ? "Canonical collateral deposited"
+                : protocolState.depositKind === "exploit"
+                  ? "Non-canonical credit route created"
+                  : "Unsupported deposit path observed",
+            active: depositSubmitted,
+          },
+          {
+            label: !withdrawalSubmitted
+              ? "Borrow not submitted"
+              : protocolState.depositKind === "regular"
+                ? "Canonical borrow executed"
+                : protocolState.hasMaxDrain
+                  ? "Treasury drain path executed"
+                  : "Borrow executed against observed credit",
+            active: withdrawalSubmitted,
+          },
+          { label: "Impact verified", active: impactVerified },
+          { label: "Report unlocked", active: reportUnlocked },
+        ]}
+      />
 
       <ContextBlock title="Exploit Hints">
         <div className="space-y-3">
@@ -312,6 +318,38 @@ function ExecuteExploitContext({
         </div>
       </ContextBlock>
     </>
+  );
+}
+
+function ExploitCheckpointPanel({
+  steps,
+}: {
+  steps: Array<{ label: string; active: boolean }>;
+}) {
+  return (
+    <div className="h-fit rounded-[28px] border border-white/10 bg-[#0b0c0c]/80 p-5 shadow-2xl shadow-black/25">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-7 w-7 text-[#9945ff]" />
+        <p className="text-2xl font-semibold tracking-[-0.03em] text-zinc-100">
+          Exploit Checkpoint
+        </p>
+      </div>
+
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+          Exploit Progress
+        </p>
+        <div className="mt-4 space-y-4">
+          {steps.map((step) => (
+            <ExploitCheckpointStep
+              key={step.label}
+              active={step.active}
+              label={step.label}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -516,13 +554,15 @@ function EvidenceLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AttemptStep({ label, active }: { label: string; active: boolean }) {
+function ExploitCheckpointStep({ label, active }: { label: string; active: boolean }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${active ? "border-[#14f195]/35 bg-[#14f195]/12 text-[#8fffd0]" : "border-white/10 text-zinc-600"}`}>
-        {active ? <Check className="h-3.5 w-3.5" /> : null}
+    <div className="flex items-center gap-4">
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${active ? "border-[#14f195]/40 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_22px_rgba(20,241,149,0.16)]" : "border-white/10 bg-black/20 text-zinc-700"}`}>
+        {active ? <Check className="h-[18px] w-[18px]" /> : null}
       </span>
-      <span className={`text-sm ${active ? "text-zinc-300" : "text-zinc-600"}`}>{label}</span>
+      <span className={`text-base ${active ? "text-zinc-200" : "text-zinc-600"}`}>
+        {label}
+      </span>
     </div>
   );
 }
