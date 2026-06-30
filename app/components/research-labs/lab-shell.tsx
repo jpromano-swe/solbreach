@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Check, MoreHorizontal, RefreshCcw } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, RefreshCcw } from "lucide-react";
 import { useState } from "react";
 
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
@@ -101,11 +101,13 @@ function displayLabCode(lab: ResearchLabManifest) {
 
 export function LabScenarioBriefing({
   lab,
-  phase,
+  phase: _phase,
 }: {
   lab: ResearchLabManifest;
   phase: LabPhase;
 }) {
+  void _phase;
+
   return (
     <section className="border-b border-white/10 py-5">
       <div className="grid items-end gap-5">
@@ -120,12 +122,13 @@ export function LabScenarioBriefing({
             {lab.summary || LAB_SHELL_COPY.scenario}
           </p>
         </div>
-        {/* <InvestigationStepper phase={phase} /> */}
+        {/* <InvestigationStepper phase={_phase} /> */}
       </div>
     </section>
   );
 }
 
+/*
 function InvestigationStepper({ phase }: { phase: LabPhase }) {
   const steps: Array<{ id: LabPhase; label: string }> = [
     { id: "INSPECT", label: "Inspect" },
@@ -175,6 +178,7 @@ function InvestigationStepper({ phase }: { phase: LabPhase }) {
     </div>
   );
 }
+*/
 
 function PhaseBadge({ phase }: { phase: LabPhase }) {
   return (
