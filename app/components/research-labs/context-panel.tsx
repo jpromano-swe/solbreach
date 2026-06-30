@@ -86,8 +86,8 @@ export function LabContextPanel({
     <>
       {phase === "EXECUTE_EXPLOIT" ? (
         <ExecuteExploitContext
-          activeView={executeExploitView}
           impactVerified={impactVerified}
+          onOpenReport={onOpenReport}
           reportUnlocked={reportUnlocked}
           txResults={txResults}
         />
@@ -217,13 +217,13 @@ export function LabContextPanel({
 }
 
 function ExecuteExploitContext({
-  activeView,
   impactVerified,
+  onOpenReport,
   reportUnlocked,
   txResults,
 }: {
-  activeView: ExecuteExploitView;
   impactVerified: boolean;
+  onOpenReport: () => void;
   reportUnlocked: boolean;
   txResults: EnrichedTransactionResult[];
 }) {
@@ -238,23 +238,11 @@ function ExecuteExploitContext({
   ];
   const canRevealMoreHints = revealedChainHints < chainHints.length;
 
-  if (activeView === "EVIDENCE_REVIEW") {
-    return (
-      <ContextBlock title="Evidence Status">
-        <div className="space-y-3 text-sm">
-          <EvidenceLine label="Transactions" value={`${txResults.length}`} />
-          <EvidenceLine label="Deposit" value={depositSubmitted ? "Success" : "Not submitted"} />
-          <EvidenceLine label="Borrow" value={withdrawalSubmitted ? "Success" : "Not submitted"} />
-          <EvidenceLine label="State deltas" value={txResults.length ? "Available" : "Pending"} />
-          <EvidenceLine label="Impact" value={impactVerified ? "Verified" : "Not verified"} />
-        </div>
-      </ContextBlock>
-    );
-  }
-
   return (
     <>
       <ExploitCheckpointPanel
+        impactVerified={impactVerified}
+        onOpenReport={onOpenReport}
         steps={[
           { label: "Hypothesis selected", active: true },
           {
@@ -322,8 +310,12 @@ function ExecuteExploitContext({
 }
 
 function ExploitCheckpointPanel({
+  impactVerified,
+  onOpenReport,
   steps,
 }: {
+  impactVerified: boolean;
+  onOpenReport: () => void;
   steps: Array<{ label: string; active: boolean }>;
 }) {
   return (
@@ -347,6 +339,30 @@ function ExploitCheckpointPanel({
               label={step.label}
             />
           ))}
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+          Unlocks Next
+        </p>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+          <p className="text-sm font-semibold text-zinc-100">Report Finding</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-500">
+            Answer the questions and prepare your first Finding Report
+          </p>
+          <button
+            type="button"
+            onClick={onOpenReport}
+            disabled={!impactVerified}
+            className={`mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+              impactVerified
+                ? "border border-[#9945ff]/35 bg-[#9945ff]/18 text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.18)] hover:bg-[#9945ff]/24"
+                : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
+            }`}
+          >
+            Fill Report
+          </button>
         </div>
       </div>
     </div>

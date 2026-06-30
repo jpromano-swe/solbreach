@@ -116,7 +116,6 @@ export function ResearchLabWorkspace({
         isRunning={isRunning}
         txResults={txResults}
         onChangeView={onChangeExecuteExploitView}
-        onContinueFinding={() => onTabChange("report")}
         onExecuteTransaction={onExecuteTransaction}
         onOpenEvidenceReview={() => onChangeExecuteExploitView("EVIDENCE_REVIEW")}
         onProveImpact={onProveImpact}
@@ -165,4 +164,3 @@ export function ResearchLabWorkspace({
     </div>
   );
 }
-
