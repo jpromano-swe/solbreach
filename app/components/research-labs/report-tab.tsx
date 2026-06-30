@@ -143,7 +143,7 @@ export function ReportTab({
     return (
       <div className="h-full overflow-auto p-5">
         <div className="w-full">
-          <div className="grid min-h-[430px] items-center gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="flex min-h-[430px] items-center">
             <div className="max-w-2xl">
               <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-[#14f195]">
                 <Check className="h-4 w-4" />
@@ -190,12 +190,6 @@ export function ReportTab({
 
               {showCriticalAnswers ? <CriticalAnswersPanel /> : null}
             </div>
-
-            <ReviewCheckpointPanel
-              activeStep="report"
-              criticalTotal={criticalTotal}
-              unlockCopy="Audit Report Builder is available now."
-            />
           </div>
         </div>
       </div>
@@ -284,7 +278,7 @@ function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
   );
 }
 
-function ReviewCheckpointPanel({
+export function ReviewCheckpointPanel({
   activeStep,
   criticalTotal,
   unlockCopy,
@@ -296,7 +290,7 @@ function ReviewCheckpointPanel({
   const reportUnlocked = activeStep === "report";
 
   return (
-    <aside className="rounded-3xl border border-white/10 bg-black/25 p-5 shadow-2xl shadow-black/25">
+    <aside className="rounded-3xl border border-white/10 bg-black/20 p-5">
       <div className="flex items-center gap-3">
         <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
         <p className="text-xl font-semibold tracking-[-0.03em] text-white">
@@ -448,42 +442,33 @@ function QuestionnairePanel({
   return (
     <div className="w-full">
       {!reviewStarted ? (
-        <div className="grid min-h-[520px] items-center gap-7 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#07080d] p-7 shadow-2xl shadow-black/30 md:p-9">
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-[linear-gradient(90deg,rgba(153,69,255,0.14),transparent_38%,rgba(20,241,149,0.11))]" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(153,69,255,0.16),transparent_32%),radial-gradient(circle_at_88%_95%,rgba(20,241,149,0.12),transparent_34%)]" />
-            <div className="relative">
-              <h2 className="text-4xl font-semibold tracking-[-0.045em] text-white md:text-5xl">
-                Confirm the finding<span className="text-[#9945ff]">.</span>
-              </h2>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">
-                You verified impact in the sandbox. Complete a short Finding Review to confirm the root cause, exploit path, evidence, impact, and recommended mitigation before the Audit Report unlocks.
-              </p>
+        <div className="min-h-[520px] max-w-3xl py-8">
+          <h2 className="text-4xl font-semibold tracking-[-0.045em] text-white md:text-5xl">
+            Confirm the finding<span className="text-[#9945ff]">.</span>
+          </h2>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">
+            Congratulations! Impact has been verified.
+          </p>
+          <p className="mt-3 max-w-2xl text-base leading-8 text-zinc-400">
+            The finding review questionnaire is meant to confirm the root cause, exploit path, evidence, impact, and recommended mitigation to confirm the audit report.
+          </p>
 
-              <ReportProgressStepper activeStep={2} />
+          <ReportProgressStepper activeStep={2} />
 
-              <button
-                type="button"
-                onClick={onStart}
-                className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#9945ff]/20 transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080d]"
-              >
-                Start Finding Review
-                <ArrowRight className="h-4 w-4" />
-              </button>
+          <button
+            type="button"
+            onClick={onStart}
+            className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#9945ff]/20 transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          >
+            Start Finding Review
+            <ArrowRight className="h-4 w-4" />
+          </button>
 
-              <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 text-sm text-zinc-400">
-                <ReviewMetaItem icon={<Target className="h-4 w-4" />} label={`Passing score: ${rl1FindingQuestionnaire.passingScore}`} />
-                <ReviewMetaItem icon={<ShieldCheck className="h-4 w-4" />} label={`Critical questions: ${criticalTotal}`} />
-                <ReviewMetaItem icon={<RefreshCcw className="h-4 w-4" />} label="Retry missed questions only" />
-              </div>
-            </div>
-          </section>
-
-          <ReviewCheckpointPanel
-            activeStep="review"
-            criticalTotal={criticalTotal}
-            unlockCopy="Available when you confirm this finding."
-          />
+          <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 text-sm text-zinc-400">
+            <ReviewMetaItem icon={<Target className="h-4 w-4" />} label={`Passing score: ${rl1FindingQuestionnaire.passingScore}`} />
+            <ReviewMetaItem icon={<ShieldCheck className="h-4 w-4" />} label={`Critical questions: ${criticalTotal}`} />
+            <ReviewMetaItem icon={<RefreshCcw className="h-4 w-4" />} label="Retry missed questions only" />
+          </div>
         </div>
       ) : null}
 

@@ -8,6 +8,7 @@ import type { ResearchLabFile, ResearchLabManifest, ResearchLabReport, ResearchL
 import {
   deriveProtocolState,
 } from "./execute-exploit-tab";
+import { ReviewCheckpointPanel } from "./report-tab";
 import type { AuditReportStage, EnrichedTransactionResult, ExecuteExploitView, LabPhase, ReviewMode } from "./types";
 
 const contextObjective =
@@ -336,7 +337,6 @@ function HintList({
 }
 
 function ReviewContextCard({
-  auditReportStage,
   findingReviewPassed,
   questionnaireResult,
   reportAccepted,
@@ -368,13 +368,6 @@ function ReviewContextCard({
   onRetryReview: () => void;
   onStartReview: () => void;
 }) {
-  const auditStatus =
-    auditReportStage === "SUBMITTED"
-      ? "Submitted"
-      : auditReportStage === "PREVIEW"
-        ? "Ready to Submit"
-        : "Draft";
-
   if (reportAccepted) {
     return (
       <ContextBlock title="Status">
@@ -389,19 +382,20 @@ function ReviewContextCard({
 
   if (findingReviewPassed) {
     return (
-      <ContextBlock title="Status">
-        <div className="space-y-3 text-sm">
-          <EvidenceLine label="Review" value="Passed" />
-          <EvidenceLine label="Audit Report" value={auditStatus} />
-        </div>
+      <div>
+        <ReviewCheckpointPanel
+          activeStep="report"
+          criticalTotal={criticalTotal}
+          unlockCopy="Audit Report Builder is available now."
+        />
         <button
           type="button"
           onClick={onOpenReport}
-          className="mt-4 w-full rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18"
+          className="mt-4 w-full rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
         >
           {reportOpened ? "Return to Audit Report" : "Build Audit Report"}
         </button>
-      </ContextBlock>
+      </div>
     );
   }
 
@@ -467,20 +461,11 @@ function ReviewContextCard({
   }
 
   return (
-    <ContextBlock title="Status">
-      <div className="space-y-3 text-sm">
-        <EvidenceLine label="Impact" value="Verified" />
-        <EvidenceLine label="Review" value="Required" />
-        <EvidenceLine label="Audit Report" value="Locked" />
-      </div>
-      <button
-        type="button"
-        onClick={onStartReview}
-        className="mt-4 w-full rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18"
-      >
-        Start Finding Review
-      </button>
-    </ContextBlock>
+    <ReviewCheckpointPanel
+      activeStep="review"
+      criticalTotal={criticalTotal}
+      unlockCopy="Available when you confirm this finding."
+    />
   );
 }
 
