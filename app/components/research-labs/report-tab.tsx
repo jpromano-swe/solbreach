@@ -8,7 +8,7 @@ import {
   LockKeyhole,
   ShieldCheck,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { rl1FindingQuestionnaire, type QuestionnaireAnswer, type QuestionnaireQuestion, type QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReport, ResearchLabReportFields } from "../../lib/research-labs/lab-state";
@@ -278,11 +278,17 @@ function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
 
 export function ReviewCheckpointPanel({
   activeStep,
+  action,
   criticalTotal,
+  title = "Review checkpoint",
+  unlockTitle = "Audit Report Builder",
   unlockCopy,
 }: {
   activeStep: "review" | "report";
+  action?: ReactNode;
   criticalTotal: number;
+  title?: string;
+  unlockTitle?: string;
   unlockCopy: string;
 }) {
   const reportUnlocked = activeStep === "report";
@@ -292,7 +298,7 @@ export function ReviewCheckpointPanel({
       <div className="flex items-center gap-3">
         <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
         <p className="text-xl font-semibold tracking-[-0.03em] text-white">
-          Review checkpoint
+          {title}
         </p>
       </div>
 
@@ -343,13 +349,14 @@ export function ReviewCheckpointPanel({
           </div>
           <div>
             <p className="text-sm font-semibold text-white">
-              Audit Report Builder
+              {unlockTitle}
             </p>
             <p className="mt-1 text-sm leading-5 text-zinc-500">
               {unlockCopy}
             </p>
           </div>
         </div>
+        {action ? <div className="mt-4">{action}</div> : null}
       </div>
     </aside>
   );

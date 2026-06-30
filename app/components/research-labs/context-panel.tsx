@@ -151,6 +151,31 @@ export function LabContextPanel({
     </>
   );
 
+  if (phase === "INSPECT") {
+    return (
+      <aside className="h-full min-w-0">
+        <div className="h-full min-h-0 space-y-4 overflow-auto">
+          <ReviewCheckpointPanel
+            activeStep="review"
+            criticalTotal={criticalTotal}
+            title="Inspect Checkpoint"
+            unlockTitle="Exploit Interface"
+            unlockCopy="Move from source review into the protocol attack flow."
+            action={
+              <button
+                type="button"
+                onClick={onOpenExploit}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[#14f195]/25 bg-[#14f195]/8 px-4 py-2.5 text-sm font-medium text-[#8fffd0] transition hover:bg-[#14f195]/12 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+              >
+                Try Exploit
+              </button>
+            }
+          />
+        </div>
+      </aside>
+    );
+  }
+
   if (isReportContext) {
     return (
       <aside className="h-full min-w-0">
