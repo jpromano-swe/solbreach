@@ -5,7 +5,12 @@ import { useState } from "react";
 
 import { rl1FindingQuestionnaire, type QuestionnaireAnswer, type QuestionnaireQuestion, type QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReport, ResearchLabReportFields } from "../../lib/research-labs/lab-state";
-import type { AuditReportPreview, AuditReportStage, ReviewMode } from "./types";
+import type {
+  AuditReportPreview,
+  AuditReportStage,
+  ReportCodeSnippet,
+  ReviewMode,
+} from "./types";
 import { AnimatedContentSwitch } from "./workspace-tabs";
 import {
   buildAuditReportPreview,
@@ -695,7 +700,7 @@ function ReportForm({
           <div className="mt-4 grid gap-5">
             <ReportChoiceGroup
               disabled={!isEditable}
-              helper="Name the missing binding or account-substitution failure that enabled the exploit."
+              helper="Name the problem and what it caused in one line."
               label="Title"
               options={filterReportOptions(
                 reportTitleOptions,
@@ -708,7 +713,7 @@ function ReportForm({
             />
             <ReportChoiceGroup
               disabled={!isEditable}
-              helper="Classify the vulnerability family that best matches the verified exploit path."
+              helper="Choose the vulnerability family that best describes the issue."
               label="Category"
               options={filterReportOptions(
                 reportCategoryOptions,
@@ -754,7 +759,7 @@ function ReportForm({
 
         <ReportChoiceGroup
           disabled={!isEditable}
-          helper="Explain which account relationship was trusted without being bound to the approved market configuration."
+          helper="Explain the broken assumption or missing check that made the issue possible."
           label="3. Root Cause"
           options={filterReportOptions(
             reportRootCauseOptions,
@@ -767,7 +772,7 @@ function ReportForm({
         />
         <ReportChoiceGroup
           disabled={!isEditable}
-          helper="Describe how non-canonical credit creation affected protocol safety and treasury exposure."
+          helper="Describe the concrete state change or value movement that proves impact."
           label="4. Proof of Impact"
           options={filterReportOptions(
             reportProofOfImpactOptions,
@@ -780,7 +785,7 @@ function ReportForm({
         />
         <ReportChoiceGroup
           disabled={!isEditable}
-          helper="Describe how the protocol should bind source and vault accounts before assigning credit."
+          helper="Describe the control or validation that would prevent this class of issue."
           label="5. Recommended Fix"
           options={filterReportOptions(
             reportMitigationOptions,
@@ -946,12 +951,17 @@ function AuditReportPreviewScreen({
         </div>
         <div className="mt-6 space-y-6">
           <AuditReportSection title="Description" body={report.description} />
-          <AuditReportSection title="Root Cause" body={report.rootCause} />
+          <AuditReportSection
+            body={report.rootCause}
+            snippet={report.rootCauseSnippet}
+            title="Root Cause"
+          />
           <AuditReportSection title="Proof of Impact" body={report.proofOfImpact} />
           <AuditReportSection title="Evidence" body={report.evidence} />
           <AuditReportSection
             title="Recommended Mitigation"
             body={report.recommendedMitigation}
+            snippet={report.recommendedMitigationSnippet}
           />
         </div>
       </article>
@@ -991,12 +1001,17 @@ function AuditReportSubmitted({
         </div>
         <div className="mt-6 space-y-6">
           <AuditReportSection title="Description" body={report.description} />
-          <AuditReportSection title="Root Cause" body={report.rootCause} />
+          <AuditReportSection
+            body={report.rootCause}
+            snippet={report.rootCauseSnippet}
+            title="Root Cause"
+          />
           <AuditReportSection title="Proof of Impact" body={report.proofOfImpact} />
           <AuditReportSection title="Evidence" body={report.evidence} />
           <AuditReportSection
             title="Recommended Mitigation"
             body={report.recommendedMitigation}
+            snippet={report.recommendedMitigationSnippet}
           />
         </div>
       </article>
@@ -1015,12 +1030,51 @@ function ReportFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AuditReportSection({ title, body }: { title: string; body: string }) {
+function AuditReportSection({
+  body,
+  snippet,
+  title,
+}: {
+  body: string;
+  snippet?: ReportCodeSnippet | null;
+  title: string;
+}) {
   return (
     <section>
       <h5 className="text-sm font-semibold text-white">{title}</h5>
       <p className="mt-2 text-sm leading-7 text-zinc-300">{body}</p>
+      {snippet ? <ReportCodeBlock snippet={snippet} /> : null}
     </section>
+  );
+}
+
+function ReportCodeBlock({ snippet }: { snippet: ReportCodeSnippet }) {
+  const location =
+    snippet.filePath && snippet.startLine
+      ? `${snippet.filePath}:${snippet.startLine}${
+          snippet.endLine ? `-${snippet.endLine}` : ""
+        }`
+      : snippet.filePath;
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
+        <div>
+          <p className="text-xs font-semibold text-zinc-200">{snippet.title}</p>
+          {location ? (
+            <p className="mt-0.5 font-mono text-[11px] text-zinc-600">
+              {location}
+            </p>
+          ) : null}
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+          {snippet.language}
+        </span>
+      </div>
+      <pre className="max-h-72 overflow-auto p-3 font-mono text-[11px] leading-5 text-zinc-400">
+        <code>{snippet.code}</code>
+      </pre>
+    </div>
   );
 }
 

@@ -5,13 +5,14 @@ import {
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReportFields } from "../../lib/research-labs/lab-state";
-import type { AuditReportPreview, ReviewMode } from "./types";
+import type { AuditReportPreview, ReportCodeSnippet, ReviewMode } from "./types";
 
 export type ReportOption = {
   id: string;
   label: string;
   helper?: string;
   previewBody?: string;
+  snippet?: ReportCodeSnippet;
 };
 
 export const reportTitleOptions: ReportOption[] = [
@@ -64,6 +65,22 @@ export const reportRootCauseOptions: ReportOption[] = [
     label: "Missing account binding",
     previewBody:
       "The deposit instruction accepts caller-supplied token and vault accounts without proving that they belong to the canonical collateral configuration. That missing account binding lets a non-approved route generate credit as if it were backed by real protocol collateral.",
+    snippet: {
+      title: "Vulnerable deposit path",
+      language: "rust",
+      filePath: "programs/treasury_mirage/src/lib.rs",
+      startLine: 23,
+      endLine: 28,
+      code: [
+        "// Vulnerable: this function trusts the caller-supplied collateral account amount",
+        "// without proving that the token account mint equals ACCEPTED_COLLATERAL_MINT.",
+        "pub fn deposit_collateral(position: &mut Position, collateral: &TokenAccount) {",
+        "    position.credited_collateral = position",
+        "        .credited_collateral",
+        "        .saturating_add(collateral.amount);",
+        "}",
+      ].join("\n"),
+    },
   },
   {
     id: "caller_controlled_vault_route",
@@ -106,6 +123,28 @@ export const reportMitigationOptions: ReportOption[] = [
     label: "Bind accounts to approved config",
     previewBody:
       "Bind the provided token source and vault accounts to the approved market configuration before assigning credit, and reject any account path that is not canonical for the market.",
+    snippet: {
+      title: "Validate collateral before assigning credit",
+      language: "rust",
+      filePath: "programs/treasury_mirage/src/lib.rs",
+      code: [
+        "pub fn deposit_collateral(",
+        "    position: &mut Position,",
+        "    collateral: &TokenAccount,",
+        ") -> Result<(), VaultError> {",
+        "    if collateral.mint != ACCEPTED_COLLATERAL_MINT {",
+        "        return Err(VaultError::InvalidCollateralMint);",
+        "    }",
+        "",
+        "    position.credited_collateral = position",
+        "        .credited_collateral",
+        "        .checked_add(collateral.amount)",
+        "        .ok_or(VaultError::MathOverflow)?;",
+        "",
+        "    Ok(())",
+        "}",
+      ].join("\n"),
+    },
   },
   {
     id: "resolve_market_accounts_before_credit",
@@ -262,6 +301,14 @@ export function getOptionBody(
   return options.find((option) => option.id === id)?.previewBody ?? fallback;
 }
 
+export function getOptionSnippet(
+  options: ReportOption[],
+  id: string | null | undefined
+) {
+  if (!id) return null;
+  return options.find((option) => option.id === id)?.snippet ?? null;
+}
+
 export function buildAuditReportPreview(
   fields: ResearchLabReportFields
 ): AuditReportPreview {
@@ -298,6 +345,10 @@ export function buildAuditReportPreview(
     category,
     description: `This audit report documents ${category.toLowerCase()} in Research Lab 1, where ${categoryBody}`,
     rootCause: getOptionBody(reportRootCauseOptions, fields.rootCauseOptionId),
+    rootCauseSnippet: getOptionSnippet(
+      reportRootCauseOptions,
+      fields.rootCauseOptionId
+    ),
     proofOfImpact: getOptionBody(
       reportProofOfImpactOptions,
       fields.proofOfImpactOptionId
@@ -307,6 +358,10 @@ export function buildAuditReportPreview(
         ? `Verified evidence references: ${fields.verifiedEvidenceRefs.join(", ")}`
         : "No verified evidence references recorded.",
     recommendedMitigation: getOptionBody(
+      reportMitigationOptions,
+      fields.recommendedMitigationOptionId
+    ),
+    recommendedMitigationSnippet: getOptionSnippet(
       reportMitigationOptions,
       fields.recommendedMitigationOptionId
     ),

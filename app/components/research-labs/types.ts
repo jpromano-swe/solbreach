@@ -19,6 +19,15 @@ export type SandboxStatus =
 
 export type AuditReportStage = "BUILDER" | "PREVIEW" | "SUBMITTED";
 
+export type ReportCodeSnippet = {
+  title: string;
+  language: string;
+  filePath?: string;
+  startLine?: number;
+  endLine?: number;
+  code: string;
+};
+
 export type AuditReportPreview = {
   title: string;
   severity: string;
@@ -26,9 +35,11 @@ export type AuditReportPreview = {
   category: string;
   description: string;
   rootCause: string;
+  rootCauseSnippet: ReportCodeSnippet | null;
   proofOfImpact: string;
   evidence: string;
   recommendedMitigation: string;
+  recommendedMitigationSnippet: ReportCodeSnippet | null;
 };
 
 export type AccountEvidence = {
