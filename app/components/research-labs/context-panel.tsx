@@ -2,6 +2,7 @@
 
 import { Check, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { driver } from "driver.js";
 
 import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabFile, ResearchLabManifest, ResearchLabReport, ResearchLabSession } from "../../lib/research-labs/lab-state";
@@ -242,6 +243,17 @@ function ExecuteExploitContext({
     "If credit appears, use the protocol borrow surface and then review whether treasury state changed.",
   ];
   const canRevealMoreHints = revealedChainHints < chainHints.length;
+  const revealNextExploitHint = () => {
+    const nextHintIndex = revealedChainHints;
+
+    setRevealedChainHints((current) =>
+      Math.min(current + 1, chainHints.length)
+    );
+
+    if (nextHintIndex === 0) {
+      window.setTimeout(startExploitHypothesisTour, 80);
+    }
+  };
 
   return (
     <>
@@ -298,11 +310,7 @@ function ExecuteExploitContext({
           )}
           <button
             type="button"
-            onClick={() =>
-              setRevealedChainHints((current) =>
-                Math.min(current + 1, chainHints.length)
-              )
-            }
+            onClick={revealNextExploitHint}
             disabled={!canRevealMoreHints}
             className="w-full rounded-xl border border-[#9945ff]/25 bg-[#9945ff]/10 px-4 py-2.5 text-sm font-medium text-[#c7a6ff] transition hover:bg-[#9945ff]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
           >
@@ -312,6 +320,64 @@ function ExecuteExploitContext({
       </ContextBlock>
     </>
   );
+}
+
+function startExploitHypothesisTour() {
+  const requiredTargets = [
+    "[data-tour='rl1-token-source']",
+    "[data-tour='rl1-vault-destination']",
+    "[data-tour='rl1-deposit-amount']",
+  ];
+
+  if (requiredTargets.some((selector) => !document.querySelector(selector))) {
+    return;
+  }
+
+  driver({
+    allowClose: true,
+    animate: true,
+    disableActiveInteraction: false,
+    doneBtnText: "Done",
+    nextBtnText: "Next",
+    overlayColor: "#020404",
+    overlayOpacity: 0.72,
+    popoverClass: "solbreach-driver-popover",
+    popoverOffset: 14,
+    prevBtnText: "Back",
+    showButtons: ["next", "previous", "close"],
+    showProgress: true,
+    stagePadding: 8,
+    stageRadius: 14,
+    steps: [
+      {
+        element: "[data-tour='rl1-token-source']",
+        popover: {
+          title: "Step 1: Choose token source",
+          description: "Start by selecting the token account that will be credited as collateral.",
+          side: "bottom",
+          align: "start",
+        },
+      },
+      {
+        element: "[data-tour='rl1-vault-destination']",
+        popover: {
+          title: "Step 2: Choose vault",
+          description: "Pick the vault destination. This is where the protocol should validate whether the account path is legitimate.",
+          side: "bottom",
+          align: "start",
+        },
+      },
+      {
+        element: "[data-tour='rl1-deposit-amount']",
+        popover: {
+          title: "Step 3: Set deposit amount",
+          description: "Submit an amount to observe whether collateral credit and pool liquidity update as expected.",
+          side: "right",
+          align: "center",
+        },
+      },
+    ],
+  }).drive();
 }
 
 function ExploitCheckpointPanel({

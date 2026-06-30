@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 @import "@xterm/xterm/css/xterm.css";
+@import "driver.js/dist/driver.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -208,6 +209,106 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes solbreachTourPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(153, 69, 255, 0.48),
+      0 0 22px rgba(153, 69, 255, 0.22);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(20, 241, 149, 0.55),
+      0 0 34px rgba(153, 69, 255, 0.42);
+  }
+}
+
+.driver-active-element {
+  border-radius: 14px !important;
+  outline: 1px solid rgba(153, 69, 255, 0.72) !important;
+  animation: solbreachTourPulse 1.6s ease-in-out infinite;
+}
+
+.driver-popover.solbreach-driver-popover {
+  background: rgba(8, 9, 10, 0.96);
+  border: 1px solid rgba(153, 69, 255, 0.38);
+  border-radius: 16px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.55),
+    0 0 34px rgba(153, 69, 255, 0.18);
+  color: #f4f4f5;
+  padding: 16px;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-title {
+  color: #f4f4f5;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-description {
+  color: #a1a1aa;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-progress-text {
+  color: #71717a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-footer-btn {
+  background: rgba(153, 69, 255, 0.14);
+  border: 1px solid rgba(153, 69, 255, 0.32);
+  border-radius: 10px;
+  color: #d7c0ff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-footer-btn:hover,
+.driver-popover.solbreach-driver-popover .driver-popover-footer-btn:focus {
+  background: rgba(153, 69, 255, 0.22);
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-close-btn {
+  color: #71717a;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-arrow {
+  border-color: rgba(8, 9, 10, 0.96);
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-arrow-side-left {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-right-color: transparent;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-arrow-side-right {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-arrow-side-top {
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
+.driver-popover.solbreach-driver-popover .driver-popover-arrow-side-bottom {
+  border-top-color: transparent;
+  border-left-color: transparent;
+  border-right-color: transparent;
 }
 
 @keyframes protocolCodeLineFocus {
