@@ -70,11 +70,6 @@ function CodeTab({
             <FileCode2 className="h-4 w-4 text-[#b892ff]" />
             <span className="truncate">{activeFile?.path ?? "No file selected"}</span>
           </div>
-          <div className="ml-4 flex shrink-0 items-center gap-2 text-xs text-zinc-500">
-            Read-only protocol source
-            <span className="h-1 w-1 rounded-full bg-zinc-700" />
-            {activeFile?.language ?? "rust"}
-          </div>
         </div>
         <div className="h-[calc(100%-48px)]">
           {activeFile ? (

@@ -247,12 +247,7 @@ function QuestionnairePanel({
     <div className="w-full">
       {!reviewStarted ? (
         <div className="p-1">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
-              Report Finding
-            </p>
-          </div>
-          <h2 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-white">
+          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">
             Confirm the finding.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
@@ -315,10 +310,7 @@ function QuestionnairePanel({
         <div className="space-y-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
-                Report Finding
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
+              <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">
                 {isSummaryStep ? "Review summary" : "Finding Review"}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
