@@ -108,7 +108,7 @@ export function LabScenarioBriefing({
 }) {
   return (
     <section className="border-b border-white/10 py-5">
-      <div className="grid items-end gap-5 lg:grid-cols-[minmax(0,1fr)_640px]">
+      <div className="grid items-end gap-5">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#b892ff]">
             Scenario Briefing
@@ -120,7 +120,7 @@ export function LabScenarioBriefing({
             {lab.summary || LAB_SHELL_COPY.scenario}
           </p>
         </div>
-        <InvestigationStepper phase={phase} />
+        {/* <InvestigationStepper phase={phase} /> */}
       </div>
     </section>
   );
