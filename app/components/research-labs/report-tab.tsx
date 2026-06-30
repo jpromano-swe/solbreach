@@ -1,7 +1,16 @@
 "use client";
 
-import { Check, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  FileText,
+  LockKeyhole,
+  RefreshCcw,
+  ShieldCheck,
+  Target,
+} from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import { rl1FindingQuestionnaire, type QuestionnaireAnswer, type QuestionnaireQuestion, type QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReport, ResearchLabReportFields } from "../../lib/research-labs/lab-state";
@@ -134,16 +143,40 @@ export function ReportTab({
     return (
       <div className="h-full overflow-auto p-5">
         <div className="w-full">
-          <div className="flex min-h-[430px] items-center justify-center">
-            <div className="w-full max-w-2xl text-center">
-              <p className="flex items-center justify-center gap-2 text-2xl font-semibold text-white">
+          <div className="grid min-h-[430px] items-center gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="max-w-2xl">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.22em] text-[#14f195]">
                 <Check className="h-4 w-4" />
-                Review Passed
+                Review passed
               </p>
-              <p className="mt-4 text-base leading-7 text-zinc-400">
-                You can now build your Audit Report.
+              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">
+                Audit report unlocked<span className="text-[#9945ff]">.</span>
+              </h2>
+              <p className="mt-4 max-w-xl text-base leading-7 text-zinc-400">
+                Your Finding Review passed. Build the audit report from the confirmed root cause, exploit path, evidence, impact, and mitigation.
               </p>
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-zinc-400">
+
+              <ReportProgressStepper activeStep={3} />
+
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={onOpenFindingReport}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                >
+                  Build Audit Report
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCriticalAnswers((visible) => !visible)}
+                  className="min-h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                >
+                  {showCriticalAnswers ? "Hide answers" : "View answers"}
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-400">
                 <span>
                   Score <span className="font-mono text-zinc-100">{scoreCopy}</span>
                 </span>
@@ -153,23 +186,16 @@ export function ReportTab({
                     {criticalTotal - criticalMisses} / {criticalTotal}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowCriticalAnswers((visible) => !visible)}
-                  className="min-h-10 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-                >
-                  {showCriticalAnswers ? "Hide Answers" : "View Answers"}
-                </button>
               </div>
+
               {showCriticalAnswers ? <CriticalAnswersPanel /> : null}
-              <button
-                type="button"
-                onClick={onOpenFindingReport}
-                className="mt-7 min-h-11 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-              >
-                Build Audit Report
-              </button>
             </div>
+
+            <ReviewCheckpointPanel
+              activeStep="report"
+              criticalTotal={criticalTotal}
+              unlockCopy="Audit Report Builder is available now."
+            />
           </div>
         </div>
       </div>
@@ -192,6 +218,174 @@ export function ReportTab({
           onSubmit={onSubmit}
         />
       </div>
+    </div>
+  );
+}
+
+function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
+  const steps = [
+    { id: 1, label: "Impact verified", state: "complete" as const },
+    {
+      id: 2,
+      label: "Finding Review",
+      state: activeStep === 2 ? ("active" as const) : ("complete" as const),
+    },
+    {
+      id: 3,
+      label: "Audit Report",
+      state: activeStep === 3 ? ("active" as const) : ("pending" as const),
+    },
+    { id: 4, label: "Certificate", state: "pending" as const },
+  ];
+
+  return (
+    <div className="mt-10 grid grid-cols-4 gap-0">
+      {steps.map((step, index) => {
+        const isComplete = step.state === "complete";
+        const isActive = step.state === "active";
+
+        return (
+          <div key={step.id} className="relative min-w-0">
+            {index < steps.length - 1 ? (
+              <div
+                className={`absolute left-[calc(50%+24px)] right-[calc(-50%+24px)] top-6 h-px ${
+                  isComplete ? "bg-[#14f195]/70" : "bg-white/14"
+                }`}
+              />
+            ) : null}
+            <div className="relative flex flex-col items-center gap-3 text-center">
+              <div
+                className={`flex h-12 w-12 items-center justify-center rounded-full border text-sm font-semibold transition ${
+                  isComplete
+                    ? "border-[#14f195]/60 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_24px_rgba(20,241,149,0.28)]"
+                    : isActive
+                      ? "border-[#9945ff] bg-[#9945ff]/14 text-white shadow-[0_0_28px_rgba(153,69,255,0.34)]"
+                      : "border-white/25 bg-black/20 text-zinc-500"
+                }`}
+              >
+                {isComplete ? <Check className="h-5 w-5" /> : step.id}
+              </div>
+              <span
+                className={`text-xs font-semibold leading-4 ${
+                  isComplete
+                    ? "text-zinc-200"
+                    : isActive
+                      ? "text-white"
+                      : "text-zinc-500"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReviewCheckpointPanel({
+  activeStep,
+  criticalTotal,
+  unlockCopy,
+}: {
+  activeStep: "review" | "report";
+  criticalTotal: number;
+  unlockCopy: string;
+}) {
+  const reportUnlocked = activeStep === "report";
+
+  return (
+    <aside className="rounded-3xl border border-white/10 bg-black/25 p-5 shadow-2xl shadow-black/25">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+        <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+          Review checkpoint
+        </p>
+      </div>
+
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Verified Evidence
+        </p>
+        <div className="mt-4 space-y-4">
+          {[
+            "Deposit transaction",
+            "Credit delta",
+            "Withdraw transaction",
+            "Liquidity delta",
+          ].map((label) => (
+            <CheckpointRow key={label} label={label} />
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Review Rules
+        </p>
+        <div className="mt-4 space-y-3 text-sm">
+          <RuleRow label="Passing score" value={String(rl1FindingQuestionnaire.passingScore)} />
+          <RuleRow label="Critical questions" value={String(criticalTotal)} />
+          <RuleRow label="Retry mode" value="Missed only" />
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Unlocks Next
+        </p>
+        <div className="mt-4 flex items-center gap-4">
+          <div
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
+              reportUnlocked
+                ? "border-[#14f195]/35 bg-[#14f195]/10 text-[#8fffd0]"
+                : "border-[#14f195]/20 bg-[#14f195]/6 text-[#8fffd0]"
+            }`}
+          >
+            {reportUnlocked ? (
+              <FileText className="h-5 w-5" />
+            ) : (
+              <LockKeyhole className="h-5 w-5" />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">
+              Audit Report Builder
+            </p>
+            <p className="mt-1 text-sm leading-5 text-zinc-500">
+              {unlockCopy}
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function ReviewMetaItem({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 text-zinc-400">
+      <span className="text-[#9945ff]">{icon}</span>
+      {label}
+    </span>
+  );
+}
+
+function CheckpointRow({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 text-sm text-zinc-200">
+      <CheckCircle2 className="h-5 w-5 text-[#14f195]" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function RuleRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-zinc-400">{label}</span>
+      <span className="font-medium text-zinc-100">{value}</span>
     </div>
   );
 }
@@ -247,29 +441,49 @@ function QuestionnairePanel({
     8,
     Math.round((progressCurrent / progressTotal) * 100)
   );
+  const criticalTotal = rl1FindingQuestionnaire.questions.filter(
+    (question) => question.critical
+  ).length;
 
   return (
     <div className="w-full">
       {!reviewStarted ? (
-        <div className="p-1">
-          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">
-            Confirm the finding.
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-            Validate root cause, exploit path, impact, and remediation before the Audit Report unlocks.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-zinc-400">
-            <span>Passing score: {rl1FindingQuestionnaire.passingScore}</span>
-            <span>Critical questions: {rl1FindingQuestionnaire.questions.filter((question) => question.critical).length}</span>
-            <span>Retry: missed questions only</span>
-          </div>
-          <button
-            type="button"
-            onClick={onStart}
-            className="mt-6 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-          >
-            Start Finding Review
-          </button>
+        <div className="grid min-h-[520px] items-center gap-7 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#07080d] p-7 shadow-2xl shadow-black/30 md:p-9">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-[linear-gradient(90deg,rgba(153,69,255,0.14),transparent_38%,rgba(20,241,149,0.11))]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(153,69,255,0.16),transparent_32%),radial-gradient(circle_at_88%_95%,rgba(20,241,149,0.12),transparent_34%)]" />
+            <div className="relative">
+              <h2 className="text-4xl font-semibold tracking-[-0.045em] text-white md:text-5xl">
+                Confirm the finding<span className="text-[#9945ff]">.</span>
+              </h2>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">
+                You verified impact in the sandbox. Complete a short Finding Review to confirm the root cause, exploit path, evidence, impact, and recommended mitigation before the Audit Report unlocks.
+              </p>
+
+              <ReportProgressStepper activeStep={2} />
+
+              <button
+                type="button"
+                onClick={onStart}
+                className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#9945ff]/20 transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080d]"
+              >
+                Start Finding Review
+                <ArrowRight className="h-4 w-4" />
+              </button>
+
+              <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 text-sm text-zinc-400">
+                <ReviewMetaItem icon={<Target className="h-4 w-4" />} label={`Passing score: ${rl1FindingQuestionnaire.passingScore}`} />
+                <ReviewMetaItem icon={<ShieldCheck className="h-4 w-4" />} label={`Critical questions: ${criticalTotal}`} />
+                <ReviewMetaItem icon={<RefreshCcw className="h-4 w-4" />} label="Retry missed questions only" />
+              </div>
+            </div>
+          </section>
+
+          <ReviewCheckpointPanel
+            activeStep="review"
+            criticalTotal={criticalTotal}
+            unlockCopy="Available when you confirm this finding."
+          />
         </div>
       ) : null}
 
