@@ -158,6 +158,14 @@ export function LabContextPanel({
           <ReviewCheckpointPanel
             activeStep="review"
             criticalTotal={criticalTotal}
+            evidenceTitle="Inspection Checks"
+            evidenceItems={[
+              "Protocol source reviewed",
+              "Account relationships inspected",
+              "Collateral validation located",
+              "Exploit path ready",
+            ]}
+            showReviewRules={false}
             title="Inspect Checkpoint"
             unlockTitle="Exploit Interface"
             unlockCopy="Move from source review into the protocol attack flow."

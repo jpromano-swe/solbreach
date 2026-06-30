@@ -280,6 +280,14 @@ export function ReviewCheckpointPanel({
   activeStep,
   action,
   criticalTotal,
+  evidenceItems = [
+    "Deposit transaction",
+    "Credit delta",
+    "Withdraw transaction",
+    "Liquidity delta",
+  ],
+  evidenceTitle = "Verified Evidence",
+  showReviewRules = true,
   title = "Review checkpoint",
   unlockTitle = "Audit Report Builder",
   unlockCopy,
@@ -287,6 +295,9 @@ export function ReviewCheckpointPanel({
   activeStep: "review" | "report";
   action?: ReactNode;
   criticalTotal: number;
+  evidenceItems?: string[];
+  evidenceTitle?: string;
+  showReviewRules?: boolean;
   title?: string;
   unlockTitle?: string;
   unlockCopy: string;
@@ -304,30 +315,27 @@ export function ReviewCheckpointPanel({
 
       <div className="mt-5 border-t border-white/10 pt-5">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-          Verified Evidence
+          {evidenceTitle}
         </p>
         <div className="mt-4 space-y-4">
-          {[
-            "Deposit transaction",
-            "Credit delta",
-            "Withdraw transaction",
-            "Liquidity delta",
-          ].map((label) => (
+          {evidenceItems.map((label) => (
             <CheckpointRow key={label} label={label} />
           ))}
         </div>
       </div>
 
-      <div className="mt-6 border-t border-white/10 pt-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-          Review Rules
-        </p>
-        <div className="mt-4 space-y-3 text-sm">
-          <RuleRow label="Passing score" value={String(rl1FindingQuestionnaire.passingScore)} />
-          <RuleRow label="Critical questions" value={String(criticalTotal)} />
-          <RuleRow label="Retry mode" value="Missed only" />
+      {showReviewRules ? (
+        <div className="mt-6 border-t border-white/10 pt-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            Review Rules
+          </p>
+          <div className="mt-4 space-y-3 text-sm">
+            <RuleRow label="Passing score" value={String(rl1FindingQuestionnaire.passingScore)} />
+            <RuleRow label="Critical questions" value={String(criticalTotal)} />
+            <RuleRow label="Retry mode" value="Missed only" />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="mt-6 border-t border-white/10 pt-5">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
