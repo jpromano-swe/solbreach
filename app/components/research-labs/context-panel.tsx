@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ShieldCheck } from "lucide-react";
+import { Check, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
@@ -92,7 +92,12 @@ export function LabContextPanel({
           txResults={txResults}
         />
       ) : phase === "VERIFY_IMPACT" ? (
-        <EvidenceReviewContext />
+        <ExecuteExploitContext
+          impactVerified={impactVerified}
+          onOpenReport={onOpenReport}
+          reportUnlocked={reportUnlocked}
+          txResults={txResults}
+        />
       ) : impactVerified ? (
         <ReviewContextCard
           findingReviewPassed={findingReviewPassed}
@@ -184,7 +189,7 @@ export function LabContextPanel({
     );
   }
 
-  if (phase === "EXECUTE_EXPLOIT") {
+  if (phase === "EXECUTE_EXPLOIT" || phase === "VERIFY_IMPACT") {
     return (
       <aside className="h-full min-w-0">
         <div className="h-full min-h-0 space-y-4 overflow-auto">
@@ -346,36 +351,37 @@ function ExploitCheckpointPanel({
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
           Unlocks Next
         </p>
-        <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-          <p className="text-sm font-semibold text-zinc-100">Report Finding</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">
-            Answer the questions and prepare your first Finding Report
-          </p>
-          <button
-            type="button"
-            onClick={onOpenReport}
-            disabled={!impactVerified}
-            className={`mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
-              impactVerified
-                ? "border border-[#9945ff]/35 bg-[#9945ff]/18 text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.18)] hover:bg-[#9945ff]/24"
-                : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
-            }`}
-          >
-            Fill Report
-          </button>
+        <div className="mt-4 flex items-center gap-4">
+          <div className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl border ${
+            impactVerified
+              ? "border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff]"
+              : "border-white/10 bg-white/[0.035] text-zinc-600"
+          }`}>
+            <LockKeyhole className="h-7 w-7" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-lg font-semibold tracking-[-0.02em] text-zinc-100">
+              Report Finding
+            </p>
+            <p className="mt-1 text-sm leading-6 text-zinc-500">
+              Answer the questions and prepare your first Finding Report
+            </p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={onOpenReport}
+          disabled={!impactVerified}
+          className={`mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+            impactVerified
+              ? "border border-[#9945ff]/35 bg-[#9945ff]/18 text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.18)] hover:bg-[#9945ff]/24"
+              : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
+          }`}
+        >
+          Fill Report
+        </button>
       </div>
     </div>
-  );
-}
-
-function EvidenceReviewContext() {
-  return (
-    <ContextBlock title="Scope">
-      <p className="text-sm leading-6 text-zinc-400">
-        Review transaction ordering, runtime evidence, and account state deltas here before deciding whether the backend has enough proof to unlock the finding workflow.
-      </p>
-    </ContextBlock>
   );
 }
 
