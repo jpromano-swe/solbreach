@@ -27,7 +27,6 @@ export function ResearchLabWorkspace({
   questionnaireResult,
   reportOpened,
   retryQuestionIds,
-  reviewAttempts,
   reviewIndex,
   reviewMode,
   reviewStarted,
@@ -68,7 +67,6 @@ export function ResearchLabWorkspace({
   questionnaireResult: QuestionnaireResult | null;
   reportOpened: boolean;
   retryQuestionIds: string[];
-  reviewAttempts: number;
   reviewIndex: number;
   reviewMode: ReviewMode;
   reviewStarted: boolean;
@@ -143,7 +141,6 @@ export function ResearchLabWorkspace({
         questionnaireResult={questionnaireResult}
         reportOpened={reportOpened}
         retryQuestionIds={retryQuestionIds}
-        reviewAttempts={reviewAttempts}
         reviewIndex={reviewIndex}
         reviewMode={reviewMode}
         reviewStarted={reviewStarted}

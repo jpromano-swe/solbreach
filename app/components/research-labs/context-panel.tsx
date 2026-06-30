@@ -577,50 +577,114 @@ function ReviewContextCard({
     );
   }
 
-  if (reviewStarted) {
-    const percent = Math.max(
-      8,
-      Math.round((reviewStepCurrent / Math.max(1, reviewStepTotal)) * 100)
-    );
+  return (
+    <ReportCheckpointPanel
+      criticalTotal={criticalTotal}
+      reviewMode={reviewMode}
+      reviewStarted={reviewStarted}
+      reviewStepCurrent={reviewStepCurrent}
+      reviewStepTotal={reviewStepTotal}
+      criticalAnsweredCount={criticalAnsweredCount}
+      onStartReview={onStartReview}
+    />
+  );
+}
 
-    return (
-      <div className="rounded-2xl border border-[#9945ff]/25 bg-[#9945ff]/8 p-4">
-        <p className="text-sm font-semibold text-[#c7a6ff]">Finding Review</p>
-        <p className="mt-2 text-sm leading-6 text-zinc-300">
-          {reviewMode === "retry"
-            ? "Retrying missed required questions. Report remains locked."
-            : "Answer the deterministic review before the report unlocks."}
-        </p>
-        <div className="mt-4 flex items-center justify-between text-xs text-zinc-500">
-          <span>Progress</span>
-          <span>{reviewStepCurrent}/{reviewStepTotal}</span>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]">
-          <div className="h-full rounded-full bg-[#9945ff]" style={{ width: `${percent}%` }} />
-        </div>
-        <p className="mt-3 text-sm text-zinc-400">
-          Report: Locked until review passed
-        </p>
-        <p className="mt-1 text-sm text-zinc-400">
-          Critical answered: {criticalAnsweredCount}/{criticalTotal}
-        </p>
-        <button
-          type="button"
-          onClick={onStartReview}
-          className="mt-4 inline-flex min-h-10 items-center justify-center self-start rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18"
-        >
-          Continue Review
-        </button>
-      </div>
-    );
-  }
+function ReportCheckpointPanel({
+  criticalAnsweredCount,
+  criticalTotal,
+  reviewMode,
+  reviewStarted,
+  reviewStepCurrent,
+  reviewStepTotal,
+  onStartReview,
+}: {
+  criticalAnsweredCount: number;
+  criticalTotal: number;
+  reviewMode: ReviewMode;
+  reviewStarted: boolean;
+  reviewStepCurrent: number;
+  reviewStepTotal: number;
+  onStartReview: () => void;
+}) {
+  const progressCurrent = reviewStarted ? reviewStepCurrent : 0;
+  const progressTotal = Math.max(1, reviewStepTotal);
+  const progressPercent = reviewStarted
+    ? Math.max(8, Math.round((progressCurrent / progressTotal) * 100))
+    : 0;
 
   return (
-    <ReviewCheckpointPanel
-      activeStep="review"
-      criticalTotal={criticalTotal}
-      unlockCopy="Available when you confirm this finding."
-    />
+    <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+        <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+          Report Checkpoint
+        </p>
+      </div>
+
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Finding Review
+        </p>
+        <div className="mt-4 space-y-3 text-sm">
+          <CheckpointRuleRow
+            label="Questions"
+            value={`${progressCurrent}/${progressTotal}`}
+          />
+          <CheckpointRuleRow
+            label="Critical answered"
+            value={`${criticalAnsweredCount}/${criticalTotal}`}
+          />
+          <CheckpointRuleRow
+            label="Mode"
+            value={reviewMode === "retry" ? "Missed only" : "Full review"}
+          />
+        </div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+          <div
+            className="h-full rounded-full bg-[#9945ff]"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Unlocks Next
+        </p>
+        <div className="mt-4 flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#14f195]/20 bg-[#14f195]/6 text-[#8fffd0]">
+            <LockKeyhole className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">
+              Audit Report Builder
+            </p>
+            <p className="mt-1 text-sm leading-5 text-zinc-500">
+              Available when you confirm this finding.
+            </p>
+          </div>
+        </div>
+        {reviewStarted ? (
+          <button
+            type="button"
+            onClick={onStartReview}
+            className="mt-4 w-full rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          >
+            Continue Review
+          </button>
+        ) : null}
+      </div>
+    </aside>
+  );
+}
+
+function CheckpointRuleRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-zinc-400">{label}</span>
+      <span className="font-medium text-zinc-100">{value}</span>
+    </div>
   );
 }
 

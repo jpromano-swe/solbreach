@@ -149,7 +149,6 @@ export function ResearchLabsSection() {
     resetFindingReview,
     retryQuestionIds,
     retryQuestionnaire,
-    reviewAttempts,
     reviewIndex,
     reviewMode,
     reviewStarted,
@@ -412,7 +411,6 @@ export function ResearchLabsSection() {
             questionnaireResult={questionnaireResult}
             reportOpened={reportOpened}
             retryQuestionIds={retryQuestionIds}
-            reviewAttempts={reviewAttempts}
             reviewIndex={reviewIndex}
             reviewMode={reviewMode}
             reviewStarted={reviewStarted}

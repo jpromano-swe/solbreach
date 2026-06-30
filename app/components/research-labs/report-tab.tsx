@@ -48,7 +48,6 @@ export function ReportTab({
   questionnaireResult,
   reportOpened,
   retryQuestionIds,
-  reviewAttempts,
   reviewIndex,
   reviewMode,
   reviewStarted,
@@ -75,7 +74,6 @@ export function ReportTab({
   questionnaireResult: QuestionnaireResult | null;
   reportOpened: boolean;
   retryQuestionIds: string[];
-  reviewAttempts: number;
   reviewIndex: number;
   reviewMode: ReviewMode;
   reviewStarted: boolean;
@@ -115,7 +113,6 @@ export function ReportTab({
           answers={questionnaireAnswers}
           result={questionnaireResult}
           retryQuestionIds={retryQuestionIds}
-          reviewAttempts={reviewAttempts}
           reviewIndex={reviewIndex}
           reviewMode={reviewMode}
           reviewStarted={reviewStarted}
@@ -392,7 +389,6 @@ function QuestionnairePanel({
   answers,
   result,
   retryQuestionIds,
-  reviewAttempts,
   reviewIndex,
   reviewMode,
   reviewStarted,
@@ -405,7 +401,6 @@ function QuestionnairePanel({
   answers: QuestionnaireAnswer[];
   result: QuestionnaireResult | null;
   retryQuestionIds: string[];
-  reviewAttempts: number;
   reviewIndex: number;
   reviewMode: ReviewMode;
   reviewStarted: boolean;
@@ -507,7 +502,7 @@ function QuestionnairePanel({
 
       {reviewStarted && !result ? (
         <div className="space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
             <div>
               <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">
                 {isSummaryStep ? "Review summary" : "Finding Review"}
@@ -518,9 +513,6 @@ function QuestionnairePanel({
                   : "Answer the required evidence and remediation checks."}
               </p>
             </div>
-            <p className="text-sm text-zinc-400">
-              Question {progressCurrent} of {progressTotal} · Attempt {reviewAttempts ? reviewAttempts + 1 : 1}
-            </p>
           </div>
 
           <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
