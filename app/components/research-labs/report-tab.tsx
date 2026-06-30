@@ -6,11 +6,9 @@ import {
   CheckCircle2,
   FileText,
   LockKeyhole,
-  RefreshCcw,
   ShieldCheck,
-  Target,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { rl1FindingQuestionnaire, type QuestionnaireAnswer, type QuestionnaireQuestion, type QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReport, ResearchLabReportFields } from "../../lib/research-labs/lab-state";
@@ -233,7 +231,7 @@ function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
   ];
 
   return (
-    <div className="mt-10 grid grid-cols-4 gap-0">
+    <div className="mt-8 grid max-w-[620px] grid-cols-4 gap-0">
       {steps.map((step, index) => {
         const isComplete = step.state === "complete";
         const isActive = step.state === "active";
@@ -242,14 +240,14 @@ function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
           <div key={step.id} className="relative min-w-0">
             {index < steps.length - 1 ? (
               <div
-                className={`absolute left-[calc(50%+24px)] right-[calc(-50%+24px)] top-6 h-px ${
+                className={`absolute left-[calc(50%+20px)] right-[calc(-50%+20px)] top-5 h-px ${
                   isComplete ? "bg-[#14f195]/70" : "bg-white/14"
                 }`}
               />
             ) : null}
-            <div className="relative flex flex-col items-center gap-3 text-center">
+            <div className="relative flex flex-col items-center gap-2.5 text-center">
               <div
-                className={`flex h-12 w-12 items-center justify-center rounded-full border text-sm font-semibold transition ${
+                className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition ${
                   isComplete
                     ? "border-[#14f195]/60 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_24px_rgba(20,241,149,0.28)]"
                     : isActive
@@ -257,7 +255,7 @@ function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
                       : "border-white/25 bg-black/20 text-zinc-500"
                 }`}
               >
-                {isComplete ? <Check className="h-5 w-5" /> : step.id}
+                {isComplete ? <Check className="h-4 w-4" /> : step.id}
               </div>
               <span
                 className={`text-xs font-semibold leading-4 ${
@@ -290,7 +288,7 @@ export function ReviewCheckpointPanel({
   const reportUnlocked = activeStep === "report";
 
   return (
-    <aside className="rounded-3xl border border-white/10 bg-black/20 p-5">
+    <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
       <div className="flex items-center gap-3">
         <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
         <p className="text-xl font-semibold tracking-[-0.03em] text-white">
@@ -354,15 +352,6 @@ export function ReviewCheckpointPanel({
         </div>
       </div>
     </aside>
-  );
-}
-
-function ReviewMetaItem({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-zinc-400">
-      <span className="text-[#9945ff]">{icon}</span>
-      {label}
-    </span>
   );
 }
 
@@ -435,14 +424,11 @@ function QuestionnairePanel({
     8,
     Math.round((progressCurrent / progressTotal) * 100)
   );
-  const criticalTotal = rl1FindingQuestionnaire.questions.filter(
-    (question) => question.critical
-  ).length;
 
   return (
     <div className="w-full">
       {!reviewStarted ? (
-        <div className="min-h-[520px] max-w-3xl py-8">
+        <div className="max-w-3xl py-6">
           <h2 className="text-4xl font-semibold tracking-[-0.045em] text-white md:text-5xl">
             Confirm the finding<span className="text-[#9945ff]">.</span>
           </h2>
@@ -458,17 +444,11 @@ function QuestionnairePanel({
           <button
             type="button"
             onClick={onStart}
-            className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#9945ff]/20 transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+            className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#9945ff]/20 transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
           >
             Start Finding Review
             <ArrowRight className="h-4 w-4" />
           </button>
-
-          <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 text-sm text-zinc-400">
-            <ReviewMetaItem icon={<Target className="h-4 w-4" />} label={`Passing score: ${rl1FindingQuestionnaire.passingScore}`} />
-            <ReviewMetaItem icon={<ShieldCheck className="h-4 w-4" />} label={`Critical questions: ${criticalTotal}`} />
-            <ReviewMetaItem icon={<RefreshCcw className="h-4 w-4" />} label="Retry missed questions only" />
-          </div>
         </div>
       ) : null}
 

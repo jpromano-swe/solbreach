@@ -427,7 +427,6 @@ export function ResearchLabsSection() {
 
           <LabContextPanel
             activeFile={activeFile}
-            auditReportStage={auditReportStage}
             lab={activeLab}
             phase={phase}
             executeExploitView={executeExploitView}
@@ -455,13 +454,15 @@ export function ResearchLabsSection() {
           />
         </div>
 
-        <RuntimeConsoleDrawer
-          compact={phase === "SUBMIT_FINDING" || phase === "COMPLETED"}
-          isOpen={consoleOpen}
-          isRunning={isRunning}
-          lines={session.terminalLines}
-          onToggle={() => setConsoleOpen((open) => !open)}
-        />
+        {session.terminalLines.length > 0 || isRunning ? (
+          <RuntimeConsoleDrawer
+            compact={phase === "SUBMIT_FINDING" || phase === "COMPLETED"}
+            isOpen={consoleOpen}
+            isRunning={isRunning}
+            lines={session.terminalLines}
+            onToggle={() => setConsoleOpen((open) => !open)}
+          />
+        ) : null}
       </div>
     </section>
   );

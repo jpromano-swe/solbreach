@@ -9,14 +9,13 @@ import {
   deriveProtocolState,
 } from "./execute-exploit-tab";
 import { ReviewCheckpointPanel } from "./report-tab";
-import type { AuditReportStage, EnrichedTransactionResult, ExecuteExploitView, LabPhase, ReviewMode } from "./types";
+import type { EnrichedTransactionResult, ExecuteExploitView, LabPhase, ReviewMode } from "./types";
 
 const contextObjective =
   "Determine whether an attacker can trigger an unauthorized state transition and collect enough evidence to report the finding.";
 
 export function LabContextPanel({
   activeFile,
-  auditReportStage,
   executeExploitView,
   findingReviewPassed,
   impactVerified,
@@ -43,7 +42,6 @@ export function LabContextPanel({
   onStartReview,
 }: {
   activeFile: ResearchLabFile | null;
-  auditReportStage: AuditReportStage;
   executeExploitView: ExecuteExploitView;
   findingReviewPassed: boolean;
   impactVerified: boolean;
@@ -108,7 +106,6 @@ export function LabContextPanel({
           reviewStepTotal={reviewStepTotal}
           criticalAnsweredCount={criticalAnsweredCount}
           criticalTotal={criticalTotal}
-          auditReportStage={auditReportStage}
           onOpenReport={onOpenReport}
           onRetryReview={onRetryReview}
           onStartReview={onStartReview}
@@ -352,7 +349,6 @@ function ReviewContextCard({
   onRetryReview,
   onStartReview,
 }: {
-  auditReportStage: AuditReportStage;
   findingReviewPassed: boolean;
   questionnaireResult: QuestionnaireResult | null;
   reportAccepted: boolean;
