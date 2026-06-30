@@ -609,9 +609,6 @@ function ReportCheckpointPanel({
 }) {
   const progressCurrent = reviewStarted ? reviewStepCurrent : 0;
   const progressTotal = Math.max(1, reviewStepTotal);
-  const progressPercent = reviewStarted
-    ? Math.max(8, Math.round((progressCurrent / progressTotal) * 100))
-    : 0;
 
   return (
     <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
@@ -638,12 +635,6 @@ function ReportCheckpointPanel({
           <CheckpointRuleRow
             label="Mode"
             value={reviewMode === "retry" ? "Missed only" : "Full review"}
-          />
-        </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
-          <div
-            className="h-full rounded-full bg-[#9945ff]"
-            style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>

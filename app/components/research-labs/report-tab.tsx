@@ -683,25 +683,13 @@ function QuestionBlock({
       }`}
     >
       <legend className="sr-only">{question.prompt}</legend>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
-            {question.section}
-          </p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-white">
-            {questionNumber}. {question.prompt}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {question.critical ? (
-            <span className="rounded-full border border-[#9945ff]/25 bg-[#9945ff]/10 px-2.5 py-1 text-[11px] text-[#c7a6ff]">
-              Critical
-            </span>
-          ) : null}
-          <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-zinc-500">
-            {question.points} pts
-          </span>
-        </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+          {question.section}
+        </p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-white">
+          {questionNumber}. {question.prompt}
+        </p>
       </div>
 
       {question.options ? (
