@@ -37,7 +37,6 @@ import {
   LabScenarioBriefing,
   ResearchLabSessionHeader,
 } from "./research-labs/lab-shell";
-import { RuntimeConsoleDrawer } from "./research-labs/runtime-console";
 import { ResearchLabWorkspace } from "./research-labs/workspace";
 import { useFindingReview } from "./research-labs/use-finding-review";
 import { useResearchLabReport } from "./research-labs/use-research-lab-report";
@@ -78,7 +77,6 @@ export function ResearchLabsSection() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("inspect");
   const [executeExploitView, setExecuteExploitView] =
     useState<ExecuteExploitView>("HYPOTHESIS");
-  const [consoleOpen, setConsoleOpen] = useState(false);
   const [revealedHints, setRevealedHints] = useState<string[]>([]);
   const trackedViewEventsRef = useRef<Set<string>>(new Set());
 
@@ -379,8 +377,8 @@ export function ResearchLabsSection() {
     activeLab,
     getAuth: getActiveAuth,
     loadReport,
-    onConsoleClose: () => setConsoleOpen(false),
-    onConsoleOpen: () => setConsoleOpen(true),
+    onConsoleClose: () => undefined,
+    onConsoleOpen: () => undefined,
     onSessionChange: setSession,
     pollTerminal,
     session,
@@ -390,7 +388,6 @@ export function ResearchLabsSection() {
     setActiveFilePath("");
     setActiveTab("inspect");
     setExecuteExploitView("HYPOTHESIS");
-    setConsoleOpen(false);
     setRevealedHints([]);
     resetReport();
     resetTransactions();
@@ -612,15 +609,6 @@ export function ResearchLabsSection() {
           />
         </div>
 
-        {session.terminalLines.length > 0 || isRunning ? (
-          <RuntimeConsoleDrawer
-            compact={phase === "SUBMIT_FINDING" || phase === "COMPLETED"}
-            isOpen={consoleOpen}
-            isRunning={isRunning}
-            lines={session.terminalLines}
-            onToggle={() => setConsoleOpen((open) => !open)}
-          />
-        ) : null}
       </div>
     </section>
   );

@@ -61,7 +61,7 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
-          <ClusterSelect />
+          {!isLandingView ? <ClusterSelect /> : null}
           {!isLandingView ? <WalletButton /> : null}
           {!isLandingView && walletStatus === "connected" ? (
             <button

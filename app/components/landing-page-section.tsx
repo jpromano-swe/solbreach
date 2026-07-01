@@ -434,7 +434,6 @@ function HeroMissionStatusCard() {
       </div>
 
       <div className="mt-5 space-y-3">
-        <HeroStatusRow label="Cluster" value="devnet" />
         <HeroStatusRow label="Wallet" value="9xQe...1b2C" />
         <HeroStatusRow label="PDA state" value="Live" />
         <HeroStatusRow label="Win condition" value="Ledger forged" />
@@ -591,7 +590,7 @@ function FeatureShowcaseSection() {
         <FeaturePreview
           tint="purple"
           title="Exploit Foundations"
-          description="Interact with vulnerable devnet programs, complete exploit objectives, and unlock wallet-bound certifications."
+          description="Interact with vulnerable programs, complete exploit objectives, and unlock wallet-bound certifications."
         >
           <ExploitFoundationsPreview />
         </FeaturePreview>
@@ -616,7 +615,7 @@ function FeatureShowcaseSection() {
           icon={<Zap className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
           title="Real Vulnerable Programs"
-          body="Intentionally vulnerable Solana programs deployed on devnet."
+          body="Intentionally vulnerable Solana programs in controlled training environments."
         />
         <FeatureMiniItem
           icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}

@@ -284,37 +284,39 @@ function ExecuteExploitContext({
         ]}
       />
 
-      <ContextBlock title="Exploit Hints">
-        <div className="space-y-3">
-          {revealedChainHints === 0 ? (
-            <p className="text-sm leading-6 text-zinc-500">
-              Reveal hints only if you want guidance on the exploit sequence.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {chainHints.slice(0, revealedChainHints).map((hint, index) => (
-                <div
-                  key={hint}
-                  className="rounded-xl border border-white/10 bg-white/[0.035] p-3"
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
-                    Hint {index + 1}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">{hint}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={revealNextExploitHint}
-            disabled={!canRevealMoreHints}
-            className="w-full rounded-xl border border-[#9945ff]/25 bg-[#9945ff]/10 px-4 py-2.5 text-sm font-medium text-[#c7a6ff] transition hover:bg-[#9945ff]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {canRevealMoreHints ? "Reveal next hint" : "All hints revealed"}
-          </button>
-        </div>
-      </ContextBlock>
+      {!impactVerified ? (
+        <ContextBlock title="Exploit Hints">
+          <div className="space-y-3">
+            {revealedChainHints === 0 ? (
+              <p className="text-sm leading-6 text-zinc-500">
+                Reveal hints only if you want guidance on the exploit sequence.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {chainHints.slice(0, revealedChainHints).map((hint, index) => (
+                  <div
+                    key={hint}
+                    className="rounded-xl border border-white/10 bg-white/[0.035] p-3"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+                      Hint {index + 1}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">{hint}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={revealNextExploitHint}
+              disabled={!canRevealMoreHints}
+              className="w-full rounded-xl border border-[#9945ff]/25 bg-[#9945ff]/10 px-4 py-2.5 text-sm font-medium text-[#c7a6ff] transition hover:bg-[#9945ff]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {canRevealMoreHints ? "Reveal next hint" : "All hints revealed"}
+            </button>
+          </div>
+        </ContextBlock>
+      ) : null}
     </>
   );
 }

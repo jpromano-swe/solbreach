@@ -190,7 +190,7 @@ function AccountsTab({
       <div className="mb-5 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">Protocol State</p>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
-          Inspect the accounts involved in the program.
+          Accounts involved in the program.
         </p>
       </div>
       <div className={`grid gap-4 ${compact ? "grid-cols-1" : "xl:grid-cols-2 2xl:grid-cols-3"}`}>

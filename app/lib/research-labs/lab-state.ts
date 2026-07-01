@@ -44,7 +44,7 @@ export type ResearchLabManifest = {
 const RL1_MANIFEST_OVERRIDES = {
   title: "Account Substitution",
   summary:
-    "A borrow market accepts caller-supplied collateral accounts without binding them to the approved vault configuration. Inspect the deposit path, test the non-canonical account route, and document the resulting treasury exposure.",
+    "A lending market called Breachlend is testing their borrow function implementation, but the code was written by their newest intern and needs to be double checked before deployed to production. Inspect accounts, and document any findings that can cause protocol malfunction to warn Breachlend.",
   objective:
     "Determine whether a counterfeit deposit path can create position credit and support a real treasury withdrawal.",
   successCriteria:
