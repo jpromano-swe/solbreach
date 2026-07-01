@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type Address } from "@solana/kit";
 import { AppHeader } from "./components/app-header";
 import { BetaAccessSection } from "./components/beta-access-section";
@@ -31,6 +31,7 @@ import { useLevelStageConfigs } from "./lib/hooks/use-level-stage-configs";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
+import { trackAnalyticsEvent } from "./lib/analytics";
 
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_1_AMOUNT = "1000000";
@@ -72,6 +73,7 @@ export default function Home() {
     setActiveSection,
   } = useLevelRoute();
   const [copied, setCopied] = useState<string | null>(null);
+  const trackedLevelViewsRef = useRef<Set<string>>(new Set());
   const {
     backendAuth: level1BackendAuth,
     backendCompleted: level1BackendCompleted,
@@ -340,6 +342,23 @@ export default function Home() {
     setActiveSection("levels");
     setActiveLevelsView("level0");
   }, [setActiveLevelsView, setActiveSection]);
+
+  useEffect(() => {
+    if (activeSection !== "levels" || !activeLevel) return;
+
+    const key = `${activeLevel}:${address ?? "anonymous"}`;
+    if (trackedLevelViewsRef.current.has(key)) return;
+
+    trackedLevelViewsRef.current.add(key);
+    trackAnalyticsEvent({
+      eventName: "level_opened",
+      levelId: activeLevel,
+      properties: {
+        levelTitle: LEVEL_GUIDES[activeLevel].missionTitle,
+      },
+      walletAddress: address ?? null,
+    });
+  }, [activeLevel, activeSection, address]);
 
   if (activeSection === "beta-access") {
     return <BetaAccessSection onEnterLevel0={enterLevel0FromBeta} />;

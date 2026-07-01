@@ -10,6 +10,7 @@ import {
   redeemBetaAccessCode,
   requestBetaAccess,
 } from "../lib/beta-access";
+import { trackAnalyticsEvent } from "../lib/analytics";
 import { ensureBackendWalletAuth } from "../lib/levels/level1-backend";
 import { useWallet } from "../lib/wallet/context";
 import { WalletButton } from "./wallet-button";
@@ -45,6 +46,12 @@ export function BetaAccessSection({
   const walletAddress = wallet?.account.address;
 
   useEffect(() => {
+    trackAnalyticsEvent({
+      eventName: "beta_page_viewed",
+    });
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function verifyConnectedWalletAccess() {
@@ -71,6 +78,14 @@ export function BetaAccessSection({
         }
 
         if (result.hasAccess && result.status === "approved") {
+          trackAnalyticsEvent({
+            eventName: "beta_app_entered",
+            properties: {
+              accessSource: result.accessSource,
+              status: result.status,
+            },
+            walletAddress: wallet.account.address,
+          });
           toast.success("Beta access confirmed.");
           onEnterLevel0();
           return;
@@ -182,6 +197,14 @@ export function BetaAccessSection({
       });
 
       if (result.hasAccess && result.status === "approved") {
+        trackAnalyticsEvent({
+          eventName: "beta_app_entered",
+          properties: {
+            accessSource: result.accessSource,
+            status: result.status,
+          },
+          walletAddress: wallet.account.address,
+        });
         toast.success("Access code redeemed.");
         onEnterLevel0();
         return;

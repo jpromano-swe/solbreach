@@ -2,7 +2,9 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
@@ -11,6 +13,10 @@ import {
   ensureBackendWalletAuth,
   type Level1AuthSession,
 } from "../lib/levels/level1-backend";
+import {
+  trackAnalyticsEvent,
+  type AnalyticsEventName,
+} from "../lib/analytics";
 import {
   applyTerminalEvents,
   createResearchLabSession,
@@ -74,6 +80,7 @@ export function ResearchLabsSection() {
     useState<ExecuteExploitView>("HYPOTHESIS");
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [revealedHints, setRevealedHints] = useState<string[]>([]);
+  const trackedViewEventsRef = useRef<Set<string>>(new Set());
 
   const activeBackendAuth =
     backendAuth &&
@@ -220,6 +227,109 @@ export function ResearchLabsSection() {
     [impactVerified]
   );
 
+  const trackLabEvent = useCallback(
+    (
+      eventName: AnalyticsEventName,
+      properties?: Record<string, string | number | boolean | null | undefined>
+    ) => {
+      trackAnalyticsEvent({
+        eventName,
+        labId: activeLab?.id ?? null,
+        properties,
+        sessionId: session?.sessionId ?? null,
+        walletAddress: wallet?.account.address ?? null,
+      });
+    },
+    [activeLab?.id, session?.sessionId, wallet?.account.address]
+  );
+
+  useEffect(() => {
+    trackAnalyticsEvent({
+      eventName: "research_labs_catalog_viewed",
+      walletAddress: wallet?.account.address ?? null,
+    });
+  }, [wallet?.account.address]);
+
+  useEffect(() => {
+    if (!activeLab || !session) return;
+
+    const baseProperties = {
+      activeTab: resolvedActiveTab,
+      executeExploitView,
+    };
+    const events: Array<{
+      eventName: AnalyticsEventName;
+      properties?: Record<string, string | number | boolean | null | undefined>;
+      key: string;
+    }> = [];
+
+    if (resolvedActiveTab === "inspect") {
+      events.push({
+        eventName: "rl1_inspect_viewed",
+        key: `${session.sessionId}:rl1_inspect_viewed`,
+        properties: baseProperties,
+      });
+      events.push({
+        eventName: "rl1_account_state_viewed",
+        key: `${session.sessionId}:rl1_account_state_viewed`,
+        properties: baseProperties,
+      });
+
+      if (activeFile?.path) {
+        events.push({
+          eventName: "rl1_source_file_opened",
+          key: `${session.sessionId}:rl1_source_file_opened:${activeFile.path}`,
+          properties: {
+            ...baseProperties,
+            filePath: activeFile.path,
+          },
+        });
+      }
+    }
+
+    if (resolvedActiveTab === "exploit") {
+      events.push({
+        eventName:
+          executeExploitView === "EVIDENCE_REVIEW"
+            ? "rl1_evidence_review_viewed"
+            : "rl1_exploit_interface_viewed",
+        key: `${session.sessionId}:${
+          executeExploitView === "EVIDENCE_REVIEW"
+            ? "rl1_evidence_review_viewed"
+            : "rl1_exploit_interface_viewed"
+        }`,
+        properties: baseProperties,
+      });
+    }
+
+    if (resolvedActiveTab === "report") {
+      events.push({
+        eventName: "rl1_report_finding_viewed",
+        key: `${session.sessionId}:rl1_report_finding_viewed`,
+        properties: baseProperties,
+      });
+    }
+
+    for (const event of events) {
+      if (trackedViewEventsRef.current.has(event.key)) continue;
+      trackedViewEventsRef.current.add(event.key);
+      trackAnalyticsEvent({
+        eventName: event.eventName,
+        labId: activeLab.id,
+        properties: event.properties,
+        sessionId: session.sessionId,
+        walletAddress: wallet?.account.address ?? null,
+      });
+    }
+  }, [
+    activeFile?.path,
+    activeLab,
+    executeExploitView,
+    resolvedActiveTab,
+    session,
+    wallet?.account.address,
+  ]);
+
   const loadCatalog = useCallback(async () => {
     setIsCatalogLoading(true);
     setCatalogError(null);
@@ -316,6 +426,16 @@ export function ResearchLabsSection() {
       setActiveFilePath(resolveDefaultFilePath(nextLab, nextSession));
       await pollTerminal(auth, nextSession, 0);
       await loadReport(auth, nextSession);
+      trackAnalyticsEvent({
+        eventName: "research_lab_opened",
+        labId: nextLab.id,
+        properties: {
+          labSlug: nextLab.slug,
+          labTitle: nextLab.title,
+        },
+        sessionId: nextSession.sessionId,
+        walletAddress: auth.walletAddress,
+      });
       toast.success("Research lab session created");
     } catch (error) {
       const message = getErrorMessage(error);
@@ -363,7 +483,21 @@ export function ResearchLabsSection() {
     if (!activeLab) return;
     const nextHint = activeLab.hints.find((hint) => !revealedHints.includes(hint.id));
     if (!nextHint) return;
+    trackLabEvent("rl1_hint_revealed", {
+      hintId: nextHint.id,
+      hintIndex: revealedHints.length + 1,
+    });
     setRevealedHints([...revealedHints, nextHint.id]);
+  };
+
+  const openExploitFromContext = () => {
+    trackLabEvent("rl1_try_exploit_clicked");
+    setActiveTab("exploit");
+  };
+
+  const openFindingReportWithAnalytics = () => {
+    trackLabEvent("rl1_audit_report_opened");
+    openFindingReport();
   };
 
   if (!activeLab || !session) {
@@ -431,7 +565,11 @@ export function ResearchLabsSection() {
             onQuestionnaireAnswer={updateQuestionnaireAnswer}
             onQuestionnaireRetry={retryQuestionnaire}
             onQuestionnaireSubmit={submitQuestionnaire}
-            onOpenFindingReport={impactVerified ? openFindingReport : () => setActiveTab("exploit")}
+            onOpenFindingReport={
+              impactVerified
+                ? openFindingReportWithAnalytics
+                : () => setActiveTab("exploit")
+            }
             onReviewIndexChange={setReviewIndex}
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
@@ -463,8 +601,12 @@ export function ResearchLabsSection() {
             revealedHints={revealedHints}
             session={session}
             txResults={txResults}
-            onOpenExploit={() => setActiveTab("exploit")}
-            onOpenReport={impactVerified ? openFindingReport : () => setActiveTab("exploit")}
+            onOpenExploit={openExploitFromContext}
+            onOpenReport={
+              impactVerified
+                ? openFindingReportWithAnalytics
+                : () => setActiveTab("exploit")
+            }
             onRevealHint={revealHint}
             onRetryReview={retryQuestionnaire}
           />

@@ -8,10 +8,11 @@ import {
   LockKeyhole,
   ShieldCheck,
 } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, type CSSProperties, type ReactNode } from "react";
 
 import { LEVEL_GUIDES } from "../lib/levels/level-guides";
 import type { LevelId } from "../lib/levels/course-status";
+import { trackAnalyticsEvent } from "../lib/analytics";
 
 const GRID_DIVIDER_ONE = "calc((100% - 5rem) / 3 + 1.25rem)";
 const GRID_DIVIDER_TWO = "calc(2 * (100% - 5rem) / 3 + 3.75rem)";
@@ -158,6 +159,10 @@ export function VulnerabilitiesSection({
 }: {
   onSelectLevel: (level: LevelId) => void;
 }) {
+  useEffect(() => {
+    trackAnalyticsEvent({ eventName: "vulnerability_catalog_viewed" });
+  }, []);
+
   return (
     <section className="relative min-h-[calc(100vh-88px)] overflow-hidden border-t border-white/10 bg-[#050708] px-6 py-16 text-white">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-35" />

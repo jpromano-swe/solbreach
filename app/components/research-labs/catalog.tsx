@@ -4,6 +4,7 @@ import { Spinner } from "@solana-commerce/connector";
 import { Clock3, LockKeyhole, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { trackAnalyticsEvent } from "../../lib/analytics";
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
 import { useWallet } from "../../lib/wallet/context";
 
@@ -257,7 +258,16 @@ function ResearchLabWalletConnectorDialog({
               <button
                 key={connector.id}
                 type="button"
-                onClick={() => void connect(connector.id)}
+                onClick={() => {
+                  trackAnalyticsEvent({
+                    eventName: "wallet_connect_started",
+                    properties: {
+                      connectorId: connector.id,
+                      surface: "research_labs_modal",
+                    },
+                  });
+                  void connect(connector.id);
+                }}
                 disabled={status === "connecting"}
                 className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.035] px-3 text-left text-sm font-medium text-zinc-200 transition hover:border-[#9945ff]/35 hover:bg-[#9945ff]/10 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#101014] disabled:cursor-not-allowed disabled:opacity-60"
               >

@@ -7,6 +7,7 @@ import { useBalance } from "../lib/hooks/use-balance";
 import { lamportsToSolString } from "../lib/lamports";
 import { ellipsify } from "../lib/explorer";
 import { useCluster } from "./cluster-context";
+import { trackAnalyticsEvent } from "../lib/analytics";
 
 export function WalletButton({
   buttonClassName = "",
@@ -73,12 +74,16 @@ export function WalletButton({
             <div className="space-y-1">
               {connectors.map((connector) => (
                 <button
-                  key={connector.id}
-                  onClick={async () => {
-                    try {
-                      await connect(connector.id);
-                      close();
-                    } catch {
+                key={connector.id}
+                onClick={async () => {
+                  try {
+                    trackAnalyticsEvent({
+                      eventName: "wallet_connect_started",
+                      properties: { connectorId: connector.id },
+                    });
+                    await connect(connector.id);
+                    close();
+                  } catch {
                       // connection errors are surfaced through context state
                     }
                   }}
