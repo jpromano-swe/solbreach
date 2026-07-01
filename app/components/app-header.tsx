@@ -31,7 +31,7 @@ export function AppHeader({
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+      <div className="flex w-full flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
         <div className="flex justify-center lg:justify-start">
           <button
             type="button"
@@ -73,7 +73,7 @@ export function AppHeader({
                   : "border-border bg-card/70 text-foreground hover:bg-accent"
               }`}
             >
-              My Profile
+              Profile
             </button>
           ) : null}
           <ThemeToggle />

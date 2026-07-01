@@ -151,6 +151,8 @@ export function ResearchLabsSection() {
     retryQuestionnaire,
     reviewIndex,
     reviewMode,
+    reviewOptionOrder,
+    visibleReviewQuestions,
     reviewStarted,
     reviewStepCurrent,
     reviewStepTotal,
@@ -413,6 +415,8 @@ export function ResearchLabsSection() {
             retryQuestionIds={retryQuestionIds}
             reviewIndex={reviewIndex}
             reviewMode={reviewMode}
+            reviewOptionOrder={reviewOptionOrder}
+            reviewQuestions={visibleReviewQuestions}
             reviewStarted={reviewStarted}
             report={report}
             reportFields={reportFields}
@@ -463,7 +467,6 @@ export function ResearchLabsSection() {
             onOpenReport={impactVerified ? openFindingReport : () => setActiveTab("exploit")}
             onRevealHint={revealHint}
             onRetryReview={retryQuestionnaire}
-            onStartReview={startFindingReview}
           />
         </div>
 

@@ -10,7 +10,13 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { rl1FindingQuestionnaire, type QuestionnaireAnswer, type QuestionnaireQuestion, type QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
+import {
+  rl1FindingQuestionnaire,
+  type QuestionnaireAnswer,
+  type QuestionnaireOption,
+  type QuestionnaireQuestion,
+  type QuestionnaireResult,
+} from "../../lib/research-labs/rl1-questionnaire";
 import type { ResearchLabReport, ResearchLabReportFields } from "../../lib/research-labs/lab-state";
 import type {
   AuditReportPreview,
@@ -23,7 +29,6 @@ import {
   buildAuditReportPreview,
   getFeedbackTopics,
   getIncorrectRequiredQuestionIds,
-  getReviewQuestions,
   isQuestionAnswered,
   isReportComplete,
   isRequiredQuestion,
@@ -50,6 +55,8 @@ export function ReportTab({
   retryQuestionIds,
   reviewIndex,
   reviewMode,
+  reviewOptionOrder,
+  reviewQuestions,
   reviewStarted,
   report,
   onChange,
@@ -76,6 +83,8 @@ export function ReportTab({
   retryQuestionIds: string[];
   reviewIndex: number;
   reviewMode: ReviewMode;
+  reviewOptionOrder: Record<string, string[]>;
+  reviewQuestions: QuestionnaireQuestion[];
   reviewStarted: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
@@ -115,6 +124,8 @@ export function ReportTab({
           retryQuestionIds={retryQuestionIds}
           reviewIndex={reviewIndex}
           reviewMode={reviewMode}
+          reviewOptionOrder={reviewOptionOrder}
+          reviewQuestions={reviewQuestions}
           reviewStarted={reviewStarted}
           onAnswer={onQuestionnaireAnswer}
           onIndexChange={onReviewIndexChange}
@@ -391,6 +402,8 @@ function QuestionnairePanel({
   retryQuestionIds,
   reviewIndex,
   reviewMode,
+  reviewOptionOrder,
+  reviewQuestions,
   reviewStarted,
   onAnswer,
   onIndexChange,
@@ -403,6 +416,8 @@ function QuestionnairePanel({
   retryQuestionIds: string[];
   reviewIndex: number;
   reviewMode: ReviewMode;
+  reviewOptionOrder: Record<string, string[]>;
+  reviewQuestions: QuestionnaireQuestion[];
   reviewStarted: boolean;
   onAnswer: (answer: QuestionnaireAnswer) => void;
   onIndexChange: (index: number) => void;
@@ -417,7 +432,7 @@ function QuestionnairePanel({
       : retryQuestionIds;
   const criticalMissCount =
     result && !result.passed ? result.failedCriticalQuestions.length : 0;
-  const visibleQuestions = getReviewQuestions(reviewMode, incorrectIds);
+  const visibleQuestions = reviewQuestions;
   const requiredQuestions = visibleQuestions.filter(isRequiredQuestion);
   const answeredRequiredCount = requiredQuestions.filter((question) =>
     isQuestionAnswered(question, answerMap.get(question.id))
@@ -555,6 +570,7 @@ function QuestionnairePanel({
                 answer={currentAnswer}
                 disabled={false}
                 index={reviewIndex}
+                optionOrder={reviewOptionOrder[currentQuestion.id]}
                 question={currentQuestion}
                 onAnswer={onAnswer}
               />
@@ -642,10 +658,28 @@ function CriticalAnswersPanel() {
   );
 }
 
+function orderQuestionOptions(
+  options: QuestionnaireOption[] | undefined,
+  optionOrder: string[] | undefined
+) {
+  if (!options?.length) return [];
+  if (!optionOrder?.length) return options;
+
+  const optionsById = new Map(options.map((option) => [option.id, option]));
+  const orderedOptions = optionOrder
+    .map((optionId) => optionsById.get(optionId))
+    .filter((option): option is QuestionnaireOption => Boolean(option));
+  const orderedIds = new Set(optionOrder);
+  const missingOptions = options.filter((option) => !orderedIds.has(option.id));
+
+  return [...orderedOptions, ...missingOptions];
+}
+
 function QuestionBlock({
   answer,
   disabled,
   index,
+  optionOrder,
   question,
   result,
   onAnswer,
@@ -653,6 +687,7 @@ function QuestionBlock({
   answer: QuestionnaireAnswer | undefined;
   disabled: boolean;
   index: number;
+  optionOrder?: string[];
   question: QuestionnaireQuestion;
   result?: { correct: boolean; pointsEarned: number };
   onAnswer: (answer: QuestionnaireAnswer) => void;
@@ -664,6 +699,7 @@ function QuestionBlock({
   const selectedOptionIds =
     answer && "selectedOptionIds" in answer ? answer.selectedOptionIds : [];
   const text = answer && "text" in answer ? answer.text : "";
+  const orderedOptions = orderQuestionOptions(question.options, optionOrder);
 
   const toggleMultiSelect = (optionId: string) => {
     const next = selectedOptionIds.includes(optionId)
@@ -692,9 +728,9 @@ function QuestionBlock({
         </p>
       </div>
 
-      {question.options ? (
+      {orderedOptions.length ? (
         <div className="mt-4 grid gap-2">
-          {question.options.map((option) => {
+          {orderedOptions.map((option) => {
             const selected =
               question.type === "single_choice"
                 ? selectedOptionId === option.id

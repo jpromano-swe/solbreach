@@ -1,26 +1,38 @@
 "use client";
 
+import Image from "next/image";
+
 export function SiteFooter({ repositoryUrl }: { repositoryUrl: string }) {
   return (
     <footer className="border-t border-border/70">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6 md:flex-row">
-        <p>Build for Solana by ZirconDioxide.</p>
+      <div className="flex w-full flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6 md:flex-row lg:px-8">
+        <p className="inline-flex items-center gap-1.5">
+          <span>Built for</span>
+          <Image
+            src="/solana-sol-icon.png"
+            alt="Solana"
+            width={18}
+            height={18}
+            className="h-4 w-4 object-contain"
+          />
+          <span>by ZirconDioxide.</span>
+        </p>
         <div className="flex items-center gap-2">
           <a
             href="https://x.com/solbreach_app"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/70 px-4 transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-10 items-center gap-2 px-2 text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Open SolBreach on X"
           >
             <XIcon />
-            <span>Twitter</span>
+            <span>solbreach_app</span>
           </a>
           <a
             href={repositoryUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/70 px-4 transition hover:border-foreground/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-10 items-center gap-2 px-2 text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Open SolBreach documentation"
           >
             <GitHubIcon />

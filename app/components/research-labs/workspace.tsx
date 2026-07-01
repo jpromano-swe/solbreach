@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import type { QuestionnaireAnswer, QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
+import type { QuestionnaireAnswer, QuestionnaireQuestion, QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
 import type { LabTransactionPayload, ResearchLabFile, ResearchLabReport, ResearchLabReportFields, SandboxAccountSummary } from "../../lib/research-labs/lab-state";
 import { ExploitTab } from "./execute-exploit-tab";
 import { InspectTab } from "./inspect-tab";
@@ -29,6 +29,8 @@ export function ResearchLabWorkspace({
   retryQuestionIds,
   reviewIndex,
   reviewMode,
+  reviewOptionOrder,
+  reviewQuestions,
   reviewStarted,
   report,
   reportFields,
@@ -69,6 +71,8 @@ export function ResearchLabWorkspace({
   retryQuestionIds: string[];
   reviewIndex: number;
   reviewMode: ReviewMode;
+  reviewOptionOrder: Record<string, string[]>;
+  reviewQuestions: QuestionnaireQuestion[];
   reviewStarted: boolean;
   report: ResearchLabReport | null;
   reportFields: ResearchLabReportFields;
@@ -143,6 +147,8 @@ export function ResearchLabWorkspace({
         retryQuestionIds={retryQuestionIds}
         reviewIndex={reviewIndex}
         reviewMode={reviewMode}
+        reviewOptionOrder={reviewOptionOrder}
+        reviewQuestions={reviewQuestions}
         reviewStarted={reviewStarted}
         report={report}
         onChange={onChangeReportFields}

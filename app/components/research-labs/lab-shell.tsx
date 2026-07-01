@@ -15,7 +15,6 @@ const LAB_SHELL_COPY = {
 
 export function ResearchLabSessionHeader({
   lab,
-  phase,
   sandboxStatus,
   onBack,
   onReset,
@@ -47,7 +46,6 @@ export function ResearchLabSessionHeader({
               {displayLabCode(lab)}:{" "}
               {lab.title || LAB_SHELL_COPY.titleFallback}
             </p>
-            <PhaseBadge phase={phase} />
           </div>
         </div>
       </div>
@@ -82,7 +80,7 @@ export function ResearchLabSessionHeader({
                   setMenuOpen(false);
                   onLeave();
                 }}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-zinc-400 hover:bg-white/[0.06]"
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-red-300 transition hover:bg-red-500/10 hover:text-red-200 focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101112]"
               >
                 Leave lab
               </button>
@@ -180,14 +178,6 @@ function InvestigationStepper({ phase }: { phase: LabPhase }) {
 }
 */
 
-function PhaseBadge({ phase }: { phase: LabPhase }) {
-  return (
-    <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-3 py-1 text-xs font-semibold text-[#c7a6ff]">
-      Phase: {phaseLabel(phase)}
-    </span>
-  );
-}
-
 function SandboxStatusPill({ status }: { status: SandboxStatus }) {
   const live = status === "READY" || status === "RUNNING";
   return (
@@ -204,21 +194,6 @@ function SandboxStatusPill({ status }: { status: SandboxStatus }) {
       Sandbox {formatShellValue(status.toLowerCase())}
     </span>
   );
-}
-
-function phaseLabel(phase: LabPhase) {
-  switch (phase) {
-    case "INSPECT":
-      return "Inspect";
-    case "EXECUTE_EXPLOIT":
-      return "Execute exploit";
-    case "VERIFY_IMPACT":
-      return "Evidence review";
-    case "SUBMIT_FINDING":
-      return "Report finding";
-    case "COMPLETED":
-      return "Completed";
-  }
 }
 
 function formatShellValue(value: string) {

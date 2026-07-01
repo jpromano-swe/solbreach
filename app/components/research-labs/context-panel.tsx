@@ -40,7 +40,6 @@ export function LabContextPanel({
   onOpenReport,
   onRevealHint,
   onRetryReview,
-  onStartReview,
 }: {
   activeFile: ResearchLabFile | null;
   executeExploitView: ExecuteExploitView;
@@ -66,7 +65,6 @@ export function LabContextPanel({
   onOpenReport: () => void;
   onRevealHint: () => void;
   onRetryReview: () => void;
-  onStartReview: () => void;
 }) {
   const nextHint = lab.hints.find((hint) => !revealedHints.includes(hint.id));
   const reportAccepted = Boolean(report?.status === "accepted" || session.labCompleted);
@@ -114,7 +112,6 @@ export function LabContextPanel({
           criticalTotal={criticalTotal}
           onOpenReport={onOpenReport}
           onRetryReview={onRetryReview}
-          onStartReview={onStartReview}
         />
       ) : null}
 
@@ -390,10 +387,10 @@ function ExploitCheckpointPanel({
   steps: Array<{ label: string; active: boolean }>;
 }) {
   return (
-    <div className="h-fit rounded-[28px] border border-white/10 bg-[#0b0c0c]/80 p-5 shadow-2xl shadow-black/25">
+    <div className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
       <div className="flex items-center gap-3">
-        <ShieldCheck className="h-7 w-7 text-[#9945ff]" />
-        <p className="text-2xl font-semibold tracking-[-0.03em] text-zinc-100">
+        <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+        <p className="text-xl font-semibold tracking-[-0.03em] text-white">
           Exploit Checkpoint
         </p>
       </div>
@@ -402,7 +399,7 @@ function ExploitCheckpointPanel({
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
           Exploit Progress
         </p>
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-3">
           {steps.map((step) => (
             <ExploitCheckpointStep
               key={step.label}
@@ -418,18 +415,18 @@ function ExploitCheckpointPanel({
           Unlocks Next
         </p>
         <div className="mt-4 flex items-center gap-4">
-          <div className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl border ${
+          <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
             impactVerified
               ? "border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff]"
               : "border-white/10 bg-white/[0.035] text-zinc-600"
           }`}>
-            <LockKeyhole className="h-7 w-7" />
+            <LockKeyhole className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-lg font-semibold tracking-[-0.02em] text-zinc-100">
+            <p className="text-sm font-semibold text-white">
               Report Finding
             </p>
-            <p className="mt-1 text-sm leading-6 text-zinc-500">
+            <p className="mt-1 text-sm leading-5 text-zinc-500">
               Answer the questions and prepare your first Finding Report
             </p>
           </div>
@@ -438,7 +435,7 @@ function ExploitCheckpointPanel({
           type="button"
           onClick={onOpenReport}
           disabled={!impactVerified}
-          className={`mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+          className={`mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
             impactVerified
               ? "border border-[#9945ff]/35 bg-[#9945ff]/18 text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.18)] hover:bg-[#9945ff]/24"
               : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
@@ -506,7 +503,6 @@ function ReviewContextCard({
   criticalTotal,
   onOpenReport,
   onRetryReview,
-  onStartReview,
 }: {
   findingReviewPassed: boolean;
   questionnaireResult: QuestionnaireResult | null;
@@ -521,7 +517,6 @@ function ReviewContextCard({
   criticalTotal: number;
   onOpenReport: () => void;
   onRetryReview: () => void;
-  onStartReview: () => void;
 }) {
   if (reportAccepted) {
     return (
@@ -585,7 +580,6 @@ function ReviewContextCard({
       reviewStepCurrent={reviewStepCurrent}
       reviewStepTotal={reviewStepTotal}
       criticalAnsweredCount={criticalAnsweredCount}
-      onStartReview={onStartReview}
     />
   );
 }
@@ -597,7 +591,6 @@ function ReportCheckpointPanel({
   reviewStarted,
   reviewStepCurrent,
   reviewStepTotal,
-  onStartReview,
 }: {
   criticalAnsweredCount: number;
   criticalTotal: number;
@@ -605,7 +598,6 @@ function ReportCheckpointPanel({
   reviewStarted: boolean;
   reviewStepCurrent: number;
   reviewStepTotal: number;
-  onStartReview: () => void;
 }) {
   const progressCurrent = reviewStarted ? reviewStepCurrent : 0;
   const progressTotal = Math.max(1, reviewStepTotal);
@@ -656,15 +648,6 @@ function ReportCheckpointPanel({
             </p>
           </div>
         </div>
-        {reviewStarted ? (
-          <button
-            type="button"
-            onClick={onStartReview}
-            className="mt-4 w-full rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-          >
-            Continue Review
-          </button>
-        ) : null}
       </div>
     </aside>
   );
@@ -699,11 +682,11 @@ function EvidenceLine({ label, value }: { label: string; value: string }) {
 
 function ExploitCheckpointStep({ label, active }: { label: string; active: boolean }) {
   return (
-    <div className="flex items-center gap-4">
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${active ? "border-[#14f195]/40 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_22px_rgba(20,241,149,0.16)]" : "border-white/10 bg-black/20 text-zinc-700"}`}>
-        {active ? <Check className="h-[18px] w-[18px]" /> : null}
+    <div className="flex items-center gap-3">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${active ? "border-[#14f195]/40 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_18px_rgba(20,241,149,0.14)]" : "border-white/10 bg-black/20 text-zinc-700"}`}>
+        {active ? <Check className="h-4 w-4" /> : null}
       </span>
-      <span className={`text-base ${active ? "text-zinc-200" : "text-zinc-600"}`}>
+      <span className={`text-sm ${active ? "text-zinc-200" : "text-zinc-600"}`}>
         {label}
       </span>
     </div>

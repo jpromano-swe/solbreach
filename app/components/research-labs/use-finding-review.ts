@@ -7,6 +7,7 @@ import {
   gradeQuestionnaire,
   rl1FindingQuestionnaire,
   type QuestionnaireAnswer,
+  type QuestionnaireQuestion,
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
 import type { Level1AuthSession } from "../../lib/levels/level1-backend";
@@ -54,10 +55,20 @@ export function useFindingReview({
   const [retryQuestionIds, setRetryQuestionIds] = useState<string[]>([]);
   const [reviewAttempts, setReviewAttempts] = useState(0);
   const [reportOpened, setReportOpened] = useState(false);
+  const [reviewQuestionOrder, setReviewQuestionOrder] = useState<string[]>([]);
+  const [reviewOptionOrder, setReviewOptionOrder] = useState<Record<string, string[]>>({});
+  const resetReviewShuffle = useCallback((questions: QuestionnaireQuestion[]) => {
+    setReviewQuestionOrder(shuffleItems(questions.map((question) => question.id)));
+    setReviewOptionOrder(buildOptionOrder(questions));
+  }, []);
 
-  const visibleReviewQuestions = useMemo(
+  const baseReviewQuestions = useMemo(
     () => getReviewQuestions(reviewMode, retryQuestionIds),
     [reviewMode, retryQuestionIds]
+  );
+  const visibleReviewQuestions = useMemo(
+    () => orderQuestionsById(baseReviewQuestions, reviewQuestionOrder),
+    [baseReviewQuestions, reviewQuestionOrder]
   );
   const reviewStepTotal = visibleReviewQuestions.length + 1;
   const reviewStepCurrent = reviewStarted
@@ -82,6 +93,8 @@ export function useFindingReview({
     setRetryQuestionIds([]);
     setReviewAttempts(0);
     setReportOpened(false);
+    setReviewQuestionOrder([]);
+    setReviewOptionOrder({});
     onResetAuditReportStage();
   }, [onResetAuditReportStage]);
 
@@ -104,21 +117,25 @@ export function useFindingReview({
     setReportOpened(false);
     onOpenReportTab();
 
+    let nextMode: ReviewMode = "full";
+    let nextRetryIds: string[] = [];
     if (questionnaireResult && !questionnaireResult.passed) {
-      const nextRetryIds = retryQuestionIds.length
+      nextRetryIds = retryQuestionIds.length
         ? retryQuestionIds
         : getIncorrectRequiredQuestionIds(questionnaireResult);
       setRetryQuestionIds(nextRetryIds);
-      setReviewMode("retry");
+      nextMode = "retry";
     } else {
-      setReviewMode("full");
+      setRetryQuestionIds([]);
     }
 
+    setReviewMode(nextMode);
+    resetReviewShuffle(getReviewQuestions(nextMode, nextRetryIds));
     setReviewIndex(0);
     if (!questionnaireResult?.passed) {
       setQuestionnaireResult(null);
     }
-  }, [onOpenReportTab, questionnaireResult, retryQuestionIds, reviewStarted]);
+  }, [onOpenReportTab, questionnaireResult, resetReviewShuffle, retryQuestionIds, reviewStarted]);
 
   const openFindingReport = useCallback(() => {
     setReportOpened(true);
@@ -201,6 +218,7 @@ export function useFindingReview({
       }
 
       setReviewMode("retry");
+      resetReviewShuffle(getReviewQuestions("retry", incorrectIds));
       setReviewIndex(0);
       setReportOpened(false);
       toast.error("Finding review needs revision", {
@@ -217,21 +235,28 @@ export function useFindingReview({
     onSessionChange,
     questionnaireAnswers,
     reviewAttempts,
+    resetReviewShuffle,
     session,
     visibleReviewQuestions,
   ]);
 
   const retryQuestionnaire = useCallback(() => {
+    const nextRetryIds =
+      questionnaireResult && !retryQuestionIds.length
+        ? getIncorrectRequiredQuestionIds(questionnaireResult)
+        : retryQuestionIds;
+
     if (questionnaireResult && !retryQuestionIds.length) {
-      setRetryQuestionIds(getIncorrectRequiredQuestionIds(questionnaireResult));
+      setRetryQuestionIds(nextRetryIds);
     }
     setReviewStarted(true);
     setReviewMode("retry");
+    resetReviewShuffle(getReviewQuestions("retry", nextRetryIds));
     setReviewIndex(0);
     setReportOpened(false);
     setQuestionnaireResult(null);
     onOpenReportTab();
-  }, [onOpenReportTab, questionnaireResult, retryQuestionIds.length]);
+  }, [onOpenReportTab, questionnaireResult, resetReviewShuffle, retryQuestionIds]);
 
   return {
     criticalAnsweredCount,
@@ -246,6 +271,8 @@ export function useFindingReview({
     reviewAttempts,
     reviewIndex,
     reviewMode,
+    reviewOptionOrder,
+    visibleReviewQuestions,
     reviewStarted,
     reviewStepCurrent,
     reviewStepTotal,
@@ -254,6 +281,66 @@ export function useFindingReview({
     submitQuestionnaire,
     updateQuestionnaireAnswer,
   };
+}
+
+function buildOptionOrder(questions: QuestionnaireQuestion[]) {
+  return Object.fromEntries(
+    questions.map((question) => [
+      question.id,
+      question.options
+        ? shuffleOptionIds(question)
+        : [],
+    ])
+  );
+}
+
+function shuffleOptionIds(question: QuestionnaireQuestion) {
+  const optionIds = shuffleItems(question.options?.map((option) => option.id) ?? []);
+  if (
+    question.correctOptionId &&
+    optionIds.length > 1 &&
+    optionIds[0] === question.correctOptionId
+  ) {
+    const replacementIndex = optionIds.findIndex(
+      (optionId, index) => index > 0 && optionId !== question.correctOptionId
+    );
+    if (replacementIndex > 0) {
+      [optionIds[0], optionIds[replacementIndex]] = [
+        optionIds[replacementIndex],
+        optionIds[0],
+      ];
+    }
+  }
+
+  return optionIds;
+}
+
+function orderQuestionsById(
+  questions: QuestionnaireQuestion[],
+  order: string[]
+) {
+  if (!order.length) return questions;
+
+  const questionsById = new Map(questions.map((question) => [question.id, question]));
+  const orderedQuestions = order
+    .map((questionId) => questionsById.get(questionId))
+    .filter((question): question is QuestionnaireQuestion => Boolean(question));
+  const orderedIds = new Set(order);
+  const missingQuestions = questions.filter((question) => !orderedIds.has(question.id));
+
+  return [...orderedQuestions, ...missingQuestions];
+}
+
+function shuffleItems<T>(items: T[]) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+  return shuffled;
 }
 
 function serializeQuestionnaireAnswers(answers: QuestionnaireAnswer[]) {
