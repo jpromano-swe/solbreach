@@ -182,6 +182,17 @@ export function LabContextPanel({
               </button>
             }
           />
+          {!impactVerified ? (
+            <ContextBlock title="Inspect Hint">
+              <HintList
+                buttonLabel="Show Hint"
+                lab={lab}
+                nextHintAvailable={Boolean(nextHint)}
+                revealedHints={revealedHints}
+                onRevealHint={onRevealHint}
+              />
+            </ContextBlock>
+          ) : null}
         </div>
       </aside>
     );
@@ -451,12 +462,14 @@ function ExploitCheckpointPanel({
 }
 
 function HintList({
+  buttonLabel = "Reveal Hint",
   compact = false,
   lab,
   nextHintAvailable,
   revealedHints,
   onRevealHint,
 }: {
+  buttonLabel?: string;
   compact?: boolean;
   lab: ResearchLabManifest;
   nextHintAvailable: boolean;
@@ -485,7 +498,7 @@ function HintList({
         disabled={!nextHintAvailable}
         className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-zinc-300 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
       >
-        {nextHintAvailable ? "Reveal Hint" : "All hints revealed"}
+        {nextHintAvailable ? buttonLabel : "All hints revealed"}
       </button>
     </div>
   );

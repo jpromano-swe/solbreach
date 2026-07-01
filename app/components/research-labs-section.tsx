@@ -537,6 +537,7 @@ export function ResearchLabsSection() {
             auditReportStage={auditReportStage}
             availableTabs={availableTabs}
             impactVerified={impactVerified}
+            inspectHintRevealed={revealedHints.includes("account-binding")}
             findingReviewPassed={findingReviewPassed}
             files={session.fileEntries}
             isRunning={isRunning}

@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { FileCode2, FolderOpen } from "lucide-react";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import type { OnMount } from "@monaco-editor/react";
 
 import type { ResearchLabFile } from "../../lib/research-labs/lab-state";
 import type { AccountEvidence } from "./types";
@@ -24,12 +25,14 @@ export function InspectTab({
   activeFile,
   activeFileContent,
   files,
+  inspectHintRevealed,
   onSelectFile,
 }: {
   accounts: AccountEvidence[];
   activeFile: ResearchLabFile | null;
   activeFileContent: string;
   files: ResearchLabFile[];
+  inspectHintRevealed: boolean;
   onSelectFile: (path: string) => void;
 }) {
   return (
@@ -38,6 +41,7 @@ export function InspectTab({
         activeFile={activeFile}
         activeFileContent={activeFileContent}
         files={files}
+        inspectHintRevealed={inspectHintRevealed}
         onSelectFile={onSelectFile}
       />
       <div className="min-h-0 border-t border-white/10 bg-black/10 lg:border-l lg:border-t-0">
@@ -51,15 +55,66 @@ function CodeTab({
   activeFile,
   activeFileContent,
   files,
+  inspectHintRevealed,
   onSelectFile,
 }: {
   activeFile: ResearchLabFile | null;
   activeFileContent: string;
   files: ResearchLabFile[];
+  inspectHintRevealed: boolean;
   onSelectFile: (path: string) => void;
 }) {
   const shouldShowTree = files.length > 1;
-  const displayedFileContent = formatInspectSnippetComment(activeFileContent);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
+  const decorationIdsRef = useRef<string[]>([]);
+  const displayedFileContent = useMemo(
+    () => formatInspectSnippetComment(activeFileContent, inspectHintRevealed),
+    [activeFileContent, inspectHintRevealed]
+  );
+  const vulnerableRange = useMemo(
+    () => getVulnerableSnippetRange(displayedFileContent),
+    [displayedFileContent]
+  );
+  const applyVulnerableDecorations = useCallback(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    decorationIdsRef.current = editor.deltaDecorations(
+      decorationIdsRef.current,
+      inspectHintRevealed && vulnerableRange
+        ? [
+            {
+              range: new monaco.Range(
+                vulnerableRange.startLine,
+                1,
+                vulnerableRange.endLine,
+                1
+              ),
+              options: {
+                className: "rl1-inspect-vulnerable-line",
+                glyphMarginClassName: "rl1-inspect-vulnerable-glyph",
+                isWholeLine: true,
+                overviewRuler: {
+                  color: "#9945ff",
+                  position: monaco.editor.OverviewRulerLane.Right,
+                },
+              },
+            },
+          ]
+        : []
+    );
+  }, [inspectHintRevealed, vulnerableRange]);
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    applyVulnerableDecorations();
+  };
+
+  useEffect(() => {
+    applyVulnerableDecorations();
+  }, [applyVulnerableDecorations, displayedFileContent]);
 
   return (
     <div className={`grid h-full ${shouldShowTree ? "grid-cols-[280px_minmax(0,1fr)]" : "grid-cols-1"}`}>
@@ -78,9 +133,11 @@ function CodeTab({
               language={activeFile.language}
               path={activeFile.path}
               value={displayedFileContent}
+              onMount={handleEditorMount}
               options={{
                 readOnly: true,
                 minimap: { enabled: false },
+                glyphMargin: inspectHintRevealed,
                 fontFamily: "var(--font-mono)",
                 fontSize: 13,
                 lineHeight: 22,
@@ -102,15 +159,37 @@ function CodeTab({
   );
 }
 
-function formatInspectSnippetComment(content: string) {
+function formatInspectSnippetComment(content: string, inspectHintRevealed: boolean) {
   return content.replace(
     "// Credit the attacker's position based on the deposited amount",
-    [
-      "// The position is credited from the provided collateral account.",
-      "// Review which assumptions this instruction makes about that account",
-      "// before credit is assigned.",
-    ].join("\n")
+    inspectHintRevealed
+      ? [
+          "// Vulnerable: this function trusts the caller-supplied collateral account amount",
+          "// without proving that the token account mint equals ACCEPTED_COLLATERAL_MINT.",
+        ].join("\n")
+      : [
+          "// The position is credited from the provided collateral account.",
+          "// Review which assumptions this instruction makes about that account",
+          "// before credit is assigned.",
+        ].join("\n")
   );
+}
+
+function getVulnerableSnippetRange(content: string) {
+  const lines = content.split("\n");
+  const startIndex = lines.findIndex((line) =>
+    line.includes("pub fn deposit_collateral")
+  );
+  if (startIndex === -1) return null;
+
+  const endIndex = lines.findIndex(
+    (line, index) => index > startIndex && line.trim() === "}"
+  );
+
+  return {
+    startLine: startIndex + 1,
+    endLine: endIndex === -1 ? startIndex + 6 : endIndex + 1,
+  };
 }
 
 function FileTree({

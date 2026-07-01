@@ -20,6 +20,7 @@ export function ResearchLabWorkspace({
   evidenceAccounts,
   executeExploitView,
   impactVerified,
+  inspectHintRevealed,
   findingReviewPassed,
   files,
   isRunning,
@@ -62,6 +63,7 @@ export function ResearchLabWorkspace({
   evidenceAccounts: SandboxAccountSummary[];
   executeExploitView: ExecuteExploitView;
   impactVerified: boolean;
+  inspectHintRevealed: boolean;
   findingReviewPassed: boolean;
   files: ResearchLabFile[];
   isRunning: boolean;
@@ -119,6 +121,7 @@ export function ResearchLabWorkspace({
         activeFile={activeFile}
         activeFileContent={activeFileContent}
         files={files}
+        inspectHintRevealed={inspectHintRevealed}
         onSelectFile={onSelectFile}
       />
     ) : activeTab === "exploit" || activeTab === "verify" ? (
