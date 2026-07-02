@@ -228,21 +228,32 @@ export function useResearchLabTransactions({
 }
 
 function showTransactionFailureToast(lastLog: string | undefined) {
+  const description = normalizeTransactionFailureLog(lastLog);
+
   if (
     lastLog?.toLowerCase().includes("simulation") ||
     lastLog?.toLowerCase().includes("instruction")
   ) {
-    toast.error("Transaction simulation failed", { description: lastLog });
+    toast.error("Transaction simulation failed", { description });
   } else if (
     lastLog?.toLowerCase().includes("session") ||
     lastLog?.toLowerCase().includes("expired")
   ) {
-    toast.error("Session error", { description: lastLog });
+    toast.error("Session error", { description });
   } else {
     toast.error("Transaction failed", {
-      description: lastLog ?? "Check transaction logs for details",
+      description,
     });
   }
+}
+
+function normalizeTransactionFailureLog(lastLog: string | undefined) {
+  const fallback = "Check transaction logs for details";
+
+  return (lastLog ?? fallback).replace(
+    "Transaction rejected: canonical USDC deposits must target the official protocol vault.",
+    "Transaction rejected: USDC deposits must target the official protocol vault."
+  );
 }
 
 function showRequestErrorToast(error: unknown) {

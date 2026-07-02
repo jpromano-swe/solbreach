@@ -9,7 +9,8 @@ import {
   ShieldCheck,
   ShieldPlus,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import {
   rl1FindingQuestionnaire,
@@ -899,8 +900,7 @@ function ReportForm({
     <div className={expanded ? "" : "space-y-4"}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">Audit Report</p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">Build Audit Report</h2>
+          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">Build Audit Report</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
             Audit reports are a foundational part of security research. In this section you will learn how to build a detailed and accurate audit report for your findings.
           </p>
@@ -1129,10 +1129,7 @@ function AuditReportPreviewScreen({
     <section className="w-full">
       <div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
-            Audit Report
-          </p>
-          <h3 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
+          <h3 className="text-3xl font-semibold tracking-[-0.04em] text-white">
             Audit Report
           </h3>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
@@ -1275,6 +1272,14 @@ function SecurePatternsScreen() {
       ? "Select every required check before credit is assigned."
       : "Account Substitution — Verified Research Lab is ready to mint.";
 
+  useEffect(() => {
+    toast.success("Audit Report submitted.", {
+      id: "rl1-audit-report-submitted",
+      description:
+        "Review the secure pattern that prevents this vulnerability class before minting your certificate.",
+    });
+  }, []);
+
   const toggleRequiredCheck = (checkId: string) => {
     setSelectedRequiredChecks((current) =>
       current.includes(checkId)
@@ -1291,34 +1296,9 @@ function SecurePatternsScreen() {
 
   return (
     <section className="w-full">
-      <div className="rounded-2xl border border-[#14f195]/20 bg-[#14f195]/8 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-2 text-lg font-semibold text-white">
-              <Check className="h-5 w-5 text-[#14f195]" />
-              Audit Report submitted.
-            </p>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
-              You&apos;ve proven the exploit and documented the finding. Review the secure pattern that prevents this vulnerability class before minting your certificate.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              document
-                .getElementById("secure-pattern-content")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-            className="min-h-10 rounded-xl border border-[#14f195]/25 bg-[#14f195]/10 px-4 py-2.5 text-sm font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-          >
-            Review Secure Pattern
-          </button>
-        </div>
-      </div>
-
       <div
         id="secure-pattern-content"
-        className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
+        className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
       >
         <div className="space-y-5">
           <div>

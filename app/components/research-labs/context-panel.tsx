@@ -551,7 +551,12 @@ function ReviewContextCard({
         <ReviewCheckpointPanel
           activeStep="report"
           criticalTotal={criticalTotal}
-          unlockCopy="Audit Report Builder is available now."
+          unlockTitle={reportOpened ? "Secure Pattern and Certification" : "Audit Report Builder"}
+          unlockCopy={
+            reportOpened
+              ? "Complete the secure pattern review before unlocking certification."
+              : "Audit Report Builder is available now."
+          }
         />
         <button
           type="button"
