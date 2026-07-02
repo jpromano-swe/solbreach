@@ -115,7 +115,6 @@ export function ResearchLabsSection() {
     saveReportDraft,
     setAuditReportStage,
     setReportFields,
-    submitReport,
   } = useResearchLabReport({
     activeLab,
     getAuth: getActiveAuth,
@@ -572,7 +571,6 @@ export function ResearchLabsSection() {
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
             onSelectFile={setActiveFilePath}
-            onSubmitReport={submitReport}
             onTabChange={changeWorkspaceTab}
             isReportSaving={isReportSaving}
             isReportSubmitting={isReportSubmitting}

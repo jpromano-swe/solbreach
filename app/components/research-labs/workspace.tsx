@@ -49,7 +49,6 @@ export function ResearchLabWorkspace({
   onReviewStart,
   onSaveReport,
   onSelectFile,
-  onSubmitReport,
   onTabChange,
   isReportSaving,
   isReportSubmitting,
@@ -92,7 +91,6 @@ export function ResearchLabWorkspace({
   onReviewStart: () => void;
   onSaveReport: () => Promise<ResearchLabReport | null>;
   onSelectFile: (path: string) => void;
-  onSubmitReport: () => void;
   onTabChange: (tab: WorkspaceTab) => void;
   isReportSaving: boolean;
   isReportSubmitting: boolean;
@@ -163,7 +161,6 @@ export function ResearchLabWorkspace({
         onReviewIndexChange={onReviewIndexChange}
         onReviewStart={onReviewStart}
         onSave={onSaveReport}
-        onSubmit={onSubmitReport}
       />
     );
 

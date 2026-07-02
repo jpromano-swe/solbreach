@@ -69,11 +69,9 @@ export const reportRootCauseOptions: ReportOption[] = [
       title: "Vulnerable deposit path",
       language: "rust",
       filePath: "programs/treasury_mirage/src/lib.rs",
-      startLine: 23,
+      startLine: 25,
       endLine: 28,
       code: [
-        "// Vulnerable: this function trusts the caller-supplied collateral account amount",
-        "// without proving that the token account mint equals ACCEPTED_COLLATERAL_MINT.",
         "pub fn deposit_collateral(position: &mut Position, collateral: &TokenAccount) {",
         "    position.credited_collateral = position",
         "        .credited_collateral",

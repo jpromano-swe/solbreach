@@ -17,7 +17,11 @@ export type SandboxStatus =
   | "EXPIRED"
   | "ERROR";
 
-export type AuditReportStage = "BUILDER" | "PREVIEW" | "SUBMITTED";
+export type AuditReportStage =
+  | "BUILDER"
+  | "PREVIEW"
+  | "SECURE_PATTERNS"
+  | "SUBMITTED";
 
 export type ReportCodeSnippet = {
   title: string;

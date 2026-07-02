@@ -159,20 +159,42 @@ function CodeTab({
   );
 }
 
+const inspectAnswerComment = [
+  "// Vulnerable: this function trusts the caller-supplied collateral account amount",
+  "// without proving that the token account mint equals ACCEPTED_COLLATERAL_MINT.",
+].join("\n");
+
+const inspectDefaultComment =
+  "// Deposit collateral into the lending position.";
+
 function formatInspectSnippetComment(content: string, inspectHintRevealed: boolean) {
-  return content.replace(
-    "// Credit the attacker's position based on the deposited amount",
-    inspectHintRevealed
-      ? [
-          "// Vulnerable: this function trusts the caller-supplied collateral account amount",
-          "// without proving that the token account mint equals ACCEPTED_COLLATERAL_MINT.",
-        ].join("\n")
-      : [
-          "// The position is credited from the provided collateral account.",
-          "// Review which assumptions this instruction makes about that account",
-          "// before credit is assigned.",
-        ].join("\n")
+  const sanitizedContent = content
+    .replace(
+      /^[ \t]*\/\/ Vulnerable: this function trusts the caller-supplied collateral account amount\r?\n[ \t]*\/\/ without proving that the token account mint equals ACCEPTED_COLLATERAL_MINT\.\r?\n?/gm,
+      ""
+    )
+    .replace(
+      /^[ \t]*\/\/ The position is credited from the provided collateral account\.\r?\n[ \t]*\/\/ Review which assumptions this instruction makes about that account\r?\n[ \t]*\/\/ before credit is assigned\.\r?\n?/gm,
+      ""
+    )
+    .replace(
+      /^[ \t]*\/\/ Credit the attacker's position based on the deposited amount\r?\n?/gm,
+      ""
+    );
+
+  return insertCommentBeforeDepositFunction(
+    sanitizedContent,
+    inspectHintRevealed ? inspectAnswerComment : inspectDefaultComment
   );
+}
+
+function insertCommentBeforeDepositFunction(content: string, comment: string) {
+  const marker = "pub fn deposit_collateral";
+  const markerIndex = content.indexOf(marker);
+  if (markerIndex === -1) return content;
+
+  const lineStart = content.lastIndexOf("\n", markerIndex) + 1;
+  return `${content.slice(0, lineStart)}${comment}\n${content.slice(lineStart)}`;
 }
 
 function getVulnerableSnippetRange(content: string) {

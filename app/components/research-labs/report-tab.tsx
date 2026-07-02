@@ -7,6 +7,7 @@ import {
   FileText,
   LockKeyhole,
   ShieldCheck,
+  ShieldPlus,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -68,7 +69,6 @@ export function ReportTab({
   onReviewIndexChange,
   onReviewStart,
   onSave,
-  onSubmit,
 }: {
   report: ResearchLabReport | null;
   fields: ResearchLabReportFields;
@@ -95,7 +95,6 @@ export function ReportTab({
   onReviewIndexChange: (index: number) => void;
   onReviewStart: () => void;
   onSave: () => Promise<ResearchLabReport | null>;
-  onSubmit: () => void;
 }) {
   const [showCriticalAnswers, setShowCriticalAnswers] = useState(false);
 
@@ -215,14 +214,13 @@ export function ReportTab({
           onChange={onChange}
           onChangeAuditReportStage={onChangeAuditReportStage}
           onSave={onSave}
-          onSubmit={onSubmit}
         />
       </div>
     </div>
   );
 }
 
-function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
+function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 | 4 }) {
   const steps = [
     { id: 1, label: "Impact verified", state: "complete" as const },
     {
@@ -233,13 +231,23 @@ function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 }) {
     {
       id: 3,
       label: "Audit Report",
-      state: activeStep === 3 ? ("active" as const) : ("pending" as const),
+      state:
+        activeStep === 3
+          ? ("active" as const)
+          : activeStep > 3
+            ? ("complete" as const)
+            : ("pending" as const),
     },
-    { id: 4, label: "Certificate", state: "pending" as const },
+    {
+      id: 4,
+      label: "Secure Patterns",
+      state: activeStep === 4 ? ("active" as const) : ("pending" as const),
+    },
+    { id: 5, label: "XP & Certificate", state: "pending" as const },
   ];
 
   return (
-    <div className="mt-8 grid max-w-[620px] grid-cols-4 gap-0">
+    <div className="mt-8 grid max-w-[720px] grid-cols-5 gap-0">
       {steps.map((step, index) => {
         const isComplete = step.state === "complete";
         const isActive = step.state === "active";
@@ -810,7 +818,6 @@ function ReportForm({
   onChange,
   onChangeAuditReportStage,
   onSave,
-  onSubmit,
   expanded = false,
 }: {
   auditReportStage: AuditReportStage;
@@ -821,7 +828,6 @@ function ReportForm({
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onSave: () => Promise<ResearchLabReport | null>;
-  onSubmit: () => void;
   expanded?: boolean;
 }) {
   const [auditReportPreview, setAuditReportPreview] =
@@ -875,13 +881,20 @@ function ReportForm({
 
     return (
       <AuditReportPreviewScreen
-        isSubmitting={isSubmitting}
         report={preview}
         onEdit={() => onChangeAuditReportStage("BUILDER")}
-        onSubmit={() => {
-          onChangeAuditReportStage("SUBMITTED");
-          onSubmit();
+        onContinue={() => {
+          setAuditReportPreview(preview);
+          onChangeAuditReportStage("SECURE_PATTERNS");
         }}
+      />
+    );
+  }
+
+  if (auditReportStage === "SECURE_PATTERNS") {
+    return (
+      <SecurePatternsScreen
+        onBack={() => onChangeAuditReportStage("PREVIEW")}
       />
     );
   }
@@ -893,7 +906,7 @@ function ReportForm({
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">Audit Report</p>
           <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">Build Audit Report</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-            Choose the statements that match the verified exploit evidence.
+            Audit reports are a foundational part of security research. In this section you will learn how to build a detailed and accurate audit report for your findings.
           </p>
         </div>
       </div>
@@ -1108,19 +1121,17 @@ function ReportSelect({
 }
 
 function AuditReportPreviewScreen({
-  isSubmitting,
+  onContinue,
   report,
   onEdit,
-  onSubmit,
 }: {
-  isSubmitting: boolean;
   report: AuditReportPreview;
+  onContinue: () => void;
   onEdit: () => void;
-  onSubmit: () => void;
 }) {
   return (
     <section className="w-full">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
             Audit Report
@@ -1131,23 +1142,6 @@ function AuditReportPreviewScreen({
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             Review the generated report before final submission.
           </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="min-h-10 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-          >
-            Edit Report
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={isSubmitting}
-            className="min-h-10 rounded-xl border border-[#9945ff]/30 bg-[#9945ff] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {isSubmitting ? "Submitting" : "Submit Audit Report"}
-          </button>
         </div>
       </div>
       <article className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-6">
@@ -1175,7 +1169,379 @@ function AuditReportPreviewScreen({
           />
         </div>
       </article>
+      <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="min-h-10 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+        >
+          Edit Report
+        </button>
+        <button
+          type="button"
+          onClick={onContinue}
+          className="min-h-10 rounded-xl border border-[#9945ff]/30 bg-[#9945ff] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+        >
+          Continue to Secure Patterns
+        </button>
+      </div>
     </section>
+  );
+}
+
+const securePatternAnswerOptions = [
+  {
+    id: "valid_balance",
+    label: "Check that the user has a valid balance",
+  },
+  {
+    id: "bind_accounts_to_config",
+    label: "Bind collateral source and vault destination to the approved mint/config",
+  },
+  {
+    id: "signed_by_user",
+    label: "Verify the transaction is signed by the user",
+  },
+  {
+    id: "initialized_token_account",
+    label: "Ensure the token account is initialized",
+  },
+];
+
+const requiredSecurePatternChecks = [
+  {
+    id: "mint_matches",
+    label: "Collateral mint matches accepted mint",
+  },
+  {
+    id: "canonical_vault",
+    label: "Vault is canonical protocol vault",
+  },
+  {
+    id: "valid_authority",
+    label: "Account owner / authority is valid",
+  },
+];
+
+const securePatternValidationChecklist = [
+  "Validate the mint.",
+  "Validate the token account owner.",
+  "Validate the canonical vault.",
+  "Validate PDA derivation.",
+  "Validate authority.",
+  "Validate the relationship between all accounts.",
+];
+
+const securePatternResearcherChecklist = [
+  "Who supplies this account?",
+  "What proves it belongs to the protocol?",
+  "Can an attacker substitute it with a compatible but unapproved account?",
+  "Is value, credit, or authority assigned before validation?",
+  "Are account relationships validated, or only individual accounts?",
+];
+
+const badPatternCode = [
+  "// BAD: trusts caller-supplied collateral",
+  "fn assign_credit(ctx) {",
+  "    let collateral = ctx.accounts.collateral;",
+  "    let amount = collateral.amount;",
+  "",
+  "    credit_user(ctx.accounts.user, amount);",
+  "}",
+].join("\n");
+
+const saferPatternCode = [
+  "// GOOD: validate before assigning credit",
+  "fn assign_credit(ctx) {",
+  "    validate_mint(ctx.accounts.collateral.mint)?;",
+  "    validate_vault(ctx.accounts.vault)?;",
+  "    validate_authority(ctx.accounts.authority)?;",
+  "    validate_pda(ctx.accounts.vault, ctx.accounts.mint)?;",
+  "",
+  "    credit_user(ctx.accounts.user, ctx.accounts.vault.amount);",
+  "}",
+].join("\n");
+
+function SecurePatternsScreen({ onBack }: { onBack: () => void }) {
+  const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
+  const [selectedRequiredChecks, setSelectedRequiredChecks] = useState<string[]>([]);
+  const [certificateReady, setCertificateReady] = useState(false);
+  const securePatternReviewed = selectedAnswerId === "bind_accounts_to_config";
+  const securePatternCheckPassed = requiredSecurePatternChecks.every((check) =>
+    selectedRequiredChecks.includes(check.id)
+  );
+  const canMintCertificate =
+    securePatternReviewed && securePatternCheckPassed;
+  const completionCopy = canMintCertificate
+    ? "Secure pattern completed. You can now mint your Account Substitution — Verified Research Lab certificate."
+    : "Complete the Secure Pattern review to unlock your Account Substitution certificate.";
+  const helperCopy = !securePatternReviewed
+    ? "Select the validation that binds account relationships to the approved protocol configuration."
+    : !securePatternCheckPassed
+      ? "Select every required check before credit is assigned."
+      : "Account Substitution — Verified Research Lab is ready to mint.";
+
+  const toggleRequiredCheck = (checkId: string) => {
+    setSelectedRequiredChecks((current) =>
+      current.includes(checkId)
+        ? current.filter((id) => id !== checkId)
+        : [...current, checkId]
+    );
+  };
+
+  const handleMockMint = () => {
+    if (!canMintCertificate) return;
+    setCertificateReady(true);
+    console.log("mint certificate clicked");
+  };
+
+  return (
+    <section className="w-full">
+      <div className="rounded-2xl border border-[#14f195]/20 bg-[#14f195]/8 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-2 text-lg font-semibold text-white">
+              <Check className="h-5 w-5 text-[#14f195]" />
+              Audit Report submitted.
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+              You&apos;ve proven the exploit and documented the finding. Review the secure pattern that prevents this vulnerability class before minting your certificate.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .getElementById("secure-pattern-content")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className="min-h-10 rounded-xl border border-[#14f195]/25 bg-[#14f195]/10 px-4 py-2.5 text-sm font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          >
+            Review Secure Pattern
+          </button>
+        </div>
+      </div>
+
+      <div
+        id="secure-pattern-content"
+        className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"
+      >
+        <div className="space-y-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+              Secure Pattern
+            </p>
+            <h3 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
+              Secure Pattern: Account Binding
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+              How to prevent account substitution from becoming protocol credit.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SecurePatternInfoCard
+              title="What failed"
+              body="The protocol trusted caller-supplied accounts without proving they belonged to the approved collateral configuration."
+            />
+            <SecurePatternInfoCard
+              title="Secure principle"
+              body="Do not grant credit, authority, or value based on unbound account relationships."
+            />
+          </div>
+
+          <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <h4 className="text-sm font-semibold text-white">Validation checklist</h4>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {securePatternValidationChecklist.map((item) => (
+                <div key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-300">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#14f195]" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <h4 className="text-sm font-semibold text-white">Bad pattern vs safer pattern</h4>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <SecurePatternCodeBlock title="Bad pattern" code={badPatternCode} tone="bad" />
+              <SecurePatternCodeBlock title="Safer pattern" code={saferPatternCode} tone="safe" />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <h4 className="text-sm font-semibold text-white">Researcher checklist</h4>
+            <div className="mt-4 space-y-3">
+              {securePatternResearcherChecklist.map((item) => (
+                <div key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-300">
+                  <ShieldPlus className="mt-0.5 h-4 w-4 shrink-0 text-[#b892ff]" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+            <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+              Completion check
+            </p>
+          </div>
+
+          <div className="mt-5 border-t border-white/10 pt-5">
+            <p className="text-sm font-semibold text-zinc-200">
+              Which validation would have prevented this issue?
+            </p>
+            <div className="mt-4 space-y-2">
+              {securePatternAnswerOptions.map((option) => {
+                const selected = selectedAnswerId === option.id;
+                const correct = option.id === "bind_accounts_to_config";
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedAnswerId(option.id)}
+                    className={`min-h-10 w-full rounded-xl border px-3 py-2.5 text-left text-sm leading-5 transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+                      selected
+                        ? correct
+                          ? "border-[#14f195]/35 bg-[#14f195]/10 text-[#8fffd0]"
+                          : "border-[#9945ff]/35 bg-[#9945ff]/10 text-[#d7c0ff]"
+                        : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Required checks before credit is assigned
+            </p>
+            <div className="mt-4 space-y-3">
+              {requiredSecurePatternChecks.map((check) => {
+                const selected = selectedRequiredChecks.includes(check.id);
+
+                return (
+                  <label
+                    key={check.id}
+                    className="flex min-h-10 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 text-sm text-zinc-300 transition hover:bg-white/[0.06]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleRequiredCheck(check.id)}
+                      className="h-4 w-4 accent-[#14f195]"
+                    />
+                    <span>{check.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Completion state
+            </p>
+            <div
+              className={`mt-4 rounded-2xl border p-4 ${
+                canMintCertificate
+                  ? "border-[#14f195]/25 bg-[#14f195]/8"
+                  : "border-white/10 bg-white/[0.035]"
+              }`}
+            >
+              <p className="text-sm leading-6 text-zinc-300">{completionCopy}</p>
+              {certificateReady ? (
+                <p className="mt-3 text-sm font-semibold text-[#8fffd0]">
+                  Certificate mint scaffold ready.
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <p className="text-sm font-semibold text-white">
+              Account Substitution — Verified Research Lab
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">{helperCopy}</p>
+            <button
+              type="button"
+              onClick={handleMockMint}
+              disabled={!canMintCertificate}
+              className={`mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+                canMintCertificate
+                  ? "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
+                  : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
+              }`}
+            >
+              {canMintCertificate ? "Mint Certificate →" : "Mint Certificate"}
+            </button>
+            {!canMintCertificate ? (
+              <p className="mt-2 text-xs text-zinc-600">
+                Complete the Secure Pattern check first.
+              </p>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-4 min-h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          >
+            Back to Report
+          </button>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function SecurePatternInfoCard({
+  body,
+  title,
+}: {
+  body: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+      <h4 className="text-sm font-semibold text-white">{title}</h4>
+      <p className="mt-3 text-sm leading-7 text-zinc-400">{body}</p>
+    </section>
+  );
+}
+
+function SecurePatternCodeBlock({
+  code,
+  title,
+  tone,
+}: {
+  code: string;
+  title: string;
+  tone: "bad" | "safe";
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
+      <div className="border-b border-white/10 px-3 py-2">
+        <p
+          className={`text-xs font-semibold ${
+            tone === "safe" ? "text-[#8fffd0]" : "text-zinc-200"
+          }`}
+        >
+          {title}
+        </p>
+      </div>
+      <pre className="max-h-72 overflow-auto p-3 font-mono text-[11px] leading-5 text-zinc-400">
+        <code>{code}</code>
+      </pre>
+    </div>
   );
 }
 
@@ -1265,10 +1631,14 @@ function ReportCodeBlock({ snippet }: { snippet: ReportCodeSnippet }) {
           snippet.endLine ? `-${snippet.endLine}` : ""
         }`
       : snippet.filePath;
+  const displayedCode = snippet.code
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("//"))
+    .join("\n");
 
   return (
     <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
+      <div className="border-b border-white/10 px-3 py-2">
         <div>
           <p className="text-xs font-semibold text-zinc-200">{snippet.title}</p>
           {location ? (
@@ -1277,12 +1647,9 @@ function ReportCodeBlock({ snippet }: { snippet: ReportCodeSnippet }) {
             </p>
           ) : null}
         </div>
-        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-          {snippet.language}
-        </span>
       </div>
       <pre className="max-h-72 overflow-auto p-3 font-mono text-[11px] leading-5 text-zinc-400">
-        <code>{snippet.code}</code>
+        <code>{displayedCode}</code>
       </pre>
     </div>
   );
