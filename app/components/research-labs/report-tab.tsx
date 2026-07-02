@@ -892,11 +892,7 @@ function ReportForm({
   }
 
   if (auditReportStage === "SECURE_PATTERNS") {
-    return (
-      <SecurePatternsScreen
-        onBack={() => onChangeAuditReportStage("PREVIEW")}
-      />
-    );
+    return <SecurePatternsScreen />;
   }
 
   return (
@@ -1241,7 +1237,6 @@ const securePatternResearcherChecklist = [
 ];
 
 const badPatternCode = [
-  "// BAD: trusts caller-supplied collateral",
   "fn assign_credit(ctx) {",
   "    let collateral = ctx.accounts.collateral;",
   "    let amount = collateral.amount;",
@@ -1251,7 +1246,6 @@ const badPatternCode = [
 ].join("\n");
 
 const saferPatternCode = [
-  "// GOOD: validate before assigning credit",
   "fn assign_credit(ctx) {",
   "    validate_mint(ctx.accounts.collateral.mint)?;",
   "    validate_vault(ctx.accounts.vault)?;",
@@ -1262,7 +1256,7 @@ const saferPatternCode = [
   "}",
 ].join("\n");
 
-function SecurePatternsScreen({ onBack }: { onBack: () => void }) {
+function SecurePatternsScreen() {
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [selectedRequiredChecks, setSelectedRequiredChecks] = useState<string[]>([]);
   const [certificateReady, setCertificateReady] = useState(false);
@@ -1328,10 +1322,7 @@ function SecurePatternsScreen({ onBack }: { onBack: () => void }) {
       >
         <div className="space-y-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
-              Secure Pattern
-            </p>
-            <h3 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
+            <h3 className="text-3xl font-semibold tracking-[-0.04em] text-white">
               Secure Pattern: Account Binding
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
@@ -1343,14 +1334,16 @@ function SecurePatternsScreen({ onBack }: { onBack: () => void }) {
             <SecurePatternInfoCard
               title="What failed"
               body="The protocol trusted caller-supplied accounts without proving they belonged to the approved collateral configuration."
+              tone="bad"
             />
             <SecurePatternInfoCard
               title="Secure principle"
               body="Do not grant credit, authority, or value based on unbound account relationships."
+              tone="safe"
             />
           </div>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+          <section className="py-1">
             <h4 className="text-sm font-semibold text-white">Validation checklist</h4>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {securePatternValidationChecklist.map((item) => (
@@ -1362,11 +1355,14 @@ function SecurePatternsScreen({ onBack }: { onBack: () => void }) {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-            <h4 className="text-sm font-semibold text-white">Bad pattern vs safer pattern</h4>
+          <section className="py-1">
+            <h4 className="text-sm font-semibold text-white">Credit assignment contrast</h4>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+              The issue is not the credit update itself. It is whether the account relationship is proven before value is assigned.
+            </p>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <SecurePatternCodeBlock title="Bad pattern" code={badPatternCode} tone="bad" />
-              <SecurePatternCodeBlock title="Safer pattern" code={saferPatternCode} tone="safe" />
+              <SecurePatternCodeBlock title="Unbound account credit" code={badPatternCode} tone="bad" />
+              <SecurePatternCodeBlock title="Bound account validation" code={saferPatternCode} tone="safe" />
             </div>
           </section>
 
@@ -1489,14 +1485,6 @@ function SecurePatternsScreen({ onBack }: { onBack: () => void }) {
               </p>
             ) : null}
           </div>
-
-          <button
-            type="button"
-            onClick={onBack}
-            className="mt-4 min-h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-          >
-            Back to Report
-          </button>
         </aside>
       </div>
     </section>
@@ -1505,14 +1493,30 @@ function SecurePatternsScreen({ onBack }: { onBack: () => void }) {
 
 function SecurePatternInfoCard({
   body,
+  tone,
   title,
 }: {
   body: string;
+  tone: "bad" | "safe";
   title: string;
 }) {
+  const toneClasses =
+    tone === "bad"
+      ? "border-red-500/15 bg-red-500/[0.045] hover:border-red-400/45 hover:bg-red-500/[0.065] hover:ring-1 hover:ring-red-400/25"
+      : "border-[#14f195]/15 bg-[#14f195]/[0.045] hover:border-[#14f195]/45 hover:bg-[#14f195]/[0.065] hover:ring-1 hover:ring-[#14f195]/25";
+  const dotClasses = tone === "bad" ? "bg-red-400" : "bg-[#14f195]";
+
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-      <h4 className="text-sm font-semibold text-white">{title}</h4>
+    <section
+      className={`group rounded-2xl border border-dotted p-5 transition duration-200 ${toneClasses}`}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden="true"
+          className={`h-2 w-2 rounded-full opacity-70 transition group-hover:opacity-100 ${dotClasses}`}
+        />
+        <h4 className="text-sm font-semibold text-white">{title}</h4>
+      </div>
       <p className="mt-3 text-sm leading-7 text-zinc-400">{body}</p>
     </section>
   );
@@ -1528,17 +1532,27 @@ function SecurePatternCodeBlock({
   tone: "bad" | "safe";
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-black/30">
+    <div
+      className={`overflow-hidden rounded-xl border ${
+        tone === "safe"
+          ? "border-[#14f195]/15 bg-[#14f195]/[0.035]"
+          : "border-red-500/15 bg-red-500/[0.035]"
+      }`}
+    >
       <div className="border-b border-white/10 px-3 py-2">
         <p
           className={`text-xs font-semibold ${
-            tone === "safe" ? "text-[#8fffd0]" : "text-zinc-200"
+            tone === "safe" ? "text-[#8fffd0]" : "text-red-300"
           }`}
         >
           {title}
         </p>
       </div>
-      <pre className="max-h-72 overflow-auto p-3 font-mono text-[11px] leading-5 text-zinc-400">
+      <pre
+        className={`max-h-72 overflow-auto p-3 font-mono text-[11px] leading-5 ${
+          tone === "safe" ? "text-zinc-400" : "text-red-200/80"
+        }`}
+      >
         <code>{code}</code>
       </pre>
     </div>
