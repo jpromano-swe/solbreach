@@ -35,6 +35,10 @@ export function ResearchLabWorkspace({
   reviewStarted,
   report,
   reportFields,
+  level1CertificateAssetId,
+  level1CertificateExplorerUrl,
+  level1CertificateMinted,
+  isMintingLevel1Certificate,
   txResults,
   onChangeExecuteExploitView,
   onChangeReportFields,
@@ -48,6 +52,8 @@ export function ResearchLabWorkspace({
   onReviewIndexChange,
   onReviewStart,
   onSaveReport,
+  onSubmitReport,
+  onMintLevel1Certificate,
   onSelectFile,
   onTabChange,
   isReportSaving,
@@ -77,6 +83,10 @@ export function ResearchLabWorkspace({
   reviewStarted: boolean;
   report: ResearchLabReport | null;
   reportFields: ResearchLabReportFields;
+  level1CertificateAssetId?: string | null;
+  level1CertificateExplorerUrl?: string | null;
+  level1CertificateMinted: boolean;
+  isMintingLevel1Certificate: boolean;
   txResults: EnrichedTransactionResult[];
   onChangeExecuteExploitView: (view: ExecuteExploitView) => void;
   onChangeReportFields: (fields: ResearchLabReportFields) => void;
@@ -90,6 +100,10 @@ export function ResearchLabWorkspace({
   onReviewIndexChange: (index: number) => void;
   onReviewStart: () => void;
   onSaveReport: () => Promise<ResearchLabReport | null>;
+  onSubmitReport: (options?: {
+    acceptedStage?: AuditReportStage;
+  }) => Promise<ResearchLabReport | null | undefined>;
+  onMintLevel1Certificate: () => void;
   onSelectFile: (path: string) => void;
   onTabChange: (tab: WorkspaceTab) => void;
   isReportSaving: boolean;
@@ -152,6 +166,10 @@ export function ResearchLabWorkspace({
         reviewQuestions={reviewQuestions}
         reviewStarted={reviewStarted}
         report={report}
+        level1CertificateAssetId={level1CertificateAssetId}
+        level1CertificateExplorerUrl={level1CertificateExplorerUrl}
+        level1CertificateMinted={level1CertificateMinted}
+        isMintingLevel1Certificate={isMintingLevel1Certificate}
         onChange={onChangeReportFields}
         onChangeAuditReportStage={onChangeAuditReportStage}
         onQuestionnaireAnswer={onQuestionnaireAnswer}
@@ -161,6 +179,8 @@ export function ResearchLabWorkspace({
         onReviewIndexChange={onReviewIndexChange}
         onReviewStart={onReviewStart}
         onSave={onSaveReport}
+        onSubmitReport={onSubmitReport}
+        onMintLevel1Certificate={onMintLevel1Certificate}
       />
     );
 

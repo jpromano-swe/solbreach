@@ -130,11 +130,13 @@ export function useResearchLabReport({
     }
   }, [getAuth, reportFields, resolveReportFields, session]);
 
-  const submitReport = useCallback(async () => {
-    if (!activeLab || !session || isReportSubmitting) return;
+  const submitReport = useCallback(async (options?: {
+    acceptedStage?: AuditReportStage;
+  }) => {
+    if (!activeLab || !session || isReportSubmitting) return null;
     if (!reportFields.titleOptionId || !reportFields.likelihoodOptionId) {
       toast.error("Complete the finding title and likelihood before submitting.");
-      return;
+      return null;
     }
 
     setIsReportSubmitting(true);
@@ -180,7 +182,7 @@ export function useResearchLabReport({
       });
 
       if (hydratedSubmitted.status === "accepted" && hydratedSubmitted.labCompleted) {
-        setAuditReportStage("SUBMITTED");
+        setAuditReportStage(options?.acceptedStage ?? "SUBMITTED");
         toast.success(
           `Report accepted. ${hydratedSubmitted.xpAwarded ?? activeLab.xpReward} XP awarded.`
         );
@@ -192,8 +194,10 @@ export function useResearchLabReport({
             "The report needs clearer vulnerability, impact, and remediation details.",
         });
       }
+      return hydratedSubmitted;
     } catch (error) {
       toast.error(getErrorMessage(error));
+      return null;
     } finally {
       setIsReportSubmitting(false);
     }

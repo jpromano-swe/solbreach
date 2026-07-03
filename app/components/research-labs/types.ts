@@ -21,6 +21,7 @@ export type AuditReportStage =
   | "BUILDER"
   | "PREVIEW"
   | "SECURE_PATTERNS"
+  | "CERTIFY_KNOWLEDGE"
   | "SUBMITTED";
 
 export type ReportCodeSnippet = {

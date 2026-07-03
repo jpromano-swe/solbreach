@@ -32,6 +32,8 @@ type MintRequestBody = {
   merkleTree?: string;
   mintAuthorizationSignature?: string;
   player?: string;
+  researchLabAccessToken?: string;
+  researchLabSessionId?: string;
   rpcUrl?: string;
 };
 
@@ -131,6 +133,81 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
   };
 }
 
+async function canMintResearchLabLevel1Certificate({
+  accessToken,
+  sessionId,
+}: {
+  accessToken: unknown;
+  sessionId: unknown;
+}) {
+  const backendUrl = getSolbreachBackendUrl();
+
+  if (typeof accessToken !== "string" || !accessToken.trim()) {
+    return {
+      completed: false,
+      reason: "Research Lab session token is missing.",
+    };
+  }
+
+  if (typeof sessionId !== "string" || !sessionId.trim()) {
+    return {
+      completed: false,
+      reason: "Research Lab session id is missing.",
+    };
+  }
+
+  const headers = new Headers({
+    authorization: `Bearer ${accessToken}`,
+  });
+  applyNgrokBypassHeader(headers, backendUrl);
+
+  const response = await fetch(
+    `${backendUrl}/api/v1/research-labs/sessions/${encodeURIComponent(
+      sessionId
+    )}`,
+    { headers }
+  );
+
+  if (!response.ok) {
+    return {
+      completed: false,
+      reason: `Research Lab session check failed with ${response.status}.`,
+    };
+  }
+
+  const payload = (await response.json()) as {
+    success?: boolean;
+    data?: Record<string, unknown>;
+  } & Record<string, unknown>;
+  const session =
+    payload && typeof payload === "object" && "data" in payload
+      ? payload.data
+      : payload;
+  const reportStatus =
+    typeof session?.report_status === "string"
+      ? session.report_status
+      : typeof session?.reportStatus === "string"
+        ? session.reportStatus
+        : null;
+  const sessionStatus =
+    typeof session?.status === "string" ? session.status : null;
+  const completed = Boolean(
+    session?.lab_completed ||
+      session?.labCompleted ||
+      session?.certificate_unlockable ||
+      session?.certificateUnlockable ||
+      reportStatus === "accepted" ||
+      sessionStatus === "passed"
+  );
+
+  return {
+    completed,
+    reason: completed
+      ? null
+      : "Research Lab 1 completion is not ready for certification minting.",
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as MintRequestBody;
@@ -139,16 +216,31 @@ export async function POST(request: NextRequest) {
       level === 1
         ? await canMintBackendLevel1Certificate(body.backendAccessToken)
         : { completed: false, reason: null };
-    const allowMissingCertificate = level === 1 && backendLevel1.completed;
+    const researchLabLevel1 =
+      level === 1 && !backendLevel1.completed
+        ? await canMintResearchLabLevel1Certificate({
+            accessToken: body.researchLabAccessToken,
+            sessionId: body.researchLabSessionId,
+          })
+        : { completed: false, reason: null };
+    const level1CompletionVerified =
+      backendLevel1.completed || researchLabLevel1.completed;
 
-    if (level === 1 && body.backendAccessToken && !backendLevel1.completed) {
+    if (
+      level === 1 &&
+      (body.backendAccessToken ||
+        body.researchLabAccessToken ||
+        body.researchLabSessionId) &&
+      !level1CompletionVerified
+    ) {
       throw new Error(
         backendLevel1.reason ??
+          researchLabLevel1.reason ??
           "Level 1 backend completion could not be verified."
       );
     }
 
-    if (allowMissingCertificate) {
+    if (level1CompletionVerified) {
       parseSignature(
         body.mintAuthorizationSignature,
         "Level 1 mint authorization signature"
@@ -156,7 +248,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await mintCertificateAsset({
-      allowMissingCertificate,
+      allowMissingCertificate: level === 1 && level1CompletionVerified,
       level,
       player: parsePublicKey(body.player, "Player"),
       cluster: parseCluster(body.cluster),

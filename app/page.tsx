@@ -515,7 +515,13 @@ export default function Home() {
               ) : null}
             </div>
           ) : activeSection === "research-labs" ? (
-            <ResearchLabsSection />
+            <ResearchLabsSection
+              getExplorerUrl={getExplorerUrl}
+              isMintingLevel1Certificate={mintingLevel === "level1"}
+              level1CertificateAssetId={level1Certificate?.assetId ?? null}
+              level1CertificateMinted={Boolean(level1Certificate?.minted)}
+              onMintLevel1Certificate={mintLevel1}
+            />
           ) : activeSection === "vulnerabilities" ? (
             <VulnerabilitiesSection
               onSelectLevel={(level) => {

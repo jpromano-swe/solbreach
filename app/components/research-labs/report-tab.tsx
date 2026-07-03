@@ -61,6 +61,10 @@ export function ReportTab({
   reviewQuestions,
   reviewStarted,
   report,
+  level1CertificateAssetId,
+  level1CertificateExplorerUrl,
+  level1CertificateMinted,
+  isMintingLevel1Certificate,
   onChange,
   onChangeAuditReportStage,
   onQuestionnaireAnswer,
@@ -70,6 +74,8 @@ export function ReportTab({
   onReviewIndexChange,
   onReviewStart,
   onSave,
+  onSubmitReport,
+  onMintLevel1Certificate,
 }: {
   report: ResearchLabReport | null;
   fields: ResearchLabReportFields;
@@ -87,6 +93,10 @@ export function ReportTab({
   reviewOptionOrder: Record<string, string[]>;
   reviewQuestions: QuestionnaireQuestion[];
   reviewStarted: boolean;
+  level1CertificateAssetId?: string | null;
+  level1CertificateExplorerUrl?: string | null;
+  level1CertificateMinted: boolean;
+  isMintingLevel1Certificate: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onQuestionnaireAnswer: (answer: QuestionnaireAnswer) => void;
@@ -96,6 +106,10 @@ export function ReportTab({
   onReviewIndexChange: (index: number) => void;
   onReviewStart: () => void;
   onSave: () => Promise<ResearchLabReport | null>;
+  onSubmitReport: (options?: {
+    acceptedStage?: AuditReportStage;
+  }) => Promise<ResearchLabReport | null | undefined>;
+  onMintLevel1Certificate: () => void;
 }) {
   const [showCriticalAnswers, setShowCriticalAnswers] = useState(false);
 
@@ -211,17 +225,23 @@ export function ReportTab({
           fields={fields}
           isSaving={isSaving}
           isSubmitting={isSubmitting}
+          level1CertificateAssetId={level1CertificateAssetId}
+          level1CertificateExplorerUrl={level1CertificateExplorerUrl}
+          level1CertificateMinted={level1CertificateMinted}
+          isMintingLevel1Certificate={isMintingLevel1Certificate}
           report={report}
           onChange={onChange}
           onChangeAuditReportStage={onChangeAuditReportStage}
+          onMintLevel1Certificate={onMintLevel1Certificate}
           onSave={onSave}
+          onSubmitReport={onSubmitReport}
         />
       </div>
     </div>
   );
 }
 
-function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 | 4 }) {
+function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 | 4 | 5 }) {
   const steps = [
     { id: 1, label: "Impact verified", state: "complete" as const },
     {
@@ -242,9 +262,18 @@ function ReportProgressStepper({ activeStep }: { activeStep: 2 | 3 | 4 }) {
     {
       id: 4,
       label: "Secure Patterns",
-      state: activeStep === 4 ? ("active" as const) : ("pending" as const),
+      state:
+        activeStep === 4
+          ? ("active" as const)
+          : activeStep > 4
+            ? ("complete" as const)
+            : ("pending" as const),
     },
-    { id: 5, label: "XP & Certificate", state: "pending" as const },
+    {
+      id: 5,
+      label: "Certify Knowledge",
+      state: activeStep === 5 ? ("active" as const) : ("pending" as const),
+    },
   ];
 
   return (
@@ -816,9 +845,15 @@ function ReportForm({
   fields,
   isSaving,
   isSubmitting,
+  level1CertificateAssetId,
+  level1CertificateExplorerUrl,
+  level1CertificateMinted,
+  isMintingLevel1Certificate,
   onChange,
   onChangeAuditReportStage,
+  onMintLevel1Certificate,
   onSave,
+  onSubmitReport,
   expanded = false,
 }: {
   auditReportStage: AuditReportStage;
@@ -826,9 +861,17 @@ function ReportForm({
   fields: ResearchLabReportFields;
   isSaving: boolean;
   isSubmitting: boolean;
+  level1CertificateAssetId?: string | null;
+  level1CertificateExplorerUrl?: string | null;
+  level1CertificateMinted: boolean;
+  isMintingLevel1Certificate: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
+  onMintLevel1Certificate: () => void;
   onSave: () => Promise<ResearchLabReport | null>;
+  onSubmitReport: (options?: {
+    acceptedStage?: AuditReportStage;
+  }) => Promise<ResearchLabReport | null | undefined>;
   expanded?: boolean;
 }) {
   const [auditReportPreview, setAuditReportPreview] =
@@ -866,6 +909,48 @@ function ReportForm({
     );
   }
 
+  if (auditReportStage === "PREVIEW") {
+    const preview = auditReportPreview ?? buildAuditReportPreview(fields);
+
+    return (
+      <AuditReportPreviewScreen
+        isSubmitting={isSubmitting}
+        report={preview}
+        onEdit={() => onChangeAuditReportStage("BUILDER")}
+        onContinue={async () => {
+          setAuditReportPreview(preview);
+          const submitted = await onSubmitReport({
+            acceptedStage: "SECURE_PATTERNS",
+          });
+
+          if (submitted?.status === "accepted" && submitted.labCompleted) {
+            onChangeAuditReportStage("SECURE_PATTERNS");
+          }
+        }}
+      />
+    );
+  }
+
+  if (auditReportStage === "SECURE_PATTERNS") {
+    return (
+      <SecurePatternsScreen
+        onContinue={() => onChangeAuditReportStage("CERTIFY_KNOWLEDGE")}
+      />
+    );
+  }
+
+  if (auditReportStage === "CERTIFY_KNOWLEDGE") {
+    return (
+      <CertifyKnowledgeScreen
+        assetId={level1CertificateAssetId}
+        assetUrl={level1CertificateExplorerUrl}
+        isMinting={isMintingLevel1Certificate}
+        minted={level1CertificateMinted}
+        onMint={onMintLevel1Certificate}
+      />
+    );
+  }
+
   if (isAccepted || auditReportStage === "SUBMITTED") {
     const submittedPreview = buildAuditReportPreview(fields);
 
@@ -875,25 +960,6 @@ function ReportForm({
         feedback={report?.feedback ?? null}
       />
     );
-  }
-
-  if (auditReportStage === "PREVIEW") {
-    const preview = auditReportPreview ?? buildAuditReportPreview(fields);
-
-    return (
-      <AuditReportPreviewScreen
-        report={preview}
-        onEdit={() => onChangeAuditReportStage("BUILDER")}
-        onContinue={() => {
-          setAuditReportPreview(preview);
-          onChangeAuditReportStage("SECURE_PATTERNS");
-        }}
-      />
-    );
-  }
-
-  if (auditReportStage === "SECURE_PATTERNS") {
-    return <SecurePatternsScreen />;
   }
 
   return (
@@ -1117,12 +1183,14 @@ function ReportSelect({
 }
 
 function AuditReportPreviewScreen({
+  isSubmitting,
   onContinue,
   report,
   onEdit,
 }: {
+  isSubmitting: boolean;
   report: AuditReportPreview;
-  onContinue: () => void;
+  onContinue: () => void | Promise<void>;
   onEdit: () => void;
 }) {
   return (
@@ -1166,16 +1234,20 @@ function AuditReportPreviewScreen({
         <button
           type="button"
           onClick={onEdit}
+          disabled={isSubmitting}
           className="min-h-10 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
         >
           Edit Report
         </button>
         <button
           type="button"
-          onClick={onContinue}
-          className="min-h-10 rounded-xl border border-[#9945ff]/30 bg-[#9945ff] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          onClick={() => {
+            void onContinue();
+          }}
+          disabled={isSubmitting}
+          className="min-h-10 rounded-xl border border-[#9945ff]/30 bg-[#9945ff] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-55"
         >
-          Continue to Secure Patterns
+          {isSubmitting ? "Submitting Report..." : "Continue to Secure Patterns"}
         </button>
       </div>
     </section>
@@ -1253,24 +1325,27 @@ const saferPatternCode = [
   "}",
 ].join("\n");
 
-function SecurePatternsScreen() {
+function SecurePatternsScreen({
+  onContinue,
+}: {
+  onContinue: () => void;
+}) {
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [selectedRequiredChecks, setSelectedRequiredChecks] = useState<string[]>([]);
-  const [certificateReady, setCertificateReady] = useState(false);
   const securePatternReviewed = selectedAnswerId === "bind_accounts_to_config";
   const securePatternCheckPassed = requiredSecurePatternChecks.every((check) =>
     selectedRequiredChecks.includes(check.id)
   );
-  const canMintCertificate =
+  const canContinue =
     securePatternReviewed && securePatternCheckPassed;
-  const completionCopy = canMintCertificate
-    ? "Secure pattern completed. You can now mint your Account Substitution — Verified Research Lab certificate."
+  const completionCopy = canContinue
+    ? "Secure pattern completed. Continue to certify this knowledge on-chain."
     : "Complete the Secure Pattern review to unlock your Account Substitution certificate.";
   const helperCopy = !securePatternReviewed
     ? "Select the validation that binds account relationships to the approved protocol configuration."
     : !securePatternCheckPassed
       ? "Select every required check before credit is assigned."
-      : "Account Substitution — Verified Research Lab is ready to mint.";
+      : "Account binding knowledge is ready for certification.";
 
   useEffect(() => {
     toast.success("Audit Report submitted.", {
@@ -1286,12 +1361,6 @@ function SecurePatternsScreen() {
         ? current.filter((id) => id !== checkId)
         : [...current, checkId]
     );
-  };
-
-  const handleMockMint = () => {
-    if (!canMintCertificate) return;
-    setCertificateReady(true);
-    console.log("mint certificate clicked");
   };
 
   return (
@@ -1428,38 +1497,33 @@ function SecurePatternsScreen() {
             </p>
             <div
               className={`mt-4 rounded-2xl border p-4 ${
-                canMintCertificate
+                canContinue
                   ? "border-[#14f195]/25 bg-[#14f195]/8"
                   : "border-white/10 bg-white/[0.035]"
               }`}
             >
               <p className="text-sm leading-6 text-zinc-300">{completionCopy}</p>
-              {certificateReady ? (
-                <p className="mt-3 text-sm font-semibold text-[#8fffd0]">
-                  Certificate mint scaffold ready.
-                </p>
-              ) : null}
             </div>
           </div>
 
           <div className="mt-6 border-t border-white/10 pt-5">
             <p className="text-sm font-semibold text-white">
-              Account Substitution — Verified Research Lab
+              Certify Knowledge
             </p>
             <p className="mt-2 text-sm leading-6 text-zinc-500">{helperCopy}</p>
             <button
               type="button"
-              onClick={handleMockMint}
-              disabled={!canMintCertificate}
+              onClick={onContinue}
+              disabled={!canContinue}
               className={`mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
-                canMintCertificate
+                canContinue
                   ? "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
                   : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
               }`}
             >
-              {canMintCertificate ? "Mint Certificate →" : "Mint Certificate"}
+              {canContinue ? "Continue to Certify Knowledge →" : "Certify Knowledge"}
             </button>
-            {!canMintCertificate ? (
+            {!canContinue ? (
               <p className="mt-2 text-xs text-zinc-600">
                 Complete the Secure Pattern check first.
               </p>
@@ -1468,6 +1532,133 @@ function SecurePatternsScreen() {
         </aside>
       </div>
     </section>
+  );
+}
+
+function CertifyKnowledgeScreen({
+  assetId,
+  assetUrl,
+  isMinting,
+  minted,
+  onMint,
+}: {
+  assetId?: string | null;
+  assetUrl?: string | null;
+  isMinting: boolean;
+  minted: boolean;
+  onMint: () => void;
+}) {
+  return (
+    <section className="w-full">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="rounded-3xl border border-[#9945ff]/18 bg-[#9945ff]/[0.045] p-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff]">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <h3 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-white">
+            Certify Knowledge<span className="text-[#9945ff]">.</span>
+          </h3>
+          <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
+            You verified impact, reported the finding, and reviewed the secure
+            account-binding pattern. Mint the Level 1 certificate to record this
+            completion to your wallet.
+          </p>
+
+          <ReportProgressStepper activeStep={5} />
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <CertificationFact label="Lab" value="Research Lab 1" />
+            <CertificationFact label="Module" value="The Illusionist" />
+            <CertificationFact label="Credential" value="Level 1 cNFT" />
+          </div>
+        </div>
+
+        <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+            <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+              Certification
+            </p>
+          </div>
+
+          <div className="mt-5 border-t border-white/10 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Unlocks
+            </p>
+            <p className="mt-3 text-sm font-semibold text-white">
+              Level 1: The Illusionist
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Wallet-bound proof that you completed the account substitution
+              lab path.
+            </p>
+          </div>
+
+          <div
+            className={`mt-6 rounded-2xl border p-4 ${
+              minted
+                ? "border-[#14f195]/25 bg-[#14f195]/8"
+                : "border-white/10 bg-white/[0.035]"
+            }`}
+          >
+            <p className="text-sm font-semibold text-white">
+              {minted ? "Certification minted" : "Ready to mint"}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              {minted
+                ? "The Level 1 certificate is already recorded for this wallet."
+                : "Use the same wallet that completed the research lab flow."}
+            </p>
+            {minted && assetId ? (
+              <p className="mt-3 break-all font-mono text-xs text-[#8fffd0]">
+                {assetId}
+              </p>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={onMint}
+            disabled={minted || isMinting}
+            className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {minted
+              ? "Level 1 cNFT minted"
+              : isMinting
+                ? "Minting..."
+                : "Unlock Certification"}
+          </button>
+
+          {minted && assetUrl ? (
+            <a
+              href={assetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+            >
+              View certificate asset
+            </a>
+          ) : null}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function CertificationFact({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-zinc-100">{value}</p>
+    </div>
   );
 }
 

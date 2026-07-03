@@ -13,6 +13,7 @@ import {
   ensureBackendWalletAuth,
   type Level1AuthSession,
 } from "../lib/levels/level1-backend";
+import type { Level1ResearchLabMintAuthorization } from "../lib/hooks/use-certificate-minting";
 import {
   trackAnalyticsEvent,
   type AnalyticsEventName,
@@ -65,7 +66,21 @@ function getErrorMessage(error: unknown) {
   }
 }
 
-export function ResearchLabsSection() {
+export function ResearchLabsSection({
+  getExplorerUrl,
+  isMintingLevel1Certificate,
+  level1CertificateAssetId,
+  level1CertificateMinted,
+  onMintLevel1Certificate,
+}: {
+  getExplorerUrl: (path: string) => string;
+  isMintingLevel1Certificate: boolean;
+  level1CertificateAssetId?: string | null;
+  level1CertificateMinted: boolean;
+  onMintLevel1Certificate: (
+    authorization?: Level1ResearchLabMintAuthorization
+  ) => void;
+}) {
   const { status: walletStatus, wallet } = useWallet();
   const [backendAuth, setBackendAuth] = useState<Level1AuthSession | null>(null);
   const [labs, setLabs] = useState<ResearchLabManifest[]>(FALLBACK_RESEARCH_LABS);
@@ -115,6 +130,7 @@ export function ResearchLabsSection() {
     saveReportDraft,
     setAuditReportStage,
     setReportFields,
+    submitReport,
   } = useResearchLabReport({
     activeLab,
     getAuth: getActiveAuth,
@@ -496,6 +512,18 @@ export function ResearchLabsSection() {
     openFindingReport();
   };
 
+  const mintResearchLabCertificate = useCallback(() => {
+    if (!activeBackendAuth?.accessToken || !session?.sessionId) {
+      toast.error("Open an authenticated Research Lab session before minting.");
+      return;
+    }
+
+    onMintLevel1Certificate({
+      researchLabAccessToken: activeBackendAuth.accessToken,
+      researchLabSessionId: session.sessionId,
+    });
+  }, [activeBackendAuth, onMintLevel1Certificate, session]);
+
   if (!activeLab || !session) {
     return (
       <ResearchLabCatalog
@@ -551,6 +579,14 @@ export function ResearchLabsSection() {
             reviewStarted={reviewStarted}
             report={report}
             reportFields={reportFields}
+            level1CertificateAssetId={level1CertificateAssetId}
+            level1CertificateExplorerUrl={
+              level1CertificateAssetId
+                ? getExplorerUrl(`/address/${level1CertificateAssetId}`)
+                : null
+            }
+            level1CertificateMinted={level1CertificateMinted}
+            isMintingLevel1Certificate={isMintingLevel1Certificate}
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
             executeExploitView={executeExploitView}
@@ -570,6 +606,8 @@ export function ResearchLabsSection() {
             onReviewIndexChange={setReviewIndex}
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
+            onSubmitReport={submitReport}
+            onMintLevel1Certificate={mintResearchLabCertificate}
             onSelectFile={setActiveFilePath}
             onTabChange={changeWorkspaceTab}
             isReportSaving={isReportSaving}

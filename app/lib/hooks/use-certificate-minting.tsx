@@ -34,6 +34,10 @@ type SendInstruction = (input: {
 type CertificateSigner = Parameters<
   typeof getClaimLevelCertificateInstructionAsync
 >[0]["user"];
+export type Level1ResearchLabMintAuthorization = {
+  researchLabAccessToken?: string;
+  researchLabSessionId?: string;
+};
 
 export function useCertificateMinting({
   address,
@@ -79,12 +83,16 @@ export function useCertificateMinting({
       level,
       levelId,
       existingCertificate,
+      researchLabAccessToken,
+      researchLabSessionId,
       title,
     }: {
       backendAccessToken?: string;
       level: 0 | 1 | 2 | 3;
       levelId: LevelId;
       existingCertificate?: LevelCertificateSnapshot;
+      researchLabAccessToken?: string;
+      researchLabSessionId?: string;
       title: string;
     }) => {
       if (!signer || !address) {
@@ -121,7 +129,11 @@ export function useCertificateMinting({
 
       try {
         const canMintFromBackendCompletion =
-          level === 1 && Boolean(backendAccessToken);
+          level === 1 &&
+          Boolean(
+            backendAccessToken ||
+              (researchLabAccessToken && researchLabSessionId)
+          );
         let mintAuthorizationSignature: string | undefined;
 
         if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
@@ -181,6 +193,8 @@ export function useCertificateMinting({
             level,
             mintAuthorizationSignature,
             player: address,
+            researchLabAccessToken,
+            researchLabSessionId,
             rpcUrl: getClusterUrl(cluster),
           }),
         });
@@ -265,7 +279,9 @@ export function useCertificateMinting({
     });
   }, [certificates.level0Certificate, mintLevelCertificate]);
 
-  const mintLevel1 = useCallback(async () => {
+  const mintLevel1 = useCallback(async (
+    options?: Level1ResearchLabMintAuthorization
+  ) => {
     const auth = level1BackendCompleted
       ? await ensureLevel1BackendSession()
       : null;
@@ -277,6 +293,8 @@ export function useCertificateMinting({
       level: 1,
       levelId: "level1",
       existingCertificate: certificates.level1Certificate,
+      researchLabAccessToken: options?.researchLabAccessToken,
+      researchLabSessionId: options?.researchLabSessionId,
       title: "Level 1",
     });
   }, [
