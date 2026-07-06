@@ -591,14 +591,7 @@ export function ResearchLabsSection({
             reviewStarted={reviewStarted}
             report={report}
             reportFields={reportFields}
-            level1CertificateAssetId={level1CertificateAssetId}
-            level1CertificateExplorerUrl={
-              level1CertificateAssetId
-                ? getExplorerUrl(`/address/${level1CertificateAssetId}`)
-                : null
-            }
             level1CertificateMinted={level1CertificateMinted}
-            isMintingLevel1Certificate={isMintingLevel1Certificate}
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
             executeExploitView={executeExploitView}
@@ -619,8 +612,6 @@ export function ResearchLabsSection({
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
             onSubmitReport={submitReport}
-            onContinueToLevel2={onContinueToLevel2}
-            onMintLevel1Certificate={mintResearchLabCertificate}
             onSelectFile={setActiveFilePath}
             onTabChange={changeWorkspaceTab}
             isReportSaving={isReportSaving}
@@ -632,8 +623,17 @@ export function ResearchLabsSection({
             lab={activeLab}
             phase={phase}
             executeExploitView={executeExploitView}
+            auditReportStage={auditReportStage}
             findingReviewPassed={findingReviewPassed}
             impactVerified={impactVerified}
+            isMintingLevel1Certificate={isMintingLevel1Certificate}
+            level1CertificateAssetId={level1CertificateAssetId}
+            level1CertificateExplorerUrl={
+              level1CertificateAssetId
+                ? getExplorerUrl(`/address/${level1CertificateAssetId}`)
+                : null
+            }
+            level1CertificateMinted={level1CertificateMinted}
             reportUnlocked={reportUnlocked}
             questionnaireResult={questionnaireResult}
             report={report}
@@ -656,6 +656,8 @@ export function ResearchLabsSection({
             }
             onRevealHint={revealHint}
             onRetryReview={retryQuestionnaire}
+            onContinueToLevel2={onContinueToLevel2}
+            onMintLevel1Certificate={mintResearchLabCertificate}
           />
         </div>
       </div>

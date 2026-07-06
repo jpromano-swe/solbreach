@@ -5,22 +5,36 @@ import { useState, type ReactNode } from "react";
 import { driver } from "driver.js";
 
 import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
-import type { ResearchLabFile, ResearchLabManifest, ResearchLabReport, ResearchLabSession } from "../../lib/research-labs/lab-state";
-import {
-  deriveProtocolState,
-} from "./execute-exploit-tab";
+import type {
+  ResearchLabFile,
+  ResearchLabManifest,
+  ResearchLabReport,
+  ResearchLabSession,
+} from "../../lib/research-labs/lab-state";
+import { deriveProtocolState } from "./execute-exploit-tab";
 import { ReviewCheckpointPanel } from "./report-tab";
-import type { EnrichedTransactionResult, ExecuteExploitView, LabPhase, ReviewMode } from "./types";
+import type {
+  AuditReportStage,
+  EnrichedTransactionResult,
+  ExecuteExploitView,
+  LabPhase,
+  ReviewMode,
+} from "./types";
 
 const contextObjective =
   "Determine whether an attacker can trigger an unauthorized state transition and collect enough evidence to report the finding.";
 
 export function LabContextPanel({
   activeFile,
+  auditReportStage,
   executeExploitView,
   findingReviewPassed,
   impactVerified,
+  isMintingLevel1Certificate,
   lab,
+  level1CertificateAssetId,
+  level1CertificateExplorerUrl,
+  level1CertificateMinted,
   phase,
   questionnaireResult,
   report,
@@ -40,12 +54,19 @@ export function LabContextPanel({
   onOpenReport,
   onRevealHint,
   onRetryReview,
+  onContinueToLevel2,
+  onMintLevel1Certificate,
 }: {
   activeFile: ResearchLabFile | null;
+  auditReportStage: AuditReportStage;
   executeExploitView: ExecuteExploitView;
   findingReviewPassed: boolean;
   impactVerified: boolean;
+  isMintingLevel1Certificate: boolean;
   lab: ResearchLabManifest;
+  level1CertificateAssetId?: string | null;
+  level1CertificateExplorerUrl?: string | null;
+  level1CertificateMinted: boolean;
   phase: LabPhase;
   questionnaireResult: QuestionnaireResult | null;
   report: ResearchLabReport | null;
@@ -65,18 +86,21 @@ export function LabContextPanel({
   onOpenReport: () => void;
   onRevealHint: () => void;
   onRetryReview: () => void;
+  onContinueToLevel2: () => void;
+  onMintLevel1Certificate: () => void;
 }) {
   const nextHint = lab.hints.find((hint) => !revealedHints.includes(hint.id));
-  const reportAccepted = Boolean(report?.status === "accepted" || session.labCompleted);
+  const reportAccepted = Boolean(
+    report?.status === "accepted" || session.labCompleted
+  );
   const isReportContext = phase === "SUBMIT_FINDING" || phase === "COMPLETED";
   const isInternalEvidenceReview =
     phase === "EXECUTE_EXPLOIT" && executeExploitView === "EVIDENCE_REVIEW";
-  const panelTitle =
-    isInternalEvidenceReview
-      ? "Evidence Status"
+  const panelTitle = isInternalEvidenceReview
+    ? "Evidence Status"
     : phase === "EXECUTE_EXPLOIT"
       ? "Attempt State"
-    : phase === "VERIFY_IMPACT"
+      : phase === "VERIFY_IMPACT"
         ? "Evidence Review"
         : isReportContext
           ? "Report Context"
@@ -99,7 +123,12 @@ export function LabContextPanel({
         />
       ) : impactVerified ? (
         <ReviewContextCard
+          auditReportStage={auditReportStage}
           findingReviewPassed={findingReviewPassed}
+          isMintingLevel1Certificate={isMintingLevel1Certificate}
+          level1CertificateAssetId={level1CertificateAssetId}
+          level1CertificateExplorerUrl={level1CertificateExplorerUrl}
+          level1CertificateMinted={level1CertificateMinted}
           questionnaireResult={questionnaireResult}
           reportAccepted={reportAccepted}
           reportOpened={reportOpened}
@@ -110,12 +139,15 @@ export function LabContextPanel({
           reviewStepTotal={reviewStepTotal}
           criticalAnsweredCount={criticalAnsweredCount}
           criticalTotal={criticalTotal}
+          onContinueToLevel2={onContinueToLevel2}
+          onMintLevel1Certificate={onMintLevel1Certificate}
           onOpenReport={onOpenReport}
           onRetryReview={onRetryReview}
         />
       ) : null}
 
-      {phase === "EXECUTE_EXPLOIT" || phase === "VERIFY_IMPACT" ? null : !impactVerified ? (
+      {phase === "EXECUTE_EXPLOIT" ||
+      phase === "VERIFY_IMPACT" ? null : !impactVerified ? (
         <>
           <ContextBlock title="Current Objective">
             <p className="text-sm leading-6 text-zinc-400">
@@ -134,10 +166,19 @@ export function LabContextPanel({
 
           <ContextBlock title="Selected Evidence">
             <div className="space-y-3 text-sm">
-              <EvidenceLine label="File" value={activeFile?.path ?? "No file selected"} />
-              <EvidenceLine label="Session" value={abbreviate(session.sessionId)} />
+              <EvidenceLine
+                label="File"
+                value={activeFile?.path ?? "No file selected"}
+              />
+              <EvidenceLine
+                label="Session"
+                value={abbreviate(session.sessionId)}
+              />
               <EvidenceLine label="State" value={statusCopy(session.status)} />
-              <EvidenceLine label="Report" value={report ? formatContextValue(report.status) : "Locked"} />
+              <EvidenceLine
+                label="Report"
+                value={report ? formatContextValue(report.status) : "Locked"}
+              />
             </div>
           </ContextBlock>
 
@@ -201,9 +242,7 @@ export function LabContextPanel({
   if (phase === "EXECUTE_EXPLOIT" || phase === "VERIFY_IMPACT") {
     return (
       <aside className="h-fit min-w-0">
-        <div className="space-y-4">
-          {panelContent}
-        </div>
+        <div className="space-y-4">{panelContent}</div>
       </aside>
     );
   }
@@ -211,9 +250,7 @@ export function LabContextPanel({
   if (isReportContext) {
     return (
       <aside className="h-fit min-w-0">
-        <div className="space-y-4">
-          {panelContent}
-        </div>
+        <div className="space-y-4">{panelContent}</div>
       </aside>
     );
   }
@@ -221,7 +258,9 @@ export function LabContextPanel({
   return (
     <aside className="flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#111212]/85 shadow-2xl shadow-black/30 backdrop-blur-xl">
       <div className="border-b border-white/10 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-400">{panelTitle}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-400">
+          {panelTitle}
+        </p>
       </div>
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
         {panelContent}
@@ -312,7 +351,9 @@ function ExecuteExploitContext({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
                       Hint {index + 1}
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">{hint}</p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      {hint}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -363,7 +404,8 @@ function startExploitHypothesisTour() {
         element: "[data-tour='rl1-token-source']",
         popover: {
           title: "Step 1: Choose token source",
-          description: "Start by selecting the token account that will be credited as collateral.",
+          description:
+            "Start by selecting the token account that will be credited as collateral.",
           side: "bottom",
           align: "start",
         },
@@ -372,7 +414,8 @@ function startExploitHypothesisTour() {
         element: "[data-tour='rl1-vault-destination']",
         popover: {
           title: "Step 2: Choose vault",
-          description: "Pick the vault destination. This is where the protocol should validate whether the account path is legitimate.",
+          description:
+            "Pick the vault destination. This is where the protocol should validate whether the account path is legitimate.",
           side: "bottom",
           align: "start",
         },
@@ -381,7 +424,8 @@ function startExploitHypothesisTour() {
         element: "[data-tour='rl1-deposit-amount']",
         popover: {
           title: "Step 3: Set deposit amount",
-          description: "Submit an amount to observe whether collateral credit and pool liquidity update as expected.",
+          description:
+            "Submit an amount to observe whether collateral credit and pool liquidity update as expected.",
           side: "right",
           align: "center",
         },
@@ -428,17 +472,17 @@ function ExploitCheckpointPanel({
           Unlocks Next
         </p>
         <div className="mt-4 flex items-center gap-4">
-          <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
-            impactVerified
-              ? "border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff]"
-              : "border-white/10 bg-white/[0.035] text-zinc-600"
-          }`}>
+          <div
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
+              impactVerified
+                ? "border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff]"
+                : "border-white/10 bg-white/[0.035] text-zinc-600"
+            }`}
+          >
             <LockKeyhole className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-white">
-              Report Finding
-            </p>
+            <p className="text-sm font-semibold text-white">Report Finding</p>
             <p className="mt-1 text-sm leading-5 text-zinc-500">
               Answer the questions and prepare your first Finding Report
             </p>
@@ -482,14 +526,23 @@ function HintList({
         lab.hints
           .filter((hint) => revealedHints.includes(hint.id))
           .map((hint) => (
-            <div key={hint.id} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-              <p className="text-sm font-semibold text-[#8fffd0]">{hint.title}</p>
-              <p className="mt-1 text-sm leading-6 text-zinc-400">{hint.body}</p>
+            <div
+              key={hint.id}
+              className="rounded-xl border border-white/10 bg-white/[0.035] p-3"
+            >
+              <p className="text-sm font-semibold text-[#8fffd0]">
+                {hint.title}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-zinc-400">
+                {hint.body}
+              </p>
             </div>
           ))
       ) : (
         <p className="text-sm leading-6 text-zinc-500">
-          {compact ? "Use a hint only if you are stuck." : "Hints stay hidden until you ask for them."}
+          {compact
+            ? "Use a hint only if you are stuck."
+            : "Hints stay hidden until you ask for them."}
         </p>
       )}
       <button
@@ -505,7 +558,12 @@ function HintList({
 }
 
 function ReviewContextCard({
+  auditReportStage,
   findingReviewPassed,
+  isMintingLevel1Certificate,
+  level1CertificateAssetId,
+  level1CertificateExplorerUrl,
+  level1CertificateMinted,
   questionnaireResult,
   reportAccepted,
   reportOpened,
@@ -516,10 +574,17 @@ function ReviewContextCard({
   reviewStepTotal,
   criticalAnsweredCount,
   criticalTotal,
+  onContinueToLevel2,
+  onMintLevel1Certificate,
   onOpenReport,
   onRetryReview,
 }: {
+  auditReportStage: AuditReportStage;
   findingReviewPassed: boolean;
+  isMintingLevel1Certificate: boolean;
+  level1CertificateAssetId?: string | null;
+  level1CertificateExplorerUrl?: string | null;
+  level1CertificateMinted: boolean;
   questionnaireResult: QuestionnaireResult | null;
   reportAccepted: boolean;
   reportOpened: boolean;
@@ -530,9 +595,24 @@ function ReviewContextCard({
   reviewStepTotal: number;
   criticalAnsweredCount: number;
   criticalTotal: number;
+  onContinueToLevel2: () => void;
+  onMintLevel1Certificate: () => void;
   onOpenReport: () => void;
   onRetryReview: () => void;
 }) {
+  if (auditReportStage === "CERTIFY_KNOWLEDGE") {
+    return (
+      <CertificateCheckpointPanel
+        assetId={level1CertificateAssetId}
+        assetUrl={level1CertificateExplorerUrl}
+        isMinting={isMintingLevel1Certificate}
+        minted={level1CertificateMinted}
+        onMint={onMintLevel1Certificate}
+        onNextModule={onContinueToLevel2}
+      />
+    );
+  }
+
   if (reportAccepted) {
     return (
       <ContextBlock title="Status">
@@ -551,7 +631,11 @@ function ReviewContextCard({
         <ReviewCheckpointPanel
           activeStep="report"
           criticalTotal={criticalTotal}
-          unlockTitle={reportOpened ? "Secure Pattern and Certification" : "Audit Report Builder"}
+          unlockTitle={
+            reportOpened
+              ? "Secure Pattern and Certification"
+              : "Audit Report Builder"
+          }
           unlockCopy={
             reportOpened
               ? "Complete the secure pattern review before unlocking certification."
@@ -576,10 +660,12 @@ function ReviewContextCard({
           Review needs correction
         </p>
         <p className="mt-2 text-sm leading-6 text-amber-50/80">
-          Score {questionnaireResult.score}/{questionnaireResult.totalPoints}. Retry only the missed required questions.
+          Score {questionnaireResult.score}/{questionnaireResult.totalPoints}.
+          Retry only the missed required questions.
         </p>
         <div className="mt-3 rounded-xl border border-amber-300/15 bg-black/20 px-3 py-2 text-sm text-amber-50/80">
-          {retryQuestionIds.length} incorrect required item{retryQuestionIds.length === 1 ? "" : "s"}
+          {retryQuestionIds.length} incorrect required item
+          {retryQuestionIds.length === 1 ? "" : "s"}
         </div>
         <button
           type="button"
@@ -601,6 +687,94 @@ function ReviewContextCard({
       reviewStepTotal={reviewStepTotal}
       criticalAnsweredCount={criticalAnsweredCount}
     />
+  );
+}
+
+function CertificateCheckpointPanel({
+  assetId,
+  assetUrl,
+  isMinting,
+  minted,
+  onMint,
+  onNextModule,
+}: {
+  assetId?: string | null;
+  assetUrl?: string | null;
+  isMinting: boolean;
+  minted: boolean;
+  onMint: () => void;
+  onNextModule: () => void;
+}) {
+  return (
+    <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+        <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+          Certificate Checkpoint
+        </p>
+      </div>
+
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Account Substitution
+        </p>
+        <div className="mt-4 space-y-3 text-sm">
+          <CheckpointRuleRow label="Review" value="Secure pattern complete" />
+          <CheckpointRuleRow
+            label="Mint"
+            value={minted ? "Recorded" : isMinting ? "Minting" : "Ready"}
+          />
+          <CheckpointRuleRow label="Credential" value="Level 1 cNFT" />
+        </div>
+      </div>
+
+      {minted && assetId ? (
+        <div className="mt-5 border-t border-white/10 pt-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            Asset
+          </p>
+          <p className="mt-3 break-all font-mono text-xs leading-5 text-[#8fffd0]">
+            {assetId}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
+        <button
+          type="button"
+          onClick={onMint}
+          disabled={minted || isMinting}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          {minted
+            ? "Level 1 cNFT minted"
+            : isMinting
+              ? "Minting..."
+              : "Unlock Certification"}
+        </button>
+
+        {minted && assetUrl ? (
+          <a
+            href={assetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          >
+            View certificate asset
+          </a>
+        ) : null}
+
+        {minted ? (
+          <button
+            type="button"
+            onClick={onNextModule}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-100 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          >
+            Next Module
+          </button>
+        ) : null}
+      </div>
+    </aside>
   );
 }
 
@@ -682,10 +856,18 @@ function CheckpointRuleRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ContextBlock({ title, children }: { title: string; children: ReactNode }) {
+function ContextBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">{title}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+        {title}
+      </p>
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -695,15 +877,25 @@ function EvidenceLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-zinc-500">{label}</span>
-      <span className="truncate text-right font-mono text-xs text-zinc-300">{value}</span>
+      <span className="truncate text-right font-mono text-xs text-zinc-300">
+        {value}
+      </span>
     </div>
   );
 }
 
-function ExploitCheckpointStep({ label, active }: { label: string; active: boolean }) {
+function ExploitCheckpointStep({
+  label,
+  active,
+}: {
+  label: string;
+  active: boolean;
+}) {
   return (
     <div className="flex items-center gap-3">
-      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${active ? "border-[#14f195]/40 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_18px_rgba(20,241,149,0.14)]" : "border-white/10 bg-black/20 text-zinc-700"}`}>
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${active ? "border-[#14f195]/40 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_18px_rgba(20,241,149,0.14)]" : "border-white/10 bg-black/20 text-zinc-700"}`}
+      >
         {active ? <Check className="h-4 w-4" /> : null}
       </span>
       <span className={`text-sm ${active ? "text-zinc-200" : "text-zinc-600"}`}>
@@ -712,7 +904,6 @@ function ExploitCheckpointStep({ label, active }: { label: string; active: boole
     </div>
   );
 }
-
 
 function statusCopy(status: ResearchLabSession["status"]) {
   switch (status) {

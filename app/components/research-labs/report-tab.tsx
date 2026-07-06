@@ -64,10 +64,7 @@ export function ReportTab({
   reviewQuestions,
   reviewStarted,
   report,
-  level1CertificateAssetId,
-  level1CertificateExplorerUrl,
   level1CertificateMinted,
-  isMintingLevel1Certificate,
   onChange,
   onChangeAuditReportStage,
   onQuestionnaireAnswer,
@@ -78,8 +75,6 @@ export function ReportTab({
   onReviewStart,
   onSave,
   onSubmitReport,
-  onContinueToLevel2,
-  onMintLevel1Certificate,
 }: {
   report: ResearchLabReport | null;
   fields: ResearchLabReportFields;
@@ -97,10 +92,7 @@ export function ReportTab({
   reviewOptionOrder: Record<string, string[]>;
   reviewQuestions: QuestionnaireQuestion[];
   reviewStarted: boolean;
-  level1CertificateAssetId?: string | null;
-  level1CertificateExplorerUrl?: string | null;
   level1CertificateMinted: boolean;
-  isMintingLevel1Certificate: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onQuestionnaireAnswer: (answer: QuestionnaireAnswer) => void;
@@ -113,8 +105,6 @@ export function ReportTab({
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
   }) => Promise<ResearchLabReport | null | undefined>;
-  onContinueToLevel2: () => void;
-  onMintLevel1Certificate: () => void;
 }) {
   const [showCriticalAnswers, setShowCriticalAnswers] = useState(false);
 
@@ -237,15 +227,10 @@ export function ReportTab({
           fields={fields}
           isSaving={isSaving}
           isSubmitting={isSubmitting}
-          level1CertificateAssetId={level1CertificateAssetId}
-          level1CertificateExplorerUrl={level1CertificateExplorerUrl}
           level1CertificateMinted={level1CertificateMinted}
-          isMintingLevel1Certificate={isMintingLevel1Certificate}
           report={report}
           onChange={onChange}
           onChangeAuditReportStage={onChangeAuditReportStage}
-          onContinueToLevel2={onContinueToLevel2}
-          onMintLevel1Certificate={onMintLevel1Certificate}
           onSave={onSave}
           onSubmitReport={onSubmitReport}
         />
@@ -882,14 +867,9 @@ function ReportForm({
   fields,
   isSaving,
   isSubmitting,
-  level1CertificateAssetId,
-  level1CertificateExplorerUrl,
   level1CertificateMinted,
-  isMintingLevel1Certificate,
   onChange,
   onChangeAuditReportStage,
-  onContinueToLevel2,
-  onMintLevel1Certificate,
   onSave,
   onSubmitReport,
   expanded = false,
@@ -899,14 +879,9 @@ function ReportForm({
   fields: ResearchLabReportFields;
   isSaving: boolean;
   isSubmitting: boolean;
-  level1CertificateAssetId?: string | null;
-  level1CertificateExplorerUrl?: string | null;
   level1CertificateMinted: boolean;
-  isMintingLevel1Certificate: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
-  onContinueToLevel2: () => void;
-  onMintLevel1Certificate: () => void;
   onSave: () => Promise<ResearchLabReport | null>;
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
@@ -982,16 +957,7 @@ function ReportForm({
   }
 
   if (auditReportStage === "CERTIFY_KNOWLEDGE") {
-    return (
-      <CertifyKnowledgeScreen
-        assetId={level1CertificateAssetId}
-        assetUrl={level1CertificateExplorerUrl}
-        isMinting={isMintingLevel1Certificate}
-        minted={level1CertificateMinted}
-        onNextModule={onContinueToLevel2}
-        onMint={onMintLevel1Certificate}
-      />
-    );
+    return <CertifyKnowledgeScreen minted={level1CertificateMinted} />;
   }
 
   if (isAccepted || auditReportStage === "SUBMITTED") {
@@ -1623,130 +1589,42 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
   );
 }
 
-function CertifyKnowledgeScreen({
-  assetId,
-  assetUrl,
-  isMinting,
-  minted,
-  onNextModule,
-  onMint,
-}: {
-  assetId?: string | null;
-  assetUrl?: string | null;
-  isMinting: boolean;
-  minted: boolean;
-  onNextModule: () => void;
-  onMint: () => void;
-}) {
+function CertifyKnowledgeScreen({ minted }: { minted: boolean }) {
   return (
     <section className="w-full">
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-7 py-1">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              Knowledge Certification
-            </p>
-            <h3 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
-              Certify Knowledge
-            </h3>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
-              You verified impact, submitted the audit report, and reviewed the
-              secure account-binding pattern. Mint the Level 1 certificate to
-              record Account Substitution completion to your wallet.
-            </p>
-          </div>
-
-          <ReportProgressStepper activeStep={5} />
-
-          <section className="max-w-2xl border-y border-white/10 py-5">
-            <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
-              <CertificationSummaryRow label="Lab" value="Research Lab 1" />
-              <CertificationSummaryRow
-                label="Module"
-                value="Account Substitution"
-              />
-              <CertificationSummaryRow
-                label="Credential"
-                value="Level 1 cNFT"
-              />
-            </div>
-          </section>
+      <div className="max-w-4xl space-y-7 py-1">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            Knowledge Certification
+          </p>
+          <h3 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
+            Certify Knowledge
+          </h3>
+          <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
+            You verified impact, submitted the audit report, and reviewed the
+            secure account-binding pattern. Mint the Level 1 certificate to
+            record Account Substitution completion to your wallet.
+          </p>
         </div>
 
-        <aside className="h-fit rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              Certification Checkpoint
-            </p>
-            <p className="mt-3 text-lg font-semibold tracking-[-0.02em] text-white">
-              Account Substitution
-            </p>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Wallet-bound proof that you completed the account substitution lab
-              path.
-            </p>
-          </div>
+        <ReportProgressStepper activeStep={5} />
 
-          <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
-            <CertificationCheckpointRow
-              label="Review"
-              value="Secure pattern completed"
-              complete
+        <section className="max-w-2xl border-y border-white/10 py-5">
+          <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+            <CertificationSummaryRow label="Lab" value="Research Lab 1" />
+            <CertificationSummaryRow
+              label="Module"
+              value="Account Substitution"
             />
-            <CertificationCheckpointRow
-              label="Mint"
-              value={
-                minted ? "Certificate recorded" : "Wallet signature required"
-              }
-              complete={minted}
-            />
-            {minted && assetId ? (
-              <div className="border-t border-white/10 pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
-                  Asset
-                </p>
-                <p className="mt-2 break-all font-mono text-xs leading-5 text-[#8fffd0]">
-                  {assetId}
-                </p>
-              </div>
-            ) : null}
+            <CertificationSummaryRow label="Credential" value="Level 1 cNFT" />
           </div>
+        </section>
 
-          <button
-            type="button"
-            onClick={onMint}
-            disabled={minted || isMinting}
-            className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-55"
-          >
-            {minted
-              ? "Level 1 cNFT minted"
-              : isMinting
-                ? "Minting..."
-                : "Unlock Certification"}
-          </button>
-
-          {minted && assetUrl ? (
-            <a
-              href={assetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-            >
-              View certificate asset
-            </a>
-          ) : null}
-
-          {minted ? (
-            <button
-              type="button"
-              onClick={onNextModule}
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-100 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-            >
-              Next Module
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : null}
-        </aside>
+        <p className="max-w-2xl text-sm leading-6 text-zinc-500">
+          {minted
+            ? "Certification is recorded. Continue from the checkpoint rail when you are ready for the next module."
+            : "Use the checkpoint rail to mint the wallet-bound certificate."}
+        </p>
       </div>
     </section>
   );
@@ -1766,31 +1644,6 @@ function CertificationSummaryRow({
       </p>
       <p className="min-w-0 text-sm font-semibold text-zinc-100">{value}</p>
     </>
-  );
-}
-
-function CertificationCheckpointRow({
-  complete,
-  label,
-  value,
-}: {
-  complete: boolean;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 text-sm">
-      <span className="text-zinc-500">{label}</span>
-      <span className="inline-flex items-center gap-2 text-right font-medium text-zinc-200">
-        <span
-          aria-hidden="true"
-          className={`h-2 w-2 rounded-full ${
-            complete ? "bg-[#14f195]" : "bg-zinc-600"
-          }`}
-        />
-        {value}
-      </span>
-    </div>
   );
 }
 

@@ -56,10 +56,7 @@ export function ResearchLabWorkspace({
   reviewStarted,
   report,
   reportFields,
-  level1CertificateAssetId,
-  level1CertificateExplorerUrl,
   level1CertificateMinted,
-  isMintingLevel1Certificate,
   txResults,
   onChangeExecuteExploitView,
   onChangeReportFields,
@@ -74,8 +71,6 @@ export function ResearchLabWorkspace({
   onReviewStart,
   onSaveReport,
   onSubmitReport,
-  onContinueToLevel2,
-  onMintLevel1Certificate,
   onSelectFile,
   onTabChange,
   isReportSaving,
@@ -105,10 +100,7 @@ export function ResearchLabWorkspace({
   reviewStarted: boolean;
   report: ResearchLabReport | null;
   reportFields: ResearchLabReportFields;
-  level1CertificateAssetId?: string | null;
-  level1CertificateExplorerUrl?: string | null;
   level1CertificateMinted: boolean;
-  isMintingLevel1Certificate: boolean;
   txResults: EnrichedTransactionResult[];
   onChangeExecuteExploitView: (view: ExecuteExploitView) => void;
   onChangeReportFields: (fields: ResearchLabReportFields) => void;
@@ -125,8 +117,6 @@ export function ResearchLabWorkspace({
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
   }) => Promise<ResearchLabReport | null | undefined>;
-  onContinueToLevel2: () => void;
-  onMintLevel1Certificate: () => void;
   onSelectFile: (path: string) => void;
   onTabChange: (tab: WorkspaceTab) => void;
   isReportSaving: boolean;
@@ -189,10 +179,7 @@ export function ResearchLabWorkspace({
         reviewQuestions={reviewQuestions}
         reviewStarted={reviewStarted}
         report={report}
-        level1CertificateAssetId={level1CertificateAssetId}
-        level1CertificateExplorerUrl={level1CertificateExplorerUrl}
         level1CertificateMinted={level1CertificateMinted}
-        isMintingLevel1Certificate={isMintingLevel1Certificate}
         onChange={onChangeReportFields}
         onChangeAuditReportStage={onChangeAuditReportStage}
         onQuestionnaireAnswer={onQuestionnaireAnswer}
@@ -203,8 +190,6 @@ export function ResearchLabWorkspace({
         onReviewStart={onReviewStart}
         onSave={onSaveReport}
         onSubmitReport={onSubmitReport}
-        onContinueToLevel2={onContinueToLevel2}
-        onMintLevel1Certificate={onMintLevel1Certificate}
       />
     );
 
