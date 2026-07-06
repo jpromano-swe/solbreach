@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -14,10 +8,7 @@ import {
   type Level1AuthSession,
 } from "../lib/levels/level1-backend";
 import type { Level1ResearchLabMintAuthorization } from "../lib/hooks/use-certificate-minting";
-import {
-  trackAnalyticsEvent,
-  type AnalyticsEventName,
-} from "../lib/analytics";
+import { trackAnalyticsEvent, type AnalyticsEventName } from "../lib/analytics";
 import {
   applyTerminalEvents,
   createResearchLabSession,
@@ -71,19 +62,25 @@ export function ResearchLabsSection({
   isMintingLevel1Certificate,
   level1CertificateAssetId,
   level1CertificateMinted,
+  onContinueToLevel2,
   onMintLevel1Certificate,
 }: {
   getExplorerUrl: (path: string) => string;
   isMintingLevel1Certificate: boolean;
   level1CertificateAssetId?: string | null;
   level1CertificateMinted: boolean;
+  onContinueToLevel2: () => void;
   onMintLevel1Certificate: (
     authorization?: Level1ResearchLabMintAuthorization
   ) => void;
 }) {
   const { status: walletStatus, wallet } = useWallet();
-  const [backendAuth, setBackendAuth] = useState<Level1AuthSession | null>(null);
-  const [labs, setLabs] = useState<ResearchLabManifest[]>(FALLBACK_RESEARCH_LABS);
+  const [backendAuth, setBackendAuth] = useState<Level1AuthSession | null>(
+    null
+  );
+  const [labs, setLabs] = useState<ResearchLabManifest[]>(
+    FALLBACK_RESEARCH_LABS
+  );
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [activeLab, setActiveLab] = useState<ResearchLabManifest | null>(null);
@@ -148,9 +145,12 @@ export function ResearchLabsSection({
 
       return (
         (selectedPath
-          ? currentSession.fileEntries.find((file) => file.path === selectedPath)?.path
+          ? currentSession.fileEntries.find(
+              (file) => file.path === selectedPath
+            )?.path
           : undefined) ??
-        currentSession.fileEntries.find((file) => file.path === lab.entryFile)?.path ??
+        currentSession.fileEntries.find((file) => file.path === lab.entryFile)
+          ?.path ??
         currentSession.fileEntries[0]?.path ??
         lab.entryFile ??
         ""
@@ -193,31 +193,36 @@ export function ResearchLabsSection({
   const activeFile = useMemo(() => {
     if (!activeLab || !session) return null;
 
-    const resolvedPath = resolveDefaultFilePath(activeLab, session, activeFilePath);
+    const resolvedPath = resolveDefaultFilePath(
+      activeLab,
+      session,
+      activeFilePath
+    );
 
     return (
-      session.fileEntries.find((file) => file.path === resolvedPath) ??
-      null
+      session.fileEntries.find((file) => file.path === resolvedPath) ?? null
     );
   }, [activeFilePath, activeLab, resolveDefaultFilePath, session]);
 
   const activeFileContent =
-    activeFile && session ? (session.files[activeFile.path] ?? activeFile.content) : "";
+    activeFile && session
+      ? (session.files[activeFile.path] ?? activeFile.content)
+      : "";
 
   const impactVerified = Boolean(
     session?.impactVerified ??
-      session?.labCompleted ??
-      (report?.status === "accepted" ? true : false)
+    session?.labCompleted ??
+    (report?.status === "accepted" ? true : false)
   );
   const reportUnlocked = Boolean(
     session?.reportUnlocked ??
-      (report?.status === "draft" ||
+    (report?.status === "draft" ||
       report?.status === "retry" ||
       report?.status === "accepted")
   );
   const findingReviewPassed = Boolean(
     session?.findingReviewPassed ??
-      (report?.status === "accepted" || session?.labCompleted)
+    (report?.status === "accepted" || session?.labCompleted)
   );
   const availableTabs = useMemo<WorkspaceTab[]>(
     () => (impactVerified ? [...BASE_TABS, "report"] : BASE_TABS),
@@ -425,12 +430,17 @@ export function ResearchLabsSection({
     try {
       const auth = activeBackendAuth;
       if (!auth?.accessToken) {
-        throw new Error("Authenticate your wallet before opening a Research Lab.");
+        throw new Error(
+          "Authenticate your wallet before opening a Research Lab."
+        );
       }
 
       resetLocalState();
       const labDetail = await getResearchLab(auth.accessToken, lab.id);
-      const nextSession = await createResearchLabSession(auth.accessToken, labDetail.id);
+      const nextSession = await createResearchLabSession(
+        auth.accessToken,
+        labDetail.id
+      );
       const nextLab = { ...labDetail, files: nextSession.fileEntries };
 
       setActiveLab(nextLab);
@@ -493,7 +503,9 @@ export function ResearchLabsSection({
 
   const revealHint = () => {
     if (!activeLab) return;
-    const nextHint = activeLab.hints.find((hint) => !revealedHints.includes(hint.id));
+    const nextHint = activeLab.hints.find(
+      (hint) => !revealedHints.includes(hint.id)
+    );
     if (!nextHint) return;
     trackLabEvent("rl1_hint_revealed", {
       hintId: nextHint.id,
@@ -607,6 +619,7 @@ export function ResearchLabsSection({
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
             onSubmitReport={submitReport}
+            onContinueToLevel2={onContinueToLevel2}
             onMintLevel1Certificate={mintResearchLabCertificate}
             onSelectFile={setActiveFilePath}
             onTabChange={changeWorkspaceTab}
@@ -645,12 +658,10 @@ export function ResearchLabsSection({
             onRetryReview={retryQuestionnaire}
           />
         </div>
-
       </div>
     </section>
   );
 }
-
 
 function deriveLabPhase({
   activeTab,
@@ -667,11 +678,12 @@ function deriveLabPhase({
   report: ResearchLabReport | null;
   session: ResearchLabSession | null;
 }): LabPhase {
-  if (session?.labCompleted || report?.status === "accepted") return "COMPLETED";
+  if (session?.labCompleted || report?.status === "accepted")
+    return "COMPLETED";
   if (activeTab === "report") return "SUBMIT_FINDING";
   if (
     activeTab === "verify" ||
-    activeTab === "exploit" && executeExploitView === "EVIDENCE_REVIEW" ||
+    (activeTab === "exploit" && executeExploitView === "EVIDENCE_REVIEW") ||
     isRunning ||
     session?.status === "running_tests" ||
     session?.status === "failed"
@@ -683,7 +695,10 @@ function deriveLabPhase({
   return "INSPECT";
 }
 
-function deriveSandboxStatus(session: ResearchLabSession | null, isRunning: boolean): SandboxStatus {
+function deriveSandboxStatus(
+  session: ResearchLabSession | null,
+  isRunning: boolean
+): SandboxStatus {
   if (isRunning || session?.status === "running_tests") return "RUNNING";
   switch (session?.status) {
     case "provisioning":

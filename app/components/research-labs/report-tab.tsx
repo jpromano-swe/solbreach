@@ -19,7 +19,10 @@ import {
   type QuestionnaireQuestion,
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
-import type { ResearchLabReport, ResearchLabReportFields } from "../../lib/research-labs/lab-state";
+import type {
+  ResearchLabReport,
+  ResearchLabReportFields,
+} from "../../lib/research-labs/lab-state";
 import type {
   AuditReportPreview,
   AuditReportStage,
@@ -75,6 +78,7 @@ export function ReportTab({
   onReviewStart,
   onSave,
   onSubmitReport,
+  onContinueToLevel2,
   onMintLevel1Certificate,
 }: {
   report: ResearchLabReport | null;
@@ -109,6 +113,7 @@ export function ReportTab({
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
   }) => Promise<ResearchLabReport | null | undefined>;
+  onContinueToLevel2: () => void;
   onMintLevel1Certificate: () => void;
 }) {
   const [showCriticalAnswers, setShowCriticalAnswers] = useState(false);
@@ -120,9 +125,12 @@ export function ReportTab({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] text-zinc-500">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <p className="mt-4 text-sm font-semibold text-white">Finding review locked</p>
+          <p className="mt-4 text-sm font-semibold text-white">
+            Finding review locked
+          </p>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-zinc-400">
-            Verify impact before submitting the final finding. The questionnaire appears after backend state confirms unauthorized treasury movement.
+            Verify impact before submitting the final finding. The questionnaire
+            appears after backend state confirms unauthorized treasury movement.
           </p>
         </div>
       </div>
@@ -154,7 +162,8 @@ export function ReportTab({
   const criticalTotal = rl1FindingQuestionnaire.questions.filter(
     (question) => question.critical
   ).length;
-  const criticalMisses = questionnaireResult?.failedCriticalQuestions.length ?? 0;
+  const criticalMisses =
+    questionnaireResult?.failedCriticalQuestions.length ?? 0;
   const scoreCopy = questionnaireResult
     ? `${questionnaireResult.score} / ${questionnaireResult.totalPoints}`
     : "Passed";
@@ -173,7 +182,9 @@ export function ReportTab({
                 Audit report unlocked<span className="text-[#9945ff]">.</span>
               </h2>
               <p className="mt-4 max-w-xl text-base leading-7 text-zinc-400">
-                Your Finding Review passed. Build the audit report from the confirmed root cause, exploit path, evidence, impact, and mitigation.
+                Your Finding Review passed. Build the audit report from the
+                confirmed root cause, exploit path, evidence, impact, and
+                mitigation.
               </p>
 
               <ReportProgressStepper activeStep={3} />
@@ -198,7 +209,8 @@ export function ReportTab({
 
               <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-400">
                 <span>
-                  Score <span className="font-mono text-zinc-100">{scoreCopy}</span>
+                  Score{" "}
+                  <span className="font-mono text-zinc-100">{scoreCopy}</span>
                 </span>
                 <span>
                   Critical questions{" "}
@@ -232,6 +244,7 @@ export function ReportTab({
           report={report}
           onChange={onChange}
           onChangeAuditReportStage={onChangeAuditReportStage}
+          onContinueToLevel2={onContinueToLevel2}
           onMintLevel1Certificate={onMintLevel1Certificate}
           onSave={onSave}
           onSubmitReport={onSubmitReport}
@@ -376,7 +389,10 @@ export function ReviewCheckpointPanel({
             Review Rules
           </p>
           <div className="mt-4 space-y-3 text-sm">
-            <RuleRow label="Passing score" value={String(rl1FindingQuestionnaire.passingScore)} />
+            <RuleRow
+              label="Passing score"
+              value={String(rl1FindingQuestionnaire.passingScore)}
+            />
             <RuleRow label="Critical questions" value={String(criticalTotal)} />
             <RuleRow label="Retry mode" value="Missed only" />
           </div>
@@ -402,12 +418,8 @@ export function ReviewCheckpointPanel({
             )}
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">
-              {unlockTitle}
-            </p>
-            <p className="mt-1 text-sm leading-5 text-zinc-500">
-              {unlockCopy}
-            </p>
+            <p className="text-sm font-semibold text-white">{unlockTitle}</p>
+            <p className="mt-1 text-sm leading-5 text-zinc-500">{unlockCopy}</p>
           </div>
         </div>
         {action ? <div className="mt-4">{action}</div> : null}
@@ -463,7 +475,9 @@ function QuestionnairePanel({
   onStart: () => void;
   onSubmit: () => void;
 }) {
-  const answerMap = new Map(answers.map((answer) => [answer.questionId, answer]));
+  const answerMap = new Map(
+    answers.map((answer) => [answer.questionId, answer])
+  );
   const incorrectIds =
     result && !result.passed
       ? getIncorrectRequiredQuestionIds(result)
@@ -475,10 +489,14 @@ function QuestionnairePanel({
   const answeredRequiredCount = requiredQuestions.filter((question) =>
     isQuestionAnswered(question, answerMap.get(question.id))
   ).length;
-  const allRequiredAnswered = answeredRequiredCount === requiredQuestions.length;
+  const allRequiredAnswered =
+    answeredRequiredCount === requiredQuestions.length;
   const isSummaryStep = reviewIndex >= visibleQuestions.length;
-  const currentQuestion = visibleQuestions[Math.min(reviewIndex, visibleQuestions.length - 1)];
-  const currentAnswer = currentQuestion ? answerMap.get(currentQuestion.id) : undefined;
+  const currentQuestion =
+    visibleQuestions[Math.min(reviewIndex, visibleQuestions.length - 1)];
+  const currentAnswer = currentQuestion
+    ? answerMap.get(currentQuestion.id)
+    : undefined;
   const canAdvance =
     !currentQuestion || isQuestionAnswered(currentQuestion, currentAnswer);
   const progressTotal = visibleQuestions.length + 1;
@@ -499,7 +517,9 @@ function QuestionnairePanel({
             Congratulations! Impact has been verified.
           </p>
           <p className="mt-3 max-w-2xl text-base leading-8 text-zinc-400">
-            The finding review questionnaire is meant to confirm the root cause, exploit path, evidence, impact, and recommended mitigation to confirm the audit report.
+            The finding review questionnaire is meant to confirm the root cause,
+            exploit path, evidence, impact, and recommended mitigation to
+            confirm the audit report.
           </p>
 
           <ReportProgressStepper activeStep={2} />
@@ -526,17 +546,23 @@ function QuestionnairePanel({
                 Retry incorrect answers
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-amber-50/80">
-                Score: {result.score}/{result.totalPoints}. Missed questions: {incorrectIds.length}. Critical missed: {criticalMissCount}.
+                Score: {result.score}/{result.totalPoints}. Missed questions:{" "}
+                {incorrectIds.length}. Critical missed: {criticalMissCount}.
               </p>
             </div>
             <div className="rounded-2xl border border-amber-300/25 bg-black/20 px-4 py-3 text-right">
-              <p className="font-mono text-2xl font-semibold text-white">{incorrectIds.length}</p>
+              <p className="font-mono text-2xl font-semibold text-white">
+                {incorrectIds.length}
+              </p>
               <p className="text-xs text-amber-100">to retry</p>
             </div>
           </div>
           <div className="mt-4 grid gap-2">
             {getFeedbackTopics(incorrectIds).map((topic) => (
-              <p key={topic} className="rounded-xl border border-amber-300/15 bg-black/20 px-3 py-2 text-sm leading-6 text-amber-50/80">
+              <p
+                key={topic}
+                className="rounded-xl border border-amber-300/15 bg-black/20 px-3 py-2 text-sm leading-6 text-amber-50/80"
+              >
                 {topic}
               </p>
             ))}
@@ -577,11 +603,13 @@ function QuestionnairePanel({
 
           <AnimatedContentSwitch
             className="mt-6"
-            transitionKey={`question-${reviewMode}-${isSummaryStep ? "summary" : currentQuestion?.id ?? "empty"}`}
+            transitionKey={`question-${reviewMode}-${isSummaryStep ? "summary" : (currentQuestion?.id ?? "empty")}`}
           >
             {isSummaryStep ? (
               <div className="border-y border-white/10 py-5">
-                <p className="text-sm font-semibold text-white">Ready to submit review</p>
+                <p className="text-sm font-semibold text-white">
+                  Ready to submit review
+                </p>
                 <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-400">
                   <span>
                     Required answered{" "}
@@ -592,11 +620,15 @@ function QuestionnairePanel({
                   <span>
                     Critical required{" "}
                     <span className="font-mono text-zinc-100">
-                      {visibleQuestions.filter((question) => question.critical).length}
+                      {
+                        visibleQuestions.filter((question) => question.critical)
+                          .length
+                      }
                     </span>
                   </span>
                   <span>
-                    Audit Report <span className="font-mono text-zinc-100">Locked</span>
+                    Audit Report{" "}
+                    <span className="font-mono text-zinc-100">Locked</span>
                   </span>
                 </div>
                 <p className="mt-4 text-sm leading-6 text-zinc-400">
@@ -629,7 +661,9 @@ function QuestionnairePanel({
                 <button
                   type="button"
                   onClick={() =>
-                    onIndexChange(Math.min(reviewIndex + 1, visibleQuestions.length))
+                    onIndexChange(
+                      Math.min(reviewIndex + 1, visibleQuestions.length)
+                    )
                   }
                   disabled={!canAdvance}
                   className="min-h-10 rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-5 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
@@ -669,7 +703,9 @@ function CriticalAnswersPanel() {
 
   return (
     <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <p className="text-sm font-semibold text-white">Critical exploit answers</p>
+      <p className="text-sm font-semibold text-white">
+        Critical exploit answers
+      </p>
       <div className="mt-4 space-y-4">
         {criticalQuestions.map((question) => {
           const answerId = question.correctOptionId;
@@ -786,7 +822,9 @@ function QuestionBlock({
                   checked={selected}
                   disabled={disabled}
                   name={fieldName}
-                  type={question.type === "single_choice" ? "radio" : "checkbox"}
+                  type={
+                    question.type === "single_choice" ? "radio" : "checkbox"
+                  }
                   onChange={() => {
                     if (question.type === "single_choice") {
                       onAnswer({
@@ -838,7 +876,6 @@ function QuestionBlock({
   );
 }
 
-
 function ReportForm({
   auditReportStage,
   report,
@@ -851,6 +888,7 @@ function ReportForm({
   isMintingLevel1Certificate,
   onChange,
   onChangeAuditReportStage,
+  onContinueToLevel2,
   onMintLevel1Certificate,
   onSave,
   onSubmitReport,
@@ -867,6 +905,7 @@ function ReportForm({
   isMintingLevel1Certificate: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
+  onContinueToLevel2: () => void;
   onMintLevel1Certificate: () => void;
   onSave: () => Promise<ResearchLabReport | null>;
   onSubmitReport: (options?: {
@@ -886,7 +925,9 @@ function ReportForm({
     severityOptionId: reportSeverityOptions.map((option) => option.id),
     likelihoodOptionId: reportLikelihoodOptions.map((option) => option.id),
     rootCauseOptionId: reportRootCauseOptions.map((option) => option.id),
-    proofOfImpactOptionId: reportProofOfImpactOptions.map((option) => option.id),
+    proofOfImpactOptionId: reportProofOfImpactOptions.map(
+      (option) => option.id
+    ),
     recommendedMitigationOptionId: reportMitigationOptions.map(
       (option) => option.id
     ),
@@ -903,7 +944,8 @@ function ReportForm({
       <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
         <p className="text-sm font-semibold text-white">Report locked</p>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
-          {report?.feedback ?? "Verify exploit impact before submitting a finding report."}
+          {report?.feedback ??
+            "Verify exploit impact before submitting a finding report."}
         </p>
       </div>
     );
@@ -946,6 +988,7 @@ function ReportForm({
         assetUrl={level1CertificateExplorerUrl}
         isMinting={isMintingLevel1Certificate}
         minted={level1CertificateMinted}
+        onNextModule={onContinueToLevel2}
         onMint={onMintLevel1Certificate}
       />
     );
@@ -966,22 +1009,30 @@ function ReportForm({
     <div className={expanded ? "" : "space-y-4"}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">Build Audit Report</h2>
+          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">
+            Build Audit Report
+          </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-            Audit reports are a foundational part of security research. In this section you will learn how to build a detailed and accurate audit report for your findings.
+            Audit reports are a foundational part of security research. In this
+            section you will learn how to build a detailed and accurate audit
+            report for your findings.
           </p>
         </div>
       </div>
 
       {report?.feedback ? (
-        <div className={`mt-4 rounded-xl border px-3 py-2 text-sm leading-6 ${status === "retry" ? "border-amber-300/25 bg-amber-300/8 text-amber-100" : "border-[#14f195]/20 bg-[#14f195]/8 text-[#8fffd0]"}`}>
+        <div
+          className={`mt-4 rounded-xl border px-3 py-2 text-sm leading-6 ${status === "retry" ? "border-amber-300/25 bg-amber-300/8 text-amber-100" : "border-[#14f195]/20 bg-[#14f195]/8 text-[#8fffd0]"}`}
+        >
           {report.feedback}
         </div>
       ) : null}
 
       <div className="mt-7 space-y-7">
         <section className="border-b border-white/10 pb-7">
-          <h3 className="text-sm font-semibold text-white">1. Finding Summary</h3>
+          <h3 className="text-sm font-semibold text-white">
+            1. Finding Summary
+          </h3>
           <div className="mt-4 grid gap-5">
             <ReportChoiceGroup
               disabled={!isEditable}
@@ -1013,7 +1064,9 @@ function ReportForm({
         </section>
 
         <section className="border-b border-white/10 pb-7">
-          <h3 className="text-sm font-semibold text-white">2. Severity & Likelihood</h3>
+          <h3 className="text-sm font-semibold text-white">
+            2. Severity & Likelihood
+          </h3>
           <div className="mt-4 grid gap-5 md:grid-cols-2">
             <ReportSelect
               disabled={!isEditable}
@@ -1085,9 +1138,12 @@ function ReportForm({
           }
         />
         <section className="border-b border-white/10 pb-7">
-          <h3 className="text-sm font-semibold text-white">6. Verified Evidence</h3>
+          <h3 className="text-sm font-semibold text-white">
+            6. Verified Evidence
+          </h3>
           <p className="mt-1.5 text-sm leading-6 text-zinc-500">
-            These references come from backend-verified evidence after impact review.
+            These references come from backend-verified evidence after impact
+            review.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {fields.verifiedEvidenceRefs.length ? (
@@ -1138,7 +1194,9 @@ function ReportForm({
               setAuditReportPreview(buildAuditReportPreview(fields));
               onChangeAuditReportStage("PREVIEW");
             }}
-            disabled={!isEditable || !reportComplete || isSaving || isSubmitting}
+            disabled={
+              !isEditable || !reportComplete || isSaving || isSubmitting
+            }
             className="min-h-10 rounded-xl border border-[#9945ff]/30 bg-[#9945ff] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
           >
             Create Audit Report
@@ -1164,7 +1222,9 @@ function ReportSelect({
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-600">{label}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+        {label}
+      </span>
       <select
         value={value}
         disabled={disabled}
@@ -1221,7 +1281,10 @@ function AuditReportPreviewScreen({
             snippet={report.rootCauseSnippet}
             title="Root Cause"
           />
-          <AuditReportSection title="Proof of Impact" body={report.proofOfImpact} />
+          <AuditReportSection
+            title="Proof of Impact"
+            body={report.proofOfImpact}
+          />
           <AuditReportSection title="Evidence" body={report.evidence} />
           <AuditReportSection
             title="Recommended Mitigation"
@@ -1247,7 +1310,9 @@ function AuditReportPreviewScreen({
           disabled={isSubmitting}
           className="min-h-10 rounded-xl border border-[#9945ff]/30 bg-[#9945ff] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-55"
         >
-          {isSubmitting ? "Submitting Report..." : "Continue to Secure Patterns"}
+          {isSubmitting
+            ? "Submitting Report..."
+            : "Continue to Secure Patterns"}
         </button>
       </div>
     </section>
@@ -1261,7 +1326,8 @@ const securePatternAnswerOptions = [
   },
   {
     id: "bind_accounts_to_config",
-    label: "Bind collateral source and vault destination to the approved mint/config",
+    label:
+      "Bind collateral source and vault destination to the approved mint/config",
   },
   {
     id: "signed_by_user",
@@ -1325,19 +1391,16 @@ const saferPatternCode = [
   "}",
 ].join("\n");
 
-function SecurePatternsScreen({
-  onContinue,
-}: {
-  onContinue: () => void;
-}) {
+function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
-  const [selectedRequiredChecks, setSelectedRequiredChecks] = useState<string[]>([]);
+  const [selectedRequiredChecks, setSelectedRequiredChecks] = useState<
+    string[]
+  >([]);
   const securePatternReviewed = selectedAnswerId === "bind_accounts_to_config";
   const securePatternCheckPassed = requiredSecurePatternChecks.every((check) =>
     selectedRequiredChecks.includes(check.id)
   );
-  const canContinue =
-    securePatternReviewed && securePatternCheckPassed;
+  const canContinue = securePatternReviewed && securePatternCheckPassed;
   const completionCopy = canContinue
     ? "Secure pattern completed. Continue to certify this knowledge on-chain."
     : "Complete the Secure Pattern review to unlock your Account Substitution certificate.";
@@ -1393,10 +1456,15 @@ function SecurePatternsScreen({
           </div>
 
           <section className="py-1">
-            <h4 className="text-sm font-semibold text-white">Validation checklist</h4>
+            <h4 className="text-sm font-semibold text-white">
+              Validation checklist
+            </h4>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {securePatternValidationChecklist.map((item) => (
-                <div key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-300">
+                <div
+                  key={item}
+                  className="flex items-start gap-3 text-sm leading-6 text-zinc-300"
+                >
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#14f195]" />
                   <span>{item}</span>
                 </div>
@@ -1405,21 +1473,37 @@ function SecurePatternsScreen({
           </section>
 
           <section className="py-1">
-            <h4 className="text-sm font-semibold text-white">Credit assignment contrast</h4>
+            <h4 className="text-sm font-semibold text-white">
+              Credit assignment contrast
+            </h4>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-              The issue is not the credit update itself. It is whether the account relationship is proven before value is assigned.
+              The issue is not the credit update itself. It is whether the
+              account relationship is proven before value is assigned.
             </p>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <SecurePatternCodeBlock title="Unbound account credit" code={badPatternCode} tone="bad" />
-              <SecurePatternCodeBlock title="Bound account validation" code={saferPatternCode} tone="safe" />
+              <SecurePatternCodeBlock
+                title="Unbound account credit"
+                code={badPatternCode}
+                tone="bad"
+              />
+              <SecurePatternCodeBlock
+                title="Bound account validation"
+                code={saferPatternCode}
+                tone="safe"
+              />
             </div>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-            <h4 className="text-sm font-semibold text-white">Researcher checklist</h4>
+            <h4 className="text-sm font-semibold text-white">
+              Researcher checklist
+            </h4>
             <div className="mt-4 space-y-3">
               {securePatternResearcherChecklist.map((item) => (
-                <div key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-300">
+                <div
+                  key={item}
+                  className="flex items-start gap-3 text-sm leading-6 text-zinc-300"
+                >
                   <ShieldPlus className="mt-0.5 h-4 w-4 shrink-0 text-[#b892ff]" />
                   <span>{item}</span>
                 </div>
@@ -1502,7 +1586,9 @@ function SecurePatternsScreen({
                   : "border-white/10 bg-white/[0.035]"
               }`}
             >
-              <p className="text-sm leading-6 text-zinc-300">{completionCopy}</p>
+              <p className="text-sm leading-6 text-zinc-300">
+                {completionCopy}
+              </p>
             </div>
           </div>
 
@@ -1521,7 +1607,9 @@ function SecurePatternsScreen({
                   : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
               }`}
             >
-              {canContinue ? "Continue to Certify Knowledge →" : "Certify Knowledge"}
+              {canContinue
+                ? "Continue to Certify Knowledge →"
+                : "Certify Knowledge"}
             </button>
             {!canContinue ? (
               <p className="mt-2 text-xs text-zinc-600">
@@ -1540,79 +1628,87 @@ function CertifyKnowledgeScreen({
   assetUrl,
   isMinting,
   minted,
+  onNextModule,
   onMint,
 }: {
   assetId?: string | null;
   assetUrl?: string | null;
   isMinting: boolean;
   minted: boolean;
+  onNextModule: () => void;
   onMint: () => void;
 }) {
   return (
     <section className="w-full">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="rounded-3xl border border-[#9945ff]/18 bg-[#9945ff]/[0.045] p-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff]">
-            <ShieldCheck className="h-6 w-6" />
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-7 py-1">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Knowledge Certification
+            </p>
+            <h3 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
+              Certify Knowledge
+            </h3>
+            <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
+              You verified impact, submitted the audit report, and reviewed the
+              secure account-binding pattern. Mint the Level 1 certificate to
+              record Account Substitution completion to your wallet.
+            </p>
           </div>
-          <h3 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-white">
-            Certify Knowledge<span className="text-[#9945ff]">.</span>
-          </h3>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
-            You verified impact, reported the finding, and reviewed the secure
-            account-binding pattern. Mint the Level 1 certificate to record this
-            completion to your wallet.
-          </p>
 
           <ReportProgressStepper activeStep={5} />
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <CertificationFact label="Lab" value="Research Lab 1" />
-            <CertificationFact label="Module" value="The Illusionist" />
-            <CertificationFact label="Credential" value="Level 1 cNFT" />
-          </div>
+          <section className="max-w-2xl border-y border-white/10 py-5">
+            <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
+              <CertificationSummaryRow label="Lab" value="Research Lab 1" />
+              <CertificationSummaryRow
+                label="Module"
+                value="Account Substitution"
+              />
+              <CertificationSummaryRow
+                label="Credential"
+                value="Level 1 cNFT"
+              />
+            </div>
+          </section>
         </div>
 
-        <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
-          <div className="flex items-center gap-3">
-            <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
-            <p className="text-xl font-semibold tracking-[-0.03em] text-white">
-              Certification
-            </p>
-          </div>
-
-          <div className="mt-5 border-t border-white/10 pt-5">
+        <aside className="h-fit rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              Unlocks
+              Certification Checkpoint
             </p>
-            <p className="mt-3 text-sm font-semibold text-white">
-              Level 1: The Illusionist
+            <p className="mt-3 text-lg font-semibold tracking-[-0.02em] text-white">
+              Account Substitution
             </p>
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Wallet-bound proof that you completed the account substitution
-              lab path.
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Wallet-bound proof that you completed the account substitution lab
+              path.
             </p>
           </div>
 
-          <div
-            className={`mt-6 rounded-2xl border p-4 ${
-              minted
-                ? "border-[#14f195]/25 bg-[#14f195]/8"
-                : "border-white/10 bg-white/[0.035]"
-            }`}
-          >
-            <p className="text-sm font-semibold text-white">
-              {minted ? "Certification minted" : "Ready to mint"}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              {minted
-                ? "The Level 1 certificate is already recorded for this wallet."
-                : "Use the same wallet that completed the research lab flow."}
-            </p>
+          <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
+            <CertificationCheckpointRow
+              label="Review"
+              value="Secure pattern completed"
+              complete
+            />
+            <CertificationCheckpointRow
+              label="Mint"
+              value={
+                minted ? "Certificate recorded" : "Wallet signature required"
+              }
+              complete={minted}
+            />
             {minted && assetId ? (
-              <p className="mt-3 break-all font-mono text-xs text-[#8fffd0]">
-                {assetId}
-              </p>
+              <div className="border-t border-white/10 pt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+                  Asset
+                </p>
+                <p className="mt-2 break-all font-mono text-xs leading-5 text-[#8fffd0]">
+                  {assetId}
+                </p>
+              </div>
             ) : null}
           </div>
 
@@ -1639,13 +1735,24 @@ function CertifyKnowledgeScreen({
               View certificate asset
             </a>
           ) : null}
+
+          {minted ? (
+            <button
+              type="button"
+              onClick={onNextModule}
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-100 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+            >
+              Next Module
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          ) : null}
         </aside>
       </div>
     </section>
   );
 }
 
-function CertificationFact({
+function CertificationSummaryRow({
   label,
   value,
 }: {
@@ -1653,11 +1760,36 @@ function CertificationFact({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+    <>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
         {label}
       </p>
-      <p className="mt-2 text-sm font-semibold text-zinc-100">{value}</p>
+      <p className="min-w-0 text-sm font-semibold text-zinc-100">{value}</p>
+    </>
+  );
+}
+
+function CertificationCheckpointRow({
+  complete,
+  label,
+  value,
+}: {
+  complete: boolean;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <span className="text-zinc-500">{label}</span>
+      <span className="inline-flex items-center gap-2 text-right font-medium text-zinc-200">
+        <span
+          aria-hidden="true"
+          className={`h-2 w-2 rounded-full ${
+            complete ? "bg-[#14f195]" : "bg-zinc-600"
+          }`}
+        />
+        {value}
+      </span>
     </div>
   );
 }
@@ -1745,7 +1877,8 @@ function AuditReportSubmitted({
           Audit Report Submitted
         </p>
         <p className="mt-3 text-sm leading-6 text-zinc-300">
-          Research Lab 1 completion is recorded. The final audit report has been submitted.
+          Research Lab 1 completion is recorded. The final audit report has been
+          submitted.
         </p>
         {feedback ? (
           <p className="mt-2 text-sm leading-6 text-[#8fffd0]">{feedback}</p>
@@ -1767,7 +1900,10 @@ function AuditReportSubmitted({
             snippet={report.rootCauseSnippet}
             title="Root Cause"
           />
-          <AuditReportSection title="Proof of Impact" body={report.proofOfImpact} />
+          <AuditReportSection
+            title="Proof of Impact"
+            body={report.proofOfImpact}
+          />
           <AuditReportSection title="Evidence" body={report.evidence} />
           <AuditReportSection
             title="Recommended Mitigation"
@@ -1859,10 +1995,10 @@ function ReportChoiceGroup({
 
   return (
     <fieldset className="border-b border-white/10 pb-7">
-      <legend className="text-sm font-semibold text-white">
-        {label}
-      </legend>
-      {helper ? <p className="mt-1.5 text-sm leading-6 text-zinc-500">{helper}</p> : null}
+      <legend className="text-sm font-semibold text-white">{label}</legend>
+      {helper ? (
+        <p className="mt-1.5 text-sm leading-6 text-zinc-500">{helper}</p>
+      ) : null}
       <div className="mt-4 grid gap-2">
         {options.map((option) => {
           const selected = value === option.id;

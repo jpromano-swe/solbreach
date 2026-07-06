@@ -2,13 +2,34 @@
 
 import { useEffect } from "react";
 
-import type { QuestionnaireAnswer, QuestionnaireQuestion, QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
-import type { LabTransactionPayload, ResearchLabFile, ResearchLabReport, ResearchLabReportFields, SandboxAccountSummary } from "../../lib/research-labs/lab-state";
+import type {
+  QuestionnaireAnswer,
+  QuestionnaireQuestion,
+  QuestionnaireResult,
+} from "../../lib/research-labs/rl1-questionnaire";
+import type {
+  LabTransactionPayload,
+  ResearchLabFile,
+  ResearchLabReport,
+  ResearchLabReportFields,
+  SandboxAccountSummary,
+} from "../../lib/research-labs/lab-state";
 import { ExploitTab } from "./execute-exploit-tab";
 import { InspectTab } from "./inspect-tab";
 import { ReportTab } from "./report-tab";
-import type { AccountEvidence, AuditReportStage, EnrichedTransactionResult, ExecuteExploitView, ReviewMode, WorkspaceTab } from "./types";
-import { AnimatedContentSwitch, RESEARCH_LAB_TAB_TRANSITION_ORDER, WorkspaceTabs } from "./workspace-tabs";
+import type {
+  AccountEvidence,
+  AuditReportStage,
+  EnrichedTransactionResult,
+  ExecuteExploitView,
+  ReviewMode,
+  WorkspaceTab,
+} from "./types";
+import {
+  AnimatedContentSwitch,
+  RESEARCH_LAB_TAB_TRANSITION_ORDER,
+  WorkspaceTabs,
+} from "./workspace-tabs";
 
 export function ResearchLabWorkspace({
   activeFile,
@@ -53,6 +74,7 @@ export function ResearchLabWorkspace({
   onReviewStart,
   onSaveReport,
   onSubmitReport,
+  onContinueToLevel2,
   onMintLevel1Certificate,
   onSelectFile,
   onTabChange,
@@ -103,6 +125,7 @@ export function ResearchLabWorkspace({
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
   }) => Promise<ResearchLabReport | null | undefined>;
+  onContinueToLevel2: () => void;
   onMintLevel1Certificate: () => void;
   onSelectFile: (path: string) => void;
   onTabChange: (tab: WorkspaceTab) => void;
@@ -116,9 +139,7 @@ export function ResearchLabWorkspace({
   }, [activeTab, onChangeExecuteExploitView]);
 
   const workspaceHeightClass =
-    activeTab === "inspect"
-      ? "min-h-[720px] 2xl:min-h-[780px]"
-      : "h-fit";
+    activeTab === "inspect" ? "min-h-[720px] 2xl:min-h-[780px]" : "h-fit";
   const workspaceContentClass =
     activeTab === "inspect"
       ? "min-h-0 flex-1 overflow-hidden"
@@ -145,7 +166,9 @@ export function ResearchLabWorkspace({
         txResults={txResults}
         onChangeView={onChangeExecuteExploitView}
         onExecuteTransaction={onExecuteTransaction}
-        onOpenEvidenceReview={() => onChangeExecuteExploitView("EVIDENCE_REVIEW")}
+        onOpenEvidenceReview={() =>
+          onChangeExecuteExploitView("EVIDENCE_REVIEW")
+        }
         onProveImpact={onProveImpact}
       />
     ) : (
@@ -180,13 +203,20 @@ export function ResearchLabWorkspace({
         onReviewStart={onReviewStart}
         onSave={onSaveReport}
         onSubmitReport={onSubmitReport}
+        onContinueToLevel2={onContinueToLevel2}
         onMintLevel1Certificate={onMintLevel1Certificate}
       />
     );
 
   return (
-    <div className={`flex min-w-0 flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#111212]/85 shadow-2xl shadow-black/30 backdrop-blur-xl ${workspaceHeightClass}`}>
-      <WorkspaceTabs activeTab={activeTab} availableTabs={availableTabs} onTabChange={onTabChange} />
+    <div
+      className={`flex min-w-0 flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#111212]/85 shadow-2xl shadow-black/30 backdrop-blur-xl ${workspaceHeightClass}`}
+    >
+      <WorkspaceTabs
+        activeTab={activeTab}
+        availableTabs={availableTabs}
+        onTabChange={onTabChange}
+      />
       <div className={workspaceContentClass}>
         <AnimatedContentSwitch
           className={transitionFitClass}

@@ -44,9 +44,9 @@ const DEFAULT_LEVEL_3_BOUNTY_VAULT = "";
 const DEFAULT_LEVEL_3_EXTERNAL_PROGRAM = "";
 const DEFAULT_LEVEL_3_REWARD_ACCOUNT = "";
 const DEFAULT_LEVEL_3_REWARD_MINT = "";
-const SOLBREACH_DOCUMENTATION_URL = "https://solbreach.gitbook.io/documentation";
-const ENABLE_APP_ENTRY =
-  process.env.NEXT_PUBLIC_ENABLE_APP_ENTRY === "true";
+const SOLBREACH_DOCUMENTATION_URL =
+  "https://solbreach.gitbook.io/documentation";
+const ENABLE_APP_ENTRY = process.env.NEXT_PUBLIC_ENABLE_APP_ENTRY === "true";
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -520,6 +520,10 @@ export default function Home() {
               isMintingLevel1Certificate={mintingLevel === "level1"}
               level1CertificateAssetId={level1Certificate?.assetId ?? null}
               level1CertificateMinted={Boolean(level1Certificate?.minted)}
+              onContinueToLevel2={() => {
+                setActiveSection("levels");
+                setActiveLevelsView("level2");
+              }}
               onMintLevel1Certificate={mintLevel1}
             />
           ) : activeSection === "vulnerabilities" ? (

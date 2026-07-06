@@ -219,7 +219,7 @@ export function useCertificateMinting({
 
         if (
           level === 1 &&
-          backendAccessToken &&
+          canMintFromBackendCompletion &&
           "assetId" in payload &&
           "certificatePda" in payload
         ) {
