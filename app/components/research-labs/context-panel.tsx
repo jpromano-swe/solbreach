@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { driver } from "driver.js";
 
@@ -739,12 +739,16 @@ function CertificateCheckpointPanel({
         </div>
       ) : null}
 
-      <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
+      <div className="mt-5 flex flex-col items-start gap-3 border-t border-white/10 pt-5">
         <button
           type="button"
           onClick={onMint}
           disabled={minted || isMinting}
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-55"
+          className={`inline-flex min-h-11 w-auto min-w-[190px] items-center justify-center rounded-xl px-5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+            minted
+              ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-zinc-500"
+              : "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
+          } disabled:cursor-not-allowed disabled:opacity-70`}
         >
           {minted
             ? "Level 1 cNFT minted"
@@ -758,7 +762,7 @@ function CertificateCheckpointPanel({
             href={assetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+            className="inline-flex min-h-10 w-auto min-w-[190px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
           >
             View certificate asset
           </a>
@@ -768,9 +772,13 @@ function CertificateCheckpointPanel({
           <button
             type="button"
             onClick={onNextModule}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-zinc-100 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+            className="group inline-flex min-h-11 w-auto min-w-[190px] items-center justify-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-semibold text-white shadow-[0_18px_50px_-28px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
           >
             Next Module
+            <ArrowRight
+              className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+              aria-hidden="true"
+            />
           </button>
         ) : null}
       </div>

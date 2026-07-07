@@ -1567,15 +1567,19 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
               type="button"
               onClick={onContinue}
               disabled={!canContinue}
-              className={`mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+              className={`group mt-4 inline-flex min-h-11 w-auto min-w-[220px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
                 canContinue
                   ? "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
                   : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
               }`}
             >
-              {canContinue
-                ? "Continue to Certify Knowledge →"
-                : "Certify Knowledge"}
+              {canContinue ? "Continue to Certify Knowledge" : "Certify Knowledge"}
+              {canContinue ? (
+                <ArrowRight
+                  className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+                  aria-hidden="true"
+                />
+              ) : null}
             </button>
             {!canContinue ? (
               <p className="mt-2 text-xs text-zinc-600">
