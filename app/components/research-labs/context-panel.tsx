@@ -739,7 +739,7 @@ function CertificateCheckpointPanel({
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-col items-start gap-3 border-t border-white/10 pt-5">
+      <div className="mt-5 flex flex-col items-center gap-3 border-t border-white/10 pt-5">
         <button
           type="button"
           onClick={onMint}
