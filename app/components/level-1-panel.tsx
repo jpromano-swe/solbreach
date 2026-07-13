@@ -144,20 +144,28 @@ const elk = new ELK();
 export function Level1Panel({
   address,
   copied,
+  isCollectingLevel1Badge,
   isLoading,
   isSending,
+  level1BadgeCollected,
+  level1BadgeEarned,
   level1Error,
   level1State,
+  onCollectLevel1Badge,
   onCopy,
   stage,
   status,
 }: {
   address?: string;
   copied: string | null;
+  isCollectingLevel1Badge: boolean;
   isLoading: boolean;
   isSending: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
   level1Error: unknown;
   level1State?: Level1Snapshot;
+  onCollectLevel1Badge: () => void;
   onCopy: (label: string, value: string) => Promise<void>;
   onDeposit: () => Promise<void>;
   onInitBank: () => Promise<void>;
@@ -440,8 +448,12 @@ export function Level1Panel({
                   <Level1StateFooter
                     copied={copied}
                     isLoading={labStage === 2 ? isLoading : false}
+                    isCollectingLevel1Badge={isCollectingLevel1Badge}
+                    level1BadgeCollected={level1BadgeCollected}
+                    level1BadgeEarned={level1BadgeEarned}
                     level1Error={labStage === 2 ? level1Error : null}
                     level1State={level1State}
+                    onCollectLevel1Badge={onCollectLevel1Badge}
                     onCopy={onCopy}
                     progress={progress}
                   />
@@ -1452,16 +1464,24 @@ function ProtocolActivityRow({
 
 function Level1StateFooter({
   copied,
+  isCollectingLevel1Badge,
   isLoading,
+  level1BadgeCollected,
+  level1BadgeEarned,
   level1Error,
   level1State,
+  onCollectLevel1Badge,
   onCopy,
   progress,
 }: {
   copied: string | null;
+  isCollectingLevel1Badge: boolean;
   isLoading: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
   level1Error: unknown;
   level1State?: Level1Snapshot;
+  onCollectLevel1Badge: () => void;
   onCopy: (label: string, value: string) => Promise<void>;
   progress: number;
 }) {
@@ -1511,6 +1531,36 @@ function Level1StateFooter({
             ? "Bank PDA copied"
             : `Bank ${compactAddress(level1State.bankPda, 4, 4)}`}
         </button>
+      ) : null}
+      {level1BadgeEarned || level1BadgeCollected ? (
+        <div className="rounded-[18px] border border-emerald-400/20 bg-emerald-400/[0.055] p-4">
+          <p className="text-sm font-medium text-foreground">
+            Level 1 badge ready
+          </p>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Collect the badge for the wallet that completed this exploit path.
+          </p>
+          <button
+            type="button"
+            onClick={onCollectLevel1Badge}
+            disabled={
+              level1BadgeCollected ||
+              isCollectingLevel1Badge ||
+              !level1BadgeEarned
+            }
+            className={`mt-4 min-h-10 w-full rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${
+              level1BadgeCollected || !level1BadgeEarned
+                ? "border border-border bg-accent text-muted"
+                : "bg-purple-500 text-white hover:bg-purple-400"
+            }`}
+          >
+            {level1BadgeCollected
+              ? "Badge collected"
+              : isCollectingLevel1Badge
+                ? "Collecting..."
+                : "Collect Badge"}
+          </button>
+        </div>
       ) : null}
     </div>
   );

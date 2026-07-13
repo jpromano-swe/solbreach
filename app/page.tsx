@@ -421,10 +421,18 @@ export default function Home() {
 
   useEffect(() => {
     if (status !== "connected") return;
-    if (!level1Completed && !level2Completed && !level3Completed) return;
+    if (
+      !level1BackendCompleted &&
+      !level1Completed &&
+      !level2Completed &&
+      !level3Completed
+    ) {
+      return;
+    }
 
     void mutateBadges();
   }, [
+    level1BackendCompleted,
     level1Completed,
     level2Completed,
     level3Completed,
@@ -478,13 +486,19 @@ export default function Home() {
                 <div className="space-y-8">
                   {activeLevel === "level1" ? (
                     <Level1Panel
-                      key={`${address ?? "no-wallet"}:${level1Stage.level1Mode ?? "idle"}`}
+                      key={`${address ?? "no-wallet"}:${level1Completed ? "complete" : "active"}`}
                       address={address}
                       copied={copied}
+                      isCollectingLevel1Badge={isCollectingLevel1Badge}
                       isLoading={isLevel1PanelLoading}
                       isSending={isSending || isLevel1BackendBusy}
+                      level1BadgeCollected={Boolean(level1Badge?.seenAt)}
+                      level1BadgeEarned={
+                        Boolean(level1Badge?.earned) || level1BackendCompleted
+                      }
                       level1Error={level1PanelError}
                       level1State={level1PanelState}
+                      onCollectLevel1Badge={collectLevel1Badge}
                       onCopy={handleCopy}
                       onDeposit={handleDepositLevel1}
                       onInitBank={handleInitBank}
