@@ -87,8 +87,8 @@ export function ProfileCertificatesSection({
             Hacker Profile
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Track backend-earned badges, special event badges, and wallet-bound
-            certificates tied to this SolBreach account.
+            Track your SolBreach progress, collected badges, special rewards,
+            and certificates in one place.
           </p>
         </div>
 
@@ -101,12 +101,12 @@ export function ProfileCertificatesSection({
           <MiniStat
             label="Badges"
             value={`${badgeSummary?.earned ?? badges?.filter((badge) => badge.earned).length ?? 0}/${badgeSummary?.total ?? badges?.length ?? 4}`}
-            detail="Backend rewards"
+            detail="Collected rewards"
           />
           <MiniStat
             label="Certificates"
             value={`${mintedCount}/${PROFILE_LEVEL_NUMBERS.length}`}
-            detail="Recorded cNFTs"
+            detail="Proof of mastery"
           />
         </div>
       </div>
@@ -117,26 +117,26 @@ export function ProfileCertificatesSection({
             Connect a wallet to inspect your SolBreach profile.
           </p>
           <p className="mt-2 text-sm leading-6 text-muted">
-            The certificate gallery is loaded from the backend profile contract
-            for this wallet.
+            Your profile will show completed modules, badges, and certificates
+            for the connected wallet.
           </p>
         </div>
       ) : (
         <>
           <ProfileBadgesSection
+            badges={specialBadges}
+            emptyCopy="Special badges for events, cohorts, and milestone achievements will appear here."
+            isLoading={Boolean(isBadgeLoading)}
+            title="Special Badges"
+          />
+          <ProfileBadgesSection
             badges={coreBadges}
             isLoading={Boolean(isBadgeLoading)}
             title="Badges"
           />
-          <ProfileBadgesSection
-            badges={specialBadges}
-            emptyCopy="Special badges for events, cohorts, and power users will appear here."
-            isLoading={Boolean(isBadgeLoading)}
-            title="Special Badges"
-          />
           <section>
             <SectionHeading
-              description="Certificates stay wallet-bound and on-chain. Badges are backend-earned product rewards."
+              description="Certificates represent completed learning milestones and sit alongside your badge collection."
               title="Certificates"
             />
             {isLoading ? (
@@ -185,8 +185,8 @@ function ProfileBadgesSection({
       <SectionHeading
         description={
           title === "Special Badges"
-            ? "Reserved for event badges, cohort badges, and higher-order achievements like Power User."
-            : "Badges are earned from backend-verified level completion."
+            ? "Limited rewards for events, cohorts, and milestone achievements."
+            : "Badges mark the modules you complete across SolBreach."
         }
         title={title}
       />
