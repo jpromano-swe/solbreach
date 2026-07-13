@@ -1,0 +1,77 @@
+"use client";
+
+import Image from "next/image";
+import { ArrowRight, X } from "lucide-react";
+import type { UserBadge } from "../lib/badges";
+
+export function BadgeEarnedDialog({
+  badge,
+  onClose,
+  onOpenProfile,
+}: {
+  badge: UserBadge | null;
+  onClose: () => void;
+  onOpenProfile: () => void;
+}) {
+  if (!badge) return null;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/72 px-4 backdrop-blur-md">
+      <div className="relative w-full max-w-[460px] overflow-hidden rounded-[32px] border border-[#9945ff]/30 bg-[#07090d] p-6 shadow-[0_40px_140px_-60px_rgba(153,69,255,0.95)]">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close badge dialog"
+          className="absolute right-5 top-5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-muted transition hover:text-foreground"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(153,69,255,0.22),transparent_46%),radial-gradient(circle_at_10%_85%,rgba(20,241,149,0.14),transparent_36%)]" />
+
+        <div className="relative">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#14f195]">
+            Badge earned
+          </p>
+          <div className="mx-auto mt-6 flex h-48 w-48 items-center justify-center rounded-full bg-white/[0.03]">
+            <Image
+              src={badge.image}
+              alt={`${badge.title} badge`}
+              width={176}
+              height={176}
+              className="h-44 w-44 object-contain drop-shadow-[0_24px_45px_rgba(153,69,255,0.35)]"
+              priority
+            />
+          </div>
+
+          <div className="mt-6 text-center">
+            <h2 className="text-4xl font-semibold tracking-[-0.07em] text-foreground">
+              {badge.title}
+            </h2>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted">
+              {badge.description}
+            </p>
+          </div>
+
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-semibold text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition hover:bg-[#8b35f6]"
+            >
+              View profile
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-12 rounded-full border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-foreground transition hover:bg-white/[0.07]"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

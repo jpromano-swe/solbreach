@@ -62,6 +62,7 @@ export function ResearchLabsSection({
   isMintingLevel1Certificate,
   level1CertificateAssetId,
   level1CertificateMinted,
+  onBadgeStateChanged,
   onContinueToLevel2,
   onMintLevel1Certificate,
 }: {
@@ -69,6 +70,7 @@ export function ResearchLabsSection({
   isMintingLevel1Certificate: boolean;
   level1CertificateAssetId?: string | null;
   level1CertificateMinted: boolean;
+  onBadgeStateChanged?: () => void;
   onContinueToLevel2: () => void;
   onMintLevel1Certificate: (
     authorization?: Level1ResearchLabMintAuthorization
@@ -536,6 +538,17 @@ export function ResearchLabsSection({
     });
   }, [activeBackendAuth, onMintLevel1Certificate, session]);
 
+  const submitReportAndRefreshBadges = useCallback(
+    async (options?: Parameters<typeof submitReport>[0]) => {
+      const submitted = await submitReport(options);
+      if (submitted?.status === "accepted" && submitted.labCompleted) {
+        onBadgeStateChanged?.();
+      }
+      return submitted;
+    },
+    [onBadgeStateChanged, submitReport]
+  );
+
   if (!activeLab || !session) {
     return (
       <ResearchLabCatalog
@@ -611,7 +624,7 @@ export function ResearchLabsSection({
             onReviewIndexChange={setReviewIndex}
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
-            onSubmitReport={submitReport}
+            onSubmitReport={submitReportAndRefreshBadges}
             onSelectFile={setActiveFilePath}
             onTabChange={changeWorkspaceTab}
             isReportSaving={isReportSaving}

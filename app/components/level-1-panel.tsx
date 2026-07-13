@@ -285,7 +285,7 @@ export function Level1Panel({
   const showCertificationAction =
     Boolean(certificationAction) &&
     (stage.level1Mode === "complete" ||
-      certificationAction?.label !== "Mint Locked");
+      certificationAction?.label !== "Badge locked");
 
   useEffect(() => {
     if (labStage !== 1 || !normalDepositObserved) return;
@@ -1540,17 +1540,16 @@ function Level1CertificationFooter({
   return (
     <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
       <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
-        Certification unlocked
+        Badge reward
       </p>
       <p className="mt-2 text-sm leading-6 text-muted">
-        Level 1 verification is recorded. Mint the wallet-bound certification
-        for this exploit path.
+        Level 1 verification is recorded. The backend awards this badge to the
+        wallet that completed the exploit path.
       </p>
       <div className="mt-4">
         <button
           type="button"
-          onClick={action.onMint}
-          disabled={action.disabled}
+          disabled
           className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
         >
           {action.label}

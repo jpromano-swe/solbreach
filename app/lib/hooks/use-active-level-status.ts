@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Address } from "@solana/kit";
-import type { LevelCertificateSnapshot } from "../certificates/certificate-state";
+import { getLevelBadge, type UserBadge } from "../badges";
 import type { MissionStatusData } from "../../components/level-workspace";
 import { compactAddress } from "../../components/level-ui";
 import {
@@ -23,66 +23,48 @@ const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 
 function getMintState({
   activeLevel,
-  isMinted,
+  badges,
   level0Completed,
   level1Completed,
   level2Completed,
   level3Completed,
-  mintingLevel,
-  onMintLevel0,
-  onMintLevel1,
-  onMintLevel2,
-  onMintLevel3,
 }: {
   activeLevel: LevelId;
-  isMinted: boolean;
+  badges?: UserBadge[];
   level0Completed?: boolean;
   level1Completed: boolean;
   level2Completed: boolean;
   level3Completed: boolean;
-  mintingLevel: LevelId | null;
-  onMintLevel0: () => void;
-  onMintLevel1: () => void;
-  onMintLevel2: () => void;
-  onMintLevel3: () => void;
 }) {
-  if (isMinted) {
+  if (activeLevel === "level0") {
     return {
       mintDisabled: true,
-      mintLabel: "Certification Minted",
+      mintLabel: level0Completed ? "Warmup complete" : "Complete warmup",
       onMint: () => {},
     };
   }
 
-  const config = {
-    level0: {
-      completed: Boolean(level0Completed),
-      onMint: onMintLevel0,
-    },
-    level1: {
-      completed: level1Completed,
-      onMint: onMintLevel1,
-    },
-    level2: {
-      completed: level2Completed,
-      onMint: onMintLevel2,
-    },
-    level3: {
-      completed: level3Completed,
-      onMint: onMintLevel3,
-    },
-  }[activeLevel];
+  const levelOrder = Number(activeLevel.replace("level", ""));
+  const badge = badges ? getLevelBadge(badges, levelOrder) : null;
 
-  const isMinting = mintingLevel === activeLevel;
+  if (badge?.earned) {
+    return {
+      mintDisabled: true,
+      mintLabel: "Badge earned",
+      onMint: () => {},
+    };
+  }
+
+  const completed = {
+    level1: level1Completed,
+    level2: level2Completed,
+    level3: level3Completed,
+  }[activeLevel as "level1" | "level2" | "level3"];
 
   return {
-    mintDisabled: !config.completed || isMinting,
-    mintLabel: isMinting
-      ? "Minting..."
-      : config.completed
-        ? "Unlock Certification"
-        : "Mint Locked",
-    onMint: config.onMint,
+    mintDisabled: true,
+    mintLabel: completed ? "Badge syncing" : "Badge locked",
+    onMint: () => {},
   };
 }
 
@@ -96,57 +78,39 @@ function walletRow(status: string, address?: Address) {
 export function useActiveLevelStatus({
   activeLevel,
   address,
+  badges,
   cluster,
-  level0Certificate,
   level0State,
-  level1Certificate,
-  level1CertificationMinted,
   level1Completed,
   level1StageBadge,
   level1State,
-  level2Certificate,
   level2Completed,
   level2Hijacked,
   level2StageBadge,
   level2State,
-  level3Certificate,
   level3Completed,
   level3StageBadge,
   level3State,
   levelTiles,
-  mintingLevel,
-  onMintLevel0,
-  onMintLevel1,
-  onMintLevel2,
-  onMintLevel3,
   stageBadge,
   status,
 }: {
   activeLevel: LevelId | null;
   address?: Address;
+  badges?: UserBadge[];
   cluster: ClusterMoniker;
-  level0Certificate?: LevelCertificateSnapshot;
   level0State?: Level0Snapshot;
-  level1Certificate?: LevelCertificateSnapshot;
-  level1CertificationMinted: boolean;
   level1Completed: boolean;
   level1StageBadge: string;
   level1State?: Level1Snapshot;
-  level2Certificate?: LevelCertificateSnapshot;
   level2Completed: boolean;
   level2Hijacked: boolean;
   level2StageBadge: string;
   level2State?: Level2Snapshot;
-  level3Certificate?: LevelCertificateSnapshot;
   level3Completed: boolean;
   level3StageBadge: string;
   level3State?: Level3Snapshot;
   levelTiles: LevelTileConfig[];
-  mintingLevel: LevelId | null;
-  onMintLevel0: () => void;
-  onMintLevel1: () => void;
-  onMintLevel2: () => void;
-  onMintLevel3: () => void;
   stageBadge: string;
   status: string;
 }): MissionStatusData | null {
@@ -157,29 +121,13 @@ export function useActiveLevelStatus({
 
     const activeTile =
       levelTiles.find((tile) => tile.id === activeLevel) ?? null;
-    const activeCertificate =
-      {
-        level0: level0Certificate,
-        level1: level1Certificate,
-        level2: level2Certificate,
-        level3: level3Certificate,
-      }[activeLevel] ?? null;
-    const activeLevelCertificateMinted =
-      activeLevel === "level1"
-        ? level1CertificationMinted
-        : Boolean(activeCertificate?.minted);
     const mintState = getMintState({
       activeLevel,
-      isMinted: activeLevelCertificateMinted,
+      badges,
       level0Completed: level0State?.isCompleted,
       level1Completed,
       level2Completed,
       level3Completed,
-      mintingLevel,
-      onMintLevel0,
-      onMintLevel1,
-      onMintLevel2,
-      onMintLevel3,
     });
 
     const chipLabel = activeTile ? getStatusLabel(activeTile.status) : "Ready";
@@ -308,29 +256,20 @@ export function useActiveLevelStatus({
   }, [
     activeLevel,
     address,
+    badges,
     cluster,
-    level0Certificate,
     level0State,
-    level1Certificate,
-    level1CertificationMinted,
     level1Completed,
     level1StageBadge,
     level1State,
-    level2Certificate,
     level2Completed,
     level2Hijacked,
     level2StageBadge,
     level2State,
-    level3Certificate,
     level3Completed,
     level3StageBadge,
     level3State,
     levelTiles,
-    mintingLevel,
-    onMintLevel0,
-    onMintLevel1,
-    onMintLevel2,
-    onMintLevel3,
     stageBadge,
     status,
   ]);

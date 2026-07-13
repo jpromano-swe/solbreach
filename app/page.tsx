@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Address } from "@solana/kit";
 import { AppHeader } from "./components/app-header";
+import { BadgeEarnedDialog } from "./components/badge-earned-dialog";
 import { BetaAccessSection } from "./components/beta-access-section";
 import { GridBackground } from "./components/grid-background";
 import { LandingPageSection } from "./components/landing-page-section";
@@ -29,6 +30,7 @@ import { useLevelRoute } from "./lib/hooks/use-level-route";
 import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useLevelStageConfigs } from "./lib/hooks/use-level-stage-configs";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
+import { useUserBadges } from "./lib/hooks/use-user-badges";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import { trackAnalyticsEvent } from "./lib/analytics";
@@ -74,6 +76,13 @@ export default function Home() {
   } = useLevelRoute();
   const [copied, setCopied] = useState<string | null>(null);
   const trackedLevelViewsRef = useRef<Set<string>>(new Set());
+  const {
+    badges,
+    isLoading: isBadgeLoading,
+    markSeen: markBadgeSeen,
+    mutate: mutateBadges,
+    summary: badgeSummary,
+  } = useUserBadges({ enabled: status === "connected", wallet });
   const {
     backendAuth: level1BackendAuth,
     backendCompleted: level1BackendCompleted,
@@ -158,12 +167,14 @@ export default function Home() {
       mutateLevel1BackendStatus(),
       mutateLevel2BackendStatus(),
       mutateLevel3BackendStatus(),
+      mutateBadges(),
       walletBalance.mutate(),
     ]);
   }, [
     mutateLevel1BackendStatus,
     mutateLevel2BackendStatus,
     mutateLevel3BackendStatus,
+    mutateBadges,
     refreshSnapshots,
     walletBalance,
   ]);
@@ -216,7 +227,6 @@ export default function Home() {
     : (level1BackendCertificateSnapshot ?? chainLevel1Certificate);
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
-  const level1CertificationMinted = Boolean(level1Certificate?.minted);
   const level2Hijacked = Boolean(address && level2State?.commander === address);
   const level3DelegationReady =
     level3BackendCompleted ||
@@ -237,7 +247,7 @@ export default function Home() {
       level1State,
     });
 
-  const { mintingLevel, mintLevel0, mintLevel1, mintLevel2, mintLevel3 } =
+  const { mintingLevel, mintLevel1 } =
     useCertificateMinting({
       address,
       certificates: {
@@ -312,31 +322,30 @@ export default function Home() {
     activeLevel,
     address,
     cluster,
-    level0Certificate,
     level0State,
-    level1Certificate,
-    level1CertificationMinted,
     level1Completed,
     level1StageBadge: level1Stage.badge,
     level1State,
-    level2Certificate,
     level2Completed,
     level2Hijacked,
     level2StageBadge: level2Stage.badge,
     level2State,
-    level3Certificate,
     level3Completed,
     level3StageBadge: level3Stage.badge,
     level3State,
     levelTiles,
-    mintingLevel,
-    onMintLevel0: mintLevel0,
-    onMintLevel1: mintLevel1,
-    onMintLevel2: mintLevel2,
-    onMintLevel3: mintLevel3,
+    badges,
     stageBadge: stage.badge,
     status,
   });
+
+  const unseenEarnedBadge =
+    badges.find((badge) => badge.earned && !badge.seenAt) ?? null;
+
+  const closeBadgeDialog = useCallback(() => {
+    if (!unseenEarnedBadge) return;
+    void markBadgeSeen(unseenEarnedBadge.slug);
+  }, [markBadgeSeen, unseenEarnedBadge]);
 
   const enterLevel0FromBeta = useCallback(() => {
     setActiveSection("levels");
@@ -359,6 +368,19 @@ export default function Home() {
       walletAddress: address ?? null,
     });
   }, [activeLevel, activeSection, address]);
+
+  useEffect(() => {
+    if (status !== "connected") return;
+    if (!level1Completed && !level2Completed && !level3Completed) return;
+
+    void mutateBadges();
+  }, [
+    level1Completed,
+    level2Completed,
+    level3Completed,
+    mutateBadges,
+    status,
+  ]);
 
   if (activeSection === "beta-access") {
     return <BetaAccessSection onEnterLevel0={enterLevel0FromBeta} />;
@@ -520,6 +542,9 @@ export default function Home() {
               isMintingLevel1Certificate={mintingLevel === "level1"}
               level1CertificateAssetId={level1Certificate?.assetId ?? null}
               level1CertificateMinted={Boolean(level1Certificate?.minted)}
+              onBadgeStateChanged={() => {
+                void mutateBadges();
+              }}
               onContinueToLevel2={() => {
                 setActiveSection("levels");
                 setActiveLevelsView("level2");
@@ -537,16 +562,18 @@ export default function Home() {
             <section className="space-y-8">
               <div className="max-w-3xl space-y-4">
                 <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
-                  Wallet-bound certificates.
+                  Profile.
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                  Every SolBreach certificate is tied back to the wallet that
-                  cleared the level.
+                  Backend-earned badges, special rewards, and wallet-bound
+                  certificates for this SolBreach account.
                 </p>
               </div>
 
               <ProfileCertificatesSection
                 address={address}
+                badges={badges}
+                badgeSummary={badgeSummary}
                 certificateState={effectiveCertificateState}
                 completedLevels={
                   level0State?.completedLevels
@@ -556,6 +583,7 @@ export default function Home() {
                     : undefined
                 }
                 getExplorerUrl={getExplorerUrl}
+                isBadgeLoading={isBadgeLoading}
                 isLoading={isCertificateLoading || isLevel0Loading}
                 onSelectLevel={(level) => {
                   setActiveSection("levels");
@@ -568,6 +596,14 @@ export default function Home() {
 
         <SiteFooter repositoryUrl={SOLBREACH_DOCUMENTATION_URL} />
       </div>
+      <BadgeEarnedDialog
+        badge={unseenEarnedBadge}
+        onClose={closeBadgeDialog}
+        onOpenProfile={() => {
+          closeBadgeDialog();
+          setActiveSection("profile");
+        }}
+      />
     </div>
   );
 }

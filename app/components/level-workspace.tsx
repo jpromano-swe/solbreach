@@ -277,11 +277,6 @@ function ProtocolActivityPanel({ data }: { data: Level0ProtocolActivityData }) {
   const events = useMemo(() => buildLevel0ProtocolEvents(data), [data]);
   const isConnected = data.status === "connected";
   const isProtocolComplete = Boolean(data.level0State?.isCompleted);
-  const showMintButton =
-    isConnected &&
-    isProtocolComplete &&
-    !data.stage.actionLabel &&
-    !data.certificateMinted;
   const showContinueButton = isConnected && isProtocolComplete;
 
   return (
@@ -319,21 +314,13 @@ function ProtocolActivityPanel({ data }: { data: Level0ProtocolActivityData }) {
               void data.stage.onAction?.();
             }}
           />
-        ) : showMintButton ? (
-          <ProtocolPrimaryButton
-            disabled={data.mintDisabled || data.isMinting}
-            label={data.isMinting ? "Minting certification" : data.mintLabel}
-            onClick={data.onMint}
-          />
         ) : !showContinueButton ? (
           <button
             type="button"
             disabled
             className="min-h-13 w-full rounded-full border border-border bg-background/65 px-5 text-sm font-medium text-muted"
           >
-            {data.certificateMinted
-              ? "Certification minted"
-              : "Protocol settled"}
+            Protocol settled
           </button>
         ) : null}
         {showContinueButton ? (
@@ -461,10 +448,6 @@ function buildLevel0ProtocolEvents(data: Level0ProtocolActivityData) {
       { state: "done", title: "Registry state updated" },
       { state: "complete", title: "Protocol warmup completed" }
     );
-
-    if (data.certificateMinted) {
-      events.push({ state: "complete", title: "Certification minted" });
-    }
 
     return events;
   }

@@ -1226,10 +1226,8 @@ function ActivityRow({
 function Level2StateFooter({
   certificate,
   isLoading,
-  isMinting,
   level2Completed,
   level2Error,
-  onMint,
   status,
 }: {
   certificate?: LevelCertificateSnapshot;
@@ -1274,23 +1272,18 @@ function Level2StateFooter({
       {level2Completed || certificate?.minted ? (
         <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
           <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
-            Certification unlocked
+            Badge reward
           </p>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Level 2 verification is recorded. Mint the wallet-bound
-            certification for this hijack path.
+            Level 2 verification is recorded. The backend awards this badge to
+            the wallet that completed the hijack path.
           </p>
           <button
             type="button"
-            onClick={onMint}
-            disabled={certificate?.minted || isMinting}
+            disabled
             className="mt-4 inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
           >
-            {certificate?.minted
-              ? "Level 2 cNFT minted"
-              : isMinting
-                ? "Minting..."
-                : "Unlock Certification"}
+            {level2Completed ? "Badge earned" : "Badge syncing"}
           </button>
         </div>
       ) : null}
