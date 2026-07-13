@@ -30,11 +30,10 @@ export function LabContextPanel({
   executeExploitView,
   findingReviewPassed,
   impactVerified,
-  isMintingLevel1Certificate,
+  isCollectingLevel1Badge,
   lab,
-  level1CertificateAssetId,
-  level1CertificateExplorerUrl,
-  level1CertificateMinted,
+  level1BadgeCollected,
+  level1BadgeEarned,
   phase,
   questionnaireResult,
   report,
@@ -50,23 +49,22 @@ export function LabContextPanel({
   revealedHints,
   session,
   txResults,
+  onCollectLevel1Badge,
   onOpenExploit,
   onOpenReport,
   onRevealHint,
   onRetryReview,
   onContinueToLevel2,
-  onMintLevel1Certificate,
 }: {
   activeFile: ResearchLabFile | null;
   auditReportStage: AuditReportStage;
   executeExploitView: ExecuteExploitView;
   findingReviewPassed: boolean;
   impactVerified: boolean;
-  isMintingLevel1Certificate: boolean;
+  isCollectingLevel1Badge: boolean;
   lab: ResearchLabManifest;
-  level1CertificateAssetId?: string | null;
-  level1CertificateExplorerUrl?: string | null;
-  level1CertificateMinted: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
   phase: LabPhase;
   questionnaireResult: QuestionnaireResult | null;
   report: ResearchLabReport | null;
@@ -82,12 +80,12 @@ export function LabContextPanel({
   revealedHints: string[];
   session: ResearchLabSession;
   txResults: EnrichedTransactionResult[];
+  onCollectLevel1Badge: () => void;
   onOpenExploit: () => void;
   onOpenReport: () => void;
   onRevealHint: () => void;
   onRetryReview: () => void;
   onContinueToLevel2: () => void;
-  onMintLevel1Certificate: () => void;
 }) {
   const nextHint = lab.hints.find((hint) => !revealedHints.includes(hint.id));
   const reportAccepted = Boolean(
@@ -125,10 +123,9 @@ export function LabContextPanel({
         <ReviewContextCard
           auditReportStage={auditReportStage}
           findingReviewPassed={findingReviewPassed}
-          isMintingLevel1Certificate={isMintingLevel1Certificate}
-          level1CertificateAssetId={level1CertificateAssetId}
-          level1CertificateExplorerUrl={level1CertificateExplorerUrl}
-          level1CertificateMinted={level1CertificateMinted}
+          isCollectingLevel1Badge={isCollectingLevel1Badge}
+          level1BadgeCollected={level1BadgeCollected}
+          level1BadgeEarned={level1BadgeEarned}
           questionnaireResult={questionnaireResult}
           reportAccepted={reportAccepted}
           reportOpened={reportOpened}
@@ -139,8 +136,8 @@ export function LabContextPanel({
           reviewStepTotal={reviewStepTotal}
           criticalAnsweredCount={criticalAnsweredCount}
           criticalTotal={criticalTotal}
+          onCollectLevel1Badge={onCollectLevel1Badge}
           onContinueToLevel2={onContinueToLevel2}
-          onMintLevel1Certificate={onMintLevel1Certificate}
           onOpenReport={onOpenReport}
           onRetryReview={onRetryReview}
         />
@@ -560,10 +557,9 @@ function HintList({
 function ReviewContextCard({
   auditReportStage,
   findingReviewPassed,
-  isMintingLevel1Certificate,
-  level1CertificateAssetId,
-  level1CertificateExplorerUrl,
-  level1CertificateMinted,
+  isCollectingLevel1Badge,
+  level1BadgeCollected,
+  level1BadgeEarned,
   questionnaireResult,
   reportAccepted,
   reportOpened,
@@ -574,17 +570,16 @@ function ReviewContextCard({
   reviewStepTotal,
   criticalAnsweredCount,
   criticalTotal,
+  onCollectLevel1Badge,
   onContinueToLevel2,
-  onMintLevel1Certificate,
   onOpenReport,
   onRetryReview,
 }: {
   auditReportStage: AuditReportStage;
   findingReviewPassed: boolean;
-  isMintingLevel1Certificate: boolean;
-  level1CertificateAssetId?: string | null;
-  level1CertificateExplorerUrl?: string | null;
-  level1CertificateMinted: boolean;
+  isCollectingLevel1Badge: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
   questionnaireResult: QuestionnaireResult | null;
   reportAccepted: boolean;
   reportOpened: boolean;
@@ -595,19 +590,18 @@ function ReviewContextCard({
   reviewStepTotal: number;
   criticalAnsweredCount: number;
   criticalTotal: number;
+  onCollectLevel1Badge: () => void;
   onContinueToLevel2: () => void;
-  onMintLevel1Certificate: () => void;
   onOpenReport: () => void;
   onRetryReview: () => void;
 }) {
   if (auditReportStage === "CERTIFY_KNOWLEDGE") {
     return (
       <CertificateCheckpointPanel
-        assetId={level1CertificateAssetId}
-        assetUrl={level1CertificateExplorerUrl}
-        isMinting={isMintingLevel1Certificate}
-        minted={level1CertificateMinted}
-        onMint={onMintLevel1Certificate}
+        badgeCollected={level1BadgeCollected}
+        badgeEarned={level1BadgeEarned}
+        isCollectingBadge={isCollectingLevel1Badge}
+        onCollectBadge={onCollectLevel1Badge}
         onNextModule={onContinueToLevel2}
       />
     );
@@ -691,26 +685,26 @@ function ReviewContextCard({
 }
 
 function CertificateCheckpointPanel({
-  assetId,
-  assetUrl,
-  isMinting,
-  minted,
-  onMint,
+  badgeCollected,
+  badgeEarned,
+  isCollectingBadge,
+  onCollectBadge,
   onNextModule,
 }: {
-  assetId?: string | null;
-  assetUrl?: string | null;
-  isMinting: boolean;
-  minted: boolean;
-  onMint: () => void;
+  badgeCollected: boolean;
+  badgeEarned: boolean;
+  isCollectingBadge: boolean;
+  onCollectBadge: () => void;
   onNextModule: () => void;
 }) {
+  const canCollect = badgeEarned && !badgeCollected && !isCollectingBadge;
+
   return (
     <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
       <div className="flex items-center gap-3">
         <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
         <p className="text-xl font-semibold tracking-[-0.03em] text-white">
-          Certificate Checkpoint
+          Badge Checkpoint
         </p>
       </div>
 
@@ -721,54 +715,42 @@ function CertificateCheckpointPanel({
         <div className="mt-4 space-y-3 text-sm">
           <CheckpointRuleRow label="Review" value="Secure pattern complete" />
           <CheckpointRuleRow
-            label="Mint"
-            value={minted ? "Recorded" : isMinting ? "Minting" : "Ready"}
+            label="Badge"
+            value={
+              badgeCollected
+                ? "Collected"
+                : badgeEarned
+                  ? "Ready"
+                  : "Syncing"
+            }
           />
-          <CheckpointRuleRow label="Credential" value="Level 1 cNFT" />
+          <CheckpointRuleRow label="Credential" value="Level 1 badge" />
         </div>
       </div>
-
-      {minted && assetId ? (
-        <div className="mt-5 border-t border-white/10 pt-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-            Asset
-          </p>
-          <p className="mt-3 break-all font-mono text-xs leading-5 text-[#8fffd0]">
-            {assetId}
-          </p>
-        </div>
-      ) : null}
 
       <div className="mt-5 flex flex-col items-center gap-3 border-t border-white/10 pt-5">
         <button
           type="button"
-          onClick={onMint}
-          disabled={minted || isMinting}
+          onClick={onCollectBadge}
+          disabled={!canCollect}
           className={`inline-flex min-h-11 w-auto min-w-[190px] items-center justify-center rounded-xl px-5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
-            minted
+            badgeCollected
               ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-zinc-500"
-              : "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
+              : canCollect
+                ? "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
+                : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
           } disabled:cursor-not-allowed disabled:opacity-70`}
         >
-          {minted
-            ? "Level 1 cNFT minted"
-            : isMinting
-              ? "Minting..."
-              : "Unlock Certification"}
+          {badgeCollected
+            ? "Badge collected"
+            : isCollectingBadge
+              ? "Collecting..."
+              : badgeEarned
+                ? "Collect Badge"
+                : "Badge syncing"}
         </button>
 
-        {minted && assetUrl ? (
-          <a
-            href={assetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-10 w-auto min-w-[190px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-          >
-            View certificate asset
-          </a>
-        ) : null}
-
-        {minted ? (
+        {badgeCollected ? (
           <button
             type="button"
             onClick={onNextModule}

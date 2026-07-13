@@ -35,6 +35,7 @@ import { useUserBadges } from "./lib/hooks/use-user-badges";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import { trackAnalyticsEvent } from "./lib/analytics";
+import { getLevelBadge, type UserBadge } from "./lib/badges";
 
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_1_AMOUNT = "1000000";
@@ -76,6 +77,10 @@ export default function Home() {
     setActiveSection,
   } = useLevelRoute();
   const [copied, setCopied] = useState<string | null>(null);
+  const [manualBadgeDialog, setManualBadgeDialog] = useState<UserBadge | null>(
+    null
+  );
+  const [isCollectingLevel1Badge, setIsCollectingLevel1Badge] = useState(false);
   const trackedLevelViewsRef = useRef<Set<string>>(new Set());
   const {
     badges,
@@ -254,7 +259,7 @@ export default function Home() {
       level1State,
     });
 
-  const { mintingLevel, mintLevel1 } =
+  const { mintingLevel } =
     useCertificateMinting({
       address,
       certificates: {
@@ -346,13 +351,39 @@ export default function Home() {
     status,
   });
 
+  const level1Badge = getLevelBadge(badges, 1);
   const unseenEarnedBadge =
-    badges.find((badge) => badge.earned && !badge.seenAt) ?? null;
+    badges.find(
+      (badge) =>
+        badge.earned && !badge.seenAt && badge.slug !== "level-1-illusionist"
+    ) ?? null;
+  const activeBadgeDialog = manualBadgeDialog ?? unseenEarnedBadge;
 
   const closeBadgeDialog = useCallback(() => {
+    if (manualBadgeDialog) {
+      setManualBadgeDialog(null);
+      return;
+    }
+
     if (!unseenEarnedBadge) return;
     void markBadgeSeen(unseenEarnedBadge.slug);
-  }, [markBadgeSeen, unseenEarnedBadge]);
+  }, [manualBadgeDialog, markBadgeSeen, unseenEarnedBadge]);
+
+  const collectLevel1Badge = useCallback(async () => {
+    if (!level1Badge?.earned || isCollectingLevel1Badge) return;
+
+    setIsCollectingLevel1Badge(true);
+    setManualBadgeDialog(level1Badge);
+
+    try {
+      if (!level1Badge.seenAt) {
+        await markBadgeSeen(level1Badge.slug);
+      }
+      await mutateBadges();
+    } finally {
+      setIsCollectingLevel1Badge(false);
+    }
+  }, [isCollectingLevel1Badge, level1Badge, markBadgeSeen, mutateBadges]);
 
   const enterLevel1FromBeta = useCallback(() => {
     setActiveSection("levels");
@@ -540,10 +571,11 @@ export default function Home() {
             </div>
           ) : activeSection === "research-labs" ? (
             <ResearchLabsSection
-              getExplorerUrl={getExplorerUrl}
-              isMintingLevel1Certificate={mintingLevel === "level1"}
-              level1CertificateAssetId={level1Certificate?.assetId ?? null}
+              isCollectingLevel1Badge={isCollectingLevel1Badge}
+              level1BadgeCollected={Boolean(level1Badge?.seenAt)}
+              level1BadgeEarned={Boolean(level1Badge?.earned)}
               level1CertificateMinted={Boolean(level1Certificate?.minted)}
+              onCollectLevel1Badge={collectLevel1Badge}
               onBadgeStateChanged={() => {
                 void mutateBadges();
               }}
@@ -551,7 +583,6 @@ export default function Home() {
                 setActiveSection("levels");
                 setActiveLevelsView("level2");
               }}
-              onMintLevel1Certificate={mintLevel1}
             />
           ) : activeSection === "vulnerabilities" ? (
             <VulnerabilitiesSection
@@ -593,7 +624,7 @@ export default function Home() {
         <SiteFooter repositoryUrl={SOLBREACH_DOCUMENTATION_URL} />
       </div>
       <BadgeEarnedDialog
-        badge={unseenEarnedBadge}
+        badge={activeBadgeDialog}
         onClose={closeBadgeDialog}
         onOpenProfile={() => {
           closeBadgeDialog();

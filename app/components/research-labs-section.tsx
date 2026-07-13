@@ -7,7 +7,6 @@ import {
   ensureBackendWalletAuth,
   type Level1AuthSession,
 } from "../lib/levels/level1-backend";
-import type { Level1ResearchLabMintAuthorization } from "../lib/hooks/use-certificate-minting";
 import { trackAnalyticsEvent, type AnalyticsEventName } from "../lib/analytics";
 import {
   applyTerminalEvents,
@@ -58,23 +57,21 @@ function getErrorMessage(error: unknown) {
 }
 
 export function ResearchLabsSection({
-  getExplorerUrl,
-  isMintingLevel1Certificate,
-  level1CertificateAssetId,
+  isCollectingLevel1Badge,
+  level1BadgeCollected,
+  level1BadgeEarned,
   level1CertificateMinted,
+  onCollectLevel1Badge,
   onBadgeStateChanged,
   onContinueToLevel2,
-  onMintLevel1Certificate,
 }: {
-  getExplorerUrl: (path: string) => string;
-  isMintingLevel1Certificate: boolean;
-  level1CertificateAssetId?: string | null;
+  isCollectingLevel1Badge: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
   level1CertificateMinted: boolean;
+  onCollectLevel1Badge: () => void;
   onBadgeStateChanged?: () => void;
   onContinueToLevel2: () => void;
-  onMintLevel1Certificate: (
-    authorization?: Level1ResearchLabMintAuthorization
-  ) => void;
 }) {
   const { status: walletStatus, wallet } = useWallet();
   const [backendAuth, setBackendAuth] = useState<Level1AuthSession | null>(
@@ -526,18 +523,6 @@ export function ResearchLabsSection({
     openFindingReport();
   };
 
-  const mintResearchLabCertificate = useCallback(() => {
-    if (!activeBackendAuth?.accessToken || !session?.sessionId) {
-      toast.error("Open an authenticated Research Lab session before minting.");
-      return;
-    }
-
-    onMintLevel1Certificate({
-      researchLabAccessToken: activeBackendAuth.accessToken,
-      researchLabSessionId: session.sessionId,
-    });
-  }, [activeBackendAuth, onMintLevel1Certificate, session]);
-
   const submitReportAndRefreshBadges = useCallback(
     async (options?: Parameters<typeof submitReport>[0]) => {
       const submitted = await submitReport(options);
@@ -639,14 +624,9 @@ export function ResearchLabsSection({
             auditReportStage={auditReportStage}
             findingReviewPassed={findingReviewPassed}
             impactVerified={impactVerified}
-            isMintingLevel1Certificate={isMintingLevel1Certificate}
-            level1CertificateAssetId={level1CertificateAssetId}
-            level1CertificateExplorerUrl={
-              level1CertificateAssetId
-                ? getExplorerUrl(`/address/${level1CertificateAssetId}`)
-                : null
-            }
-            level1CertificateMinted={level1CertificateMinted}
+            isCollectingLevel1Badge={isCollectingLevel1Badge}
+            level1BadgeCollected={level1BadgeCollected}
+            level1BadgeEarned={level1BadgeEarned}
             reportUnlocked={reportUnlocked}
             questionnaireResult={questionnaireResult}
             report={report}
@@ -661,6 +641,7 @@ export function ResearchLabsSection({
             revealedHints={revealedHints}
             session={session}
             txResults={txResults}
+            onCollectLevel1Badge={onCollectLevel1Badge}
             onOpenExploit={openExploitFromContext}
             onOpenReport={
               impactVerified
@@ -670,7 +651,6 @@ export function ResearchLabsSection({
             onRevealHint={revealHint}
             onRetryReview={retryQuestionnaire}
             onContinueToLevel2={onContinueToLevel2}
-            onMintLevel1Certificate={mintResearchLabCertificate}
           />
         </div>
       </div>
