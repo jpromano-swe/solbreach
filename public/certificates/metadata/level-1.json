@@ -1,0 +1,29 @@
+{
+  "name": "SolBreach Certificate #1 - The Illusionist",
+  "symbol": "SOLBRCH",
+  "description": "Certificate awarded for completing SolBreach Level 1: The Illusionist.",
+  "image": "https://beta.solbreach.com/certificates/level-1.png",
+  "external_url": "https://beta.solbreach.com",
+  "attributes": [
+    {
+      "trait_type": "Platform",
+      "value": "SolBreach"
+    },
+    {
+      "trait_type": "Certificate ID",
+      "value": "solbreach-level-1"
+    },
+    {
+      "trait_type": "Certificate Number",
+      "value": "1"
+    },
+    {
+      "trait_type": "Level",
+      "value": "1"
+    },
+    {
+      "trait_type": "Module",
+      "value": "The Illusionist"
+    }
+  ]
+}

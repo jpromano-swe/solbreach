@@ -1,15 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import type {
-  CertificateCollection,
-  LevelCertificateSnapshot,
-} from "../lib/certificates/certificate-state";
 import {
   isSpecialBadge,
   type UserBadge,
   type UserBadgesSummary,
 } from "../lib/badges";
+import {
+  resolveProfileCertificateImage,
+  resolveProfileCertificateMetadata,
+  type ProfileCertificate,
+  type ProfileCertificatesSummary,
+} from "../lib/certificates/profile-certificates";
 import { SkeletonLine, StatusTextRow, compactAddress } from "./level-ui";
 
 export type ProfileLevelId = "level0" | "level1" | "level2" | "level3";
@@ -53,8 +55,8 @@ export function ProfileCertificatesSection({
   address,
   badges,
   badgeSummary,
-  certificateState,
-  completedLevels,
+  certificates,
+  certificateSummary,
   getExplorerUrl,
   isBadgeLoading,
   isLoading,
@@ -63,8 +65,8 @@ export function ProfileCertificatesSection({
   address?: string;
   badges?: UserBadge[];
   badgeSummary?: UserBadgesSummary | null;
-  certificateState?: CertificateCollection;
-  completedLevels?: boolean[];
+  certificates?: ProfileCertificate[];
+  certificateSummary?: ProfileCertificatesSummary | null;
   getExplorerUrl: (path: string) => string;
   isBadgeLoading?: boolean;
   isLoading: boolean;
@@ -72,10 +74,10 @@ export function ProfileCertificatesSection({
 }) {
   const coreBadges = (badges ?? []).filter((badge) => !isSpecialBadge(badge));
   const specialBadges = (badges ?? []).filter(isSpecialBadge);
-  const mintedCount = certificateState
-    ? PROFILE_LEVEL_NUMBERS.filter((level) => certificateState[level]?.minted)
-        .length
-    : 0;
+  const displayCertificates = buildProfileCertificates(certificates);
+  const mintedCount =
+    certificateSummary?.minted ??
+    displayCertificates.filter((certificate) => certificate.minted).length;
 
   return (
     <div className="space-y-8 rounded-[34px] border border-border bg-card/95 p-5 shadow-[0_32px_100px_-70px_rgba(0,0,0,0.45)] sm:p-7">
@@ -115,8 +117,8 @@ export function ProfileCertificatesSection({
             Connect a wallet to inspect your SolBreach profile.
           </p>
           <p className="mt-2 text-sm leading-6 text-muted">
-            The certificate gallery is derived from the same wallet-bound PDAs
-            used by the exploit board and cNFT mint flow.
+            The certificate gallery is loaded from the backend profile contract
+            for this wallet.
           </p>
         </div>
       ) : (
@@ -145,15 +147,16 @@ export function ProfileCertificatesSection({
               </div>
             ) : (
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {PROFILE_LEVEL_NUMBERS.map((level) => (
+                {displayCertificates.map((certificate) => (
                   <CertificateCard
-                    key={level}
-                    certificate={certificateState?.[level]}
-                    completed={Boolean(completedLevels?.[level])}
-                    detail={LEVEL_CERTIFICATE_DETAILS[level]}
+                    key={certificate.certificateId}
+                    certificate={certificate}
+                    detail={LEVEL_CERTIFICATE_DETAILS[certificate.level]}
                     getExplorerUrl={getExplorerUrl}
                     onOpenLevel={() => {
-                      onSelectLevel(`level${level}` as ProfileLevelId);
+                      onSelectLevel(
+                        `level${certificate.level}` as ProfileLevelId
+                      );
                     }}
                   />
                 ))}
@@ -206,6 +209,30 @@ function ProfileBadgesSection({
       )}
     </section>
   );
+}
+
+function buildProfileCertificates(certificates?: ProfileCertificate[]) {
+  if (certificates?.length) {
+    return certificates
+      .filter((certificate) =>
+        PROFILE_LEVEL_NUMBERS.includes(certificate.level)
+      )
+      .sort((a, b) => a.certificateNumber - b.certificateNumber);
+  }
+
+  return PROFILE_LEVEL_NUMBERS.map((level) => ({
+    assetId: null,
+    certificateId: `solbreach-level-${level}`,
+    certificateNumber: level,
+    certificatePda: null,
+    imageUri: LEVEL_CERTIFICATE_DETAILS[level].image,
+    level,
+    metadataUri: `/certificates/metadata/level-${level}.json`,
+    minted: false,
+    mintedAt: null,
+    status: "locked",
+    title: LEVEL_CERTIFICATE_DETAILS[level].title,
+  })) satisfies ProfileCertificate[];
 }
 
 function BadgeCard({ badge }: { badge: UserBadge }) {
@@ -285,34 +312,30 @@ function SectionHeading({
 
 function CertificateCard({
   certificate,
-  completed,
   detail,
   getExplorerUrl,
   onOpenLevel,
 }: {
-  certificate?: LevelCertificateSnapshot;
-  completed: boolean;
+  certificate: ProfileCertificate;
   detail: CertificateDetails;
   getExplorerUrl: (path: string) => string;
   onOpenLevel: () => void;
 }) {
-  const status = certificate?.minted
+  const isClaimable =
+    certificate.status === "claimable" || certificate.status === "ready";
+  const status = certificate.minted
     ? "Minted"
-    : certificate?.exists
-      ? "Claimed"
-      : completed
-        ? "Ready to mint"
-        : "Locked";
+    : isClaimable
+      ? "Ready"
+      : "Locked";
 
-  const statusTone = certificate?.minted
+  const statusTone = certificate.minted
     ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-    : certificate?.exists
-      ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-      : completed
-        ? "border-foreground/15 bg-foreground/5 text-foreground"
-        : "border-border bg-accent text-muted";
-  const imageSrc =
-    completed || !detail.lockedImage ? detail.image : detail.lockedImage;
+    : isClaimable
+      ? "border-foreground/15 bg-foreground/5 text-foreground"
+      : "border-border bg-accent text-muted";
+  const imageSrc = resolveProfileCertificateImage(certificate);
+  const metadataPath = resolveProfileCertificateMetadata(certificate);
 
   return (
     <article className="overflow-hidden rounded-[28px] border border-border bg-background/80">
@@ -348,17 +371,21 @@ function CertificateCard({
 
         <div className="space-y-3 rounded-[22px] border border-border bg-card/75 p-4">
           <StatusTextRow
-            label="Completion"
-            value={completed ? "Cleared" : "Not cleared"}
+            label="Status"
+            value={
+              certificate.mintedAt
+                ? new Date(certificate.mintedAt).toLocaleDateString()
+                : status
+            }
           />
           <StatusTextRow
             label="Certificate"
-            value={certificate?.exists ? "Claimed on-chain" : "Not claimed"}
+            value={certificate.certificateId}
           />
           <StatusTextRow
             label="Asset"
             value={
-              certificate?.minted && certificate.assetId
+              certificate.minted && certificate.assetId
                 ? compactAddress(certificate.assetId, 4, 4)
                 : "Not minted"
             }
@@ -366,7 +393,7 @@ function CertificateCard({
         </div>
 
         <div className="space-y-2 text-sm text-muted">
-          {certificate?.minted && certificate.assetId ? (
+          {certificate.minted && certificate.assetId ? (
             <a
               href={getExplorerUrl(`/address/${certificate.assetId}`)}
               target="_blank"
@@ -376,7 +403,7 @@ function CertificateCard({
               View cNFT asset
             </a>
           ) : null}
-          {certificate?.certificatePda ? (
+          {certificate.certificatePda ? (
             <a
               href={getExplorerUrl(`/address/${certificate.certificatePda}`)}
               target="_blank"
@@ -386,6 +413,14 @@ function CertificateCard({
               View certificate PDA
             </a>
           ) : null}
+          <a
+            href={metadataPath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block truncate underline underline-offset-2"
+          >
+            View metadata
+          </a>
         </div>
 
         <button
@@ -393,9 +428,9 @@ function CertificateCard({
           onClick={onOpenLevel}
           className="min-h-12 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          {certificate?.minted
+          {certificate.minted
             ? "Open level details"
-            : completed
+            : isClaimable
               ? "Open certificate flow"
               : "Open level"}
         </button>

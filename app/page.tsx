@@ -29,6 +29,7 @@ import { useLevel3BackendExecution } from "./lib/hooks/use-level3-backend-execut
 import { useLevelRoute } from "./lib/hooks/use-level-route";
 import { useLevelSnapshots } from "./lib/hooks/use-level-snapshots";
 import { useLevelStageConfigs } from "./lib/hooks/use-level-stage-configs";
+import { useProfileCertificates } from "./lib/hooks/use-profile-certificates";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
 import { useUserBadges } from "./lib/hooks/use-user-badges";
 import { useSolanaClient } from "./lib/solana-client-context";
@@ -84,6 +85,12 @@ export default function Home() {
     summary: badgeSummary,
   } = useUserBadges({ enabled: status === "connected", wallet });
   const {
+    certificates: profileCertificates,
+    isLoading: isProfileCertificatesLoading,
+    mutate: mutateProfileCertificates,
+    summary: profileCertificateSummary,
+  } = useProfileCertificates({ enabled: status === "connected", wallet });
+  const {
     backendAuth: level1BackendAuth,
     backendCompleted: level1BackendCompleted,
     backendError: level1BackendError,
@@ -131,7 +138,6 @@ export default function Home() {
 
   const {
     certificateState,
-    isCertificateLoading,
     isLevel0Loading,
     isLevel1Loading,
     isLevel2Loading,
@@ -156,7 +162,6 @@ export default function Home() {
     signer,
   });
   const {
-    effectiveCertificateState,
     handleLevel1BackendCertificateMinted,
     level1BackendCertificateSnapshot,
   } = useLevel1BackendCertificate({ address, certificateState, cluster });
@@ -168,6 +173,7 @@ export default function Home() {
       mutateLevel2BackendStatus(),
       mutateLevel3BackendStatus(),
       mutateBadges(),
+      mutateProfileCertificates(),
       walletBalance.mutate(),
     ]);
   }, [
@@ -175,6 +181,7 @@ export default function Home() {
     mutateLevel2BackendStatus,
     mutateLevel3BackendStatus,
     mutateBadges,
+    mutateProfileCertificates,
     refreshSnapshots,
     walletBalance,
   ]);
@@ -569,17 +576,11 @@ export default function Home() {
                 address={address}
                 badges={badges}
                 badgeSummary={badgeSummary}
-                certificateState={effectiveCertificateState}
-                completedLevels={
-                  level0State?.completedLevels
-                    ? level0State.completedLevels.map((val, i) =>
-                        i === 1 ? val || level1BackendCompleted : val
-                      )
-                    : undefined
-                }
+                certificates={profileCertificates}
+                certificateSummary={profileCertificateSummary}
                 getExplorerUrl={getExplorerUrl}
                 isBadgeLoading={isBadgeLoading}
-                isLoading={isCertificateLoading || isLevel0Loading}
+                isLoading={isProfileCertificatesLoading}
                 onSelectLevel={(level) => {
                   setActiveSection("levels");
                   setActiveLevelsView(level);
