@@ -42,27 +42,6 @@ type VulnerabilityCard = {
 
 const VULNERABILITY_CARDS: VulnerabilityCard[] = [
   {
-    id: "level-0",
-    target: "level0",
-    title: LEVEL_GUIDES.level0.missionTitle,
-    summary:
-      "Warm up with wallet-bound PDA state, temporary account lifecycle, and completion closeout.",
-    difficulty: "Warmup",
-    time: "10-15 min",
-    theme: "PDA lifecycle",
-    status: "available",
-    compact: {
-      cta: "Start warmup",
-      imageClassName: "sm:w-[128px] xl:w-[142px]",
-      imageSrc: "/vulnerabilities/00-wallet-connection.png",
-      levelLabel: "LEVEL 0",
-      metadata: "Warmup · 10-15 min ·\nPDA basics",
-      summary:
-        "Get familiar with\nwallet-bound state,\nPDA flow, and how\nSolBreach levels work.",
-      title: "Hello SolBreach",
-    },
-  },
-  {
     id: "level-1",
     target: "level1",
     title: LEVEL_GUIDES.level1.missionTitle,

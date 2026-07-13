@@ -347,9 +347,9 @@ export default function Home() {
     void markBadgeSeen(unseenEarnedBadge.slug);
   }, [markBadgeSeen, unseenEarnedBadge]);
 
-  const enterLevel0FromBeta = useCallback(() => {
+  const enterLevel1FromBeta = useCallback(() => {
     setActiveSection("levels");
-    setActiveLevelsView("level0");
+    setActiveLevelsView("level1");
   }, [setActiveLevelsView, setActiveSection]);
 
   useEffect(() => {
@@ -383,7 +383,7 @@ export default function Home() {
   ]);
 
   if (activeSection === "beta-access") {
-    return <BetaAccessSection onEnterLevel0={enterLevel0FromBeta} />;
+    return <BetaAccessSection onEnterLevel1={enterLevel1FromBeta} />;
   }
 
   return (
@@ -429,11 +429,6 @@ export default function Home() {
                   {activeLevel === "level1" ? (
                     <Level1Panel
                       address={address}
-                      certificationAction={{
-                        disabled: activeLevelStatus.mintDisabled,
-                        label: activeLevelStatus.mintLabel,
-                        onMint: activeLevelStatus.onMint,
-                      }}
                       copied={copied}
                       isLoading={isLevel1PanelLoading}
                       isSending={isSending || isLevel1BackendBusy}

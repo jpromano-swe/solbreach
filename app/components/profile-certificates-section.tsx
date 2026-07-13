@@ -21,7 +21,7 @@ type CertificateDetails = {
   title: string;
 };
 
-const PROFILE_LEVEL_NUMBERS = [0, 1, 2, 3] as const;
+const PROFILE_LEVEL_NUMBERS = [1, 2, 3] as const;
 const LEVEL_CERTIFICATE_DETAILS: Record<0 | 1 | 2 | 3, CertificateDetails> = {
   0: {
     image: "/nfts/solbreach-level-0-hello-solbreach.png",
@@ -73,7 +73,7 @@ export function ProfileCertificatesSection({
   const coreBadges = (badges ?? []).filter((badge) => !isSpecialBadge(badge));
   const specialBadges = (badges ?? []).filter(isSpecialBadge);
   const mintedCount = certificateState
-    ? Object.values(certificateState).filter((certificate) => certificate.minted)
+    ? PROFILE_LEVEL_NUMBERS.filter((level) => certificateState[level]?.minted)
         .length
     : 0;
 
@@ -103,7 +103,7 @@ export function ProfileCertificatesSection({
           />
           <MiniStat
             label="Certificates"
-            value={`${mintedCount}/4`}
+            value={`${mintedCount}/${PROFILE_LEVEL_NUMBERS.length}`}
             detail="Recorded cNFTs"
           />
         </div>

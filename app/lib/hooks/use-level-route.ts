@@ -40,6 +40,10 @@ function getInitialRouteState(): {
     return { section, view: "landing" };
   }
 
+  if (level === "level0") {
+    return { section: "levels", view: "level1" };
+  }
+
   if (isLevelView(level)) {
     return { section: "levels", view: level };
   }

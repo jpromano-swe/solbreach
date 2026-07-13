@@ -26,9 +26,9 @@ type BetaContactMethod = "email" | "telegram";
 const NEEDS_ACCESS_MESSAGE = "Request beta access\nor redeem an access code.";
 
 export function BetaAccessSection({
-  onEnterLevel0,
+  onEnterLevel1,
 }: {
-  onEnterLevel0: () => void;
+  onEnterLevel1: () => void;
 }) {
   const { wallet } = useWallet();
   const [accessCode, setAccessCode] = useState("");
@@ -87,7 +87,7 @@ export function BetaAccessSection({
             walletAddress: wallet.account.address,
           });
           toast.success("Beta access confirmed.");
-          onEnterLevel0();
+          onEnterLevel1();
           return;
         }
 
@@ -118,7 +118,7 @@ export function BetaAccessSection({
     return () => {
       cancelled = true;
     };
-  }, [wallet, walletAddress, onEnterLevel0]);
+  }, [wallet, walletAddress, onEnterLevel1]);
 
   async function submitAccessRequest() {
     setPendingAction("request");
@@ -206,7 +206,7 @@ export function BetaAccessSection({
           walletAddress: wallet.account.address,
         });
         toast.success("Access code redeemed.");
-        onEnterLevel0();
+        onEnterLevel1();
         return;
       }
 

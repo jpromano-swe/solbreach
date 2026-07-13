@@ -43,12 +43,6 @@ type StageConfig = {
   onAction?: () => Promise<void>;
 };
 
-type CertificationAction = {
-  disabled: boolean;
-  label: string;
-  onMint: () => void;
-};
-
 type LabStage = 1 | 2 | 3;
 type AccountTone = "neutral" | "valid" | "fake" | "corrupt";
 type ActivityTone = "waiting" | "active" | "done" | "warning" | "corrupt";
@@ -149,7 +143,6 @@ const elk = new ELK();
 
 export function Level1Panel({
   address,
-  certificationAction,
   copied,
   isLoading,
   isSending,
@@ -160,7 +153,6 @@ export function Level1Panel({
   status,
 }: {
   address?: string;
-  certificationAction?: CertificationAction;
   copied: string | null;
   isLoading: boolean;
   isSending: boolean;
@@ -282,11 +274,6 @@ export function Level1Panel({
     Number((creditedAmount * 100n) / LEVEL_1_TARGET),
     100
   );
-  const showCertificationAction =
-    Boolean(certificationAction) &&
-    (stage.level1Mode === "complete" ||
-      certificationAction?.label !== "Badge locked");
-
   useEffect(() => {
     if (labStage !== 1 || !normalDepositObserved) return;
 
@@ -458,9 +445,6 @@ export function Level1Panel({
                     onCopy={onCopy}
                     progress={progress}
                   />
-                  {showCertificationAction && certificationAction ? (
-                    <Level1CertificationFooter action={certificationAction} />
-                  ) : null}
                 </div>
               )
             }
@@ -1532,33 +1516,6 @@ function Level1StateFooter({
   );
 }
 
-function Level1CertificationFooter({
-  action,
-}: {
-  action: CertificationAction;
-}) {
-  return (
-    <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
-        Badge reward
-      </p>
-      <p className="mt-2 text-sm leading-6 text-muted">
-        Level 1 verification is recorded. The backend awards this badge to the
-        wallet that completed the exploit path.
-      </p>
-      <div className="mt-4">
-        <button
-          type="button"
-          disabled
-          className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
-        >
-          {action.label}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ExecutionButton({
   disabled,
   label,
@@ -1800,21 +1757,29 @@ function ExploitCodeWalkthrough({
           </p>
         </div>
 
-        <div className="rounded-[20px] border border-emerald-400/12 bg-emerald-400/[0.035] p-4">
-          <p className="text-sm leading-6 text-muted">{stage.description}</p>
-          {stage.actionLabel ? (
-            <div className="mt-4">
-              <ExecutionButton
-                disabled={
-                  isSending ||
-                  (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
-                }
-                label={isSending ? "Submitting instruction" : stage.actionLabel}
-                onClick={onExecute}
-              />
-            </div>
-          ) : null}
-        </div>
+        {stage.description || stage.actionLabel ? (
+          <div className="rounded-[20px] border border-emerald-400/12 bg-emerald-400/[0.035] p-4">
+            {stage.description ? (
+              <p className="text-sm leading-6 text-muted">
+                {stage.description}
+              </p>
+            ) : null}
+            {stage.actionLabel ? (
+              <div className="mt-4">
+                <ExecutionButton
+                  disabled={
+                    isSending ||
+                    (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
+                  }
+                  label={
+                    isSending ? "Submitting instruction" : stage.actionLabel
+                  }
+                  onClick={onExecute}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   );

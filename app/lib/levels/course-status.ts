@@ -71,9 +71,7 @@ export function buildLevelTiles({
       ? "live"
       : "ready";
 
-  const level1Status: LevelStatus = !level0Completed
-    ? "locked"
-    : level1Completed
+  const level1Status: LevelStatus = level1Completed
       ? "cleared"
       : level1DepositReady
         ? "armed"
@@ -81,9 +79,7 @@ export function buildLevelTiles({
           ? "live"
           : "ready";
 
-  const level2Status: LevelStatus = !level0Completed
-    ? "locked"
-    : level2Completed
+  const level2Status: LevelStatus = level2Completed
       ? "cleared"
       : level2Hijacked
         ? "armed"
@@ -91,9 +87,7 @@ export function buildLevelTiles({
           ? "live"
           : "ready";
 
-  const level3Status: LevelStatus = !level0Completed
-    ? "locked"
-    : level3Completed
+  const level3Status: LevelStatus = level3Completed
       ? "cleared"
       : level3DelegationReady
         ? "armed"
