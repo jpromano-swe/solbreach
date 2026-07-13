@@ -626,7 +626,10 @@ export function ResearchLabsSection({
             impactVerified={impactVerified}
             isCollectingLevel1Badge={isCollectingLevel1Badge}
             level1BadgeCollected={level1BadgeCollected}
-            level1BadgeEarned={level1BadgeEarned}
+            level1BadgeEarned={
+              level1BadgeEarned ||
+              Boolean(report?.status === "accepted" || session.labCompleted)
+            }
             reportUnlocked={reportUnlocked}
             questionnaireResult={questionnaireResult}
             report={report}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Address } from "@solana/kit";
+import { toast } from "sonner";
 import { AppHeader } from "./components/app-header";
 import { BadgeEarnedDialog } from "./components/badge-earned-dialog";
 import { BetaAccessSection } from "./components/beta-access-section";
@@ -226,8 +227,8 @@ export default function Home() {
     signer,
   });
 
-  const level1Completed =
-    Boolean(level0State?.completedLevels[1]) || level1BackendCompleted;
+  const level1Badge = getLevelBadge(badges, 1);
+  const level1Completed = Boolean(level1Badge?.earned);
   const level2Completed =
     Boolean(level0State?.completedLevels[2]) || level2BackendCompleted;
   const level3Completed =
@@ -351,7 +352,6 @@ export default function Home() {
     status,
   });
 
-  const level1Badge = getLevelBadge(badges, 1);
   const unseenEarnedBadge =
     badges.find(
       (badge) =>
@@ -370,14 +370,26 @@ export default function Home() {
   }, [manualBadgeDialog, markBadgeSeen, unseenEarnedBadge]);
 
   const collectLevel1Badge = useCallback(async () => {
-    if (!level1Badge?.earned || isCollectingLevel1Badge) return;
+    if (isCollectingLevel1Badge) return;
+
+    const currentBadge =
+      level1Badge?.earned
+        ? level1Badge
+        : (await mutateBadges())?.badges.find(
+            (badge) => badge.slug === "level-1-illusionist"
+          );
+
+    if (!currentBadge?.earned) {
+      toast.error("Badge is still syncing. Try again in a moment.");
+      return;
+    }
 
     setIsCollectingLevel1Badge(true);
-    setManualBadgeDialog(level1Badge);
+    setManualBadgeDialog(currentBadge);
 
     try {
-      if (!level1Badge.seenAt) {
-        await markBadgeSeen(level1Badge.slug);
+      if (!currentBadge.seenAt) {
+        await markBadgeSeen(currentBadge.slug);
       }
       await mutateBadges();
     } finally {
@@ -466,6 +478,7 @@ export default function Home() {
                 <div className="space-y-8">
                   {activeLevel === "level1" ? (
                     <Level1Panel
+                      key={`${address ?? "no-wallet"}:${level1Stage.level1Mode ?? "idle"}`}
                       address={address}
                       copied={copied}
                       isLoading={isLevel1PanelLoading}
