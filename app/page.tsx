@@ -307,6 +307,7 @@ export default function Home() {
       level0Error,
       level0State,
       level1BackendAuthReady: Boolean(level1BackendAuth),
+      level1BackendCompleted,
       level1BackendError,
       level1ChallengeReady: Boolean(level1Challenge),
       level1Completed,
@@ -494,7 +495,8 @@ export default function Home() {
                       isSending={isSending || isLevel1BackendBusy}
                       level1BadgeCollected={Boolean(level1Badge?.seenAt)}
                       level1BadgeEarned={
-                        Boolean(level1Badge?.earned) || level1BackendCompleted
+                        Boolean(level1Badge?.earned) ||
+                        (level1BackendCompleted && Boolean(level1TxSignature))
                       }
                       level1Error={level1PanelError}
                       level1State={level1PanelState}
@@ -656,6 +658,10 @@ export default function Home() {
         onOpenProfile={() => {
           closeBadgeDialog();
           setActiveSection("profile");
+        }}
+        onOpenResearchLab={() => {
+          closeBadgeDialog();
+          setActiveSection("research-labs");
         }}
       />
     </div>

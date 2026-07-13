@@ -19,6 +19,7 @@ export type StageConfig = {
   description: string;
   actionLabel: string | null;
   actionKind: "primary" | "secondary";
+  actionDisabled?: boolean;
   level1Mode?: "prepare" | "sequence" | "execute" | "complete";
   onAction?: () => Promise<void>;
 };
@@ -57,6 +58,7 @@ export function useLevelStageConfigs({
   level0Error,
   level0State,
   level1BackendAuthReady,
+  level1BackendCompleted,
   level1BackendError,
   level1ChallengeReady,
   level1Completed,
@@ -103,6 +105,7 @@ export function useLevelStageConfigs({
   level0Error?: unknown;
   level0State?: Level0Snapshot;
   level1BackendAuthReady: boolean;
+  level1BackendCompleted: boolean;
   level1BackendError?: unknown;
   level1ChallengeReady: boolean;
   level1Completed: boolean;
@@ -295,6 +298,19 @@ export function useLevelStageConfigs({
       };
     }
 
+    if (level1BackendCompleted && level1TxSignature) {
+      return {
+        badge: "Verified",
+        title: "Level 1 exploit verified.",
+        description:
+          "The backend verified the exploit transaction. Collect the badge to record this completion on your profile.",
+        actionLabel: "Exploit verified",
+        actionKind: "secondary",
+        actionDisabled: true,
+        level1Mode: "complete",
+      };
+    }
+
     if (!level1ChallengeReady) {
       return {
         badge: level1SessionReady ? "Challenge" : "Start",
@@ -327,6 +343,7 @@ export function useLevelStageConfigs({
     isLevel1BackendBusy,
     isLevel1BackendLoading,
     level1BackendAuthReady,
+    level1BackendCompleted,
     level1BackendError,
     level1ChallengeReady,
     level1Completed,

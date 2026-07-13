@@ -39,6 +39,7 @@ type StageConfig = {
   description: string;
   actionLabel: string | null;
   actionKind: "primary" | "secondary";
+  actionDisabled?: boolean;
   level1Mode?: "prepare" | "sequence" | "execute" | "complete";
   onAction?: () => Promise<void>;
 };
@@ -1818,6 +1819,7 @@ function ExploitCodeWalkthrough({
               <div className="mt-4">
                 <ExecutionButton
                   disabled={
+                    Boolean(stage.actionDisabled) ||
                     isSending ||
                     (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
                   }

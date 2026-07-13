@@ -191,13 +191,16 @@ function ProfileBadgesSection({
         title={title}
       />
       {isLoading ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2].map((index) => (
-            <SkeletonLine key={index} className="h-[300px]" />
+        <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {[0, 1, 2, 3].map((index) => (
+            <div className="space-y-3" key={index}>
+              <SkeletonLine className="mx-auto h-24 w-24 rounded-[28px]" />
+              <SkeletonLine className="mx-auto h-4 w-24" />
+            </div>
           ))}
         </div>
       ) : badges.length > 0 ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {badges.map((badge) => (
             <BadgeCard badge={badge} key={badge.slug} />
           ))}
@@ -236,61 +239,55 @@ function buildProfileCertificates(certificates?: ProfileCertificate[]) {
 }
 
 function BadgeCard({ badge }: { badge: UserBadge }) {
-  const statusTone = badge.earned
-    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-    : "border-border bg-accent text-muted";
   const imageSrc = badge.earned ? badge.image : "/badges/badge-locked.png";
 
   return (
-    <article className="overflow-hidden rounded-[28px] border border-border bg-background/80">
-      <div className="relative flex aspect-square items-center justify-center border-b border-border bg-card/70">
+    <article
+      aria-label={`${getBadgeShortLabel(badge)} badge ${
+        badge.earned ? "earned" : "locked"
+      }`}
+      className="group flex flex-col items-center text-center"
+      title={badge.title}
+    >
+      <div className="relative flex h-28 w-28 items-center justify-center rounded-[30px] bg-white/[0.015] transition-transform duration-150 ease-out motion-safe:group-hover:-translate-y-1 sm:h-32 sm:w-32">
         <Image
           src={imageSrc}
           alt={`${badge.title} badge`}
-          width={260}
-          height={260}
-          className={`h-[78%] w-[78%] object-contain drop-shadow-[0_24px_45px_rgba(153,69,255,0.18)] ${
-            badge.earned ? "" : "opacity-80 grayscale"
+          width={160}
+          height={160}
+          className={`h-[92%] w-[92%] object-contain drop-shadow-[0_18px_34px_rgba(153,69,255,0.2)] ${
+            badge.earned ? "" : "opacity-55 grayscale"
           }`}
-          sizes="(min-width: 1280px) 22vw, (min-width: 768px) 45vw, 92vw"
-        />
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
-          <span className="rounded-full border border-black/10 bg-background/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted shadow-sm backdrop-blur">
-            {badge.levelOrder ? `Level ${badge.levelOrder}` : "Special"}
-          </span>
-          <span
-            className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] backdrop-blur ${statusTone}`}
-          >
-            {badge.earned ? "Earned" : "Locked"}
-          </span>
-        </div>
-      </div>
-
-      <div className="space-y-4 p-5">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-            Badge
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.05em]">
-            {badge.title}
-          </h3>
-        </div>
-        <p className="min-h-[48px] text-sm leading-6 text-muted">
-          {badge.description}
-        </p>
-        <StatusTextRow
-          label="Status"
-          value={
-            badge.earnedAt
-              ? new Date(badge.earnedAt).toLocaleDateString()
-              : badge.earned
-                ? "Earned"
-                : "Not collected"
-          }
+          sizes="(min-width: 1280px) 9rem, 7rem"
         />
       </div>
+      <p
+        className={`mt-3 max-w-32 text-sm font-semibold leading-5 tracking-[-0.03em] ${
+          badge.earned ? "text-foreground" : "text-muted/45"
+        }`}
+      >
+        {getBadgeShortLabel(badge)}
+      </p>
     </article>
   );
+}
+
+function getBadgeShortLabel(badge: UserBadge) {
+  switch (badge.slug) {
+    case "level-1-illusionist":
+      return "Account Substitution";
+    case "level-2-identity-thief":
+      return "Shared Authority";
+    case "level-3-trojan-horse":
+      return "Delegated CPI";
+    case "power-user":
+      return "Power User";
+    default:
+      return badge.title
+        .split(/\s+/)
+        .slice(0, 4)
+        .join(" ");
+  }
 }
 
 function SectionHeading({
