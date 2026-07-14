@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Address } from "@solana/kit";
 import { toast } from "sonner";
 import { AppHeader } from "./components/app-header";
@@ -41,6 +41,10 @@ import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import { trackAnalyticsEvent } from "./lib/analytics";
 import { getLevelBadge, type UserBadge } from "./lib/badges";
+import type {
+  ProfileCertificate,
+  ProfileCertificatesSummary,
+} from "./lib/certificates/profile-certificates";
 
 const LEVEL_3_DEFAULT_TARGET = 1_000_000n;
 const DEFAULT_LEVEL_1_AMOUNT = "1000000";
@@ -175,6 +179,7 @@ export default function Home() {
   });
   const {
     handleLevel1BackendCertificateMinted,
+    level1BackendCertificateMintedAt,
     level1BackendCertificateSnapshot,
   } = useLevel1BackendCertificate({ address, certificateState, cluster });
 
@@ -246,6 +251,56 @@ export default function Home() {
     : (level1BackendCertificateSnapshot ?? chainLevel1Certificate);
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
+  const profileCertificatesForDisplay = useMemo(() => {
+    if (!level1Certificate?.minted || !level1Certificate.assetId) {
+      return profileCertificates;
+    }
+
+    const currentLevel1 = profileCertificates.find(
+      (certificate) => certificate.level === 1
+    );
+    const mintedLevel1Certificate: ProfileCertificate = {
+      assetId: String(level1Certificate.assetId),
+      certificateId: "solbreach-level-1",
+      certificateNumber: currentLevel1?.certificateNumber ?? 1,
+      certificatePda: level1Certificate.certificatePda
+        ? String(level1Certificate.certificatePda)
+        : null,
+      imageUri: "/nfts/solbreach-level-1-illusionist.png",
+      level: 1,
+      metadataUri: "/certificates/metadata/level-1.json",
+      minted: true,
+      mintedAt: currentLevel1?.mintedAt ?? level1BackendCertificateMintedAt,
+      status: "minted",
+      title: "The Illusionist",
+    };
+
+    return [
+      mintedLevel1Certificate,
+      ...profileCertificates.filter((certificate) => certificate.level !== 1),
+    ].sort((a, b) => a.certificateNumber - b.certificateNumber);
+  }, [
+    level1BackendCertificateMintedAt,
+    level1Certificate,
+    profileCertificates,
+  ]);
+  const profileCertificateSummaryForDisplay =
+    useMemo<ProfileCertificatesSummary | null>(() => {
+      if (!profileCertificateSummary && profileCertificatesForDisplay.length === 0) {
+        return null;
+      }
+
+      const minted = profileCertificatesForDisplay.filter(
+        (certificate) => certificate.minted
+      ).length;
+      const total =
+        profileCertificateSummary?.total || profileCertificatesForDisplay.length;
+
+      return {
+        minted: Math.max(profileCertificateSummary?.minted ?? 0, minted),
+        total,
+      };
+    }, [profileCertificateSummary, profileCertificatesForDisplay]);
   const level2Hijacked = Boolean(address && level2State?.commander === address);
   const level3DelegationReady =
     level3BackendCompleted ||
@@ -432,7 +487,7 @@ export default function Home() {
 
       setResearchLabCertificationDialog({
         assetId: result.assetId,
-        certificateImage: "/certificates/level-1.png",
+        certificateImage: "/nfts/solbreach-level-1-illusionist.png",
         certificateTitle: "The Illusionist",
         powerBadge: powerBadge?.earned ? powerBadge : null,
       });
@@ -691,8 +746,8 @@ export default function Home() {
                 address={address}
                 badges={badges}
                 badgeSummary={badgeSummary}
-                certificates={profileCertificates}
-                certificateSummary={profileCertificateSummary}
+                certificates={profileCertificatesForDisplay}
+                certificateSummary={profileCertificateSummaryForDisplay}
                 getExplorerUrl={getExplorerUrl}
                 isBadgeLoading={isBadgeLoading}
                 isLoading={isProfileCertificatesLoading}

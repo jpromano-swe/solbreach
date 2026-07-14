@@ -139,6 +139,7 @@ export function useLevel1BackendCertificate({
 
   return {
     effectiveCertificateState,
+    level1BackendCertificateMintedAt: record?.mintedAt ?? null,
     level1BackendCertificateSnapshot: snapshot,
     handleLevel1BackendCertificateMinted: handleMinted,
   };
