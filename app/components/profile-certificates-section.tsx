@@ -911,6 +911,9 @@ function buildProfileCertificates(certificates?: ProfileCertificate[]) {
 
 function BadgeCard({ badge }: { badge: UserBadge }) {
   const imageSrc = badge.earned ? badge.image : "/badges/badge-locked.png";
+  const imageTone = badge.earned
+    ? "drop-shadow-[0_14px_24px_rgba(0,0,0,0.34)]"
+    : "opacity-50 grayscale drop-shadow-[0_10px_20px_rgba(0,0,0,0.28)]";
 
   return (
     <article
@@ -920,15 +923,29 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
       className="group flex flex-col items-center text-center"
       title={badge.title}
     >
-      <div className="relative flex h-28 w-28 items-center justify-center rounded-[30px] bg-white/[0.015] transition-transform duration-150 ease-out motion-safe:group-hover:-translate-y-1 sm:h-32 sm:w-32">
+      <div className="relative flex h-28 w-28 items-center justify-center transition-transform duration-150 ease-out motion-safe:group-hover:-translate-y-1 sm:h-32 sm:w-32">
+        <span
+          aria-hidden="true"
+          className={`absolute inset-2 rounded-full blur-2xl transition-opacity duration-150 ${
+            badge.earned
+              ? "bg-[radial-gradient(circle,rgba(153,69,255,0.18),rgba(20,241,149,0.06)_46%,transparent_72%)] opacity-80 group-hover:opacity-100"
+              : "bg-[radial-gradient(circle,rgba(255,255,255,0.08),transparent_70%)] opacity-55"
+          }`}
+        />
+        <span
+          aria-hidden="true"
+          className={`absolute inset-5 rounded-full blur-xl ${
+            badge.earned
+              ? "bg-black/25"
+              : "bg-black/15"
+          }`}
+        />
         <Image
           src={imageSrc}
           alt={`${badge.title} badge`}
           width={160}
           height={160}
-          className={`h-[92%] w-[92%] object-contain drop-shadow-[0_18px_34px_rgba(153,69,255,0.2)] ${
-            badge.earned ? "" : "opacity-55 grayscale"
-          }`}
+          className={`relative h-[92%] w-[92%] object-contain ${imageTone}`}
           sizes="(min-width: 1280px) 9rem, 7rem"
         />
       </div>
