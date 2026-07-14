@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { useMemo, useState } from "react";
+import { Check, Pencil, Search, X } from "lucide-react";
 import {
   isSpecialBadge,
   type UserBadge,
@@ -21,6 +23,16 @@ type CertificateDetails = {
   lockedImage?: string;
   levelLabel: string;
   title: string;
+};
+type ProfileFilter = "showcase" | "all" | "badges" | "certificates";
+type AchievementItem = {
+  id: string;
+  image: string;
+  isComplete: boolean;
+  label: string;
+  meta: string;
+  title: string;
+  type: "badge" | "certificate";
 };
 
 const PROFILE_LEVEL_NUMBERS = [1, 2, 3] as const;
@@ -75,44 +87,103 @@ export function ProfileCertificatesSection({
   const coreBadges = (badges ?? []).filter((badge) => !isSpecialBadge(badge));
   const specialBadges = (badges ?? []).filter(isSpecialBadge);
   const displayCertificates = buildProfileCertificates(certificates);
+  const [activeFilter, setActiveFilter] = useState<ProfileFilter>("showcase");
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isShowcaseEditorOpen, setIsShowcaseEditorOpen] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [availableForWork, setAvailableForWork] = useState(false);
+  const [selectedShowcaseIds, setSelectedShowcaseIds] = useState<string[]>([]);
   const mintedCount =
     certificateSummary?.minted ??
     displayCertificates.filter((certificate) => certificate.minted).length;
+  const displayName =
+    profileName.trim() || (address ? compactAddress(address, 4, 4) : "No wallet");
+  const allBadgeItems = useMemo(
+    () => [...specialBadges, ...coreBadges].map(badgeToAchievement),
+    [coreBadges, specialBadges]
+  );
+  const certificateItems = useMemo(
+    () => displayCertificates.map(certificateToAchievement),
+    [displayCertificates]
+  );
+  const completedItems = useMemo(
+    () =>
+      [...allBadgeItems, ...certificateItems].filter((item) => item.isComplete),
+    [allBadgeItems, certificateItems]
+  );
+  const showcaseItems = useMemo(() => {
+    const selected = selectedShowcaseIds
+      .map((id) => completedItems.find((item) => item.id === id))
+      .filter((item): item is AchievementItem => Boolean(item));
+
+    return selected.length > 0 ? selected : completedItems.slice(0, 4);
+  }, [completedItems, selectedShowcaseIds]);
 
   return (
-    <div className="space-y-8 rounded-[34px] border border-border bg-card/95 p-5 shadow-[0_32px_100px_-70px_rgba(0,0,0,0.45)] sm:p-7">
-      <div className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 className="mt-3 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-            Hacker Profile
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            Track your SolBreach progress, collected badges, special rewards,
-            and certificates in one place.
-          </p>
-        </div>
+    <div className="relative overflow-hidden rounded-[34px] border border-border bg-card/95 shadow-[0_32px_100px_-70px_rgba(0,0,0,0.45)]">
+      <div className="relative border-b border-border bg-[radial-gradient(circle_at_18%_10%,rgba(153,69,255,0.36),transparent_32%),linear-gradient(120deg,rgba(45,10,64,0.94),rgba(9,7,18,0.96)_52%,rgba(20,241,149,0.16))] px-5 pb-5 pt-8 sm:px-7 sm:pt-10">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border border-white/12 bg-black/30 shadow-[0_20px_60px_-35px_rgba(153,69,255,0.9)]">
+              <Image
+                src="/logo_crop.png"
+                alt="SolBreach profile avatar"
+                width={96}
+                height={96}
+                className="h-20 w-20 object-contain"
+                priority
+              />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+                  {displayName}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(true)}
+                  className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#14f195]/50 bg-black/25 px-3 text-xs font-semibold text-white transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#13071d]"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  Edit Profile
+                </button>
+              </div>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300 sm:text-base">
+                User&apos;s badges, certificates and Special Rewards for level completion.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-zinc-400">
+                <span>Total items: {completedItems.length}</span>
+                <span>Active on: SolBreach</span>
+                {profileBio ? <span>{profileBio}</span> : null}
+              </div>
+            </div>
+          </div>
 
-        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
-          <MiniStat
-            label="Wallet"
-            value={address ? "Attached" : "Detached"}
-            detail={address ? compactAddress(address) : "Connect to inspect"}
-          />
-          <MiniStat
-            label="Badges"
-            value={`${badgeSummary?.earned ?? badges?.filter((badge) => badge.earned).length ?? 0}/${badgeSummary?.total ?? badges?.length ?? 4}`}
-            detail="Collected rewards"
-          />
-          <MiniStat
-            label="Certificates"
-            value={`${mintedCount}/${PROFILE_LEVEL_NUMBERS.length}`}
-            detail="Proof of mastery"
-          />
+          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
+            <MiniStat
+              label="Wallet"
+              value={address ? "Attached" : "Detached"}
+              detail={address ? compactAddress(address) : "Connect to inspect"}
+            />
+            <MiniStat
+              label="Badges"
+              value={`${badgeSummary?.earned ?? badges?.filter((badge) => badge.earned).length ?? 0}/${badgeSummary?.total ?? badges?.length ?? 4}`}
+              detail="Collected rewards"
+            />
+            <MiniStat
+              label="Certificates"
+              value={`${mintedCount}/${PROFILE_LEVEL_NUMBERS.length}`}
+              detail="Proof of mastery"
+            />
+          </div>
         </div>
       </div>
 
-      {!address ? (
-        <div className="mt-6 rounded-[24px] border border-dashed border-border bg-background/60 px-6 py-10 text-center">
+      <div className="space-y-7 p-5 sm:p-7">
+        {!address ? (
+          <div className="rounded-[24px] border border-dashed border-border bg-background/60 px-6 py-10 text-center">
           <p className="text-base font-medium tracking-[-0.03em] text-foreground">
             Connect a wallet to inspect your SolBreach profile.
           </p>
@@ -120,51 +191,619 @@ export function ProfileCertificatesSection({
             Your profile will show completed modules, badges, and certificates
             for the connected wallet.
           </p>
+          </div>
+        ) : (
+          <>
+            <ProfileFilterBar
+              activeFilter={activeFilter}
+              onChange={setActiveFilter}
+            />
+
+            {activeFilter === "showcase" ? (
+              <ShowcaseSection
+                completedItems={completedItems}
+                items={showcaseItems}
+                onEdit={() => setIsShowcaseEditorOpen(true)}
+              />
+            ) : activeFilter === "all" ? (
+              <div className="space-y-8">
+                <ProfileBadgesSection
+                  badges={specialBadges}
+                  emptyCopy="Special rewards for events, cohorts, and milestone achievements will appear here."
+                  isLoading={Boolean(isBadgeLoading)}
+                  title="Special Rewards"
+                />
+                <ProfileBadgesSection
+                  badges={coreBadges}
+                  isLoading={Boolean(isBadgeLoading)}
+                  title="Badges"
+                />
+                <CertificatesSection
+                  certificates={displayCertificates}
+                  getExplorerUrl={getExplorerUrl}
+                  isLoading={isLoading}
+                  onSelectLevel={onSelectLevel}
+                />
+              </div>
+            ) : activeFilter === "badges" ? (
+              <div className="space-y-8">
+                <ProfileBadgesSection
+                  badges={specialBadges}
+                  emptyCopy="Special rewards for events, cohorts, and milestone achievements will appear here."
+                  isLoading={Boolean(isBadgeLoading)}
+                  title="Special Rewards"
+                />
+                <ProfileBadgesSection
+                  badges={coreBadges}
+                  isLoading={Boolean(isBadgeLoading)}
+                  title="Badges"
+                />
+              </div>
+            ) : (
+              <CertificatesSection
+                certificates={displayCertificates}
+                getExplorerUrl={getExplorerUrl}
+                isLoading={isLoading}
+                onSelectLevel={onSelectLevel}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {isEditProfileOpen ? (
+        <EditProfileDialog
+          address={address}
+          availableForWork={availableForWork}
+          bio={profileBio}
+          email={profileEmail}
+          username={profileName}
+          onClose={() => setIsEditProfileOpen(false)}
+          onSave={(nextProfile) => {
+            setProfileName(nextProfile.username);
+            setProfileBio(nextProfile.bio);
+            setProfileEmail(nextProfile.email);
+            setAvailableForWork(nextProfile.availableForWork);
+            setIsEditProfileOpen(false);
+          }}
+        />
+      ) : null}
+
+      {isShowcaseEditorOpen ? (
+        <ShowcaseEditorDialog
+          address={address}
+          items={completedItems}
+          selectedIds={selectedShowcaseIds}
+          onClose={() => setIsShowcaseEditorOpen(false)}
+          onSave={(ids) => {
+            setSelectedShowcaseIds(ids);
+            setIsShowcaseEditorOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileFilterBar({
+  activeFilter,
+  onChange,
+}: {
+  activeFilter: ProfileFilter;
+  onChange: (filter: ProfileFilter) => void;
+}) {
+  const filters: { id: ProfileFilter; label: string }[] = [
+    { id: "showcase", label: "Showcase" },
+    { id: "all", label: "Show All" },
+    { id: "badges", label: "Badges" },
+    { id: "certificates", label: "Certificates" },
+  ];
+
+  return (
+    <div className="border-b border-border">
+      <div className="flex flex-wrap gap-6">
+        {filters.map((filter) => {
+          const active = filter.id === activeFilter;
+          return (
+            <button
+              key={filter.id}
+              type="button"
+              onClick={() => onChange(filter.id)}
+              className={`relative min-h-10 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                active ? "text-foreground" : "text-muted hover:text-foreground"
+              }`}
+            >
+              {filter.label}
+              {active ? (
+                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[#9945ff]" />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ShowcaseSection({
+  completedItems,
+  items,
+  onEdit,
+}: {
+  completedItems: AchievementItem[];
+  items: AchievementItem[];
+  onEdit: () => void;
+}) {
+  return (
+    <section>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <SectionHeading
+          description="A compact display of the achievements you want to highlight first."
+          title="Showcase"
+        />
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={completedItems.length === 0}
+          className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-foreground transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Pencil className="h-4 w-4" aria-hidden="true" />
+          Edit Showcase
+        </button>
+      </div>
+
+      {items.length > 0 ? (
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {items.map((item) => (
+            <AchievementShowcaseCard item={item} key={item.id} />
+          ))}
         </div>
       ) : (
-        <>
-          <ProfileBadgesSection
-            badges={specialBadges}
-            emptyCopy="Special badges for events, cohorts, and milestone achievements will appear here."
-            isLoading={Boolean(isBadgeLoading)}
-            title="Special Badges"
+        <div className="mt-5 rounded-[28px] border border-dashed border-border bg-background/60 px-6 py-10 text-center text-sm text-muted">
+          Complete a module to add achievements to your showcase.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AchievementShowcaseCard({ item }: { item: AchievementItem }) {
+  return (
+    <article className="group rounded-[28px] border border-border bg-background/75 p-5 transition-colors hover:border-[#9945ff]/45 hover:bg-white/[0.035]">
+      <div className="flex items-start gap-4">
+        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-[24px] bg-white/[0.025]">
+          <Image
+            src={item.image}
+            alt={`${item.title} achievement`}
+            width={112}
+            height={112}
+            className={`h-[92%] w-[92%] object-contain transition-transform duration-150 motion-safe:group-hover:-translate-y-0.5 ${
+              item.isComplete ? "" : "opacity-45 grayscale"
+            }`}
+            sizes="5rem"
           />
-          <ProfileBadgesSection
-            badges={coreBadges}
-            isLoading={Boolean(isBadgeLoading)}
-            title="Badges"
-          />
-          <section>
-            <SectionHeading
-              description="Certificates represent completed learning milestones and sit alongside your badge collection."
-              title="Certificates"
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b88cff]">
+            {item.type === "badge" ? "Badge" : "Certificate"}
+          </p>
+          <h4 className="mt-2 truncate text-lg font-semibold tracking-[-0.04em]">
+            {item.title}
+          </h4>
+          <p className="mt-1 text-sm leading-5 text-muted">{item.label}</p>
+          <p className="mt-3 text-xs font-semibold text-zinc-500">{item.meta}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CertificatesSection({
+  certificates,
+  getExplorerUrl,
+  isLoading,
+  onSelectLevel,
+}: {
+  certificates: ProfileCertificate[];
+  getExplorerUrl: (path: string) => string;
+  isLoading: boolean;
+  onSelectLevel: (level: ProfileLevelId) => void;
+}) {
+  return (
+    <section>
+      <SectionHeading
+        description="Certificates mark completed learning milestones and sit alongside your badge collection."
+        title="Certificates"
+      />
+      {isLoading ? (
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {PROFILE_LEVEL_NUMBERS.map((level) => (
+            <SkeletonLine key={level} className="h-[360px]" />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {certificates.map((certificate) => (
+            <CertificateCard
+              key={certificate.certificateId}
+              certificate={certificate}
+              detail={LEVEL_CERTIFICATE_DETAILS[certificate.level]}
+              getExplorerUrl={getExplorerUrl}
+              onOpenLevel={() => {
+                onSelectLevel(`level${certificate.level}` as ProfileLevelId);
+              }}
             />
-            {isLoading ? (
-              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {PROFILE_LEVEL_NUMBERS.map((level) => (
-                  <SkeletonLine key={level} className="h-[360px]" />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function EditProfileDialog({
+  address,
+  availableForWork,
+  bio,
+  email,
+  onClose,
+  onSave,
+  username,
+}: {
+  address?: string;
+  availableForWork: boolean;
+  bio: string;
+  email: string;
+  onClose: () => void;
+  onSave: (profile: {
+    availableForWork: boolean;
+    bio: string;
+    email: string;
+    username: string;
+  }) => void;
+  username: string;
+}) {
+  const [draftUsername, setDraftUsername] = useState(username);
+  const [draftBio, setDraftBio] = useState(bio);
+  const [draftEmail, setDraftEmail] = useState(email);
+  const [draftAvailableForWork, setDraftAvailableForWork] =
+    useState(availableForWork);
+
+  return (
+    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
+      <section className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0c0714] shadow-[0_30px_120px_-55px_rgba(153,69,255,0.9)]">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <h3 className="text-xl font-semibold tracking-[-0.04em]">
+            Edit Profile
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
+            aria-label="Close profile editor"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="space-y-6 px-6 py-6">
+          <label className="block">
+            <span className="text-sm font-semibold text-foreground">
+              Username
+            </span>
+            <input
+              value={draftUsername}
+              onChange={(event) => setDraftUsername(event.target.value)}
+              placeholder="Add Username"
+              className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-500 focus:border-[#9945ff]/70"
+            />
+            <span className="mt-2 block text-xs text-[#facc15]">
+              Username is for display purposes inside SolBreach.
+            </span>
+          </label>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Profile Picture
+              </p>
+              <div className="mt-3 flex items-center gap-4">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-black/35">
+                  <Image
+                    src="/logo_crop.png"
+                    alt="Profile avatar preview"
+                    width={76}
+                    height={76}
+                    className="h-16 w-16 object-contain"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-muted"
+                  aria-label="Edit profile picture"
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Banner Image
+              </p>
+              <div className="mt-3 flex h-24 items-center justify-end rounded-xl border border-white/10 bg-[radial-gradient(circle_at_70%_15%,rgba(20,241,149,0.22),transparent_35%),linear-gradient(135deg,rgba(153,69,255,0.38),rgba(9,7,18,0.94))] p-3">
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-300"
+                  aria-label="Edit banner"
+                >
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-foreground">Bio</span>
+            <textarea
+              value={draftBio}
+              onChange={(event) => setDraftBio(event.target.value)}
+              className="mt-2 min-h-28 w-full resize-y rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-zinc-500 focus:border-[#9945ff]/70"
+              placeholder="Add a short profile bio"
+            />
+          </label>
+
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Available for Work
+              </p>
+              <p className="text-xs text-muted">
+                Show availability on your SolBreach profile.
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-pressed={draftAvailableForWork}
+              onClick={() =>
+                setDraftAvailableForWork((current) => !current)
+              }
+              className={`relative h-7 w-12 rounded-full border transition-colors ${
+                draftAvailableForWork
+                  ? "border-[#14f195]/50 bg-[#14f195]/25"
+                  : "border-white/10 bg-white/10"
+              }`}
+            >
+              <span
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-transform ${
+                  draftAvailableForWork
+                    ? "translate-x-5"
+                    : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-foreground">Email</span>
+            <input
+              value={draftEmail}
+              onChange={(event) => setDraftEmail(event.target.value)}
+              placeholder="Add Email"
+              type="email"
+              className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-500 focus:border-[#9945ff]/70"
+            />
+            <span className="mt-2 block text-xs text-muted">
+              Used only for SolBreach notifications.
+            </span>
+          </label>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              Social Connections
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Social links are displayed on your profile.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm font-semibold text-foreground"
+              >
+                Link X/Twitter
+              </button>
+              <button
+                type="button"
+                className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm font-semibold text-foreground"
+              >
+                Link Discord
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+            <div>
+              <p className="text-sm font-semibold text-foreground">User ID</p>
+              <p className="mt-1 text-xs text-muted">
+                {address ? compactAddress(address, 6, 6) : "No wallet attached"}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-5 text-sm font-semibold text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  onSave({
+                    availableForWork: draftAvailableForWork,
+                    bio: draftBio,
+                    email: draftEmail,
+                    username: draftUsername,
+                  })
+                }
+                className="min-h-10 rounded-xl bg-[#9945ff] px-5 text-sm font-semibold text-white shadow-[0_14px_36px_-20px_rgba(153,69,255,0.95)]"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ShowcaseEditorDialog({
+  address,
+  items,
+  onClose,
+  onSave,
+  selectedIds,
+}: {
+  address?: string;
+  items: AchievementItem[];
+  onClose: () => void;
+  onSave: (ids: string[]) => void;
+  selectedIds: string[];
+}) {
+  const [draftSelectedIds, setDraftSelectedIds] = useState<string[]>(selectedIds);
+  const selectedItems = draftSelectedIds
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is AchievementItem => Boolean(item));
+
+  const toggleItem = (id: string) => {
+    setDraftSelectedIds((current) => {
+      if (current.includes(id)) {
+        return current.filter((itemId) => itemId !== id);
+      }
+
+      return current.length >= 4 ? current : [...current, id];
+    });
+  };
+
+  return (
+    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
+      <section className="w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0c0714] shadow-[0_30px_120px_-55px_rgba(153,69,255,0.9)]">
+        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+          <div>
+            <h3 className="text-2xl font-semibold tracking-[-0.05em]">
+              Edit Showcase
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              Choose up to 4 achievements from this wallet.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
+            aria-label="Close showcase editor"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="grid min-h-[420px] lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="border-b border-white/10 p-5 lg:border-b-0 lg:border-r">
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-muted">
+              <Search className="h-4 w-4" aria-hidden="true" />
+              <span>{address ? compactAddress(address) : "No wallet"} achievements</span>
+            </div>
+
+            {items.length > 0 ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {items.map((item) => {
+                  const selected = draftSelectedIds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleItem(item.id)}
+                      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${
+                        selected
+                          ? "border-[#14f195]/60 bg-[#14f195]/10"
+                          : "border-white/10 bg-white/[0.025] hover:bg-white/[0.05]"
+                      }`}
+                    >
+                      <Image
+                        src={item.image}
+                        alt={`${item.title} achievement`}
+                        width={52}
+                        height={52}
+                        className="h-12 w-12 object-contain"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-foreground">
+                          {item.title}
+                        </span>
+                        <span className="block truncate text-xs text-muted">
+                          {item.meta}
+                        </span>
+                      </span>
+                      {selected ? (
+                        <Check className="h-4 w-4 text-[#14f195]" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex min-h-[300px] items-center justify-center text-center text-sm text-muted">
+                No completed achievements available yet.
+              </div>
+            )}
+          </div>
+
+          <aside className="flex flex-col justify-center p-5">
+            {selectedItems.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {selectedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.025] p-3 text-center"
+                  >
+                    <Image
+                      src={item.image}
+                      alt={`${item.title} selected achievement`}
+                      width={72}
+                      height={72}
+                      className="mx-auto h-16 w-16 object-contain"
+                    />
+                    <p className="mt-2 truncate text-xs font-semibold text-foreground">
+                      {item.label}
+                    </p>
+                  </div>
                 ))}
               </div>
             ) : (
-              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {displayCertificates.map((certificate) => (
-                  <CertificateCard
-                    key={certificate.certificateId}
-                    certificate={certificate}
-                    detail={LEVEL_CERTIFICATE_DETAILS[certificate.level]}
-                    getExplorerUrl={getExplorerUrl}
-                    onOpenLevel={() => {
-                      onSelectLevel(
-                        `level${certificate.level}` as ProfileLevelId
-                      );
-                    }}
-                  />
-                ))}
-              </div>
+              <p className="text-center text-sm text-muted">
+                Selected achievements will appear here.
+              </p>
             )}
-          </section>
-        </>
-      )}
+          </aside>
+        </div>
+
+        <div className="flex justify-center gap-3 border-t border-white/10 px-6 py-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-10 w-52 rounded-xl border border-white/10 bg-white/[0.07] px-5 text-sm font-semibold text-foreground"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(draftSelectedIds)}
+            className="min-h-10 w-52 rounded-xl bg-[#9945ff] px-5 text-sm font-semibold text-white shadow-[0_14px_36px_-20px_rgba(153,69,255,0.95)]"
+          >
+            Save Showcase
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -184,7 +823,7 @@ function ProfileBadgesSection({
     <section>
       <SectionHeading
         description={
-          title === "Special Badges"
+          title === "Special Rewards"
             ? "Limited rewards for events, cohorts, and milestone achievements."
             : "Badges mark the modules you complete across SolBreach."
         }
@@ -212,6 +851,38 @@ function ProfileBadgesSection({
       )}
     </section>
   );
+}
+
+function badgeToAchievement(badge: UserBadge): AchievementItem {
+  return {
+    id: `badge:${badge.slug}`,
+    image: badge.earned ? badge.image : "/badges/badge-locked.png",
+    isComplete: badge.earned,
+    label: getBadgeShortLabel(badge),
+    meta: isSpecialBadge(badge)
+      ? "Special Reward"
+      : badge.levelOrder
+        ? `Level ${badge.levelOrder}`
+        : "Badge",
+    title: badge.title,
+    type: "badge",
+  };
+}
+
+function certificateToAchievement(
+  certificate: ProfileCertificate
+): AchievementItem {
+  const detail = LEVEL_CERTIFICATE_DETAILS[certificate.level];
+
+  return {
+    id: `certificate:${certificate.certificateId}`,
+    image: resolveProfileCertificateImage(certificate),
+    isComplete: certificate.minted,
+    label: detail.title,
+    meta: `${detail.levelLabel} Certificate`,
+    title: detail.title,
+    type: "certificate",
+  };
 }
 
 function buildProfileCertificates(certificates?: ProfileCertificate[]) {
@@ -396,8 +1067,8 @@ function CertificateCard({
               target="_blank"
               rel="noopener noreferrer"
               className="block truncate underline underline-offset-2"
-            >
-              View cNFT asset
+          >
+              View asset
             </a>
           ) : null}
           {certificate.certificatePda ? (
@@ -406,8 +1077,8 @@ function CertificateCard({
               target="_blank"
               rel="noopener noreferrer"
               className="block truncate underline underline-offset-2"
-            >
-              View certificate PDA
+          >
+              View certificate
             </a>
           ) : null}
           <a
