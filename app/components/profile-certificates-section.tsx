@@ -150,32 +150,21 @@ export function ProfileCertificatesSection({
                   Edit Profile
                 </button>
               </div>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300 sm:text-base">
-                User&apos;s badges, certificates and Special Rewards for level completion.
-              </p>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-zinc-400">
                 <span>Total items: {completedItems.length}</span>
-                <span>Active on: SolBreach</span>
                 {profileBio ? <span>{profileBio}</span> : null}
               </div>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
-            <MiniStat
-              label="Wallet"
-              value={address ? "Attached" : "Detached"}
-              detail={address ? compactAddress(address) : "Connect to inspect"}
-            />
-            <MiniStat
+          <div className="flex flex-wrap items-end gap-x-8 gap-y-4 text-right lg:justify-end">
+            <ProfileMetric
               label="Badges"
               value={`${badgeSummary?.earned ?? badges?.filter((badge) => badge.earned).length ?? 0}/${badgeSummary?.total ?? badges?.length ?? 4}`}
-              detail="Collected rewards"
             />
-            <MiniStat
+            <ProfileMetric
               label="Certificates"
               value={`${mintedCount}/${PROFILE_LEVEL_NUMBERS.length}`}
-              detail="Proof of mastery"
             />
           </div>
         </div>
@@ -325,6 +314,19 @@ function ProfileFilterBar({
   );
 }
 
+function ProfileMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-24">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold tracking-[-0.05em] text-white">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function ShowcaseSection({
   completedItems,
   items,
@@ -353,10 +355,12 @@ function ShowcaseSection({
       </div>
 
       {items.length > 0 ? (
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 rounded-[30px] border border-border bg-background/70 p-4">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           {items.map((item) => (
             <AchievementShowcaseCard item={item} key={item.id} />
           ))}
+          </div>
         </div>
       ) : (
         <div className="mt-5 rounded-[28px] border border-dashed border-border bg-background/60 px-6 py-10 text-center text-sm text-muted">
@@ -369,9 +373,9 @@ function ShowcaseSection({
 
 function AchievementShowcaseCard({ item }: { item: AchievementItem }) {
   return (
-    <article className="group rounded-[28px] border border-border bg-background/75 p-5 transition-colors hover:border-[#9945ff]/45 hover:bg-white/[0.035]">
+    <article className="group rounded-[22px] p-4 transition-colors hover:bg-white/[0.035]">
       <div className="flex items-start gap-4">
-        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-[24px] bg-white/[0.025]">
+        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
           <Image
             src={item.image}
             alt={`${item.title} achievement`}
@@ -1121,25 +1125,5 @@ function CertificateCard({
         </button>
       </div>
     </article>
-  );
-}
-
-function MiniStat({
-  detail,
-  label,
-  value,
-}: {
-  detail: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[20px] border border-border bg-background/70 px-4 py-3">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-        {label}
-      </p>
-      <p className="mt-2 text-base font-semibold tracking-[-0.03em]">{value}</p>
-      <p className="mt-1 text-xs text-muted">{detail}</p>
-    </div>
   );
 }
