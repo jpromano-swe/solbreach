@@ -36,6 +36,10 @@ type AchievementItem = {
 };
 
 const PROFILE_LEVEL_NUMBERS = [1, 2, 3] as const;
+const DEFAULT_PROFILE_IMAGES = Array.from(
+  { length: 10 },
+  (_, index) => `/default_user/image-${index + 1}.png`
+);
 const LEVEL_CERTIFICATE_DETAILS: Record<0 | 1 | 2 | 3, CertificateDetails> = {
   0: {
     image: "/nfts/solbreach-level-0-hello-solbreach.png",
@@ -100,6 +104,7 @@ export function ProfileCertificatesSection({
     displayCertificates.filter((certificate) => certificate.minted).length;
   const displayName =
     profileName.trim() || (address ? compactAddress(address, 4, 4) : "No wallet");
+  const profileImageSrc = useMemo(() => getDefaultProfileImage(address), [address]);
   const allBadgeItems = useMemo(
     () => [...specialBadges, ...coreBadges].map(badgeToAchievement),
     [coreBadges, specialBadges]
@@ -128,11 +133,11 @@ export function ProfileCertificatesSection({
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border border-white/12 bg-black/30 shadow-[0_20px_60px_-35px_rgba(153,69,255,0.9)]">
               <Image
-                src="/logo_crop.png"
+                src={profileImageSrc}
                 alt="SolBreach profile avatar"
                 width={96}
                 height={96}
-                className="h-20 w-20 object-contain"
+                className="h-24 w-24 rounded-full object-cover"
                 priority
               />
             </div>
@@ -246,6 +251,7 @@ export function ProfileCertificatesSection({
           availableForWork={availableForWork}
           bio={profileBio}
           email={profileEmail}
+          profileImageSrc={profileImageSrc}
           username={profileName}
           onClose={() => setIsEditProfileOpen(false)}
           onSave={(nextProfile) => {
@@ -451,6 +457,7 @@ function EditProfileDialog({
   email,
   onClose,
   onSave,
+  profileImageSrc,
   username,
 }: {
   address?: string;
@@ -464,6 +471,7 @@ function EditProfileDialog({
     email: string;
     username: string;
   }) => void;
+  profileImageSrc: string;
   username: string;
 }) {
   const [draftUsername, setDraftUsername] = useState(username);
@@ -513,11 +521,11 @@ function EditProfileDialog({
               <div className="mt-3 flex items-center gap-4">
                 <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-black/35">
                   <Image
-                    src="/logo_crop.png"
+                    src={profileImageSrc}
                     alt="Profile avatar preview"
                     width={76}
                     height={76}
-                    className="h-16 w-16 object-contain"
+                    className="h-20 w-20 rounded-full object-cover"
                   />
                 </div>
                 <button
@@ -887,6 +895,19 @@ function certificateToAchievement(
     title: detail.title,
     type: "certificate",
   };
+}
+
+function getDefaultProfileImage(address?: string) {
+  if (!address) {
+    return DEFAULT_PROFILE_IMAGES[0];
+  }
+
+  let hash = 0;
+  for (let index = 0; index < address.length; index += 1) {
+    hash = (hash * 31 + address.charCodeAt(index)) >>> 0;
+  }
+
+  return DEFAULT_PROFILE_IMAGES[hash % DEFAULT_PROFILE_IMAGES.length];
 }
 
 function buildProfileCertificates(certificates?: ProfileCertificate[]) {
