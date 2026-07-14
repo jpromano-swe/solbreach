@@ -925,11 +925,26 @@ function getDefaultProfileImage(address?: string) {
 
 function buildProfileCertificates(certificates?: ProfileCertificate[]) {
   if (certificates?.length) {
-    return certificates
-      .filter((certificate) =>
-        PROFILE_LEVEL_NUMBERS.includes(certificate.level)
-      )
-      .sort((a, b) => a.certificateNumber - b.certificateNumber);
+    const byLevel = new Map<1 | 2 | 3, ProfileCertificate>();
+
+    for (const certificate of certificates) {
+      if (!PROFILE_LEVEL_NUMBERS.includes(certificate.level)) continue;
+
+      const current = byLevel.get(certificate.level);
+      if (
+        !current ||
+        (certificate.minted && !current.minted) ||
+        (certificate.minted === current.minted &&
+          certificate.mintedAt &&
+          (!current.mintedAt || certificate.mintedAt > current.mintedAt))
+      ) {
+        byLevel.set(certificate.level, certificate);
+      }
+    }
+
+    return PROFILE_LEVEL_NUMBERS.map((level) => byLevel.get(level)).filter(
+      (certificate): certificate is ProfileCertificate => Boolean(certificate)
+    );
   }
 
   return PROFILE_LEVEL_NUMBERS.map((level) => ({

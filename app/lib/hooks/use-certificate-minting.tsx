@@ -21,9 +21,9 @@ type MintPayload =
       alreadyMinted: boolean;
       assetId: string;
       certificatePda: string;
-      leafIndex: number;
-      leafNonce: string;
-      merkleTree: string;
+      leafIndex: number | null;
+      leafNonce: string | null;
+      merkleTree: string | null;
       mintSignature?: string;
       recordSignature?: string;
     };
@@ -122,7 +122,18 @@ export function useCertificateMinting({
             "The certificate PDA already has a recorded compressed asset."
           ),
         });
-        return null;
+        return existingCertificate.assetId
+          ? {
+              alreadyMinted: true,
+              assetId: String(existingCertificate.assetId),
+              certificatePda: String(existingCertificate.certificatePda),
+              leafIndex: existingCertificate.leafIndex,
+              leafNonce: existingCertificate.leafNonce?.toString() ?? null,
+              merkleTree: existingCertificate.merkleTree
+                ? String(existingCertificate.merkleTree)
+                : null,
+            }
+          : null;
       }
 
       setMintingLevel(levelId);

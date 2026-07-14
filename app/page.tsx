@@ -508,6 +508,14 @@ export default function Home() {
 
       if (!result) return;
 
+      handleLevel1BackendCertificateMinted({
+        assetId: result.assetId,
+        certificatePda: result.certificatePda,
+        leafIndex: result.leafIndex,
+        leafNonce: result.leafNonce,
+        merkleTree: result.merkleTree,
+      });
+
       const [badgePayload] = await Promise.all([
         mutateBadges(),
         mutateProfileCertificates(),
@@ -524,7 +532,13 @@ export default function Home() {
         powerBadge: powerBadge?.earned ? powerBadge : null,
       });
     },
-    [badges, mintLevel1, mutateBadges, mutateProfileCertificates]
+    [
+      badges,
+      handleLevel1BackendCertificateMinted,
+      mintLevel1,
+      mutateBadges,
+      mutateProfileCertificates,
+    ]
   );
 
   const closeResearchLabCertificationDialog = useCallback(() => {
