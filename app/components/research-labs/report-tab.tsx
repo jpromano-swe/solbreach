@@ -64,7 +64,9 @@ export function ReportTab({
   reviewQuestions,
   reviewStarted,
   report,
+  isMintingResearchLabCertificate,
   level1BadgeCollected,
+  researchLabCertificateMinted,
   onChange,
   onChangeAuditReportStage,
   onQuestionnaireAnswer,
@@ -75,6 +77,7 @@ export function ReportTab({
   onReviewStart,
   onSave,
   onSubmitReport,
+  onMintResearchLabCertificate,
 }: {
   report: ResearchLabReport | null;
   fields: ResearchLabReportFields;
@@ -92,7 +95,9 @@ export function ReportTab({
   reviewOptionOrder: Record<string, string[]>;
   reviewQuestions: QuestionnaireQuestion[];
   reviewStarted: boolean;
+  isMintingResearchLabCertificate: boolean;
   level1BadgeCollected: boolean;
+  researchLabCertificateMinted: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onQuestionnaireAnswer: (answer: QuestionnaireAnswer) => void;
@@ -105,6 +110,7 @@ export function ReportTab({
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
   }) => Promise<ResearchLabReport | null | undefined>;
+  onMintResearchLabCertificate: () => Promise<void>;
 }) {
   const [showCriticalAnswers, setShowCriticalAnswers] = useState(false);
 
@@ -227,12 +233,15 @@ export function ReportTab({
           fields={fields}
           isSaving={isSaving}
           isSubmitting={isSubmitting}
+          isMintingResearchLabCertificate={isMintingResearchLabCertificate}
           level1BadgeCollected={level1BadgeCollected}
+          researchLabCertificateMinted={researchLabCertificateMinted}
           report={report}
           onChange={onChange}
           onChangeAuditReportStage={onChangeAuditReportStage}
           onSave={onSave}
           onSubmitReport={onSubmitReport}
+          onMintResearchLabCertificate={onMintResearchLabCertificate}
         />
       </div>
     </div>
@@ -867,11 +876,14 @@ function ReportForm({
   fields,
   isSaving,
   isSubmitting,
+  isMintingResearchLabCertificate,
   level1BadgeCollected,
+  researchLabCertificateMinted,
   onChange,
   onChangeAuditReportStage,
   onSave,
   onSubmitReport,
+  onMintResearchLabCertificate,
   expanded = false,
 }: {
   auditReportStage: AuditReportStage;
@@ -879,13 +891,16 @@ function ReportForm({
   fields: ResearchLabReportFields;
   isSaving: boolean;
   isSubmitting: boolean;
+  isMintingResearchLabCertificate: boolean;
   level1BadgeCollected: boolean;
+  researchLabCertificateMinted: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onSave: () => Promise<ResearchLabReport | null>;
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
   }) => Promise<ResearchLabReport | null | undefined>;
+  onMintResearchLabCertificate: () => Promise<void>;
   expanded?: boolean;
 }) {
   const [auditReportPreview, setAuditReportPreview] =
@@ -957,7 +972,14 @@ function ReportForm({
   }
 
   if (auditReportStage === "CERTIFY_KNOWLEDGE") {
-    return <CertifyKnowledgeScreen collected={level1BadgeCollected} />;
+    return (
+      <CertifyKnowledgeScreen
+        isMinting={isMintingResearchLabCertificate}
+        prerequisiteBadgeCollected={level1BadgeCollected}
+        minted={researchLabCertificateMinted}
+        onMint={onMintResearchLabCertificate}
+      />
+    );
   }
 
   if (isAccepted || auditReportStage === "SUBMITTED") {
@@ -1593,7 +1615,17 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
   );
 }
 
-function CertifyKnowledgeScreen({ collected }: { collected: boolean }) {
+function CertifyKnowledgeScreen({
+  isMinting,
+  minted,
+  prerequisiteBadgeCollected,
+  onMint,
+}: {
+  isMinting: boolean;
+  minted: boolean;
+  prerequisiteBadgeCollected: boolean;
+  onMint: () => Promise<void>;
+}) {
   return (
     <section className="w-full">
       <div className="max-w-4xl space-y-7 py-1">
@@ -1606,8 +1638,8 @@ function CertifyKnowledgeScreen({ collected }: { collected: boolean }) {
           </h3>
           <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
             You verified impact, submitted the audit report, and reviewed the
-            secure account-binding pattern. Collect the Level 1 badge to record
-            Account Substitution completion on your SolBreach profile.
+            secure account-binding pattern. Mint the Research Lab certificate
+            to record Account Substitution completion on your wallet.
           </p>
         </div>
 
@@ -1620,15 +1652,45 @@ function CertifyKnowledgeScreen({ collected }: { collected: boolean }) {
               label="Module"
               value="Account Substitution"
             />
-            <CertificationSummaryRow label="Credential" value="Level 1 badge" />
+            <CertificationSummaryRow
+              label="Credential"
+              value={minted ? "Certificate minted" : "Certificate unlocked"}
+            />
+            <CertificationSummaryRow
+              label="Prerequisite"
+              value={
+                prerequisiteBadgeCollected
+                  ? "Level 1 badge collected"
+                  : "Level 1 badge required"
+              }
+            />
           </div>
         </section>
 
-        <p className="max-w-2xl text-sm leading-6 text-zinc-500">
-          {collected
-            ? "Badge is collected. Continue from the checkpoint rail when you are ready for the next module."
-            : "Use the checkpoint rail to collect the badge for this module."}
-        </p>
+        <button
+          type="button"
+          onClick={() => {
+            void onMint();
+          }}
+          disabled={!prerequisiteBadgeCollected || minted || isMinting}
+          className={`group inline-flex min-h-11 w-auto min-w-[220px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+            !prerequisiteBadgeCollected || minted || isMinting
+              ? "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
+              : "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
+          }`}
+        >
+          {minted
+            ? "Certificate minted"
+            : isMinting
+              ? "Minting..."
+              : "Mint NFT Certificate"}
+          {!minted && !isMinting ? (
+            <ArrowRight
+              className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+              aria-hidden="true"
+            />
+          ) : null}
+        </button>
       </div>
     </section>
   );

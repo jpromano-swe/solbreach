@@ -40,6 +40,8 @@ export function ResearchLabCatalog({
   isAuthenticated,
   isLoading,
   labs,
+  level1BadgeCollected,
+  onGoToLevel1Module,
   onLoadCatalog,
   onOpenLab,
   walletStatus,
@@ -48,6 +50,8 @@ export function ResearchLabCatalog({
   isAuthenticated: boolean;
   isLoading: boolean;
   labs: ResearchLabManifest[];
+  level1BadgeCollected: boolean;
+  onGoToLevel1Module: () => void;
   onLoadCatalog: () => void;
   onOpenLab: (lab: ResearchLabManifest) => void;
   walletStatus: string;
@@ -96,41 +100,93 @@ export function ResearchLabCatalog({
             }`}
             aria-hidden={shouldGateLabs}
           >
-            {labs.map((lab) => (
-              <button
-                key={lab.id}
-                type="button"
-                onClick={() => onOpenLab(lab)}
-                disabled={isLoading || !isAuthenticated}
-                className="group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-3 py-1 text-xs font-semibold text-[#b892ff]">
-                    {displayLabCode(lab)}
-                  </span>
-                  <span className="flex items-center gap-2 rounded-full border border-[#14f195]/20 bg-[#14f195]/10 px-3 py-1 text-xs font-medium text-[#8fffd0]">
-                    <Wifi className="h-3.5 w-3.5" />
-                    Available
-                  </span>
-                </div>
-                <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
-                  {lab.title || CATALOG_COPY.titleFallback}
-                </h2>
-                <p className="mt-3 min-h-20 text-sm leading-6 text-zinc-400">
-                  {lab.summary || CATALOG_COPY.scenario}
-                </p>
-                <div className="mt-6 grid grid-cols-2 gap-3 text-xs text-zinc-400">
-                  <Metric icon={<ShieldCheck />} label={lab.difficulty} />
-                  <Metric icon={<Clock3 />} label={lab.estimatedTime} />
-                </div>
-                <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
-                  <span className="text-zinc-500">Sandbox investigation</span>
-                  <span className="font-medium text-[#b892ff] transition group-hover:text-white">
-                    {isAuthenticated ? "Open lab" : "Auth required"}
-                  </span>
-                </div>
-              </button>
-            ))}
+            {labs.map((lab) => {
+              const requiresLevel1 = requiresLevel1Badge(lab);
+              const labUnlocked = !requiresLevel1 || level1BadgeCollected;
+
+              return (
+                <article
+                  key={lab.id}
+                  className={`group rounded-[22px] border p-6 text-left shadow-2xl shadow-black/30 transition duration-300 ${
+                    labUnlocked
+                      ? "border-white/10 bg-white/[0.045] hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065]"
+                      : "border-amber-300/15 bg-amber-300/[0.035]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-3 py-1 text-xs font-semibold text-[#b892ff]">
+                      {displayLabCode(lab)}
+                    </span>
+                    <span
+                      className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
+                        labUnlocked
+                          ? "border-[#14f195]/20 bg-[#14f195]/10 text-[#8fffd0]"
+                          : "border-amber-300/20 bg-amber-300/10 text-amber-200"
+                      }`}
+                    >
+                      {labUnlocked ? (
+                        <Wifi className="h-3.5 w-3.5" />
+                      ) : (
+                        <LockKeyhole className="h-3.5 w-3.5" />
+                      )}
+                      {labUnlocked ? "Available" : "Badge required"}
+                    </span>
+                  </div>
+                  <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
+                    {lab.title || CATALOG_COPY.titleFallback}
+                  </h2>
+                  <p className="mt-3 min-h-20 text-sm leading-6 text-zinc-400">
+                    {lab.summary || CATALOG_COPY.scenario}
+                  </p>
+                  <div className="mt-6 grid grid-cols-2 gap-3 text-xs text-zinc-400">
+                    <Metric icon={<ShieldCheck />} label={lab.difficulty} />
+                    <Metric icon={<Clock3 />} label={lab.estimatedTime} />
+                  </div>
+
+                  {requiresLevel1 ? (
+                    <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                        Prerequisites
+                      </p>
+                      <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                        <span className="text-zinc-300">Level 1 badge</span>
+                        <span
+                          className={
+                            level1BadgeCollected
+                              ? "text-[#8fffd0]"
+                              : "text-amber-200"
+                          }
+                        >
+                          {level1BadgeCollected ? "Collected" : "Missing"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
+                    <span className="text-zinc-500">Sandbox investigation</span>
+                    {labUnlocked ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLab(lab)}
+                        disabled={isLoading || !isAuthenticated}
+                        className="font-medium text-[#b892ff] transition hover:text-white focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 disabled:cursor-not-allowed disabled:opacity-55"
+                      >
+                        {isAuthenticated ? "Open lab" : "Auth required"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onGoToLevel1Module}
+                        className="font-medium text-amber-200 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-300/50"
+                      >
+                        Go to Module
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
 
             {CATALOG_LOCKED_LABS.map((lab) => (
               <div
@@ -199,6 +255,10 @@ export function ResearchLabCatalog({
 function displayLabCode(lab: ResearchLabManifest) {
   if (lab.slug === "account-substitution") return "RL1";
   return lab.id.toUpperCase();
+}
+
+function requiresLevel1Badge(lab: ResearchLabManifest) {
+  return lab.slug === "account-substitution" || lab.id === "rl1-account-substitution";
 }
 
 function ResearchLabWalletConnectorDialog({

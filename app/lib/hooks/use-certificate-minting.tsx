@@ -97,14 +97,14 @@ export function useCertificateMinting({
     }) => {
       if (!signer || !address) {
         toast.error("Connect the wallet that cleared this level first.");
-        return;
+        return null;
       }
 
       if (cluster === "testnet") {
         toast.error(
           "Certificate minting is only configured for devnet, localnet, or mainnet-beta."
         );
-        return;
+        return null;
       }
 
       if (existingCertificate?.minted) {
@@ -122,7 +122,7 @@ export function useCertificateMinting({
             "The certificate PDA already has a recorded compressed asset."
           ),
         });
-        return;
+        return null;
       }
 
       setMintingLevel(levelId);
@@ -251,9 +251,11 @@ export function useCertificateMinting({
             ) : undefined,
           }
         );
+        return "assetId" in payload ? payload : null;
       } catch (err) {
         console.error("Certificate mint failed:", err);
         toast.error(err instanceof Error ? err.message : String(err));
+        return null;
       } finally {
         setMintingLevel(null);
       }
@@ -271,7 +273,7 @@ export function useCertificateMinting({
   );
 
   const mintLevel0 = useCallback(async () => {
-    await mintLevelCertificate({
+    return mintLevelCertificate({
       level: 0,
       levelId: "level0",
       existingCertificate: certificates.level0Certificate,
@@ -286,7 +288,7 @@ export function useCertificateMinting({
       ? await ensureLevel1BackendSession()
       : null;
 
-    await mintLevelCertificate({
+    return mintLevelCertificate({
       backendAccessToken: level1BackendCompleted
         ? auth?.accessToken
         : undefined,
@@ -305,7 +307,7 @@ export function useCertificateMinting({
   ]);
 
   const mintLevel2 = useCallback(async () => {
-    await mintLevelCertificate({
+    return mintLevelCertificate({
       level: 2,
       levelId: "level2",
       existingCertificate: certificates.level2Certificate,
@@ -314,7 +316,7 @@ export function useCertificateMinting({
   }, [certificates.level2Certificate, mintLevelCertificate]);
 
   const mintLevel3 = useCallback(async () => {
-    await mintLevelCertificate({
+    return mintLevelCertificate({
       level: 3,
       levelId: "level3",
       existingCertificate: certificates.level3Certificate,

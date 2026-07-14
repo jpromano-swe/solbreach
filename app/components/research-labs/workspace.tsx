@@ -56,7 +56,9 @@ export function ResearchLabWorkspace({
   reviewStarted,
   report,
   reportFields,
+  isMintingResearchLabCertificate,
   level1BadgeCollected,
+  researchLabCertificateMinted,
   txResults,
   onChangeExecuteExploitView,
   onChangeReportFields,
@@ -71,6 +73,7 @@ export function ResearchLabWorkspace({
   onReviewStart,
   onSaveReport,
   onSubmitReport,
+  onMintResearchLabCertificate,
   onSelectFile,
   onTabChange,
   isReportSaving,
@@ -100,7 +103,9 @@ export function ResearchLabWorkspace({
   reviewStarted: boolean;
   report: ResearchLabReport | null;
   reportFields: ResearchLabReportFields;
+  isMintingResearchLabCertificate: boolean;
   level1BadgeCollected: boolean;
+  researchLabCertificateMinted: boolean;
   txResults: EnrichedTransactionResult[];
   onChangeExecuteExploitView: (view: ExecuteExploitView) => void;
   onChangeReportFields: (fields: ResearchLabReportFields) => void;
@@ -117,6 +122,7 @@ export function ResearchLabWorkspace({
   onSubmitReport: (options?: {
     acceptedStage?: AuditReportStage;
   }) => Promise<ResearchLabReport | null | undefined>;
+  onMintResearchLabCertificate: () => Promise<void>;
   onSelectFile: (path: string) => void;
   onTabChange: (tab: WorkspaceTab) => void;
   isReportSaving: boolean;
@@ -179,7 +185,9 @@ export function ResearchLabWorkspace({
         reviewQuestions={reviewQuestions}
         reviewStarted={reviewStarted}
         report={report}
+        isMintingResearchLabCertificate={isMintingResearchLabCertificate}
         level1BadgeCollected={level1BadgeCollected}
+        researchLabCertificateMinted={researchLabCertificateMinted}
         onChange={onChangeReportFields}
         onChangeAuditReportStage={onChangeAuditReportStage}
         onQuestionnaireAnswer={onQuestionnaireAnswer}
@@ -190,6 +198,7 @@ export function ResearchLabWorkspace({
         onReviewStart={onReviewStart}
         onSave={onSaveReport}
         onSubmitReport={onSubmitReport}
+        onMintResearchLabCertificate={onMintResearchLabCertificate}
       />
     );
 

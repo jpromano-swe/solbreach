@@ -58,18 +58,29 @@ function getErrorMessage(error: unknown) {
 
 export function ResearchLabsSection({
   isCollectingLevel1Badge,
+  isMintingResearchLabCertificate,
   level1BadgeCollected,
   level1BadgeEarned,
-  onCollectLevel1Badge,
+  powerUserBadgeEarned,
+  researchLabCertificateMinted,
   onBadgeStateChanged,
   onContinueToLevel2,
+  onGoToLevel1Module,
+  onMintResearchLabCertificate,
 }: {
   isCollectingLevel1Badge: boolean;
+  isMintingResearchLabCertificate: boolean;
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
-  onCollectLevel1Badge: () => void;
+  powerUserBadgeEarned: boolean;
+  researchLabCertificateMinted: boolean;
   onBadgeStateChanged?: () => void;
   onContinueToLevel2: () => void;
+  onGoToLevel1Module: () => void;
+  onMintResearchLabCertificate: (options: {
+    researchLabAccessToken: string;
+    researchLabSessionId: string;
+  }) => Promise<void>;
 }) {
   const { status: walletStatus, wallet } = useWallet();
   const [backendAuth, setBackendAuth] = useState<Level1AuthSession | null>(
@@ -422,6 +433,12 @@ export function ResearchLabsSection({
   });
 
   const openLab = async (lab: ResearchLabManifest) => {
+    if (requiresLevel1Badge(lab) && !level1BadgeCollected) {
+      toast.message("Collect the Level 1 badge before opening this Research Lab.");
+      onGoToLevel1Module();
+      return;
+    }
+
     setIsCatalogLoading(true);
     setCatalogError(null);
     try {
@@ -532,6 +549,19 @@ export function ResearchLabsSection({
     [onBadgeStateChanged, submitReport]
   );
 
+  const mintActiveResearchLabCertificate = useCallback(async () => {
+    if (!session) {
+      toast.error("Open an active Research Lab session before minting.");
+      return;
+    }
+
+    const auth = await getActiveAuth();
+    await onMintResearchLabCertificate({
+      researchLabAccessToken: auth.accessToken,
+      researchLabSessionId: session.sessionId,
+    });
+  }, [getActiveAuth, onMintResearchLabCertificate, session]);
+
   if (!activeLab || !session) {
     return (
       <ResearchLabCatalog
@@ -539,7 +569,9 @@ export function ResearchLabsSection({
         isAuthenticated={isBackendAuthenticated}
         isLoading={isCatalogLoading}
         labs={labs}
+        level1BadgeCollected={level1BadgeCollected}
         onLoadCatalog={loadCatalog}
+        onGoToLevel1Module={onGoToLevel1Module}
         onOpenLab={openLab}
         walletStatus={walletStatus}
       />
@@ -588,6 +620,8 @@ export function ResearchLabsSection({
             report={report}
             reportFields={reportFields}
             level1BadgeCollected={level1BadgeCollected}
+            researchLabCertificateMinted={researchLabCertificateMinted}
+            isMintingResearchLabCertificate={isMintingResearchLabCertificate}
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
             executeExploitView={executeExploitView}
@@ -608,6 +642,7 @@ export function ResearchLabsSection({
             onReviewStart={startFindingReview}
             onSaveReport={saveReportDraft}
             onSubmitReport={submitReportAndRefreshBadges}
+            onMintResearchLabCertificate={mintActiveResearchLabCertificate}
             onSelectFile={setActiveFilePath}
             onTabChange={changeWorkspaceTab}
             isReportSaving={isReportSaving}
@@ -623,11 +658,14 @@ export function ResearchLabsSection({
             findingReviewPassed={findingReviewPassed}
             impactVerified={impactVerified}
             isCollectingLevel1Badge={isCollectingLevel1Badge}
+            isMintingResearchLabCertificate={isMintingResearchLabCertificate}
             level1BadgeCollected={level1BadgeCollected}
             level1BadgeEarned={
               level1BadgeEarned ||
               Boolean(report?.status === "accepted" || session.labCompleted)
             }
+            powerUserBadgeEarned={powerUserBadgeEarned}
+            researchLabCertificateMinted={researchLabCertificateMinted}
             reportUnlocked={reportUnlocked}
             questionnaireResult={questionnaireResult}
             report={report}
@@ -642,7 +680,6 @@ export function ResearchLabsSection({
             revealedHints={revealedHints}
             session={session}
             txResults={txResults}
-            onCollectLevel1Badge={onCollectLevel1Badge}
             onOpenExploit={openExploitFromContext}
             onOpenReport={
               impactVerified
@@ -652,11 +689,16 @@ export function ResearchLabsSection({
             onRevealHint={revealHint}
             onRetryReview={retryQuestionnaire}
             onContinueToLevel2={onContinueToLevel2}
+            onMintResearchLabCertificate={mintActiveResearchLabCertificate}
           />
         </div>
       </div>
     </section>
   );
+}
+
+function requiresLevel1Badge(lab: ResearchLabManifest) {
+  return lab.slug === "account-substitution" || lab.id === "rl1-account-substitution";
 }
 
 function deriveLabPhase({

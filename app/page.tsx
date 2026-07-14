@@ -13,6 +13,10 @@ import { Level2Panel } from "./components/level-2-panel";
 import { Level3Panel } from "./components/level-3-panel";
 import { LevelWorkspacePage } from "./components/level-workspace";
 import { ProfileCertificatesSection } from "./components/profile-certificates-section";
+import {
+  ResearchLabCertificationDialog,
+  type ResearchLabCertificationDialogState,
+} from "./components/research-lab-certification-dialog";
 import { ResearchLabsSection } from "./components/research-labs-section";
 import { SiteFooter } from "./components/site-footer";
 import { VulnerabilitiesSection } from "./components/vulnerabilities-section";
@@ -81,6 +85,8 @@ export default function Home() {
   const [manualBadgeDialog, setManualBadgeDialog] = useState<UserBadge | null>(
     null
   );
+  const [researchLabCertificationDialog, setResearchLabCertificationDialog] =
+    useState<ResearchLabCertificationDialogState | null>(null);
   const [isCollectingLevel1Badge, setIsCollectingLevel1Badge] = useState(false);
   const trackedLevelViewsRef = useRef<Set<string>>(new Set());
   const {
@@ -260,7 +266,7 @@ export default function Home() {
       level1State,
     });
 
-  const { mintingLevel } =
+  const { mintingLevel, mintLevel1 } =
     useCertificateMinting({
       address,
       certificates: {
@@ -358,7 +364,9 @@ export default function Home() {
       (badge) =>
         badge.earned && !badge.seenAt && badge.slug !== "level-1-illusionist"
     ) ?? null;
-  const activeBadgeDialog = manualBadgeDialog ?? unseenEarnedBadge;
+  const activeBadgeDialog = researchLabCertificationDialog
+    ? null
+    : manualBadgeDialog ?? unseenEarnedBadge;
 
   const closeBadgeDialog = useCallback(() => {
     if (manualBadgeDialog) {
@@ -397,6 +405,49 @@ export default function Home() {
       setIsCollectingLevel1Badge(false);
     }
   }, [isCollectingLevel1Badge, level1Badge, markBadgeSeen, mutateBadges]);
+
+  const mintResearchLab1Certificate = useCallback(
+    async ({
+      researchLabAccessToken,
+      researchLabSessionId,
+    }: {
+      researchLabAccessToken: string;
+      researchLabSessionId: string;
+    }) => {
+      const result = await mintLevel1({
+        researchLabAccessToken,
+        researchLabSessionId,
+      });
+
+      if (!result) return;
+
+      const [badgePayload] = await Promise.all([
+        mutateBadges(),
+        mutateProfileCertificates(),
+      ]);
+      const powerBadge =
+        badgePayload?.badges.find((badge) => badge.slug === "power-user") ??
+        badges.find((badge) => badge.slug === "power-user") ??
+        null;
+
+      setResearchLabCertificationDialog({
+        assetId: result.assetId,
+        certificateImage: "/certificates/level-1.png",
+        certificateTitle: "The Illusionist",
+        powerBadge: powerBadge?.earned ? powerBadge : null,
+      });
+    },
+    [badges, mintLevel1, mutateBadges, mutateProfileCertificates]
+  );
+
+  const closeResearchLabCertificationDialog = useCallback(() => {
+    const powerBadge = researchLabCertificationDialog?.powerBadge;
+    setResearchLabCertificationDialog(null);
+
+    if (powerBadge?.earned && !powerBadge.seenAt) {
+      void markBadgeSeen(powerBadge.slug);
+    }
+  }, [markBadgeSeen, researchLabCertificationDialog]);
 
   const enterLevel1FromBeta = useCallback(() => {
     setActiveSection("levels");
@@ -601,9 +652,13 @@ export default function Home() {
           ) : activeSection === "research-labs" ? (
             <ResearchLabsSection
               isCollectingLevel1Badge={isCollectingLevel1Badge}
+              isMintingResearchLabCertificate={mintingLevel === "level1"}
               level1BadgeCollected={Boolean(level1Badge?.seenAt)}
               level1BadgeEarned={Boolean(level1Badge?.earned)}
-              onCollectLevel1Badge={collectLevel1Badge}
+              powerUserBadgeEarned={Boolean(
+                badges.find((badge) => badge.slug === "power-user")?.earned
+              )}
+              researchLabCertificateMinted={Boolean(level1Certificate?.minted)}
               onBadgeStateChanged={() => {
                 void mutateBadges();
               }}
@@ -611,6 +666,8 @@ export default function Home() {
                 setActiveSection("levels");
                 setActiveLevelsView("level2");
               }}
+              onGoToLevel1Module={enterLevel1FromBeta}
+              onMintResearchLabCertificate={mintResearchLab1Certificate}
             />
           ) : activeSection === "vulnerabilities" ? (
             <VulnerabilitiesSection
@@ -660,6 +717,19 @@ export default function Home() {
         onOpenResearchLab={() => {
           closeBadgeDialog();
           setActiveSection("research-labs");
+        }}
+      />
+      <ResearchLabCertificationDialog
+        reward={researchLabCertificationDialog}
+        onClose={closeResearchLabCertificationDialog}
+        onOpenNextModule={() => {
+          closeResearchLabCertificationDialog();
+          setActiveSection("levels");
+          setActiveLevelsView("level2");
+        }}
+        onOpenProfile={() => {
+          closeResearchLabCertificationDialog();
+          setActiveSection("profile");
         }}
       />
     </div>

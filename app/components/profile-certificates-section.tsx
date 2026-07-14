@@ -138,8 +138,8 @@ export function ProfileCertificatesSection({
   return (
     <div className="relative overflow-hidden rounded-[34px] border border-border bg-card/95 shadow-[0_32px_100px_-70px_rgba(0,0,0,0.45)]">
       <div className="relative border-b border-border bg-[radial-gradient(circle_at_18%_10%,rgba(153,69,255,0.36),transparent_32%),linear-gradient(120deg,rgba(45,10,64,0.94),rgba(9,7,18,0.96)_52%,rgba(20,241,149,0.16))] px-5 pb-5 pt-8 sm:px-7 sm:pt-10">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full border border-white/12 bg-black/30 shadow-[0_20px_60px_-35px_rgba(153,69,255,0.9)]">
               <Image
                 src={profileImageSrc}
@@ -150,7 +150,7 @@ export function ProfileCertificatesSection({
                 priority
               />
             </div>
-            <div>
+            <div className="pt-1 sm:-mt-2">
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
                   {displayName}
@@ -164,14 +164,18 @@ export function ProfileCertificatesSection({
                   Edit Profile
                 </button>
               </div>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-zinc-400">
+              {profileBio ? (
+                <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-zinc-300">
+                  {profileBio}
+                </p>
+              ) : null}
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-zinc-400">
                 <span>Total items: {completedItems.length}</span>
-                {profileBio ? <span>{profileBio}</span> : null}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-x-8 gap-y-4 text-right lg:justify-end">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4 text-left sm:text-right lg:justify-end">
             <ProfileMetric
               label="Badges"
               value={`${badgeSummary?.earned ?? badges?.filter((badge) => badge.earned).length ?? 0}/${badgeSummary?.total ?? badges?.length ?? 4}`}

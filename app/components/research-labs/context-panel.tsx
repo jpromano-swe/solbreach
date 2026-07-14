@@ -31,9 +31,11 @@ export function LabContextPanel({
   findingReviewPassed,
   impactVerified,
   isCollectingLevel1Badge,
+  isMintingResearchLabCertificate,
   lab,
   level1BadgeCollected,
   level1BadgeEarned,
+  powerUserBadgeEarned,
   phase,
   questionnaireResult,
   report,
@@ -48,8 +50,9 @@ export function LabContextPanel({
   criticalTotal,
   revealedHints,
   session,
+  researchLabCertificateMinted,
   txResults,
-  onCollectLevel1Badge,
+  onMintResearchLabCertificate,
   onOpenExploit,
   onOpenReport,
   onRevealHint,
@@ -62,9 +65,11 @@ export function LabContextPanel({
   findingReviewPassed: boolean;
   impactVerified: boolean;
   isCollectingLevel1Badge: boolean;
+  isMintingResearchLabCertificate: boolean;
   lab: ResearchLabManifest;
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
+  powerUserBadgeEarned: boolean;
   phase: LabPhase;
   questionnaireResult: QuestionnaireResult | null;
   report: ResearchLabReport | null;
@@ -79,8 +84,9 @@ export function LabContextPanel({
   criticalTotal: number;
   revealedHints: string[];
   session: ResearchLabSession;
+  researchLabCertificateMinted: boolean;
   txResults: EnrichedTransactionResult[];
-  onCollectLevel1Badge: () => void;
+  onMintResearchLabCertificate: () => Promise<void>;
   onOpenExploit: () => void;
   onOpenReport: () => void;
   onRevealHint: () => void;
@@ -124,8 +130,10 @@ export function LabContextPanel({
           auditReportStage={auditReportStage}
           findingReviewPassed={findingReviewPassed}
           isCollectingLevel1Badge={isCollectingLevel1Badge}
+          isMintingResearchLabCertificate={isMintingResearchLabCertificate}
           level1BadgeCollected={level1BadgeCollected}
           level1BadgeEarned={level1BadgeEarned}
+          powerUserBadgeEarned={powerUserBadgeEarned}
           questionnaireResult={questionnaireResult}
           reportAccepted={reportAccepted}
           reportOpened={reportOpened}
@@ -136,8 +144,9 @@ export function LabContextPanel({
           reviewStepTotal={reviewStepTotal}
           criticalAnsweredCount={criticalAnsweredCount}
           criticalTotal={criticalTotal}
-          onCollectLevel1Badge={onCollectLevel1Badge}
+          researchLabCertificateMinted={researchLabCertificateMinted}
           onContinueToLevel2={onContinueToLevel2}
+          onMintResearchLabCertificate={onMintResearchLabCertificate}
           onOpenReport={onOpenReport}
           onRetryReview={onRetryReview}
         />
@@ -558,8 +567,10 @@ function ReviewContextCard({
   auditReportStage,
   findingReviewPassed,
   isCollectingLevel1Badge,
+  isMintingResearchLabCertificate,
   level1BadgeCollected,
   level1BadgeEarned,
+  powerUserBadgeEarned,
   questionnaireResult,
   reportAccepted,
   reportOpened,
@@ -570,16 +581,19 @@ function ReviewContextCard({
   reviewStepTotal,
   criticalAnsweredCount,
   criticalTotal,
-  onCollectLevel1Badge,
+  researchLabCertificateMinted,
   onContinueToLevel2,
+  onMintResearchLabCertificate,
   onOpenReport,
   onRetryReview,
 }: {
   auditReportStage: AuditReportStage;
   findingReviewPassed: boolean;
   isCollectingLevel1Badge: boolean;
+  isMintingResearchLabCertificate: boolean;
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
+  powerUserBadgeEarned: boolean;
   questionnaireResult: QuestionnaireResult | null;
   reportAccepted: boolean;
   reportOpened: boolean;
@@ -590,8 +604,9 @@ function ReviewContextCard({
   reviewStepTotal: number;
   criticalAnsweredCount: number;
   criticalTotal: number;
-  onCollectLevel1Badge: () => void;
+  researchLabCertificateMinted: boolean;
   onContinueToLevel2: () => void;
+  onMintResearchLabCertificate: () => Promise<void>;
   onOpenReport: () => void;
   onRetryReview: () => void;
 }) {
@@ -600,8 +615,11 @@ function ReviewContextCard({
       <CertificateCheckpointPanel
         badgeCollected={level1BadgeCollected}
         badgeEarned={level1BadgeEarned}
+        certificateMinted={researchLabCertificateMinted}
+        isMintingCertificate={isMintingResearchLabCertificate}
+        powerUserBadgeEarned={powerUserBadgeEarned}
         isCollectingBadge={isCollectingLevel1Badge}
-        onCollectBadge={onCollectLevel1Badge}
+        onMintCertificate={onMintResearchLabCertificate}
         onNextModule={onContinueToLevel2}
       />
     );
@@ -687,24 +705,31 @@ function ReviewContextCard({
 function CertificateCheckpointPanel({
   badgeCollected,
   badgeEarned,
+  certificateMinted,
+  isMintingCertificate,
+  powerUserBadgeEarned,
   isCollectingBadge,
-  onCollectBadge,
+  onMintCertificate,
   onNextModule,
 }: {
   badgeCollected: boolean;
   badgeEarned: boolean;
+  certificateMinted: boolean;
+  isMintingCertificate: boolean;
+  powerUserBadgeEarned: boolean;
   isCollectingBadge: boolean;
-  onCollectBadge: () => void;
+  onMintCertificate: () => Promise<void>;
   onNextModule: () => void;
 }) {
-  const canCollect = badgeEarned && !badgeCollected && !isCollectingBadge;
+  const canMintCertificate =
+    badgeCollected && !certificateMinted && !isMintingCertificate;
 
   return (
     <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
       <div className="flex items-center gap-3">
         <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
         <p className="text-xl font-semibold tracking-[-0.03em] text-white">
-          Badge Checkpoint
+          Certification Checkpoint
         </p>
       </div>
 
@@ -715,7 +740,7 @@ function CertificateCheckpointPanel({
         <div className="mt-4 space-y-3 text-sm">
           <CheckpointRuleRow label="Review" value="Secure pattern complete" />
           <CheckpointRuleRow
-            label="Badge"
+            label="Prerequisite"
             value={
               badgeCollected
                 ? "Collected"
@@ -724,33 +749,60 @@ function CertificateCheckpointPanel({
                   : "Syncing"
             }
           />
-          <CheckpointRuleRow label="Credential" value="Level 1 badge" />
+          <CheckpointRuleRow
+            label="Certificate"
+            value={certificateMinted ? "Minted" : "Unlocked"}
+          />
+          <CheckpointRuleRow
+            label="Power User"
+            value={
+              certificateMinted
+                ? powerUserBadgeEarned
+                  ? "Unlocked"
+                  : "Syncing"
+                : "After mint"
+            }
+          />
         </div>
       </div>
 
       <div className="mt-5 flex flex-col items-center gap-3 border-t border-white/10 pt-5">
-        <button
-          type="button"
-          onClick={onCollectBadge}
-          disabled={!canCollect}
-          className={`inline-flex min-h-11 w-auto min-w-[190px] items-center justify-center rounded-xl px-5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
-            badgeCollected
-              ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-zinc-500"
-              : canCollect
-                ? "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
-                : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
-          } disabled:cursor-not-allowed disabled:opacity-70`}
-        >
-          {badgeCollected
-            ? "Badge collected"
-            : isCollectingBadge
+        {!badgeCollected ? (
+          <button
+            type="button"
+            disabled
+            className="inline-flex min-h-11 w-auto min-w-[190px] cursor-not-allowed items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-600 opacity-70"
+          >
+            {isCollectingBadge
               ? "Collecting..."
               : badgeEarned
-                ? "Collect Badge"
+                ? "Prerequisite missing"
                 : "Badge syncing"}
-        </button>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              void onMintCertificate();
+            }}
+            disabled={!canMintCertificate}
+            className={`inline-flex min-h-11 w-auto min-w-[190px] items-center justify-center rounded-xl px-5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+              certificateMinted
+                ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-zinc-500"
+                : canMintCertificate
+                  ? "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
+                  : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
+            } disabled:cursor-not-allowed disabled:opacity-70`}
+          >
+            {certificateMinted
+              ? "Certificate minted"
+              : isMintingCertificate
+                ? "Minting..."
+                : "Mint NFT Certificate"}
+          </button>
+        )}
 
-        {badgeCollected ? (
+        {certificateMinted ? (
           <button
             type="button"
             onClick={onNextModule}
