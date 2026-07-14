@@ -10,11 +10,10 @@ import {
 } from "../lib/badges";
 import {
   resolveProfileCertificateImage,
-  resolveProfileCertificateMetadata,
   type ProfileCertificate,
   type ProfileCertificatesSummary,
 } from "../lib/certificates/profile-certificates";
-import { SkeletonLine, StatusTextRow, compactAddress } from "./level-ui";
+import { SkeletonLine, compactAddress } from "./level-ui";
 
 export type ProfileLevelId = "level0" | "level1" | "level2" | "level3";
 
@@ -22,7 +21,9 @@ type CertificateDetails = {
   image: string;
   lockedImage?: string;
   levelLabel: string;
+  rarity: "Common" | "Uncommon" | "Rare";
   title: string;
+  vulnerabilityFamily: string;
 };
 type ProfileFilter = "showcase" | "all" | "badges" | "certificates";
 type AchievementItem = {
@@ -45,25 +46,33 @@ const LEVEL_CERTIFICATE_DETAILS: Record<0 | 1 | 2 | 3, CertificateDetails> = {
     image: "/nfts/solbreach-level-0-hello-solbreach.png",
     lockedImage: "/nfts/locked-certification.png",
     levelLabel: "Level 0",
+    rarity: "Common",
     title: "Hello SolBreach",
+    vulnerabilityFamily: "Warmup",
   },
   1: {
     image: "/nfts/solbreach-level-1-illusionist.png",
     lockedImage: "/nfts/locked-certification.png",
     levelLabel: "Level 1",
+    rarity: "Common",
     title: "The Illusionist",
+    vulnerabilityFamily: "Account Substitution",
   },
   2: {
     image: "/nfts/solbreach-level-2-identity-thief.png",
     lockedImage: "/nfts/locked-certification.png",
     levelLabel: "Level 2",
+    rarity: "Common",
     title: "Identity Thief",
+    vulnerabilityFamily: "Static PDA Authority",
   },
   3: {
     image: "/nfts/solbreach-level-3-trojan-horse.png",
     lockedImage: "/nfts/locked-certification.png",
     levelLabel: "Level 3",
+    rarity: "Uncommon",
     title: "The Trojan Horse",
+    vulnerabilityFamily: "Delegated CPI",
   },
 };
 
@@ -1033,118 +1042,108 @@ function CertificateCard({
 }) {
   const isClaimable =
     certificate.status === "claimable" || certificate.status === "ready";
-  const status = certificate.minted
-    ? "Minted"
-    : isClaimable
-      ? "Ready"
-      : "Locked";
-
-  const statusTone = certificate.minted
-    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-    : isClaimable
-      ? "border-foreground/15 bg-foreground/5 text-foreground"
-      : "border-border bg-accent text-muted";
   const imageSrc = resolveProfileCertificateImage(certificate);
-  const metadataPath = resolveProfileCertificateMetadata(certificate);
+  const mintedDate = certificate.mintedAt
+    ? new Date(certificate.mintedAt).toLocaleDateString(undefined, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+  const href = certificate.minted && certificate.assetId
+    ? getExplorerUrl(`/address/${certificate.assetId}`)
+    : undefined;
 
   return (
-    <article className="overflow-hidden rounded-[28px] border border-border bg-background/80">
-      <div className="relative aspect-[4/5] border-b border-border bg-card/70">
-        <Image
-          src={imageSrc}
-          alt={`${detail.title} certificate art`}
-          fill
-          className="object-cover"
-          sizes="(min-width: 1280px) 22vw, (min-width: 768px) 45vw, 92vw"
-        />
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
-          <span className="rounded-full border border-black/10 bg-background/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted shadow-sm backdrop-blur">
-            {detail.levelLabel}
-          </span>
-          <span
-            className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] backdrop-blur ${statusTone}`}
-          >
-            {status}
-          </span>
-        </div>
-      </div>
-
-      <div className="space-y-4 p-5">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-            Certification
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.05em]">
-            {detail.title}
-          </h3>
-        </div>
-
-        <div className="space-y-3 rounded-[22px] border border-border bg-card/75 p-4">
-          <StatusTextRow
-            label="Status"
-            value={
-              certificate.mintedAt
-                ? new Date(certificate.mintedAt).toLocaleDateString()
-                : status
-            }
-          />
-          <StatusTextRow
-            label="Certificate"
-            value={certificate.certificateId}
-          />
-          <StatusTextRow
-            label="Asset"
-            value={
-              certificate.minted && certificate.assetId
-                ? compactAddress(certificate.assetId, 4, 4)
-                : "Not minted"
-            }
-          />
-        </div>
-
-        <div className="space-y-2 text-sm text-muted">
-          {certificate.minted && certificate.assetId ? (
-            <a
-              href={getExplorerUrl(`/address/${certificate.assetId}`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block truncate underline underline-offset-2"
-          >
-              View asset
-            </a>
-          ) : null}
-          {certificate.certificatePda ? (
-            <a
-              href={getExplorerUrl(`/address/${certificate.certificatePda}`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block truncate underline underline-offset-2"
-          >
-              View certificate
-            </a>
-          ) : null}
-          <a
-            href={metadataPath}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block truncate underline underline-offset-2"
-          >
-            View metadata
-          </a>
-        </div>
-
+    <article className="group overflow-hidden rounded-[18px] border border-white/10 bg-[#111019] p-2.5 shadow-[0_22px_70px_-50px_rgba(0,0,0,0.85)] transition-colors hover:border-[#9945ff]/40">
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block"
+          aria-label={`Open ${detail.title} certificate asset`}
+        >
+          <CertificateImage imageSrc={imageSrc} title={detail.title} minted={certificate.minted} />
+        </a>
+      ) : (
         <button
           type="button"
           onClick={onOpenLevel}
-          className="min-h-12 w-full rounded-full border border-border bg-card px-5 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="block w-full text-left"
+          aria-label={`Open ${detail.title} level`}
         >
-          {certificate.minted
-            ? "Open level details"
-            : isClaimable
-              ? "Open certificate flow"
-              : "Open level"}
+          <CertificateImage imageSrc={imageSrc} title={detail.title} minted={certificate.minted} />
         </button>
+      )}
+
+      <div className="px-1.5 pb-2 pt-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold tracking-[-0.03em] text-white">
+            #{certificate.certificateNumber}
+          </p>
+          <span className={getCertificateRarityClass(detail.rarity)}>
+            {detail.rarity}
+          </span>
+        </div>
+
+        <div className="mt-2 min-h-[3.45rem]">
+          <h3 className="text-base font-semibold leading-5 tracking-[-0.04em] text-white">
+            {detail.vulnerabilityFamily}
+          </h3>
+          <p className="mt-1 text-sm leading-5 text-zinc-500">{detail.title}</p>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-zinc-500">
+          <span>{detail.levelLabel}</span>
+          <span>
+            {certificate.minted
+              ? `Minted ${mintedDate ?? "recently"}`
+              : isClaimable
+                ? "Ready to mint"
+                : "Locked"}
+          </span>
+        </div>
       </div>
     </article>
   );
+}
+
+function CertificateImage({
+  imageSrc,
+  minted,
+  title,
+}: {
+  imageSrc: string;
+  minted: boolean;
+  title: string;
+}) {
+  return (
+    <div className="relative aspect-square overflow-hidden rounded-[14px] bg-black/30">
+      <Image
+        src={imageSrc}
+        alt={`${title} certificate art`}
+        fill
+        className={`object-cover transition-transform duration-200 motion-safe:group-hover:scale-[1.025] ${
+          minted ? "" : "opacity-55 grayscale"
+        }`}
+        sizes="(min-width: 1280px) 18vw, (min-width: 768px) 30vw, 86vw"
+      />
+    </div>
+  );
+}
+
+function getCertificateRarityClass(rarity: CertificateDetails["rarity"]) {
+  const base =
+    "rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]";
+
+  if (rarity === "Rare") {
+    return `${base} bg-[#14f195]/12 text-[#14f195]`;
+  }
+
+  if (rarity === "Uncommon") {
+    return `${base} bg-[#9945ff]/16 text-[#c39cff]`;
+  }
+
+  return `${base} bg-white/[0.07] text-zinc-400`;
 }
