@@ -111,26 +111,21 @@ Bind collateral mint and vault accounts to protocol config.`,
   return (
     <section className="space-y-10">
       <div className="mx-auto max-w-4xl space-y-7 text-center">
-        <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl lg:text-7xl">
-          Practice Solana Program Security.
+        <h1 className="mx-auto max-w-4xl text-5xl font-semibold leading-[0.94] tracking-[-0.08em] sm:text-6xl lg:text-7xl">
+          <span className="block text-[#14f195] drop-shadow-[0_0_28px_rgba(20,241,149,0.2)]">
+            Security Training Layer
+          </span>
+          <span className="mt-2 block">for Solana builders</span>
         </h1>
-        <div className="space-y-4">
-          <p className="text-xl font-semibold leading-tight sm:text-2xl">
-            <span className="text-[#14f195] drop-shadow-[0_0_24px_rgba(20,241,149,0.18)]">
-              Security Training Layer
-            </span>{" "}
-            for Solana builders
-          </p>
-          <p className="mx-auto max-w-3xl text-base leading-8 text-muted sm:text-lg">
-            Practice finding real security issues,
-            <br />
-            prove they matter,
-            <br />
-            and learn how to fix vulnerable Solana programs
-            <br />
-            before shipping to production.
-          </p>
-        </div>
+        <p className="mx-auto max-w-4xl text-base leading-8 text-muted sm:text-lg">
+          <span className="block">
+            Practice finding real security issues, prove they matter,
+          </span>
+          <span className="block">
+            and learn how to fix vulnerable Solana programs before shipping to
+            production.
+          </span>
+        </p>
 
         {enableAppEntry ? (
           <button
@@ -393,25 +388,28 @@ function HeroResearchLabPanel() {
 function HeroAuditReportPanel() {
   return (
     <div className="space-y-3">
-      <div className="rounded-[24px] border border-border bg-card/95 p-5 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
+      <div className="rounded-[24px] border border-border bg-card/95 p-4 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
         <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
           Audit Report
         </p>
-        <div className="mt-5 space-y-4">
-          <HeroReviewField label="Title" value="Account Substitution" />
+        <div className="mt-4 space-y-3">
+          <HeroReviewField compact label="Title" value="Account Substitution" />
           <div className="flex flex-wrap gap-2 lg:flex-nowrap">
             <HeroMetric label="Severity" value="Critical" tone="red" />
             <HeroMetric label="Likelihood" value="High" tone="amber" />
           </div>
           <HeroReviewField
+            compact
             label="Root cause"
             value="The deposit path does not bind caller-supplied collateral accounts to the approved mint and vault."
           />
           <HeroReviewField
+            compact
             label="Proof of impact"
             value="Illegitimate credit enabled withdrawal of treasury liquidity."
           />
           <HeroReviewField
+            compact
             label="Mitigation"
             value="Validate the collateral mint and canonical vault before crediting a position."
           />
@@ -559,13 +557,27 @@ function HeroMetric({
   );
 }
 
-function HeroReviewField({ label, value }: { label: string; value: string }) {
+function HeroReviewField({
+  compact = false,
+  label,
+  value,
+}: {
+  compact?: boolean;
+  label: string;
+  value: string;
+}) {
   return (
     <label className="block">
       <span className="text-[11px] uppercase tracking-[0.26em] text-muted">
         {label}
       </span>
-      <span className="mt-2 block rounded-[16px] border border-border bg-background/80 px-4 py-3 text-sm text-foreground">
+      <span
+        className={`block border border-border bg-background/80 text-foreground ${
+          compact
+            ? "mt-1.5 rounded-xl px-3 py-2 text-xs leading-5"
+            : "mt-2 rounded-[16px] px-4 py-3 text-sm"
+        }`}
+      >
         {value}
       </span>
     </label>
@@ -786,7 +798,7 @@ function SecurityResearchLabPreview() {
           lines={["approved mint", "canonical vault", "credited collateral"]}
         />
         <CodeComparisonPanel
-          title="Verify"
+          title="Exploit"
           lines={["credit increase", "treasury decrease", "finding report"]}
         />
       </div>
