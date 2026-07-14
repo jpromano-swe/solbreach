@@ -56,7 +56,7 @@ export function ResearchLabWorkspace({
   reviewStarted,
   report,
   reportFields,
-  level1CertificateMinted,
+  level1BadgeCollected,
   txResults,
   onChangeExecuteExploitView,
   onChangeReportFields,
@@ -100,7 +100,7 @@ export function ResearchLabWorkspace({
   reviewStarted: boolean;
   report: ResearchLabReport | null;
   reportFields: ResearchLabReportFields;
-  level1CertificateMinted: boolean;
+  level1BadgeCollected: boolean;
   txResults: EnrichedTransactionResult[];
   onChangeExecuteExploitView: (view: ExecuteExploitView) => void;
   onChangeReportFields: (fields: ResearchLabReportFields) => void;
@@ -179,7 +179,7 @@ export function ResearchLabWorkspace({
         reviewQuestions={reviewQuestions}
         reviewStarted={reviewStarted}
         report={report}
-        level1CertificateMinted={level1CertificateMinted}
+        level1BadgeCollected={level1BadgeCollected}
         onChange={onChangeReportFields}
         onChangeAuditReportStage={onChangeAuditReportStage}
         onQuestionnaireAnswer={onQuestionnaireAnswer}

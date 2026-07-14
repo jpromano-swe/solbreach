@@ -603,7 +603,6 @@ export default function Home() {
               isCollectingLevel1Badge={isCollectingLevel1Badge}
               level1BadgeCollected={Boolean(level1Badge?.seenAt)}
               level1BadgeEarned={Boolean(level1Badge?.earned)}
-              level1CertificateMinted={Boolean(level1Certificate?.minted)}
               onCollectLevel1Badge={collectLevel1Badge}
               onBadgeStateChanged={() => {
                 void mutateBadges();

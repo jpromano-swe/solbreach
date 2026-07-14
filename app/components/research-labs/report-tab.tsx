@@ -64,7 +64,7 @@ export function ReportTab({
   reviewQuestions,
   reviewStarted,
   report,
-  level1CertificateMinted,
+  level1BadgeCollected,
   onChange,
   onChangeAuditReportStage,
   onQuestionnaireAnswer,
@@ -92,7 +92,7 @@ export function ReportTab({
   reviewOptionOrder: Record<string, string[]>;
   reviewQuestions: QuestionnaireQuestion[];
   reviewStarted: boolean;
-  level1CertificateMinted: boolean;
+  level1BadgeCollected: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onQuestionnaireAnswer: (answer: QuestionnaireAnswer) => void;
@@ -227,7 +227,7 @@ export function ReportTab({
           fields={fields}
           isSaving={isSaving}
           isSubmitting={isSubmitting}
-          level1CertificateMinted={level1CertificateMinted}
+          level1BadgeCollected={level1BadgeCollected}
           report={report}
           onChange={onChange}
           onChangeAuditReportStage={onChangeAuditReportStage}
@@ -867,7 +867,7 @@ function ReportForm({
   fields,
   isSaving,
   isSubmitting,
-  level1CertificateMinted,
+  level1BadgeCollected,
   onChange,
   onChangeAuditReportStage,
   onSave,
@@ -879,7 +879,7 @@ function ReportForm({
   fields: ResearchLabReportFields;
   isSaving: boolean;
   isSubmitting: boolean;
-  level1CertificateMinted: boolean;
+  level1BadgeCollected: boolean;
   onChange: (fields: ResearchLabReportFields) => void;
   onChangeAuditReportStage: (stage: AuditReportStage) => void;
   onSave: () => Promise<ResearchLabReport | null>;
@@ -957,7 +957,7 @@ function ReportForm({
   }
 
   if (auditReportStage === "CERTIFY_KNOWLEDGE") {
-    return <CertifyKnowledgeScreen minted={level1CertificateMinted} />;
+    return <CertifyKnowledgeScreen collected={level1BadgeCollected} />;
   }
 
   if (isAccepted || auditReportStage === "SUBMITTED") {
@@ -1593,7 +1593,7 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
   );
 }
 
-function CertifyKnowledgeScreen({ minted }: { minted: boolean }) {
+function CertifyKnowledgeScreen({ collected }: { collected: boolean }) {
   return (
     <section className="w-full">
       <div className="max-w-4xl space-y-7 py-1">
@@ -1606,8 +1606,8 @@ function CertifyKnowledgeScreen({ minted }: { minted: boolean }) {
           </h3>
           <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
             You verified impact, submitted the audit report, and reviewed the
-            secure account-binding pattern. Mint the Level 1 certificate to
-            record Account Substitution completion to your wallet.
+            secure account-binding pattern. Collect the Level 1 badge to record
+            Account Substitution completion on your SolBreach profile.
           </p>
         </div>
 
@@ -1620,14 +1620,14 @@ function CertifyKnowledgeScreen({ minted }: { minted: boolean }) {
               label="Module"
               value="Account Substitution"
             />
-            <CertificationSummaryRow label="Credential" value="Level 1 cNFT" />
+            <CertificationSummaryRow label="Credential" value="Level 1 badge" />
           </div>
         </section>
 
         <p className="max-w-2xl text-sm leading-6 text-zinc-500">
-          {minted
-            ? "Certification is recorded. Continue from the checkpoint rail when you are ready for the next module."
-            : "Use the checkpoint rail to mint the wallet-bound certificate."}
+          {collected
+            ? "Badge is collected. Continue from the checkpoint rail when you are ready for the next module."
+            : "Use the checkpoint rail to collect the badge for this module."}
         </p>
       </div>
     </section>

@@ -60,7 +60,6 @@ export function ResearchLabsSection({
   isCollectingLevel1Badge,
   level1BadgeCollected,
   level1BadgeEarned,
-  level1CertificateMinted,
   onCollectLevel1Badge,
   onBadgeStateChanged,
   onContinueToLevel2,
@@ -68,7 +67,6 @@ export function ResearchLabsSection({
   isCollectingLevel1Badge: boolean;
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
-  level1CertificateMinted: boolean;
   onCollectLevel1Badge: () => void;
   onBadgeStateChanged?: () => void;
   onContinueToLevel2: () => void;
@@ -589,7 +587,7 @@ export function ResearchLabsSection({
             reviewStarted={reviewStarted}
             report={report}
             reportFields={reportFields}
-            level1CertificateMinted={level1CertificateMinted}
+            level1BadgeCollected={level1BadgeCollected}
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
             executeExploitView={executeExploitView}
