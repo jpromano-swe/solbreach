@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   description:
     "Interactive Solana security training for Rust and Anchor developers. Inspect vulnerable programs, verify protocol impact, and produce audit-style findings.",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: { url: "/logo.png", type: "image/png" },
+    shortcut: { url: "/logo.png", type: "image/png" },
+    apple: { url: "/logo.png", type: "image/png" },
   },
 };
 
