@@ -65,7 +65,7 @@ const BADGE_FALLBACKS: UserBadge[] = [
     title: "The Trojan Horse",
   },
   {
-    description: "Earn all core SolBreach badges.",
+    description: "Complete Research Lab 1 and certify your first finding.",
     earned: false,
     earnedAt: null,
     image: "/badges/badge-poweruser.png",

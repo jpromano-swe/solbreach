@@ -40,7 +40,11 @@ import { useUserBadges } from "./lib/hooks/use-user-badges";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import { trackAnalyticsEvent } from "./lib/analytics";
-import { getLevelBadge, type UserBadge } from "./lib/badges";
+import {
+  getLevelBadge,
+  type UserBadge,
+  type UserBadgesSummary,
+} from "./lib/badges";
 import type {
   ProfileCertificate,
   ProfileCertificatesSummary,
@@ -251,6 +255,34 @@ export default function Home() {
     : (level1BackendCertificateSnapshot ?? chainLevel1Certificate);
   const level2Certificate = certificateState?.[2];
   const level3Certificate = certificateState?.[3];
+  const researchLab1Certified = Boolean(level1Certificate?.minted);
+  const badgesForDisplay = useMemo(
+    () =>
+      badges.map((badge) => {
+        if (badge.slug !== "power-user" || researchLab1Certified) {
+          return badge;
+        }
+
+        return {
+          ...badge,
+          earned: false,
+          earnedAt: null,
+          seenAt: null,
+        };
+      }),
+    [badges, researchLab1Certified]
+  );
+  const badgeSummaryForDisplay = useMemo<UserBadgesSummary | null>(() => {
+    if (!badgeSummary && badgesForDisplay.length === 0) return null;
+
+    return {
+      earned: badgesForDisplay.filter((badge) => badge.earned).length,
+      powerUserEarned: Boolean(
+        badgesForDisplay.find((badge) => badge.slug === "power-user")?.earned
+      ),
+      total: badgeSummary?.total ?? badgesForDisplay.length,
+    };
+  }, [badgeSummary, badgesForDisplay]);
   const profileCertificatesForDisplay = useMemo(() => {
     if (!level1Certificate?.minted || !level1Certificate.assetId) {
       return profileCertificates;
@@ -409,13 +441,13 @@ export default function Home() {
     level3StageBadge: level3Stage.badge,
     level3State,
     levelTiles,
-    badges,
+    badges: badgesForDisplay,
     stageBadge: stage.badge,
     status,
   });
 
   const unseenEarnedBadge =
-    badges.find(
+    badgesForDisplay.find(
       (badge) =>
         badge.earned && !badge.seenAt && badge.slug !== "level-1-illusionist"
     ) ?? null;
@@ -711,9 +743,9 @@ export default function Home() {
               level1BadgeCollected={Boolean(level1Badge?.seenAt)}
               level1BadgeEarned={Boolean(level1Badge?.earned)}
               powerUserBadgeEarned={Boolean(
-                badges.find((badge) => badge.slug === "power-user")?.earned
+                badgesForDisplay.find((badge) => badge.slug === "power-user")?.earned
               )}
-              researchLabCertificateMinted={Boolean(level1Certificate?.minted)}
+              researchLabCertificateMinted={researchLab1Certified}
               onBadgeStateChanged={() => {
                 void mutateBadges();
               }}
@@ -744,8 +776,8 @@ export default function Home() {
 
               <ProfileCertificatesSection
                 address={address}
-                badges={badges}
-                badgeSummary={badgeSummary}
+                badges={badgesForDisplay}
+                badgeSummary={badgeSummaryForDisplay}
                 certificates={profileCertificatesForDisplay}
                 certificateSummary={profileCertificateSummaryForDisplay}
                 getExplorerUrl={getExplorerUrl}
