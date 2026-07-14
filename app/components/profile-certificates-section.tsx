@@ -469,7 +469,7 @@ function EditProfileDialog({
     useState(availableForWork);
 
   return (
-    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/72 px-4 py-8 backdrop-blur-md">
       <section className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0c0714] shadow-[0_30px_120px_-55px_rgba(153,69,255,0.9)]">
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
           <h3 className="text-xl font-semibold tracking-[-0.04em]">
@@ -497,7 +497,7 @@ function EditProfileDialog({
               className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-500 focus:border-[#9945ff]/70"
             />
             <span className="mt-2 block text-xs text-[#facc15]">
-              Username is for display purposes inside SolBreach.
+              Note: Username is for display purposes inside SolBreach.
             </span>
           </label>
 
@@ -567,17 +567,17 @@ function EditProfileDialog({
               onClick={() =>
                 setDraftAvailableForWork((current) => !current)
               }
-              className={`relative h-7 w-12 rounded-full border transition-colors ${
+              className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors ${
                 draftAvailableForWork
                   ? "border-[#14f195]/50 bg-[#14f195]/25"
                   : "border-white/10 bg-white/10"
               }`}
             >
               <span
-                className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-transform ${
+                className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white transition-transform ${
                   draftAvailableForWork
                     ? "translate-x-5"
-                    : "translate-x-1"
+                    : "translate-x-0"
                 }`}
               />
             </button>
@@ -686,7 +686,7 @@ function ShowcaseEditorDialog({
   };
 
   return (
-    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/72 px-4 py-8 backdrop-blur-md">
       <section className="w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0c0714] shadow-[0_30px_120px_-55px_rgba(153,69,255,0.9)]">
         <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
           <div>

@@ -626,8 +626,7 @@ export default function Home() {
                   Profile.
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                  Backend-earned badges, special rewards, and wallet-bound
-                  certificates for this SolBreach account.
+                  User&apos;s badges, certificates and Special Rewards for level completion.
                 </p>
               </div>
 
