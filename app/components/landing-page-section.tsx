@@ -7,7 +7,6 @@ import {
   Cpu,
   FileCode2,
   LockKeyhole,
-  Send,
   ShieldCheck,
   Sparkles,
   Zap,
@@ -44,11 +43,11 @@ const LANDING_RUST_CODE_KEYWORDS = new Set([
 export function LandingPageSection({
   enableAppEntry,
   onPlayNow,
-  repositoryUrl,
+  documentationUrl,
 }: {
   enableAppEntry: boolean;
   onPlayNow: () => void;
-  repositoryUrl: string;
+  documentationUrl: string;
 }) {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const heroSlides = [
@@ -67,42 +66,45 @@ pub struct DepositTokens<'info> {
     pub token_program: Program<'info, Token>,
 }`,
       highlightedLines: [6, 7],
-      label: "Vulnerabilities",
+      label: "Vulnerability Modules",
       panel: <HeroMissionStatusCard />,
       title: "levels/01-illusionist/lib.rs",
     },
     {
-      code: `pub fn execute_security_council_action(ctx: Context<AdminAction>) -> Result<()> {
-    require!(ctx.accounts.council.threshold >= 2, ErrorCode::Quorum);
-
-    let action = ctx.accounts.pending_action.load()?;
-    action.execute_without_timelock()?;
-
-    ctx.accounts.market.update_oracle(action.oracle)?;
-    ctx.accounts.market.enable_collateral(action.mint)?;
+      code: `pub fn deposit_collateral(
+    position: &mut Position,
+    collateral: &TokenAccount,
+    vault: &TokenAccount,
+) -> Result<()> {
+    position.credited_collateral = position
+        .credited_collateral
+        .saturating_add(collateral.amount);
 
     Ok(())
 }`,
-      highlightedLines: [4, 6, 7],
+      highlightedLines: [6, 7, 8],
       label: "Research Labs",
       panel: <HeroResearchLabPanel />,
-      title: "research-labs/governance-takeover.rs",
+      title: "research-labs/rl1/account-substitution.rs",
     },
     {
-      code: `pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-    let vault = &mut ctx.accounts.vault;
+      code: `# Account Substitution
 
-    require!(vault.balance >= amount, ErrorCode::InsufficientFunds);
+Severity: Critical
+Likelihood: High
 
-    vault.balance -= amount;
-    transfer_to_user(ctx.accounts.user.key(), amount)?;
+Root cause:
+The deposit path trusts caller-supplied collateral accounts.
 
-    Ok(())
-}`,
-      highlightedLines: [4, 6, 7],
-      label: "Reviews",
-      panel: <HeroReviewRoomPanel />,
-      title: "review-room/finding-target.rs",
+Proof of impact:
+Illegitimate credit enabled a treasury withdrawal.
+
+Mitigation:
+Bind collateral mint and vault accounts to protocol config.`,
+      highlightedLines: [3, 4, 7, 10],
+      label: "Audit Reports",
+      panel: <HeroAuditReportPanel />,
+      title: "research-labs/rl1/audit-report.md",
     },
   ];
 
@@ -110,17 +112,25 @@ pub struct DepositTokens<'info> {
     <section className="space-y-10">
       <div className="mx-auto max-w-4xl space-y-7 text-center">
         <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl lg:text-7xl">
-          Master Solana Programs{" "}
-          <span className="text-[#14f195] drop-shadow-[0_0_28px_rgba(20,241,149,0.22)]">
-            Security
-          </span>
-          .
+          Practice Solana Program Security.
         </h1>
-        <p className="mx-auto max-w-3xl text-base leading-8 text-muted sm:text-lg">
-          Hands-on solana programs security wargame. Exploit real
-          vulnerabilities, learn from past hacks, participate on review training
-          and earn verifiable certifications.
-        </p>
+        <div className="space-y-4">
+          <p className="text-xl font-semibold leading-tight sm:text-2xl">
+            <span className="text-[#14f195] drop-shadow-[0_0_24px_rgba(20,241,149,0.18)]">
+              Security Training Layer
+            </span>{" "}
+            for Solana builders
+          </p>
+          <p className="mx-auto max-w-3xl text-base leading-8 text-muted sm:text-lg">
+            Practice finding real security issues,
+            <br />
+            prove they matter,
+            <br />
+            and learn how to fix vulnerable Solana programs
+            <br />
+            before shipping to production.
+          </p>
+        </div>
 
         {enableAppEntry ? (
           <button
@@ -128,7 +138,7 @@ pub struct DepositTokens<'info> {
             onClick={onPlayNow}
             className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Try the Beta
+            Request Beta Access
             <ArrowRight
               className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
               aria-hidden="true"
@@ -157,10 +167,11 @@ pub struct DepositTokens<'info> {
           id="feature-showcase-title"
           className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl"
         >
-          Exploit, analyze, and report
+          Inspect, exploit, verify, and report.
         </h2>
         <p className="mt-4 text-base leading-7 text-muted sm:text-lg">
-          Train the fundamentals of security workflow on Solana
+          Build security judgment through guided Vulnerability Modules and
+          applied Research Labs.
         </p>
       </div>
 
@@ -168,7 +179,7 @@ pub struct DepositTokens<'info> {
       <LandingCtaSection
         enableAppEntry={enableAppEntry}
         onGetStarted={onPlayNow}
-        repositoryUrl={repositoryUrl}
+        documentationUrl={documentationUrl}
       />
     </section>
   );
@@ -177,11 +188,11 @@ pub struct DepositTokens<'info> {
 function LandingCtaSection({
   enableAppEntry,
   onGetStarted,
-  repositoryUrl,
+  documentationUrl,
 }: {
   enableAppEntry: boolean;
   onGetStarted: () => void;
-  repositoryUrl: string;
+  documentationUrl: string;
 }) {
   return (
     <section className="grid items-center gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr]">
@@ -198,11 +209,12 @@ function LandingCtaSection({
 
       <div className="max-w-xl lg:ml-auto">
         <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-          Start your Solana security researcher journey today
+          Practice the full Solana security workflow.
         </h2>
         <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
-          Open the wargame, inspect vulnerable programs, complete on-chain
-          objectives, and turn each exploit into review-ready proof.
+          Connect your wallet, complete a guided Vulnerability Module, and
+          investigate RL1 from source inspection to vulnerability impact and
+          create a Finding Report.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -212,7 +224,7 @@ function LandingCtaSection({
               onClick={onGetStarted}
               className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              Try the Beta
+              Request Beta Access
               <ArrowRight
                 className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
                 aria-hidden="true"
@@ -229,12 +241,12 @@ function LandingCtaSection({
             </button>
           )}
           <a
-            href={repositoryUrl}
+            href={documentationUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-card/80 px-6 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Read Docs
+            Read Documentation
           </a>
         </div>
       </div>
@@ -340,41 +352,37 @@ function HeroResearchLabPanel() {
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-              Research lab
+              Research Labs
             </p>
             <h3 className="mt-3 text-xl font-semibold tracking-[-0.05em]">
-              Governance Takeover
+              RL1: Account Substitution
             </h3>
           </div>
-          <span className="w-fit rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-red-100">
-            Critical
+          <span className="w-fit rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-200">
+            Intermediate
           </span>
         </div>
 
         <div className="mt-5 space-y-3 text-sm leading-6 text-muted">
           <p>
-            Research social engineering and durable nonce abuse that escalates
-            governance authority.
-          </p>
-          <p>
-            Review focus: governance flow, transaction freshness, authority
-            boundaries, and proposal execution.
+            Investigate whether non-canonical collateral accounts can create
+            illegitimate credit and withdraw treasury value.
           </p>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2 lg:flex-nowrap">
-          <HeroMetric label="Date" value="Apr 1, 2026" />
-          <HeroMetric label="Time" value="3-5h" />
-          <HeroMetric label="Class" value="Governance" />
+          <HeroMetric label="Level" value="Intermediate" />
+          <HeroMetric label="Time" value="45-75 min" />
+          <HeroMetric label="Reward" value="250 XP" />
         </div>
 
         <div className="mt-5 rounded-[18px] border border-border bg-background/80 p-4">
           <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
-            Reviewer checklist
+            Investigation checklist
           </p>
           <div className="mt-4 space-y-3 text-sm text-muted">
-            <ChecklistItem text="Can stale pre-signed governance transactions execute after context changes?" />
-            <ChecklistItem text="Can two signers authorize critical admin powers without delay?" />
+            <ChecklistItem text="Approved mint and canonical vault binding" />
+            <ChecklistItem text="Credit increase and treasury balance decrease" />
           </div>
         </div>
       </div>
@@ -382,35 +390,38 @@ function HeroResearchLabPanel() {
   );
 }
 
-function HeroReviewRoomPanel() {
+function HeroAuditReportPanel() {
   return (
     <div className="space-y-3">
       <div className="rounded-[24px] border border-border bg-card/95 p-5 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
         <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-          Review room
+          Audit Report
         </p>
         <div className="mt-5 space-y-4">
-          <HeroReviewField label="Title" value="Unchecked CPI target" />
-          <HeroReviewField
-            label="Summary"
-            value="The program lets users choose the CPI target, allowing malicious instructions to run with delegated authority."
-          />
+          <HeroReviewField label="Title" value="Account Substitution" />
           <div className="flex flex-wrap gap-2 lg:flex-nowrap">
-            <HeroMetric label="Severity" value="High" tone="red" />
-            <HeroMetric label="Impact" value="Medium" tone="amber" />
-            <HeroMetric label="Likelihood" value="Low" tone="cyan" />
+            <HeroMetric label="Severity" value="Critical" tone="red" />
+            <HeroMetric label="Likelihood" value="High" tone="amber" />
           </div>
           <HeroReviewField
-            label="Recommendation"
-            value="Allowlist trusted program IDs and validate CPI accounts before forwarding signer privileges."
+            label="Root cause"
+            value="The deposit path does not bind caller-supplied collateral accounts to the approved mint and vault."
+          />
+          <HeroReviewField
+            label="Proof of impact"
+            value="Illegitimate credit enabled withdrawal of treasury liquidity."
+          />
+          <HeroReviewField
+            label="Mitigation"
+            value="Validate the collateral mint and canonical vault before crediting a position."
           />
 
           <button
             type="button"
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <Send className="h-4 w-4" aria-hidden="true" />
-            Send review
+            <FileCode2 className="h-4 w-4" aria-hidden="true" />
+            Review Audit Report
           </button>
         </div>
       </div>
@@ -430,13 +441,13 @@ function HeroMissionStatusCard() {
             Level 1
           </p>
         </div>
-        <StatusChip>Armed</StatusChip>
+        <StatusChip>In progress</StatusChip>
       </div>
 
       <div className="mt-5 space-y-3">
-        <HeroStatusRow label="Wallet" value="9xQe...1b2C" />
-        <HeroStatusRow label="PDA state" value="Live" />
-        <HeroStatusRow label="Win condition" value="Ledger forged" />
+        <HeroStatusRow label="Modules" value="4 playable modules" />
+        <HeroStatusRow label="Progress" value="Wallet-bound progress" />
+        <HeroStatusRow label="Result" value="Impact verified" />
       </div>
 
       <div className="mt-5 space-y-2">
@@ -448,7 +459,7 @@ function HeroMissionStatusCard() {
           <div className="h-full w-full rounded-full bg-[linear-gradient(90deg,rgba(153,69,255,0.95),rgba(20,241,149,0.95))]" />
         </div>
         <p className="text-sm leading-6 text-muted">
-          Exploit objective verified. Wallet-bound certification is ready.
+          Complete the module flow to unlock its wallet-bound certificate.
         </p>
       </div>
 
@@ -456,7 +467,7 @@ function HeroMissionStatusCard() {
         type="button"
         className="mt-6 min-h-12 w-full rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        Mint certification
+        Claim certificate
       </button>
     </div>
   );
@@ -589,24 +600,24 @@ function FeatureShowcaseSection() {
       <div className="grid divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
         <FeaturePreview
           tint="purple"
-          title="Exploit Foundations"
-          description="Interact with vulnerable programs, complete exploit objectives, and unlock wallet-bound certifications."
+          title="Vulnerability Modules"
+          description="Learn one Solana exploit family at a time through guided, wallet-bound challenges."
         >
           <ExploitFoundationsPreview />
         </FeaturePreview>
         <FeaturePreview
           tint="green"
-          title="Security Research Labs"
-          description="Study structured research scenarios side-by-side while tracing real-world Solana bug patterns."
+          title="Research Labs"
+          description="Inspect protocol code, execute sandbox actions, verify impact, and build a finding report."
         >
           <SecurityResearchLabPreview />
         </FeaturePreview>
         <FeaturePreview
           tint="mixed"
-          title="Arena & Reviewer Training"
-          description="Practice professional findings and team review rooms built for onboarding, assessment, and readiness."
+          title="Breach Rooms"
+          description="Less-guided mini-audit environments."
         >
-          <ArenaTrainingPreview />
+          <BreachRoomsPreview />
         </FeaturePreview>
       </div>
 
@@ -614,38 +625,38 @@ function FeatureShowcaseSection() {
         <FeatureMiniItem
           icon={<Zap className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
-          title="Real Vulnerable Programs"
-          body="Intentionally vulnerable Solana programs in controlled training environments."
+          title="Controlled Vulnerable Programs"
+          body="Practice against intentionally vulnerable Solana programs in safe training environments."
         />
         <FeatureMiniItem
           icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Exploit Verification"
-          body="On-chain objectives with wallet-bound certifications."
+          title="Deterministic Verification"
+          body="Progress unlocks only after correct completion checks."
         />
         <FeatureMiniItem
           icon={<FileCode2 className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
-          title="Secure Comparisons"
-          body="Insecure implementations beside patched versions."
+          title="Account and State Evidence"
+          body="Trace accounts, PDAs, authorities, and before-and-after protocol state."
         />
         <FeatureMiniItem
           icon={<LockKeyhole className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Bug Patterns"
-          body="Arbitrary CPI, PDA misuse, signer confusion, and authority bugs."
+          title="Solana Bug Patterns"
+          body="Account substitution, PDA authority misuse, arbitrary CPI, and signer or authority failures."
         />
         <FeatureMiniItem
           icon={<Cpu className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
-          title="Security Writeups"
-          body="Severity, exploit reasoning, impact, and remediation practice."
+          title="Audit-Style Reporting"
+          body="Connect root cause, exploit path, evidence, impact, and mitigation."
         />
         <FeatureMiniItem
           icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Breach Rooms"
-          body="Challenge environments for first-flights, and review writeup training."
+          title="Wallet-Bound Certificates"
+          body="Record validated module completion against the learner wallet."
         />
       </div>
     </section>
@@ -725,11 +736,13 @@ function ExploitFoundationsPreview() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background">
               <Zap className="h-4 w-4 text-foreground" aria-hidden="true" />
             </div>
-            <p className="mt-7 text-xs font-medium text-muted">CERTIFICATIONS</p>
-            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-              4 exploits
+            <p className="mt-7 text-xs font-medium text-muted">
+              THE ILLUSIONIST
             </p>
-            <p className="mt-1 text-xs text-muted">2 certified</p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              4 playable modules
+            </p>
+            <p className="mt-1 text-xs text-muted">Wallet-bound progress</p>
           </div>
           <div className="rounded-md border border-border bg-background p-3 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
@@ -748,12 +761,12 @@ function ExploitFoundationsPreview() {
           </div>
         </div>
         <div className="mt-7 grid grid-cols-[72px_1fr] gap-y-3 text-sm text-muted">
-          <span>Setup</span>
-          <span className="mt-1 h-2 w-20 rounded-full bg-muted/15" />
-          <span>Verify</span>
-          <span className="mt-1 h-2 w-28 rounded-full bg-muted/15" />
-          <span>Mint</span>
-          <span className="mt-1 h-2 w-16 rounded-full bg-muted/15" />
+          <span>Status</span>
+          <span className="text-xs text-foreground">In progress</span>
+          <span>Result</span>
+          <span className="text-xs text-foreground">Impact verified</span>
+          <span>Reward</span>
+          <span className="text-xs text-foreground">Claim certificate</span>
         </div>
       </div>
     </div>
@@ -765,16 +778,16 @@ function SecurityResearchLabPreview() {
     <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
       <div className="flex items-center gap-2 bg-accent px-6 py-4 text-left text-sm font-medium text-foreground">
         <FileCode2 className="h-3.5 w-3.5" aria-hidden="true" />
-        Governance Takeover Research Lab
+        RL1: Account Substitution
       </div>
       <div className="grid flex-1 gap-3 p-6 sm:grid-cols-2">
         <CodeComparisonPanel
-          title="Vulnerable"
-          lines={["unchecked CPI", "static PDA", "missing signer"]}
+          title="Inspect"
+          lines={["approved mint", "canonical vault", "credited collateral"]}
         />
         <CodeComparisonPanel
-          title="Patched"
-          lines={["program guard", "user seeds", "authority check"]}
+          title="Verify"
+          lines={["credit increase", "treasury decrease", "finding report"]}
         />
       </div>
     </div>
@@ -803,39 +816,37 @@ function CodeComparisonPanel({
   );
 }
 
-function ArenaTrainingPreview() {
+function BreachRoomsPreview() {
   return (
     <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card text-left shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
       <div className="flex items-center justify-between border-b border-border bg-accent px-6 py-4">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-          Breach Room
+          <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
+          Breach Rooms
         </div>
-        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground">
-          Live
+        <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200">
+          TBD
         </span>
       </div>
       <div className="flex flex-1 flex-col justify-center gap-4 p-6">
         <div className="min-h-[128px] rounded-lg border border-border bg-background p-5">
           <div className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
-            <Send className="h-4 w-4" aria-hidden="true" />
-            Sending review
+            <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+            Mini-audit environment
           </div>
-          <div className="space-y-2">
-            <span className="block h-1.5 w-40 rounded-full bg-muted/20" />
-            <span className="block h-1.5 w-28 rounded-full bg-muted/20" />
-            <span className="block h-1.5 w-36 rounded-full bg-muted/20" />
-          </div>
+          <p className="text-sm leading-6 text-muted">
+            Less-guided protocol review with scoped evidence and reporting.
+          </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-medium text-muted">
           <span className="rounded-md border border-border bg-background px-2 py-2">
-            Severity
+            Inspect
           </span>
           <span className="rounded-md border border-border bg-background px-2 py-2">
-            Impact
+            Verify
           </span>
           <span className="rounded-md border border-border bg-background px-2 py-2">
-            Likelihood
+            Report
           </span>
         </div>
       </div>

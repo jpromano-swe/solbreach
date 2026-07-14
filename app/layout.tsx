@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SolBreach",
   description:
-    "Gamified Solana security training with interactive exploit levels and wallet-bound certifications.",
+    "Interactive Solana security training for Rust and Anchor developers. Inspect vulnerable programs, verify protocol impact, and produce audit-style findings.",
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-export function SiteFooter({ repositoryUrl }: { repositoryUrl: string }) {
+export function SiteFooter({ documentationUrl }: { documentationUrl: string }) {
   return (
     <footer className="border-t border-border/70">
       <div className="flex w-full flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6 md:flex-row lg:px-8">
@@ -29,7 +29,7 @@ export function SiteFooter({ repositoryUrl }: { repositoryUrl: string }) {
             <span>solbreach_app</span>
           </a>
           <a
-            href={repositoryUrl}
+            href={documentationUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex min-h-10 items-center gap-2 px-2 text-muted transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

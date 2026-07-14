@@ -633,7 +633,7 @@ export default function Home() {
                 <LandingPageSection
                   enableAppEntry={ENABLE_APP_ENTRY}
                   onPlayNow={() => setActiveSection("beta-access")}
-                  repositoryUrl={SOLBREACH_DOCUMENTATION_URL}
+                  documentationUrl={SOLBREACH_DOCUMENTATION_URL}
                 />
               ) : activeGuide && activeLevelStatus ? (
                 <div className="space-y-8">
@@ -806,7 +806,7 @@ export default function Home() {
           )}
         </main>
 
-        <SiteFooter repositoryUrl={SOLBREACH_DOCUMENTATION_URL} />
+        <SiteFooter documentationUrl={SOLBREACH_DOCUMENTATION_URL} />
       </div>
       <BadgeEarnedDialog
         badge={activeBadgeDialog}
