@@ -620,14 +620,14 @@ function FeatureShowcaseSection() {
         <FeaturePreview
           tint="green"
           title="Research Labs"
-          description="Inspect protocol code, execute sandbox actions, verify impact, and build a finding report."
+          description="Inspect protocol, exploit it, verify impact, and build a finding report."
         >
           <SecurityResearchLabPreview />
         </FeaturePreview>
         <FeaturePreview
           tint="mixed"
           title="Breach Rooms"
-          description="Less-guided mini-audit environments."
+          description="Unguided audit environment to obtain first-flight experiences with an auditor tool-kit."
         >
           <BreachRoomsPreview />
         </FeaturePreview>
