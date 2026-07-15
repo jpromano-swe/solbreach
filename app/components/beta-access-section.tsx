@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronDown, KeyRound, ShieldCheck, Ticket } from "lucide-react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -22,8 +22,18 @@ function sanitizeAccessCode(value: string) {
 type PendingBetaAction = "request" | "redeem";
 type StatusKind = "error" | "info" | "success" | "warning";
 type BetaContactMethod = "email" | "telegram";
+type BetaAccessForm = "redeem" | "request";
 
-const NEEDS_ACCESS_MESSAGE = "Request beta access\nor redeem an access code.";
+const BETA_ACCESS_REQUESTS_OPEN = false;
+const WALLET_NOT_REGISTERED_MESSAGE = "Wallet not registered";
+
+function getBetaAccessErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return /^(404\s+)?not found\.?$/i.test(message.trim())
+    ? WALLET_NOT_REGISTERED_MESSAGE
+    : message;
+}
 
 export function BetaAccessSection({
   onEnterLevel1,
@@ -32,11 +42,13 @@ export function BetaAccessSection({
 }) {
   const { wallet } = useWallet();
   const [accessCode, setAccessCode] = useState("");
-  const [codeOpen, setCodeOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-  const [pendingAction, setPendingAction] = useState<PendingBetaAction>("request");
-  const [requestOpen, setRequestOpen] = useState(false);
-  const [contactMethod, setContactMethod] = useState<BetaContactMethod>("email");
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
+  const [pendingAction, setPendingAction] =
+    useState<PendingBetaAction>("redeem");
+  const [activeForm, setActiveForm] = useState<BetaAccessForm>("redeem");
+  const [contactMethod, setContactMethod] =
+    useState<BetaContactMethod>("email");
   const [contactValue, setContactValue] = useState("");
   const [statusMessage, setStatusMessage] = useState<{
     kind: StatusKind;
@@ -63,11 +75,16 @@ export function BetaAccessSection({
 
       if (!wallet) {
         setNeedsAccessAction(false);
-        setCodeOpen(false);
-        setRequestOpen(false);
+        setActiveForm("redeem");
+        setIsCheckingAccess(false);
         setStatusMessage(null);
         return;
       }
+
+      setIsCheckingAccess(true);
+      setNeedsAccessAction(false);
+      setActiveForm("redeem");
+      setStatusMessage({ kind: "info", text: "Checking wallet access..." });
 
       try {
         await ensureBackendWalletAuth(wallet);
@@ -92,24 +109,34 @@ export function BetaAccessSection({
         }
 
         setNeedsAccessAction(true);
-        setCodeOpen(true);
         setStatusMessage({
-          kind: result.status === "none" ? "warning" : "info",
+          kind:
+            result.status === "none"
+              ? "error"
+              : result.status === "revoked"
+                ? "warning"
+                : "info",
           text:
             result.status === "pending"
               ? "Your beta request is pending for this wallet."
               : result.status === "revoked"
                 ? "Beta access for this wallet is no longer active."
-                : NEEDS_ACCESS_MESSAGE,
+                : WALLET_NOT_REGISTERED_MESSAGE,
         });
       } catch (error) {
         if (cancelled) {
           return;
         }
 
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getBetaAccessErrorMessage(error);
+        setNeedsAccessAction(true);
+        setActiveForm("redeem");
         setStatusMessage({ kind: "error", text: message });
         toast.error(message);
+      } finally {
+        if (!cancelled) {
+          setIsCheckingAccess(false);
+        }
       }
     }
 
@@ -131,7 +158,7 @@ export function BetaAccessSection({
     const normalizedContact = contactValue.trim();
 
     if (!normalizedContact) {
-      setRequestOpen(true);
+      setActiveForm("request");
       setStatusMessage({
         kind: "error",
         text:
@@ -143,7 +170,7 @@ export function BetaAccessSection({
     }
 
     if (contactMethod === "email" && !normalizedContact.includes("@")) {
-      setRequestOpen(true);
+      setActiveForm("request");
       setStatusMessage({
         kind: "error",
         text: "Enter a valid email address.",
@@ -154,15 +181,13 @@ export function BetaAccessSection({
     setIsBusy(true);
     setStatusMessage(null);
     try {
-      await ensureBackendWalletAuth(wallet);
       await requestBetaAccess(wallet.account.address, normalizedContact);
       setNeedsAccessAction(true);
-      setCodeOpen(true);
-      setRequestOpen(false);
+      setActiveForm("redeem");
       setStatusMessage({ kind: "success", text: "Request received." });
       toast.success("Request received.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getBetaAccessErrorMessage(error);
       setStatusMessage({ kind: "error", text: message });
       toast.error(message);
     } finally {
@@ -179,7 +204,6 @@ export function BetaAccessSection({
     }
 
     if (!accessCode) {
-      setCodeOpen(true);
       setStatusMessage({
         kind: "error",
         text: "Enter an access code before redeeming.",
@@ -190,13 +214,13 @@ export function BetaAccessSection({
     setIsBusy(true);
     setStatusMessage(null);
     try {
-      await ensureBackendWalletAuth(wallet);
       const result = await redeemBetaAccessCode({
         code: accessCode,
         walletAddress: wallet.account.address,
       });
 
       if (result.hasAccess && result.status === "approved") {
+        await ensureBackendWalletAuth(wallet, { force: true });
         trackAnalyticsEvent({
           eventName: "beta_app_entered",
           properties: {
@@ -215,7 +239,7 @@ export function BetaAccessSection({
         text: "Access code received, but this wallet is not approved yet.",
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getBetaAccessErrorMessage(error);
       setStatusMessage({ kind: "error", text: message });
       toast.error(message);
     } finally {
@@ -268,80 +292,6 @@ export function BetaAccessSection({
               disconnectedButtonClassName="inline-flex min-h-10 w-full items-center justify-center border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white shadow-[0_14px_38px_-24px_rgba(153,69,255,0.9)] hover:bg-[#8b35f6]"
               connectedButtonClassName="min-h-10 w-full justify-center border-white/10 bg-[#17212b] px-4 text-sm font-semibold text-zinc-100 shadow-[0_14px_38px_-24px_rgba(20,241,149,0.45)] hover:bg-[#1b2834]"
             />
-            <p className="mt-1 w-[min(100%,300px)] text-left text-sm text-zinc-400">
-              No access? Apply for your invite below.
-            </p>
-            <button
-              type="button"
-              onClick={() => setRequestOpen((open) => !open)}
-              disabled={!wallet || isBusy}
-              className="inline-flex min-h-9 w-[min(100%,300px)] items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-zinc-300 transition hover:border-[#14f195]/25 hover:bg-white/[0.065] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-              aria-expanded={requestOpen}
-            >
-              <Ticket className="h-4 w-4 text-[#8fffd0]" />
-              Request Beta Access
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-zinc-500 transition-transform ${
-                  requestOpen ? "rotate-180" : ""
-                }`}
-                aria-hidden="true"
-              />
-            </button>
-
-            <div
-              className={`grid w-[min(100%,300px)] transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
-                wallet && requestOpen
-                  ? "mt-1 grid-rows-[1fr] opacity-100"
-                  : "mt-0 grid-rows-[0fr] opacity-0"
-              }`}
-            >
-              <form
-                className="min-h-0 overflow-hidden"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void submitAccessRequest();
-                }}
-              >
-                <div className="grid gap-2">
-                  <select
-                    value={contactMethod}
-                    onChange={(event) =>
-                      setContactMethod(event.target.value as BetaContactMethod)
-                    }
-                    className="min-h-9 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-sm text-zinc-200 outline-none transition focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
-                  >
-                    <option value="email">Email</option>
-                    <option value="telegram">Telegram</option>
-                  </select>
-                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_96px]">
-                    <input
-                      autoComplete={contactMethod === "email" ? "email" : "off"}
-                      inputMode={contactMethod === "email" ? "email" : "text"}
-                      name="beta-contact"
-                      onChange={(event) => setContactValue(event.target.value)}
-                      placeholder={
-                        contactMethod === "email"
-                          ? "you@example.com"
-                          : "@telegram"
-                      }
-                      spellCheck={false}
-                      type={contactMethod === "email" ? "email" : "text"}
-                      value={contactValue}
-                      className="min-h-9 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isBusy}
-                      className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#9945ff]/35 bg-[#9945ff] px-3 text-sm font-semibold text-white transition hover:bg-[#8b35f6] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-                    >
-                      {isBusy && pendingAction === "request"
-                        ? "Sending..."
-                        : "Submit"}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
           </div>
 
           {wallet && statusMessage ? (
@@ -362,47 +312,34 @@ export function BetaAccessSection({
 
           <div
             className={`grid transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
-              wallet && needsAccessAction
+              wallet && needsAccessAction && !isCheckingAccess
                 ? "mt-7 grid-rows-[1fr] opacity-100"
                 : "mt-0 grid-rows-[0fr] opacity-0"
             }`}
           >
             <div className="min-h-0 overflow-hidden border-t border-white/10 pt-5">
-              <button
-                type="button"
-                onClick={() => setCodeOpen((open) => !open)}
-                className="inline-flex w-full items-center justify-between gap-3 text-left text-sm text-zinc-400 transition hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
-                aria-expanded={codeOpen}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-[#8fffd0]" />
-                  Already have an access code?
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
-                  {codeOpen ? "Hide" : "Expand"}
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                      codeOpen ? "rotate-180" : ""
-                    }`}
-                    aria-hidden="true"
-                  />
-                </span>
-              </button>
-
-              <div
-                className={`grid transition-[grid-template-rows,opacity,margin-top] duration-200 ease-out ${
-                  codeOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
-                }`}
-              >
+              {activeForm === "redeem" ? (
                 <form
-                  className="min-h-0 overflow-hidden"
+                  aria-busy={isBusy && pendingAction === "redeem"}
+                  className="space-y-3"
                   onSubmit={(event) => {
                     event.preventDefault();
                     void redeemAccessCode();
                   }}
                 >
+                  <label
+                    htmlFor="beta-access-code"
+                    className="flex items-center gap-2 text-sm font-medium text-zinc-300"
+                  >
+                    <KeyRound
+                      className="h-4 w-4 text-[#8fffd0]"
+                      aria-hidden="true"
+                    />
+                    Access code
+                  </label>
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px]">
                     <input
+                      id="beta-access-code"
                       autoCapitalize="characters"
                       autoComplete="off"
                       inputMode="text"
@@ -418,8 +355,8 @@ export function BetaAccessSection({
                     />
                     <button
                       type="submit"
-                      disabled={isBusy}
-                      className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                      disabled={isBusy || !accessCode}
+                      className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-4 text-sm font-semibold text-white transition hover:bg-[#8b35f6] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
                     >
                       {isBusy && pendingAction === "redeem"
                         ? "Redeeming..."
@@ -427,6 +364,92 @@ export function BetaAccessSection({
                     </button>
                   </div>
                 </form>
+              ) : (
+                <form
+                  aria-busy={isBusy && pendingAction === "request"}
+                  className="space-y-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void submitAccessRequest();
+                  }}
+                >
+                  <label
+                    htmlFor="beta-contact-method"
+                    className="text-sm font-medium text-zinc-300"
+                  >
+                    Contact method
+                  </label>
+                  <select
+                    id="beta-contact-method"
+                    value={contactMethod}
+                    onChange={(event) =>
+                      setContactMethod(event.target.value as BetaContactMethod)
+                    }
+                    className="min-h-10 w-full rounded-xl border border-white/10 bg-white/[0.045] px-3 text-sm text-zinc-200 outline-none transition focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
+                  >
+                    <option value="email">Email</option>
+                    <option value="telegram">Telegram</option>
+                  </select>
+                  <label htmlFor="beta-contact" className="sr-only">
+                    {contactMethod === "email"
+                      ? "Email address"
+                      : "Telegram username"}
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px]">
+                    <input
+                      id="beta-contact"
+                      autoComplete={contactMethod === "email" ? "email" : "off"}
+                      inputMode={contactMethod === "email" ? "email" : "text"}
+                      name="beta-contact"
+                      onChange={(event) => setContactValue(event.target.value)}
+                      placeholder={
+                        contactMethod === "email"
+                          ? "you@example.com"
+                          : "@telegram"
+                      }
+                      spellCheck={false}
+                      type={contactMethod === "email" ? "email" : "text"}
+                      value={contactValue}
+                      className="min-h-10 rounded-xl border border-white/10 bg-white/[0.045] px-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#9945ff]/50 focus:ring-2 focus:ring-[#14f195]/35"
+                    />
+                    <button
+                      type="submit"
+                      disabled={
+                        isBusy ||
+                        !BETA_ACCESS_REQUESTS_OPEN ||
+                        !contactValue.trim()
+                      }
+                      className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] px-4 text-sm font-semibold text-zinc-400 disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                    >
+                      {isBusy && pendingAction === "request"
+                        ? "Sending..."
+                        : "Submit"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveForm((form) =>
+                      form === "redeem" ? "request" : "redeem"
+                    )
+                  }
+                  disabled={!BETA_ACCESS_REQUESTS_OPEN || isBusy}
+                  className="min-h-10 px-2 text-sm font-medium text-zinc-500 underline-offset-4 transition enabled:text-zinc-300 enabled:hover:text-[#b892ff] enabled:hover:underline disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+                  title="Beta access requests are currently closed"
+                >
+                  {activeForm === "redeem"
+                    ? "Request Beta Access"
+                    : "Redeem an access code"}
+                </button>
+                {!BETA_ACCESS_REQUESTS_OPEN ? (
+                  <p className="text-xs text-zinc-600">
+                    Closed beta — invite requests are paused.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -442,15 +465,5 @@ export function BetaAccessSection({
 }
 
 function StatusMessageText({ text }: { text: string }) {
-  if (text !== NEEDS_ACCESS_MESSAGE) {
-    return text;
-  }
-
-  return (
-    <span className="font-semibold text-yellow-300">
-      Request beta access
-      <br />
-      or redeem an access code.
-    </span>
-  );
+  return text;
 }
