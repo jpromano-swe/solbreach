@@ -20,7 +20,7 @@ function getSolbreachBackendUrl() {
     );
   }
 
-  return backendUrl;
+  return backendUrl.replace(/\/+$/, "");
 }
 
 const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
@@ -193,11 +193,11 @@ async function canMintResearchLabLevel1Certificate({
     typeof session?.status === "string" ? session.status : null;
   const completed = Boolean(
     session?.lab_completed ||
-      session?.labCompleted ||
-      session?.certificate_unlockable ||
-      session?.certificateUnlockable ||
-      reportStatus === "accepted" ||
-      sessionStatus === "passed"
+    session?.labCompleted ||
+    session?.certificate_unlockable ||
+    session?.certificateUnlockable ||
+    reportStatus === "accepted" ||
+    sessionStatus === "passed"
   );
 
   return {

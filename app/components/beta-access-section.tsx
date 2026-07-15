@@ -447,7 +447,7 @@ export function BetaAccessSection({
                 </button>
                 {!BETA_ACCESS_REQUESTS_OPEN ? (
                   <p className="text-xs text-zinc-600">
-                    Closed beta — invite requests are paused.
+                    Closed beta. Invite requests are paused.
                   </p>
                 ) : null}
               </div>

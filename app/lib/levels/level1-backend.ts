@@ -14,12 +14,13 @@ if (!envApiBaseUrl) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured.");
 }
 
-export const SOLBREACH_BACKEND_URL = envApiBaseUrl;
+export const SOLBREACH_BACKEND_URL = envApiBaseUrl.replace(/\/+$/, "");
 export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const AUTH_STORAGE_KEY = "solbreach.backend.walletAuth";
 const LOG_PREFIX = "[SolBreach Level 1]";
+const backendAuthInFlight = new Map<string, Promise<Level1AuthSession>>();
 
 export type Level1AuthSession = {
   accessToken: string;
@@ -224,33 +225,49 @@ export async function ensureBackendWalletAuth(
   const stored = options.force ? null : getStoredAuth(walletAddress);
   if (stored) return stored;
 
+  const inFlight = backendAuthInFlight.get(walletAddress);
+  if (inFlight) return inFlight;
+
   if (options.force) {
     clearBackendWalletAuth(walletAddress);
   }
 
-  if (!wallet.signMessage) {
+  const signMessage = wallet.signMessage;
+  if (!signMessage) {
     throw new Error(
       "Connected wallet cannot sign authentication messages. Use a wallet with message signing support."
     );
   }
 
-  const challenge = await requestWalletNonce(walletAddress);
-  const messageBytes = new TextEncoder().encode(challenge.message);
-  const signatureBytes = await wallet.signMessage(messageBytes);
-  const signature = getBase58Decoder().decode(signatureBytes);
-  const auth = await verifyWalletLogin({
-    nonce: challenge.nonce,
-    signature,
-    walletAddress,
-  });
-  const session = {
-    accessToken: auth.tokens.access_token,
-    role: auth.user?.role,
-    refreshToken: auth.tokens.refresh_token,
-    walletAddress,
-  };
-  storeAuth(session);
-  return session;
+  const authPromise = (async () => {
+    const challenge = await requestWalletNonce(walletAddress);
+    const messageBytes = new TextEncoder().encode(challenge.message);
+    const signatureBytes = await signMessage(messageBytes);
+    const signature = getBase58Decoder().decode(signatureBytes);
+    const auth = await verifyWalletLogin({
+      nonce: challenge.nonce,
+      signature,
+      walletAddress,
+    });
+    const session = {
+      accessToken: auth.tokens.access_token,
+      role: auth.user?.role,
+      refreshToken: auth.tokens.refresh_token,
+      walletAddress,
+    };
+    storeAuth(session);
+    return session;
+  })();
+
+  backendAuthInFlight.set(walletAddress, authPromise);
+
+  try {
+    return await authPromise;
+  } finally {
+    if (backendAuthInFlight.get(walletAddress) === authPromise) {
+      backendAuthInFlight.delete(walletAddress);
+    }
+  }
 }
 
 function isJwtExpiredOrNearExpiry(token: string) {
