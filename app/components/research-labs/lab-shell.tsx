@@ -4,6 +4,10 @@ import { ArrowLeft, MoreHorizontal, RefreshCcw } from "lucide-react";
 import { useState } from "react";
 
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
+import {
+  getResearchLabAdapter,
+  isYieldHijackLab,
+} from "./lab-adapters";
 import type { LabPhase, SandboxStatus } from "./types";
 
 const LAB_SHELL_COPY = {
@@ -93,8 +97,7 @@ export function ResearchLabSessionHeader({
 }
 
 function displayLabCode(lab: ResearchLabManifest) {
-  if (lab.slug === "account-substitution") return "RL1";
-  return (lab.id || LAB_SHELL_COPY.labCode).toUpperCase();
+  return getResearchLabAdapter(lab).code || LAB_SHELL_COPY.labCode;
 }
 
 export function LabScenarioBriefing({
@@ -105,6 +108,7 @@ export function LabScenarioBriefing({
   phase: LabPhase;
 }) {
   void _phase;
+  const adapter = getResearchLabAdapter(lab);
 
   return (
     <section className="border-b border-white/10 py-5">
@@ -114,11 +118,36 @@ export function LabScenarioBriefing({
             Scenario Briefing
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-white 2xl:text-3xl">
-            Investigate the protocol behavior.
+            {adapter.briefing.heading}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-            {lab.summary || LAB_SHELL_COPY.scenario}
+            {adapter.briefing.supportingLine ||
+              lab.summary ||
+              LAB_SHELL_COPY.scenario}
           </p>
+          {isYieldHijackLab(lab) ? (
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-500">
+              <span>
+                APY <strong className="font-medium text-zinc-300">2,500%</strong>
+              </span>
+              <span>
+                Existing position{" "}
+                <strong className="font-medium text-zinc-300">
+                  50,000 STAKE
+                </strong>
+              </span>
+              <span>
+                Pending rewards{" "}
+                <strong className="font-medium text-zinc-300">
+                  12,500 REWARD
+                </strong>
+              </span>
+              <span>
+                Your balance{" "}
+                <strong className="font-medium text-zinc-300">100 STAKE</strong>
+              </span>
+            </div>
+          ) : null}
         </div>
         {/* <InvestigationStepper phase={_phase} /> */}
       </div>

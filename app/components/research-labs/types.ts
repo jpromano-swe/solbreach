@@ -60,10 +60,21 @@ export type AccountEvidence = {
 
 export type EnrichedTransactionResult = TransactionResult & {
   inputs: {
+    actionType?: string;
     collateralSourceRef?: string;
     collateralSourceLabel?: string;
     vaultDestinationRef?: string;
     vaultDestinationLabel?: string;
+    sourceAccountRef?: string;
+    sourceAccountLabel?: string;
+    stakeVaultRef?: string;
+    stakeVaultLabel?: string;
+    positionAccountRef?: string;
+    positionAccountLabel?: string;
+    rewardVaultRef?: string;
+    rewardVaultLabel?: string;
+    destinationAccountRef?: string;
+    destinationAccountLabel?: string;
     amount: number;
   };
 };

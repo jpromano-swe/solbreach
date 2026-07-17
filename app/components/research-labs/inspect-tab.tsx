@@ -1,11 +1,23 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { FileCode2, FolderOpen } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { ChevronDown, FileCode2, FolderOpen } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { OnMount } from "@monaco-editor/react";
 
-import type { ResearchLabFile } from "../../lib/research-labs/lab-state";
+import type {
+  ResearchLabFile,
+  ResearchLabManifest,
+  SandboxAccountSummary,
+} from "../../lib/research-labs/lab-state";
+import { isYieldHijackLab } from "./lab-adapters";
 import type { AccountEvidence } from "./types";
 
 const MonacoEditor = dynamic(
@@ -24,17 +36,23 @@ export function InspectTab({
   accounts,
   activeFile,
   activeFileContent,
+  evidenceAccounts,
   files,
   inspectHintRevealed,
+  lab,
   onSelectFile,
 }: {
   accounts: AccountEvidence[];
   activeFile: ResearchLabFile | null;
   activeFileContent: string;
+  evidenceAccounts: SandboxAccountSummary[];
   files: ResearchLabFile[];
   inspectHintRevealed: boolean;
+  lab: ResearchLabManifest;
   onSelectFile: (path: string) => void;
 }) {
+  const isYieldHijack = isYieldHijackLab(lab);
+
   return (
     <div className="grid h-full min-w-0 lg:grid-cols-[minmax(0,1fr)_340px]">
       <CodeTab
@@ -42,10 +60,15 @@ export function InspectTab({
         activeFileContent={activeFileContent}
         files={files}
         inspectHintRevealed={inspectHintRevealed}
+        lab={lab}
         onSelectFile={onSelectFile}
       />
       <div className="min-h-0 border-t border-white/10 bg-black/10 lg:border-l lg:border-t-0">
-        <AccountsTab accounts={accounts} compact />
+        {isYieldHijack ? (
+          <YieldHijackAccountsTab accounts={evidenceAccounts} />
+        ) : (
+          <AccountsTab accounts={accounts} compact />
+        )}
       </div>
     </div>
   );
@@ -56,12 +79,14 @@ function CodeTab({
   activeFileContent,
   files,
   inspectHintRevealed,
+  lab,
   onSelectFile,
 }: {
   activeFile: ResearchLabFile | null;
   activeFileContent: string;
   files: ResearchLabFile[];
   inspectHintRevealed: boolean;
+  lab: ResearchLabManifest;
   onSelectFile: (path: string) => void;
 }) {
   const shouldShowTree = files.length > 1;
@@ -69,12 +94,12 @@ function CodeTab({
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
   const decorationIdsRef = useRef<string[]>([]);
   const displayedFileContent = useMemo(
-    () => formatInspectSnippetComment(activeFileContent, inspectHintRevealed),
-    [activeFileContent, inspectHintRevealed]
+    () => formatInspectContent(activeFileContent, inspectHintRevealed, lab),
+    [activeFileContent, inspectHintRevealed, lab]
   );
   const vulnerableRange = useMemo(
-    () => getVulnerableSnippetRange(displayedFileContent),
-    [displayedFileContent]
+    () => getInspectSnippetRange(displayedFileContent, lab),
+    [displayedFileContent, lab]
   );
   const applyVulnerableDecorations = useCallback(() => {
     const editor = editorRef.current;
@@ -93,8 +118,8 @@ function CodeTab({
                 1
               ),
               options: {
-                className: "rl1-inspect-vulnerable-line",
-                glyphMarginClassName: "rl1-inspect-vulnerable-glyph",
+                className: "research-lab-inspect-vulnerable-line",
+                glyphMarginClassName: "research-lab-inspect-vulnerable-glyph",
                 isWholeLine: true,
                 overviewRuler: {
                   color: "#9945ff",
@@ -188,6 +213,38 @@ function formatInspectSnippetComment(content: string, inspectHintRevealed: boole
   );
 }
 
+const yieldHijackHintComment =
+  "// Review which identities are represented in this derivation.";
+
+function formatInspectContent(
+  content: string,
+  inspectHintRevealed: boolean,
+  lab: ResearchLabManifest
+) {
+  if (!isYieldHijackLab(lab)) {
+    return formatInspectSnippetComment(content, inspectHintRevealed);
+  }
+
+  const sanitizedContent = content
+    .replace(
+      /^[ \t]*\/\/ (?:BUG|Vulnerable):.*(?:\r?\n[ \t]*\/\/.*)*\r?\n?/gim,
+      ""
+    )
+    .replace(
+      /^[ \t]*\/\/ Review which identities are represented in this derivation\.\r?\n?/gm,
+      ""
+    );
+
+  if (!inspectHintRevealed) return sanitizedContent;
+
+  const accountMarker = "#[account(";
+  const markerIndex = sanitizedContent.indexOf(accountMarker);
+  if (markerIndex === -1) return sanitizedContent;
+
+  const lineStart = sanitizedContent.lastIndexOf("\n", markerIndex) + 1;
+  return `${sanitizedContent.slice(0, lineStart)}${yieldHijackHintComment}\n${sanitizedContent.slice(lineStart)}`;
+}
+
 function insertCommentBeforeDepositFunction(content: string, comment: string) {
   const marker = "pub fn deposit_collateral";
   const markerIndex = content.indexOf(marker);
@@ -211,6 +268,26 @@ function getVulnerableSnippetRange(content: string) {
   return {
     startLine: startIndex + 1,
     endLine: endIndex === -1 ? startIndex + 6 : endIndex + 1,
+  };
+}
+
+function getInspectSnippetRange(
+  content: string,
+  lab: ResearchLabManifest
+) {
+  if (!isYieldHijackLab(lab)) return getVulnerableSnippetRange(content);
+
+  const lines = content.split("\n");
+  const seedStart = lines.findIndex((line) => line.includes("seeds = ["));
+  if (seedStart === -1) return null;
+  const positionLine = lines.findIndex(
+    (line, index) =>
+      index > seedStart && line.includes("Account<'info, StakePosition>")
+  );
+
+  return {
+    startLine: seedStart + 1,
+    endLine: positionLine === -1 ? seedStart + 6 : positionLine + 1,
   };
 }
 
@@ -325,6 +402,257 @@ function AccountsTab({
       </div>
     </div>
   );
+}
+
+function YieldHijackAccountsTab({
+  accounts,
+}: {
+  accounts: SandboxAccountSummary[];
+}) {
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const position = findAccount(accounts, "stake_position");
+  const pool = findAccount(accounts, "pool_config");
+  const stakeVault = findAccount(accounts, "stake_vault");
+  const rewardVault = findAccount(accounts, "reward_vault");
+  const attackerStake = findAccount(accounts, "attacker_stake_account");
+  const attackerReward = findAccount(accounts, "attacker_reward_account");
+  const owner = stringFromData(position?.data, [
+    "owner_label",
+    "ownerLabel",
+    "position_owner_label",
+    "positionOwnerLabel",
+    "owner",
+  ]);
+  const ownerKey = stringFromData(position?.data, [
+    "owner_address",
+    "ownerAddress",
+    "position_owner",
+    "positionOwner",
+  ]);
+  const positionAddress =
+    stringFromData(position?.data, ["address", "pubkey", "pda"]) ??
+    addressFromAccount(position);
+  const victimPositionAddress =
+    stringFromData(position?.data, [
+      "victim_position_address",
+      "victimPositionAddress",
+      "victim_pda",
+      "victimPda",
+    ]) ?? positionAddress;
+  const attackerPositionAddress =
+    stringFromData(position?.data, [
+      "attacker_position_address",
+      "attackerPositionAddress",
+      "attacker_pda",
+      "attackerPda",
+    ]) ?? positionAddress;
+
+  return (
+    <div className="h-full overflow-auto p-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
+          Protocol State
+        </p>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">
+          Accounts involved in the staking program.
+        </p>
+      </div>
+
+      <div className="mt-5 space-y-4">
+        <InspectStateGroup title="Protocol Overview">
+          <InspectStateRow label="Advertised APY" value="2,500%" />
+          <InspectStateRow
+            label="Pool authority"
+            value={shortAddress(
+              stringFromData(pool?.data, ["authority", "pool_authority"]) ??
+                "Unavailable"
+            )}
+          />
+          <InspectStateRow
+            label="Stake vault"
+            value={`${formatTokenAmount(accountBalance(stakeVault, 50_000))} STAKE`}
+          />
+          <InspectStateRow
+            label="Reward vault"
+            value={`${formatTokenAmount(accountBalance(rewardVault, 500_000))} REWARD`}
+          />
+        </InspectStateGroup>
+
+        <InspectStateGroup title="Staking Position">
+          <div className="pb-2">
+            <p className="text-sm font-semibold text-zinc-100">
+              {friendlyPositionOwner(owner)}
+            </p>
+            <p className="mt-1 font-mono text-[11px] text-zinc-600">
+              {shortAddress(ownerKey ?? "Existing staker")}
+            </p>
+          </div>
+          <InspectStateRow
+            label="Staked amount"
+            value={`${formatTokenAmount(numberFromData(position?.data, ["staked_amount", "stakedAmount", "amount"], 50_000))} STAKE`}
+          />
+          <InspectStateRow
+            label="Pending rewards"
+            value={`${formatTokenAmount(numberFromData(position?.data, ["pending_rewards", "pendingRewards", "rewards"], 12_500))} REWARD`}
+          />
+          <InspectStateRow
+            label="Pool"
+            value={shortAddress(
+              stringFromData(position?.data, ["pool", "pool_config"]) ??
+                addressFromAccount(pool)
+            )}
+          />
+          <InspectStateRow
+            label="Position"
+            value={shortAddress(positionAddress)}
+          />
+        </InspectStateGroup>
+
+        <InspectStateGroup title="Your Wallet">
+          <InspectStateRow
+            label="Stake balance"
+            value={`${formatTokenAmount(accountBalance(attackerStake, 100))} STAKE`}
+          />
+          <InspectStateRow
+            label="Reward balance"
+            value={`${formatTokenAmount(accountBalance(attackerReward, 0))} REWARD`}
+          />
+        </InspectStateGroup>
+
+        <div className="border-t border-white/10 pt-4">
+          <button
+            type="button"
+            onClick={() => setComparisonOpen((open) => !open)}
+            className="flex w-full items-center justify-between gap-3 text-left text-sm font-semibold text-[#c7a6ff] transition hover:text-white"
+          >
+            Compare Position Derivations
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${comparisonOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          <p className="mt-2 text-xs leading-5 text-zinc-500">
+            Compare how the protocol derives a staking position for each participant.
+          </p>
+          {comparisonOpen ? (
+            <div className="mt-4 space-y-3 border-l border-[#9945ff]/30 pl-4">
+              <DerivationRow
+                label="Existing Staker Position"
+                address={victimPositionAddress}
+              />
+              <DerivationRow
+                label="Your Position"
+                address={attackerPositionAddress}
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InspectStateGroup({
+  children,
+  title,
+}: {
+  children: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="border-b border-white/10 pb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+        {title}
+      </p>
+      <div className="mt-3 space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function InspectStateRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-xs">
+      <span className="text-zinc-500">{label}</span>
+      <span className="text-right font-mono text-zinc-300">{value}</span>
+    </div>
+  );
+}
+
+function DerivationRow({ address, label }: { address: string; label: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-zinc-300">{label}</p>
+      <p className="mt-1 break-all font-mono text-[10px] leading-4 text-zinc-600">
+        Address: {address || "Unavailable"}
+      </p>
+    </div>
+  );
+}
+
+function findAccount(accounts: SandboxAccountSummary[], ref: string) {
+  return accounts.find((account) => account.ref === ref);
+}
+
+function addressFromAccount(account: SandboxAccountSummary | undefined) {
+  return (
+    stringFromData(account?.data, ["address", "pubkey", "key"]) ??
+    account?.owner ??
+    "Unavailable"
+  );
+}
+
+function accountBalance(
+  account: SandboxAccountSummary | undefined,
+  fallback: number
+) {
+  return numberFromData(
+    account?.data,
+    ["token_balance", "tokenBalance", "balance", "amount"],
+    account?.lamports ?? fallback
+  );
+}
+
+function stringFromData(
+  data: Record<string, unknown> | undefined,
+  keys: string[]
+) {
+  for (const key of keys) {
+    const value = data?.[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return null;
+}
+
+function numberFromData(
+  data: Record<string, unknown> | undefined,
+  keys: string[],
+  fallback: number
+) {
+  for (const key of keys) {
+    const value = data?.[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+      return Number(value);
+    }
+  }
+  return fallback;
+}
+
+function friendlyPositionOwner(value: string | null) {
+  const normalized = value?.toLowerCase() ?? "";
+  return normalized.includes("attacker") || normalized.includes("learner")
+    ? "Your Wallet"
+    : "Existing Staker";
+}
+
+function shortAddress(value: string) {
+  if (!value || value === "Unavailable") return value;
+  return value.length > 14 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+}
+
+function formatTokenAmount(value: number) {
+  return Math.max(0, value).toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  });
 }
 
 function StateLine({ label, value }: { label: string; value: string }) {

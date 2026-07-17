@@ -12,6 +12,10 @@ import type {
   ResearchLabSession,
 } from "../../lib/research-labs/lab-state";
 import { deriveProtocolState } from "./execute-exploit-tab";
+import {
+  getResearchLabAdapter,
+  isYieldHijackLab,
+} from "./lab-adapters";
 import { ReviewCheckpointPanel } from "./report-tab";
 import type {
   AuditReportStage,
@@ -93,6 +97,7 @@ export function LabContextPanel({
   onRetryReview: () => void;
   onContinueToLevel2: () => void;
 }) {
+  const adapter = getResearchLabAdapter(lab);
   const nextHint = lab.hints.find((hint) => !revealedHints.includes(hint.id));
   const reportAccepted = Boolean(
     report?.status === "accepted" || session.labCompleted
@@ -114,6 +119,7 @@ export function LabContextPanel({
       {phase === "EXECUTE_EXPLOIT" ? (
         <ExecuteExploitContext
           impactVerified={impactVerified}
+          lab={lab}
           onOpenReport={onOpenReport}
           reportUnlocked={reportUnlocked}
           txResults={txResults}
@@ -121,12 +127,14 @@ export function LabContextPanel({
       ) : phase === "VERIFY_IMPACT" ? (
         <ExecuteExploitContext
           impactVerified={impactVerified}
+          lab={lab}
           onOpenReport={onOpenReport}
           reportUnlocked={reportUnlocked}
           txResults={txResults}
         />
       ) : impactVerified ? (
         <ReviewContextCard
+          adapter={adapter}
           auditReportStage={auditReportStage}
           findingReviewPassed={findingReviewPassed}
           isCollectingLevel1Badge={isCollectingLevel1Badge}
@@ -157,7 +165,7 @@ export function LabContextPanel({
         <>
           <ContextBlock title="Current Objective">
             <p className="text-sm leading-6 text-zinc-400">
-              {contextObjective}
+              {adapter.briefing.objective || contextObjective}
             </p>
             {phase === "INSPECT" ? (
               <button
@@ -210,10 +218,7 @@ export function LabContextPanel({
             criticalTotal={criticalTotal}
             evidenceTitle="Inspection Checks"
             evidenceItems={[
-              "Protocol source reviewed",
-              "Account relationships inspected",
-              "Collateral validation located",
-              "Exploit path ready",
+              ...adapter.inspectChecks,
             ]}
             showReviewRules={false}
             title="Inspect Checkpoint"
@@ -277,24 +282,37 @@ export function LabContextPanel({
 
 function ExecuteExploitContext({
   impactVerified,
+  lab,
   onOpenReport,
   reportUnlocked,
   txResults,
 }: {
   impactVerified: boolean;
+  lab: ResearchLabManifest;
   onOpenReport: () => void;
   reportUnlocked: boolean;
   txResults: EnrichedTransactionResult[];
 }) {
+  const adapter = getResearchLabAdapter(lab);
+  const isYieldHijack = isYieldHijackLab(lab);
   const [revealedChainHints, setRevealedChainHints] = useState(0);
   const protocolState = deriveProtocolState(txResults);
-  const depositSubmitted = protocolState.hasDeposit;
-  const withdrawalSubmitted = protocolState.borrowedAmount > 0;
-  const chainHints = [
-    "Start by comparing the token account you provide with the vault that receives it.",
-    "After deposit, inspect whether position credit changed even though the account path was not canonical.",
-    "If credit appears, use the protocol borrow surface and then review whether treasury state changed.",
-  ];
+  const depositSubmitted = isYieldHijack
+    ? txResults.some(
+        (result) =>
+          result.executionStatus === "success" &&
+          result.instructionType.includes("STAKE") &&
+          !result.instructionType.includes("CLAIM")
+      )
+    : protocolState.hasDeposit;
+  const withdrawalSubmitted = isYieldHijack
+    ? txResults.some(
+        (result) =>
+          result.executionStatus === "success" &&
+          result.instructionType.includes("CLAIM")
+      )
+    : protocolState.borrowedAmount > 0;
+  const chainHints = adapter.exploitHints;
   const canRevealMoreHints = revealedChainHints < chainHints.length;
   const revealNextExploitHint = () => {
     const nextHintIndex = revealedChainHints;
@@ -303,7 +321,7 @@ function ExecuteExploitContext({
       Math.min(current + 1, chainHints.length)
     );
 
-    if (nextHintIndex === 0) {
+    if (nextHintIndex === 0 && !isYieldHijack) {
       window.setTimeout(startExploitHypothesisTour, 80);
     }
   };
@@ -316,9 +334,13 @@ function ExecuteExploitContext({
         steps={[
           { label: "Hypothesis selected", active: true },
           {
-            label: !depositSubmitted
-              ? "Deposit not submitted"
-              : protocolState.depositKind === "regular"
+            label: isYieldHijack
+              ? depositSubmitted
+                ? "Stake submitted"
+                : "Stake not submitted"
+              : !depositSubmitted
+                ? "Deposit not submitted"
+                : protocolState.depositKind === "regular"
                 ? "Canonical collateral deposited"
                 : protocolState.depositKind === "exploit"
                   ? "Non-canonical credit route created"
@@ -326,9 +348,13 @@ function ExecuteExploitContext({
             active: depositSubmitted,
           },
           {
-            label: !withdrawalSubmitted
-              ? "Borrow not submitted"
-              : protocolState.depositKind === "regular"
+            label: isYieldHijack
+              ? withdrawalSubmitted
+                ? "Rewards claimed"
+                : "Rewards not claimed"
+              : !withdrawalSubmitted
+                ? "Borrow not submitted"
+                : protocolState.depositKind === "regular"
                 ? "Canonical borrow executed"
                 : protocolState.hasMaxDrain
                   ? "Treasury drain path executed"
@@ -564,6 +590,7 @@ function HintList({
 }
 
 function ReviewContextCard({
+  adapter,
   auditReportStage,
   findingReviewPassed,
   isCollectingLevel1Badge,
@@ -587,6 +614,7 @@ function ReviewContextCard({
   onOpenReport,
   onRetryReview,
 }: {
+  adapter: ReturnType<typeof getResearchLabAdapter>;
   auditReportStage: AuditReportStage;
   findingReviewPassed: boolean;
   isCollectingLevel1Badge: boolean;
@@ -613,6 +641,7 @@ function ReviewContextCard({
   if (auditReportStage === "CERTIFY_KNOWLEDGE") {
     return (
       <CertificateCheckpointPanel
+        adapter={adapter}
         badgeCollected={level1BadgeCollected}
         badgeEarned={level1BadgeEarned}
         certificateMinted={researchLabCertificateMinted}
@@ -643,6 +672,8 @@ function ReviewContextCard({
         <ReviewCheckpointPanel
           activeStep="report"
           criticalTotal={criticalTotal}
+          evidenceItems={adapter.verifiedEvidenceChecks}
+          passingScore={adapter.questionnaire.passingScore}
           unlockTitle={
             reportOpened
               ? "Secure Pattern and Certification"
@@ -703,6 +734,7 @@ function ReviewContextCard({
 }
 
 function CertificateCheckpointPanel({
+  adapter,
   badgeCollected,
   badgeEarned,
   certificateMinted,
@@ -712,6 +744,7 @@ function CertificateCheckpointPanel({
   onMintCertificate,
   onNextModule,
 }: {
+  adapter: ReturnType<typeof getResearchLabAdapter>;
   badgeCollected: boolean;
   badgeEarned: boolean;
   certificateMinted: boolean;
@@ -735,7 +768,7 @@ function CertificateCheckpointPanel({
 
       <div className="mt-5 border-t border-white/10 pt-5">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-          Account Substitution
+          {adapter.certificate.moduleLabel}
         </p>
         <div className="mt-4 space-y-3 text-sm">
           <CheckpointRuleRow label="Review" value="Secure pattern complete" />
@@ -779,7 +812,7 @@ function CertificateCheckpointPanel({
                 ? "Prerequisite missing"
                 : "Badge syncing"}
           </button>
-        ) : (
+        ) : adapter.code === "RL1" ? (
           <button
             type="button"
             onClick={() => {
@@ -799,6 +832,14 @@ function CertificateCheckpointPanel({
               : isMintingCertificate
                 ? "Minting..."
                 : "Mint NFT Certificate"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="inline-flex min-h-11 w-auto min-w-[190px] cursor-not-allowed items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-600 opacity-70"
+          >
+            Certificate mint pending
           </button>
         )}
 

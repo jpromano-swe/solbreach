@@ -243,6 +243,7 @@ export default function Home() {
   });
 
   const level1Badge = getLevelBadge(badges, 1);
+  const level2Badge = getLevelBadge(badges, 2);
   const level1Completed = Boolean(level1Badge?.earned);
   const level2Completed =
     Boolean(level0State?.completedLevels[2]) || level2BackendCompleted;
@@ -756,6 +757,7 @@ export default function Home() {
               isMintingResearchLabCertificate={mintingLevel === "level1"}
               level1BadgeCollected={Boolean(level1Badge?.seenAt)}
               level1BadgeEarned={Boolean(level1Badge?.earned)}
+              level2BadgeCollected={Boolean(level2Badge?.seenAt)}
               powerUserBadgeEarned={Boolean(
                 badgesForDisplay.find((badge) => badge.slug === "power-user")?.earned
               )}
@@ -768,6 +770,10 @@ export default function Home() {
                 setActiveLevelsView("level2");
               }}
               onGoToLevel1Module={enterLevel1FromBeta}
+              onGoToLevel2Module={() => {
+                setActiveSection("levels");
+                setActiveLevelsView("level2");
+              }}
               onMintResearchLabCertificate={mintResearchLab1Certificate}
             />
           ) : activeSection === "vulnerabilities" ? (

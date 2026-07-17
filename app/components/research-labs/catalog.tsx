@@ -7,6 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { trackAnalyticsEvent } from "../../lib/analytics";
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
 import { useWallet } from "../../lib/wallet/context";
+import { getResearchLabAdapter } from "./lab-adapters";
 
 const CATALOG_LOCKED_LABS = [
   {
@@ -41,7 +42,9 @@ export function ResearchLabCatalog({
   isLoading,
   labs,
   level1BadgeCollected,
+  level2BadgeCollected,
   onGoToLevel1Module,
+  onGoToLevel2Module,
   onLoadCatalog,
   onOpenLab,
   walletStatus,
@@ -51,7 +54,9 @@ export function ResearchLabCatalog({
   isLoading: boolean;
   labs: ResearchLabManifest[];
   level1BadgeCollected: boolean;
+  level2BadgeCollected: boolean;
   onGoToLevel1Module: () => void;
+  onGoToLevel2Module: () => void;
   onLoadCatalog: () => void;
   onOpenLab: (lab: ResearchLabManifest) => void;
   walletStatus: string;
@@ -101,8 +106,16 @@ export function ResearchLabCatalog({
             aria-hidden={shouldGateLabs}
           >
             {labs.map((lab) => {
-              const requiresLevel1 = requiresLevel1Badge(lab);
-              const labUnlocked = !requiresLevel1 || level1BadgeCollected;
+              const adapter = getResearchLabAdapter(lab);
+              const prerequisiteBadgeCollected =
+                adapter.prerequisiteBadgeLevel === 2
+                  ? level2BadgeCollected
+                  : level1BadgeCollected;
+              const labUnlocked = prerequisiteBadgeCollected;
+              const goToPrerequisiteModule =
+                adapter.prerequisiteBadgeLevel === 2
+                  ? onGoToLevel2Module
+                  : onGoToLevel1Module;
 
               return (
                 <article
@@ -143,26 +156,25 @@ export function ResearchLabCatalog({
                     <Metric icon={<Clock3 />} label={lab.estimatedTime} />
                   </div>
 
-                  {requiresLevel1 ? (
-                    <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                        Prerequisites
-                      </p>
-                      <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-                        <span className="text-zinc-300">Level 1 badge</span>
-                        <span
-                          className={
-                            level1BadgeCollected
-                              ? "text-[#8fffd0]"
-                              : "text-amber-200"
-                          }
-                        >
-                          {level1BadgeCollected ? "Collected" : "Missing"}
-                        </span>
-                      </div>
+                  <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                      Prerequisites
+                    </p>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                      <span className="text-zinc-300">
+                        Level {adapter.prerequisiteBadgeLevel} badge
+                      </span>
+                      <span
+                        className={
+                          prerequisiteBadgeCollected
+                            ? "text-[#8fffd0]"
+                            : "text-amber-200"
+                        }
+                      >
+                        {prerequisiteBadgeCollected ? "Collected" : "Missing"}
+                      </span>
                     </div>
-                  ) : null}
-
+                  </div>
                   <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
                     <span className="text-zinc-500">Sandbox investigation</span>
                     {labUnlocked ? (
@@ -177,7 +189,7 @@ export function ResearchLabCatalog({
                     ) : (
                       <button
                         type="button"
-                        onClick={onGoToLevel1Module}
+                        onClick={goToPrerequisiteModule}
                         className="font-medium text-amber-200 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-300/50"
                       >
                         Go to Module
@@ -253,12 +265,7 @@ export function ResearchLabCatalog({
 }
 
 function displayLabCode(lab: ResearchLabManifest) {
-  if (lab.slug === "account-substitution") return "RL1";
-  return lab.id.toUpperCase();
-}
-
-function requiresLevel1Badge(lab: ResearchLabManifest) {
-  return lab.slug === "account-substitution" || lab.id === "rl1-account-substitution";
+  return getResearchLabAdapter(lab).code;
 }
 
 function ResearchLabWalletConnectorDialog({

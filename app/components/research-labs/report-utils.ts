@@ -4,7 +4,11 @@ import {
   type QuestionnaireQuestion,
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
-import type { ResearchLabReportFields } from "../../lib/research-labs/lab-state";
+import type { QuestionnaireDefinition } from "../../lib/research-labs/rl1-questionnaire";
+import type {
+  ResearchLabManifest,
+  ResearchLabReportFields,
+} from "../../lib/research-labs/lab-state";
 import type { AuditReportPreview, ReportCodeSnippet, ReviewMode } from "./types";
 
 export type ReportOption = {
@@ -13,6 +17,26 @@ export type ReportOption = {
   helper?: string;
   previewBody?: string;
   snippet?: ReportCodeSnippet;
+};
+
+export type ResearchLabReportConfig = {
+  titleOptions: ReportOption[];
+  categoryOptions: ReportOption[];
+  severityOptions: ReportOption[];
+  likelihoodOptions: ReportOption[];
+  rootCauseOptions: ReportOption[];
+  proofOfImpactOptions: ReportOption[];
+  mitigationOptions: ReportOption[];
+  suggestedDefaults: Partial<ResearchLabReportFields>;
+  labLabel: string;
+  moduleLabel: string;
+  previewFallback: {
+    title: string;
+    severity: string;
+    likelihood: string;
+    category: string;
+    categoryBody: string;
+  };
 };
 
 export const reportTitleOptions: ReportOption[] = [
@@ -180,6 +204,164 @@ export const suggestedReportFieldDefaults: Partial<ResearchLabReportFields> = {
   recommendedMitigationOptionId: "bind_accounts_to_approved_config",
 };
 
+const rl1ReportConfig: ResearchLabReportConfig = {
+  titleOptions: reportTitleOptions,
+  categoryOptions: reportCategoryOptions,
+  severityOptions: reportSeverityOptions,
+  likelihoodOptions: reportLikelihoodOptions,
+  rootCauseOptions: reportRootCauseOptions,
+  proofOfImpactOptions: reportProofOfImpactOptions,
+  mitigationOptions: reportMitigationOptions,
+  suggestedDefaults: suggestedReportFieldDefaults,
+  labLabel: "Research Lab 1",
+  moduleLabel: "Account Substitution",
+  previewFallback: {
+    title: "Missing Constraints Allow Counterfeit Credit",
+    severity: "High",
+    likelihood: "Medium High",
+    category: "Account Substitution",
+    categoryBody:
+      "caller-supplied accounts can bypass canonical vault binding and create borrow credit from a non-approved collateral route.",
+  },
+};
+
+const rl2ReportConfig: ResearchLabReportConfig = {
+  titleOptions: [
+    {
+      id: "static_staking_position_reward_hijack",
+      label: "Static Staking Position PDA Enables Reward Hijacking",
+    },
+    {
+      id: "unscoped_position_overwrites_owner",
+      label: "Unscoped Staking Position Allows Owner Overwrite",
+    },
+  ],
+  categoryOptions: [
+    {
+      id: "static_pda",
+      label: "Static PDA",
+      previewBody:
+        "a user-specific staking position is derived without the user identity, causing multiple participants to resolve to the same mutable account.",
+    },
+    {
+      id: "missing_identity_scope",
+      label: "Missing Identity Scope",
+      previewBody:
+        "the account derivation represents the pool but does not isolate state for each staker.",
+    },
+  ],
+  severityOptions: [
+    { id: "high", label: "High" },
+    { id: "medium", label: "Medium" },
+    { id: "low", label: "Low" },
+  ],
+  likelihoodOptions: [
+    { id: "high", label: "High" },
+    { id: "medium_high", label: "Medium High" },
+    { id: "medium", label: "Medium" },
+  ],
+  rootCauseOptions: [
+    {
+      id: "static_pda_missing_user_seed",
+      label: "Staking position PDA omits the user identity",
+      previewBody:
+        "The protocol derives staking positions using only the static prefix and pool address. Because the user identity is not included in the PDA seeds, multiple participants resolve to the same mutable position account.",
+      snippet: {
+        title: "Unscoped staking-position derivation",
+        language: "rust",
+        filePath: "programs/yield_hijack/src/lib.rs",
+        code: [
+          "#[account(",
+          "    seeds = [",
+          '        b"stake_position",',
+          "        pool.key().as_ref(),",
+          "    ],",
+          "    bump",
+          ")]",
+          "pub position: Account<'info, StakePosition>;",
+        ].join("\n"),
+      },
+    },
+    {
+      id: "position_owner_reassigned_on_stake",
+      label: "Existing position ownership is reassigned during staking",
+      previewBody:
+        "The staking flow mutates the owner on a position that may already contain another participant's principal and pending rewards.",
+    },
+  ],
+  proofOfImpactOptions: [
+    {
+      id: "position_owner_overwrite_reward_claim",
+      label: "Owner overwrite enabled a pre-existing reward claim",
+      previewBody:
+        "A minimal attacker stake changed ownership of the existing position while preserving its pending rewards. The attacker then claimed 12,500 REWARD, matching the protocol reward-vault decrease.",
+    },
+    {
+      id: "pda_collision_and_reward_delta",
+      label: "Position collision and matching reward deltas",
+      previewBody:
+        "Both participant derivations resolved to the same position, its owner changed after the attacker stake, and the attacker reward gain matched the reward-vault loss.",
+    },
+  ],
+  mitigationOptions: [
+    {
+      id: "scope_position_pda_by_pool_and_user",
+      label: "Scope the position PDA by pool and user",
+      previewBody:
+        "Derive every staking position from both the pool and the staker public key, then validate the stored owner and pool before any stake or reward mutation.",
+      snippet: {
+        title: "Identity-scoped staking-position derivation",
+        language: "rust",
+        filePath: "programs/yield_hijack/src/lib.rs",
+        code: [
+          "#[account(",
+          "    seeds = [",
+          '        b"stake_position",',
+          "        pool.key().as_ref(),",
+          "        user.key().as_ref(),",
+          "    ],",
+          "    bump",
+          ")]",
+          "pub position: Account<'info, StakePosition>;",
+        ].join("\n"),
+      },
+    },
+    {
+      id: "validate_position_identity",
+      label: "Validate stored position identity on every mutation",
+      previewBody:
+        "Require the position owner to match the signer, the stored pool to match the selected pool, and the account bump to match the expected derivation.",
+    },
+  ],
+  suggestedDefaults: {
+    titleOptionId: "static_staking_position_reward_hijack",
+    categoryOptionId: "static_pda",
+    severityOptionId: "high",
+    likelihoodOptionId: "high",
+    rootCauseOptionId: "static_pda_missing_user_seed",
+    proofOfImpactOptionId: "position_owner_overwrite_reward_claim",
+    recommendedMitigationOptionId: "scope_position_pda_by_pool_and_user",
+  },
+  labLabel: "Research Lab 2",
+  moduleLabel: "Yield Hijack",
+  previewFallback: {
+    title: "Static Staking Position PDA Enables Reward Hijacking",
+    severity: "High",
+    likelihood: "High",
+    category: "Static PDA",
+    categoryBody:
+      "a user-specific staking position is derived without the user identity, allowing multiple participants to resolve to the same mutable account.",
+  },
+};
+
+export function getResearchLabReportConfig(
+  lab: Pick<ResearchLabManifest, "id" | "slug"> | null
+) {
+  return lab?.slug === "yield-hijack" || lab?.id === "rl2-yield-hijack"
+    ? rl2ReportConfig
+    : rl1ReportConfig;
+}
+
 export function isRequiredQuestion(question: QuestionnaireQuestion) {
   return question.type !== "free_text_optional";
 }
@@ -209,9 +391,12 @@ export function isQuestionAnswered(
   return false;
 }
 
-export function getIncorrectRequiredQuestionIds(result: QuestionnaireResult) {
+export function getIncorrectRequiredQuestionIds(
+  result: QuestionnaireResult,
+  questionnaire: QuestionnaireDefinition = rl1FindingQuestionnaire
+) {
   const questionMap = new Map(
-    rl1FindingQuestionnaire.questions.map((question) => [question.id, question])
+    questionnaire.questions.map((question) => [question.id, question])
   );
 
   return result.results
@@ -222,34 +407,53 @@ export function getIncorrectRequiredQuestionIds(result: QuestionnaireResult) {
     .map((item) => item.questionId);
 }
 
-export function getReviewQuestions(mode: ReviewMode, retryQuestionIds: string[]) {
+export function getReviewQuestions(
+  mode: ReviewMode,
+  retryQuestionIds: string[],
+  questionnaire: QuestionnaireDefinition = rl1FindingQuestionnaire
+) {
   if (mode === "retry" && retryQuestionIds.length) {
     const retrySet = new Set(retryQuestionIds);
-    return rl1FindingQuestionnaire.questions.filter((question) =>
+    return questionnaire.questions.filter((question) =>
       retrySet.has(question.id)
     );
   }
 
-  return rl1FindingQuestionnaire.questions;
+  return questionnaire.questions;
 }
 
-export function getFeedbackTopics(questionIds: string[]) {
-  const topicBySection: Record<string, string> = {
-    "Vulnerability Identification":
-      "Recheck which account relationship the protocol trusted and which Solana account-security concept applies.",
-    "Exploit Path Understanding":
-      "Rebuild the exploit chain from counterfeit deposit to illegitimate credit and real treasury withdrawal.",
-    "State and Evidence":
-      "Focus on state evidence, canonical account binding, and why a successful transaction log is not enough.",
-    "Severity and Report Reasoning":
-      "Tie severity and likelihood to the attacker-controlled account relationship and unauthorized treasury movement.",
-  };
+export function getFeedbackTopics(
+  questionIds: string[],
+  questionnaire: QuestionnaireDefinition = rl1FindingQuestionnaire
+) {
+  const topicBySection: Record<string, string> =
+    questionnaire.labId === "rl2-yield-hijack"
+      ? {
+          "Vulnerability Identification":
+            "Recheck which identities the staking position represents and which identities are present in its derivation.",
+          "Exploit Path Understanding":
+            "Rebuild the sequence from the small stake through the ownership change and unauthorized reward claim.",
+          "State and Evidence":
+            "Focus on the position collision, preserved value, ownership transition, and matching reward-token deltas.",
+          "Severity and Report Reasoning":
+            "Tie severity to the unauthorized reward capture proven by the runtime without claiming unverified principal theft.",
+        }
+      : {
+          "Vulnerability Identification":
+            "Recheck which account relationship the protocol trusted and which Solana account-security concept applies.",
+          "Exploit Path Understanding":
+            "Rebuild the exploit chain from counterfeit deposit to illegitimate credit and real treasury withdrawal.",
+          "State and Evidence":
+            "Focus on state evidence, canonical account binding, and why a successful transaction log is not enough.",
+          "Severity and Report Reasoning":
+            "Tie severity and likelihood to the attacker-controlled account relationship and unauthorized treasury movement.",
+        };
 
   const sections = new Set(
     questionIds
       .map(
         (id) =>
-          rl1FindingQuestionnaire.questions.find((question) => question.id === id)
+          questionnaire.questions.find((question) => question.id === id)
             ?.section
       )
       .filter((section): section is string => Boolean(section))
@@ -308,32 +512,33 @@ export function getOptionSnippet(
 }
 
 export function buildAuditReportPreview(
-  fields: ResearchLabReportFields
+  fields: ResearchLabReportFields,
+  config: ResearchLabReportConfig = rl1ReportConfig
 ): AuditReportPreview {
   const title = getOptionLabel(
-    reportTitleOptions,
+    config.titleOptions,
     fields.titleOptionId,
-    "Missing Constraints Allow Counterfeit Credit"
+    config.previewFallback.title
   );
   const severity = getOptionLabel(
-    reportSeverityOptions,
+    config.severityOptions,
     fields.severityOptionId,
-    "High"
+    config.previewFallback.severity
   );
   const likelihood = getOptionLabel(
-    reportLikelihoodOptions,
+    config.likelihoodOptions,
     fields.likelihoodOptionId,
-    "Medium High"
+    config.previewFallback.likelihood
   );
   const category = getOptionLabel(
-    reportCategoryOptions,
+    config.categoryOptions,
     fields.categoryOptionId,
-    "Account Substitution"
+    config.previewFallback.category
   );
   const categoryBody = getOptionBody(
-    reportCategoryOptions,
+    config.categoryOptions,
     fields.categoryOptionId,
-    "caller-supplied accounts can bypass canonical vault binding and create borrow credit from a non-approved collateral route."
+    config.previewFallback.categoryBody
   );
 
   return {
@@ -341,14 +546,14 @@ export function buildAuditReportPreview(
     severity,
     likelihood,
     category,
-    description: `This audit report documents ${category.toLowerCase()} in Research Lab 1, where ${categoryBody}`,
-    rootCause: getOptionBody(reportRootCauseOptions, fields.rootCauseOptionId),
+    description: `This audit report documents ${category.toLowerCase()} in ${config.labLabel}, where ${categoryBody}`,
+    rootCause: getOptionBody(config.rootCauseOptions, fields.rootCauseOptionId),
     rootCauseSnippet: getOptionSnippet(
-      reportRootCauseOptions,
+      config.rootCauseOptions,
       fields.rootCauseOptionId
     ),
     proofOfImpact: getOptionBody(
-      reportProofOfImpactOptions,
+      config.proofOfImpactOptions,
       fields.proofOfImpactOptionId
     ),
     evidence:
@@ -356,11 +561,11 @@ export function buildAuditReportPreview(
         ? `Verified evidence references: ${fields.verifiedEvidenceRefs.join(", ")}`
         : "No verified evidence references recorded.",
     recommendedMitigation: getOptionBody(
-      reportMitigationOptions,
+      config.mitigationOptions,
       fields.recommendedMitigationOptionId
     ),
     recommendedMitigationSnippet: getOptionSnippet(
-      reportMitigationOptions,
+      config.mitigationOptions,
       fields.recommendedMitigationOptionId
     ),
   };

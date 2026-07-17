@@ -5,8 +5,8 @@ import { toast } from "sonner";
 
 import {
   gradeQuestionnaire,
-  rl1FindingQuestionnaire,
   type QuestionnaireAnswer,
+  type QuestionnaireDefinition,
   type QuestionnaireQuestion,
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
@@ -35,6 +35,7 @@ type UseFindingReviewOptions = {
   onSessionChange: (session: ResearchLabSession) => void;
   onPopulateReportDefaults: () => void;
   onResetAuditReportStage: () => void;
+  questionnaire: QuestionnaireDefinition;
   session: ResearchLabSession | null;
 };
 
@@ -45,6 +46,7 @@ export function useFindingReview({
   onSessionChange,
   onPopulateReportDefaults,
   onResetAuditReportStage,
+  questionnaire,
   session,
 }: UseFindingReviewOptions) {
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState<QuestionnaireAnswer[]>([]);
@@ -63,8 +65,8 @@ export function useFindingReview({
   }, []);
 
   const baseReviewQuestions = useMemo(
-    () => getReviewQuestions(reviewMode, retryQuestionIds),
-    [reviewMode, retryQuestionIds]
+    () => getReviewQuestions(reviewMode, retryQuestionIds, questionnaire),
+    [questionnaire, reviewMode, retryQuestionIds]
   );
   const visibleReviewQuestions = useMemo(
     () => orderQuestionsById(baseReviewQuestions, reviewQuestionOrder),
@@ -74,7 +76,7 @@ export function useFindingReview({
   const reviewStepCurrent = reviewStarted
     ? Math.min(reviewIndex + 1, reviewStepTotal)
     : 0;
-  const criticalQuestions = rl1FindingQuestionnaire.questions.filter(
+  const criticalQuestions = questionnaire.questions.filter(
     (question) => question.critical
   );
   const criticalAnsweredCount = criticalQuestions.filter((question) =>
@@ -122,7 +124,7 @@ export function useFindingReview({
     if (questionnaireResult && !questionnaireResult.passed) {
       nextRetryIds = retryQuestionIds.length
         ? retryQuestionIds
-        : getIncorrectRequiredQuestionIds(questionnaireResult);
+        : getIncorrectRequiredQuestionIds(questionnaireResult, questionnaire);
       setRetryQuestionIds(nextRetryIds);
       nextMode = "retry";
     } else {
@@ -130,12 +132,21 @@ export function useFindingReview({
     }
 
     setReviewMode(nextMode);
-    resetReviewShuffle(getReviewQuestions(nextMode, nextRetryIds));
+    resetReviewShuffle(
+      getReviewQuestions(nextMode, nextRetryIds, questionnaire)
+    );
     setReviewIndex(0);
     if (!questionnaireResult?.passed) {
       setQuestionnaireResult(null);
     }
-  }, [onOpenReportTab, questionnaireResult, resetReviewShuffle, retryQuestionIds, reviewStarted]);
+  }, [
+    onOpenReportTab,
+    questionnaire,
+    questionnaireResult,
+    resetReviewShuffle,
+    retryQuestionIds,
+    reviewStarted,
+  ]);
 
   const openFindingReport = useCallback(() => {
     setReportOpened(true);
@@ -163,7 +174,7 @@ export function useFindingReview({
     }
 
     const result = gradeQuestionnaire(
-      rl1FindingQuestionnaire,
+      questionnaire,
       questionnaireAnswers
     );
     const auth = await getAuth();
@@ -178,7 +189,7 @@ export function useFindingReview({
       const incorrectIds =
         review.failedQuestionIds ??
         review.failed_question_ids ??
-        getIncorrectRequiredQuestionIds(result);
+        getIncorrectRequiredQuestionIds(result, questionnaire);
       const attempts =
         review.findingReviewAttempts ??
         review.finding_review_attempts ??
@@ -218,7 +229,9 @@ export function useFindingReview({
       }
 
       setReviewMode("retry");
-      resetReviewShuffle(getReviewQuestions("retry", incorrectIds));
+      resetReviewShuffle(
+        getReviewQuestions("retry", incorrectIds, questionnaire)
+      );
       setReviewIndex(0);
       setReportOpened(false);
       toast.error("Finding review needs revision", {
@@ -234,6 +247,7 @@ export function useFindingReview({
     onPopulateReportDefaults,
     onSessionChange,
     questionnaireAnswers,
+    questionnaire,
     reviewAttempts,
     resetReviewShuffle,
     session,
@@ -243,7 +257,7 @@ export function useFindingReview({
   const retryQuestionnaire = useCallback(() => {
     const nextRetryIds =
       questionnaireResult && !retryQuestionIds.length
-        ? getIncorrectRequiredQuestionIds(questionnaireResult)
+        ? getIncorrectRequiredQuestionIds(questionnaireResult, questionnaire)
         : retryQuestionIds;
 
     if (questionnaireResult && !retryQuestionIds.length) {
@@ -251,12 +265,20 @@ export function useFindingReview({
     }
     setReviewStarted(true);
     setReviewMode("retry");
-    resetReviewShuffle(getReviewQuestions("retry", nextRetryIds));
+    resetReviewShuffle(
+      getReviewQuestions("retry", nextRetryIds, questionnaire)
+    );
     setReviewIndex(0);
     setReportOpened(false);
     setQuestionnaireResult(null);
     onOpenReportTab();
-  }, [onOpenReportTab, questionnaireResult, resetReviewShuffle, retryQuestionIds]);
+  }, [
+    onOpenReportTab,
+    questionnaire,
+    questionnaireResult,
+    resetReviewShuffle,
+    retryQuestionIds,
+  ]);
 
   return {
     criticalAnsweredCount,

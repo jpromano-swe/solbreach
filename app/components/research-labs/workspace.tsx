@@ -10,13 +10,16 @@ import type {
 import type {
   LabTransactionPayload,
   ResearchLabFile,
+  ResearchLabManifest,
   ResearchLabReport,
   ResearchLabReportFields,
   SandboxAccountSummary,
 } from "../../lib/research-labs/lab-state";
 import { ExploitTab } from "./execute-exploit-tab";
 import { InspectTab } from "./inspect-tab";
+import { getResearchLabAdapter, isYieldHijackLab } from "./lab-adapters";
 import { ReportTab } from "./report-tab";
+import { YieldHijackExecuteTab } from "./yield-hijack-execute-tab";
 import type {
   AccountEvidence,
   AuditReportStage,
@@ -42,6 +45,7 @@ export function ResearchLabWorkspace({
   executeExploitView,
   impactVerified,
   inspectHintRevealed,
+  lab,
   findingReviewPassed,
   files,
   isRunning,
@@ -89,6 +93,7 @@ export function ResearchLabWorkspace({
   executeExploitView: ExecuteExploitView;
   impactVerified: boolean;
   inspectHintRevealed: boolean;
+  lab: ResearchLabManifest;
   findingReviewPassed: boolean;
   files: ResearchLabFile[];
   isRunning: boolean;
@@ -128,6 +133,8 @@ export function ResearchLabWorkspace({
   isReportSaving: boolean;
   isReportSubmitting: boolean;
 }) {
+  const adapter = getResearchLabAdapter(lab);
+
   useEffect(() => {
     if (activeTab === "verify") {
       onChangeExecuteExploitView("EVIDENCE_REVIEW");
@@ -149,26 +156,46 @@ export function ResearchLabWorkspace({
         accounts={accounts}
         activeFile={activeFile}
         activeFileContent={activeFileContent}
+        evidenceAccounts={evidenceAccounts}
         files={files}
         inspectHintRevealed={inspectHintRevealed}
+        lab={lab}
         onSelectFile={onSelectFile}
       />
     ) : activeTab === "exploit" || activeTab === "verify" ? (
-      <ExploitTab
-        activeView={executeExploitView}
-        evidenceAccounts={evidenceAccounts}
-        impactVerified={impactVerified}
-        isRunning={isRunning}
-        txResults={txResults}
-        onChangeView={onChangeExecuteExploitView}
-        onExecuteTransaction={onExecuteTransaction}
-        onOpenEvidenceReview={() =>
-          onChangeExecuteExploitView("EVIDENCE_REVIEW")
-        }
-        onProveImpact={onProveImpact}
-      />
+      isYieldHijackLab(lab) ? (
+        <YieldHijackExecuteTab
+          activeView={executeExploitView}
+          evidenceAccounts={evidenceAccounts}
+          impactVerified={impactVerified}
+          isRunning={isRunning}
+          txResults={txResults}
+          onChangeView={onChangeExecuteExploitView}
+          onExecuteTransaction={onExecuteTransaction}
+          onOpenEvidenceReview={() =>
+            onChangeExecuteExploitView("EVIDENCE_REVIEW")
+          }
+          onProveImpact={onProveImpact}
+        />
+      ) : (
+        <ExploitTab
+          activeView={executeExploitView}
+          evidenceAccounts={evidenceAccounts}
+          impactVerified={impactVerified}
+          isRunning={isRunning}
+          txResults={txResults}
+          onChangeView={onChangeExecuteExploitView}
+          onExecuteTransaction={onExecuteTransaction}
+          onOpenEvidenceReview={() =>
+            onChangeExecuteExploitView("EVIDENCE_REVIEW")
+          }
+          onProveImpact={onProveImpact}
+        />
+      )
     ) : (
       <ReportTab
+        lab={lab}
+        questionnaire={adapter.questionnaire}
         fields={reportFields}
         findingReviewPassed={findingReviewPassed}
         impactVerified={impactVerified}

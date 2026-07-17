@@ -13,13 +13,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
-  rl1FindingQuestionnaire,
   type QuestionnaireAnswer,
+  type QuestionnaireDefinition,
   type QuestionnaireOption,
   type QuestionnaireQuestion,
   type QuestionnaireResult,
 } from "../../lib/research-labs/rl1-questionnaire";
 import type {
+  ResearchLabManifest,
   ResearchLabReport,
   ResearchLabReportFields,
 } from "../../lib/research-labs/lab-state";
@@ -34,20 +35,18 @@ import {
   buildAuditReportPreview,
   getFeedbackTopics,
   getIncorrectRequiredQuestionIds,
+  getResearchLabReportConfig,
   isQuestionAnswered,
   isReportComplete,
   isRequiredQuestion,
-  reportCategoryOptions,
-  reportLikelihoodOptions,
-  reportMitigationOptions,
-  reportProofOfImpactOptions,
-  reportRootCauseOptions,
-  reportSeverityOptions,
-  reportTitleOptions,
+  type ResearchLabReportConfig,
   type ReportOption,
 } from "./report-utils";
+import { getResearchLabAdapter } from "./lab-adapters";
 
 export function ReportTab({
+  lab,
+  questionnaire,
   fields,
   findingReviewPassed,
   impactVerified,
@@ -79,6 +78,8 @@ export function ReportTab({
   onSubmitReport,
   onMintResearchLabCertificate,
 }: {
+  lab: ResearchLabManifest;
+  questionnaire: QuestionnaireDefinition;
   report: ResearchLabReport | null;
   fields: ResearchLabReportFields;
   findingReviewPassed: boolean;
@@ -113,6 +114,8 @@ export function ReportTab({
   onMintResearchLabCertificate: () => Promise<void>;
 }) {
   const [showCriticalAnswers, setShowCriticalAnswers] = useState(false);
+  const adapter = getResearchLabAdapter(lab);
+  const reportConfig = getResearchLabReportConfig(lab);
 
   if (!impactVerified) {
     return (
@@ -138,6 +141,7 @@ export function ReportTab({
       <div className="overflow-auto p-5">
         <QuestionnairePanel
           answers={questionnaireAnswers}
+          questionnaire={questionnaire}
           result={questionnaireResult}
           retryQuestionIds={retryQuestionIds}
           reviewIndex={reviewIndex}
@@ -155,7 +159,7 @@ export function ReportTab({
     );
   }
 
-  const criticalTotal = rl1FindingQuestionnaire.questions.filter(
+  const criticalTotal = questionnaire.questions.filter(
     (question) => question.critical
   ).length;
   const criticalMisses =
@@ -216,7 +220,9 @@ export function ReportTab({
                 </span>
               </div>
 
-              {showCriticalAnswers ? <CriticalAnswersPanel /> : null}
+              {showCriticalAnswers ? (
+                <CriticalAnswersPanel questionnaire={questionnaire} />
+              ) : null}
             </div>
           </div>
         </div>
@@ -229,6 +235,7 @@ export function ReportTab({
       <div className="w-full">
         <ReportForm
           expanded
+          adapter={adapter}
           auditReportStage={auditReportStage}
           fields={fields}
           isSaving={isSaving}
@@ -237,6 +244,7 @@ export function ReportTab({
           level1BadgeCollected={level1BadgeCollected}
           researchLabCertificateMinted={researchLabCertificateMinted}
           report={report}
+          reportConfig={reportConfig}
           onChange={onChange}
           onChangeAuditReportStage={onChangeAuditReportStage}
           onSave={onSave}
@@ -340,6 +348,7 @@ export function ReviewCheckpointPanel({
     "Liquidity delta",
   ],
   evidenceTitle = "Verified Evidence",
+  passingScore = 80,
   showReviewRules = true,
   title = "Review checkpoint",
   unlockTitle = "Audit Report Builder",
@@ -350,6 +359,7 @@ export function ReviewCheckpointPanel({
   criticalTotal: number;
   evidenceItems?: string[];
   evidenceTitle?: string;
+  passingScore?: number;
   showReviewRules?: boolean;
   title?: string;
   unlockTitle?: string;
@@ -385,7 +395,7 @@ export function ReviewCheckpointPanel({
           <div className="mt-4 space-y-3 text-sm">
             <RuleRow
               label="Passing score"
-              value={String(rl1FindingQuestionnaire.passingScore)}
+              value={String(passingScore)}
             />
             <RuleRow label="Critical questions" value={String(criticalTotal)} />
             <RuleRow label="Retry mode" value="Missed only" />
@@ -442,6 +452,7 @@ function RuleRow({ label, value }: { label: string; value: string }) {
 
 function QuestionnairePanel({
   answers,
+  questionnaire,
   result,
   retryQuestionIds,
   reviewIndex,
@@ -456,6 +467,7 @@ function QuestionnairePanel({
   onSubmit,
 }: {
   answers: QuestionnaireAnswer[];
+  questionnaire: QuestionnaireDefinition;
   result: QuestionnaireResult | null;
   retryQuestionIds: string[];
   reviewIndex: number;
@@ -474,7 +486,7 @@ function QuestionnairePanel({
   );
   const incorrectIds =
     result && !result.passed
-      ? getIncorrectRequiredQuestionIds(result)
+      ? getIncorrectRequiredQuestionIds(result, questionnaire)
       : retryQuestionIds;
   const criticalMissCount =
     result && !result.passed ? result.failedCriticalQuestions.length : 0;
@@ -552,7 +564,7 @@ function QuestionnairePanel({
             </div>
           </div>
           <div className="mt-4 grid gap-2">
-            {getFeedbackTopics(incorrectIds).map((topic) => (
+            {getFeedbackTopics(incorrectIds, questionnaire).map((topic) => (
               <p
                 key={topic}
                 className="rounded-xl border border-amber-300/15 bg-black/20 px-3 py-2 text-sm leading-6 text-amber-50/80"
@@ -682,18 +694,14 @@ function QuestionnairePanel({
   );
 }
 
-function CriticalAnswersPanel() {
-  const criticalQuestionIds = [
-    "q1_vulnerability_category",
-    "q4_exploit_sequence",
-    "q6_impact_proven",
-    "q8_recommended_fix",
-  ];
-  const criticalQuestions = criticalQuestionIds
-    .map((id) =>
-      rl1FindingQuestionnaire.questions.find((question) => question.id === id)
-    )
-    .filter(Boolean) as QuestionnaireQuestion[];
+function CriticalAnswersPanel({
+  questionnaire,
+}: {
+  questionnaire: QuestionnaireDefinition;
+}) {
+  const criticalQuestions = questionnaire.questions.filter(
+    (question) => question.critical
+  );
 
   return (
     <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
@@ -871,8 +879,10 @@ function QuestionBlock({
 }
 
 function ReportForm({
+  adapter,
   auditReportStage,
   report,
+  reportConfig,
   fields,
   isSaving,
   isSubmitting,
@@ -886,8 +896,10 @@ function ReportForm({
   onMintResearchLabCertificate,
   expanded = false,
 }: {
+  adapter: ReturnType<typeof getResearchLabAdapter>;
   auditReportStage: AuditReportStage;
   report: ResearchLabReport | null;
+  reportConfig: ResearchLabReportConfig;
   fields: ResearchLabReportFields;
   isSaving: boolean;
   isSubmitting: boolean;
@@ -910,15 +922,17 @@ function ReportForm({
   const isAccepted = status === "accepted";
   const isEditable = !isLocked && !isAccepted;
   const allowedValues = report?.allowedValues ?? {
-    titleOptionId: reportTitleOptions.map((option) => option.id),
-    categoryOptionId: reportCategoryOptions.map((option) => option.id),
-    severityOptionId: reportSeverityOptions.map((option) => option.id),
-    likelihoodOptionId: reportLikelihoodOptions.map((option) => option.id),
-    rootCauseOptionId: reportRootCauseOptions.map((option) => option.id),
-    proofOfImpactOptionId: reportProofOfImpactOptions.map(
+    titleOptionId: reportConfig.titleOptions.map((option) => option.id),
+    categoryOptionId: reportConfig.categoryOptions.map((option) => option.id),
+    severityOptionId: reportConfig.severityOptions.map((option) => option.id),
+    likelihoodOptionId: reportConfig.likelihoodOptions.map(
       (option) => option.id
     ),
-    recommendedMitigationOptionId: reportMitigationOptions.map(
+    rootCauseOptionId: reportConfig.rootCauseOptions.map((option) => option.id),
+    proofOfImpactOptionId: reportConfig.proofOfImpactOptions.map(
+      (option) => option.id
+    ),
+    recommendedMitigationOptionId: reportConfig.mitigationOptions.map(
       (option) => option.id
     ),
   };
@@ -942,7 +956,8 @@ function ReportForm({
   }
 
   if (auditReportStage === "PREVIEW") {
-    const preview = auditReportPreview ?? buildAuditReportPreview(fields);
+    const preview =
+      auditReportPreview ?? buildAuditReportPreview(fields, reportConfig);
 
     return (
       <AuditReportPreviewScreen
@@ -966,6 +981,7 @@ function ReportForm({
   if (auditReportStage === "SECURE_PATTERNS") {
     return (
       <SecurePatternsScreen
+        adapter={adapter}
         onContinue={() => onChangeAuditReportStage("CERTIFY_KNOWLEDGE")}
       />
     );
@@ -974,6 +990,7 @@ function ReportForm({
   if (auditReportStage === "CERTIFY_KNOWLEDGE") {
     return (
       <CertifyKnowledgeScreen
+        adapter={adapter}
         isMinting={isMintingResearchLabCertificate}
         prerequisiteBadgeCollected={level1BadgeCollected}
         minted={researchLabCertificateMinted}
@@ -983,12 +1000,13 @@ function ReportForm({
   }
 
   if (isAccepted || auditReportStage === "SUBMITTED") {
-    const submittedPreview = buildAuditReportPreview(fields);
+    const submittedPreview = buildAuditReportPreview(fields, reportConfig);
 
     return (
       <AuditReportSubmitted
         report={submittedPreview}
         feedback={report?.feedback ?? null}
+        labLabel={reportConfig.labLabel}
       />
     );
   }
@@ -1027,7 +1045,7 @@ function ReportForm({
               helper="Name the problem and what it caused in one line."
               label="Title"
               options={filterReportOptions(
-                reportTitleOptions,
+                reportConfig.titleOptions,
                 allowedValues.titleOptionId
               )}
               value={fields.titleOptionId ?? ""}
@@ -1040,7 +1058,7 @@ function ReportForm({
               helper="Choose the vulnerability family that best describes the issue."
               label="Category"
               options={filterReportOptions(
-                reportCategoryOptions,
+                reportConfig.categoryOptions,
                 allowedValues.categoryOptionId
               )}
               value={fields.categoryOptionId ?? ""}
@@ -1061,7 +1079,7 @@ function ReportForm({
               label="Severity"
               value={fields.severityOptionId ?? ""}
               options={filterReportOptions(
-                reportSeverityOptions,
+                reportConfig.severityOptions,
                 allowedValues.severityOptionId
               )}
               onChange={(value) =>
@@ -1073,7 +1091,7 @@ function ReportForm({
               label="Likelihood"
               value={fields.likelihoodOptionId ?? ""}
               options={filterReportOptions(
-                reportLikelihoodOptions,
+                reportConfig.likelihoodOptions,
                 allowedValues.likelihoodOptionId
               )}
               onChange={(value) =>
@@ -1088,7 +1106,7 @@ function ReportForm({
           helper="Explain the broken assumption or missing check that made the issue possible."
           label="3. Root Cause"
           options={filterReportOptions(
-            reportRootCauseOptions,
+            reportConfig.rootCauseOptions,
             allowedValues.rootCauseOptionId
           )}
           value={fields.rootCauseOptionId ?? ""}
@@ -1101,7 +1119,7 @@ function ReportForm({
           helper="Describe the concrete state change or value movement that proves impact."
           label="4. Proof of Impact"
           options={filterReportOptions(
-            reportProofOfImpactOptions,
+            reportConfig.proofOfImpactOptions,
             allowedValues.proofOfImpactOptionId
           )}
           value={fields.proofOfImpactOptionId ?? ""}
@@ -1114,7 +1132,7 @@ function ReportForm({
           helper="Describe the control or validation that would prevent this class of issue."
           label="5. Recommended Fix"
           options={filterReportOptions(
-            reportMitigationOptions,
+            reportConfig.mitigationOptions,
             allowedValues.recommendedMitigationOptionId
           )}
           value={fields.recommendedMitigationOptionId ?? ""}
@@ -1179,7 +1197,9 @@ function ReportForm({
           <button
             type="button"
             onClick={() => {
-              setAuditReportPreview(buildAuditReportPreview(fields));
+              setAuditReportPreview(
+                buildAuditReportPreview(fields, reportConfig)
+              );
               onChangeAuditReportStage("PREVIEW");
             }}
             disabled={
@@ -1307,104 +1327,39 @@ function AuditReportPreviewScreen({
   );
 }
 
-const securePatternAnswerOptions = [
-  {
-    id: "valid_balance",
-    label: "Check that the user has a valid balance",
-  },
-  {
-    id: "bind_accounts_to_config",
-    label:
-      "Bind collateral source and vault destination to the approved mint/config",
-  },
-  {
-    id: "signed_by_user",
-    label: "Verify the transaction is signed by the user",
-  },
-  {
-    id: "initialized_token_account",
-    label: "Ensure the token account is initialized",
-  },
-];
-
-const requiredSecurePatternChecks = [
-  {
-    id: "mint_matches",
-    label: "Collateral mint matches accepted mint",
-  },
-  {
-    id: "canonical_vault",
-    label: "Vault is canonical protocol vault",
-  },
-  {
-    id: "valid_authority",
-    label: "Account owner / authority is valid",
-  },
-];
-
-const securePatternValidationChecklist = [
-  "Validate the mint.",
-  "Validate the token account owner.",
-  "Validate the canonical vault.",
-  "Validate PDA derivation.",
-  "Validate authority.",
-  "Validate the relationship between all accounts.",
-];
-
-const securePatternResearcherChecklist = [
-  "Who supplies this account?",
-  "What proves it belongs to the protocol?",
-  "Can an attacker substitute it with a compatible but unapproved account?",
-  "Is value, credit, or authority assigned before validation?",
-  "Are account relationships validated, or only individual accounts?",
-];
-
-const badPatternCode = [
-  "fn assign_credit(ctx) {",
-  "    let collateral = ctx.accounts.collateral;",
-  "    let amount = collateral.amount;",
-  "",
-  "    credit_user(ctx.accounts.user, amount);",
-  "}",
-].join("\n");
-
-const saferPatternCode = [
-  "fn assign_credit(ctx) {",
-  "    validate_mint(ctx.accounts.collateral.mint)?;",
-  "    validate_vault(ctx.accounts.vault)?;",
-  "    validate_authority(ctx.accounts.authority)?;",
-  "    validate_pda(ctx.accounts.vault, ctx.accounts.mint)?;",
-  "",
-  "    credit_user(ctx.accounts.user, ctx.accounts.vault.amount);",
-  "}",
-].join("\n");
-
-function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
+function SecurePatternsScreen({
+  adapter,
+  onContinue,
+}: {
+  adapter: ReturnType<typeof getResearchLabAdapter>;
+  onContinue: () => void;
+}) {
+  const config = adapter.securePattern;
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [selectedRequiredChecks, setSelectedRequiredChecks] = useState<
     string[]
   >([]);
-  const securePatternReviewed = selectedAnswerId === "bind_accounts_to_config";
-  const securePatternCheckPassed = requiredSecurePatternChecks.every((check) =>
+  const securePatternReviewed =
+    selectedAnswerId === config.correctAnswerId;
+  const securePatternCheckPassed = config.requiredChecks.every((check) =>
     selectedRequiredChecks.includes(check.id)
   );
   const canContinue = securePatternReviewed && securePatternCheckPassed;
   const completionCopy = canContinue
-    ? "Secure pattern completed. Continue to certify this knowledge on-chain."
-    : "Complete the Secure Pattern review to unlock your Account Substitution certificate.";
+    ? config.completionReadyCopy
+    : config.completionLockedCopy;
   const helperCopy = !securePatternReviewed
-    ? "Select the validation that binds account relationships to the approved protocol configuration."
+    ? "Select the control that addresses the broken identity or account relationship."
     : !securePatternCheckPassed
-      ? "Select every required check before credit is assigned."
-      : "Account binding knowledge is ready for certification.";
+      ? "Select every required validation before continuing."
+      : "The secure pattern is ready for certification.";
 
   useEffect(() => {
     toast.success("Audit Report submitted.", {
-      id: "rl1-audit-report-submitted",
-      description:
-        "Review the secure pattern that prevents this vulnerability class before minting your certificate.",
+      id: config.toastId,
+      description: config.toastDescription,
     });
-  }, []);
+  }, [config.toastDescription, config.toastId]);
 
   const toggleRequiredCheck = (checkId: string) => {
     setSelectedRequiredChecks((current) =>
@@ -1423,22 +1378,22 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
         <div className="space-y-5">
           <div>
             <h3 className="text-3xl font-semibold tracking-[-0.04em] text-white">
-              Secure Pattern: Account Binding
+              {config.title}
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-              How to prevent account substitution from becoming protocol credit.
+              {config.subtitle}
             </p>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <SecurePatternInfoCard
               title="What failed"
-              body="The protocol trusted caller-supplied accounts without proving they belonged to the approved collateral configuration."
+              body={config.whatFailed}
               tone="bad"
             />
             <SecurePatternInfoCard
               title="Secure principle"
-              body="Do not grant credit, authority, or value based on unbound account relationships."
+              body={config.principle}
               tone="safe"
             />
           </div>
@@ -1448,7 +1403,7 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
               Validation checklist
             </h4>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {securePatternValidationChecklist.map((item) => (
+              {config.validationChecklist.map((item) => (
                 <div
                   key={item}
                   className="flex items-start gap-3 text-sm leading-6 text-zinc-300"
@@ -1462,21 +1417,20 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
 
           <section className="py-1">
             <h4 className="text-sm font-semibold text-white">
-              Credit assignment contrast
+              {config.contrastTitle}
             </h4>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-              The issue is not the credit update itself. It is whether the
-              account relationship is proven before value is assigned.
+              {config.contrastCopy}
             </p>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
               <SecurePatternCodeBlock
-                title="Unbound account credit"
-                code={badPatternCode}
+                title={config.badPatternTitle}
+                code={config.badPatternCode}
                 tone="bad"
               />
               <SecurePatternCodeBlock
-                title="Bound account validation"
-                code={saferPatternCode}
+                title={config.saferPatternTitle}
+                code={config.saferPatternCode}
                 tone="safe"
               />
             </div>
@@ -1487,7 +1441,7 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
               Researcher checklist
             </h4>
             <div className="mt-4 space-y-3">
-              {securePatternResearcherChecklist.map((item) => (
+              {config.researcherChecklist.map((item) => (
                 <div
                   key={item}
                   className="flex items-start gap-3 text-sm leading-6 text-zinc-300"
@@ -1510,12 +1464,12 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
 
           <div className="mt-5 border-t border-white/10 pt-5">
             <p className="text-sm font-semibold text-zinc-200">
-              Which validation would have prevented this issue?
+              {config.answerPrompt}
             </p>
             <div className="mt-4 space-y-2">
-              {securePatternAnswerOptions.map((option) => {
+              {config.answerOptions.map((option) => {
                 const selected = selectedAnswerId === option.id;
-                const correct = option.id === "bind_accounts_to_config";
+                const correct = option.id === config.correctAnswerId;
 
                 return (
                   <button
@@ -1539,10 +1493,10 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
 
           <div className="mt-6 border-t border-white/10 pt-5">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              Required checks before credit is assigned
+              {config.requiredChecksTitle}
             </p>
             <div className="mt-4 space-y-3">
-              {requiredSecurePatternChecks.map((check) => {
+              {config.requiredChecks.map((check) => {
                 const selected = selectedRequiredChecks.includes(check.id);
 
                 return (
@@ -1616,16 +1570,20 @@ function SecurePatternsScreen({ onContinue }: { onContinue: () => void }) {
 }
 
 function CertifyKnowledgeScreen({
+  adapter,
   isMinting,
   minted,
   prerequisiteBadgeCollected,
   onMint,
 }: {
+  adapter: ReturnType<typeof getResearchLabAdapter>;
   isMinting: boolean;
   minted: boolean;
   prerequisiteBadgeCollected: boolean;
   onMint: () => Promise<void>;
 }) {
+  const mintSupported = adapter.code === "RL1";
+
   return (
     <section className="w-full">
       <div className="max-w-4xl space-y-7 py-1">
@@ -1637,9 +1595,8 @@ function CertifyKnowledgeScreen({
             Certify Knowledge
           </h3>
           <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300">
-            You verified impact, submitted the audit report, and reviewed the
-            secure account-binding pattern. Mint the Research Lab certificate
-            to record Account Substitution completion on your wallet.
+            {adapter.certificate.completionCopy} Claim the Research Lab
+            certificate to record this investigation on your wallet.
           </p>
         </div>
 
@@ -1647,21 +1604,28 @@ function CertifyKnowledgeScreen({
 
         <section className="max-w-2xl border-y border-white/10 py-5">
           <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
-            <CertificationSummaryRow label="Lab" value="Research Lab 1" />
+            <CertificationSummaryRow
+              label="Lab"
+              value={adapter.certificate.labLabel}
+            />
             <CertificationSummaryRow
               label="Module"
-              value="Account Substitution"
+              value={adapter.certificate.moduleLabel}
             />
             <CertificationSummaryRow
               label="Credential"
+              value={adapter.certificate.credentialLabel}
+            />
+            <CertificationSummaryRow
+              label="Status"
               value={minted ? "Certificate minted" : "Certificate unlocked"}
             />
             <CertificationSummaryRow
               label="Prerequisite"
               value={
                 prerequisiteBadgeCollected
-                  ? "Level 1 badge collected"
-                  : "Level 1 badge required"
+                  ? `Level ${adapter.prerequisiteBadgeLevel} badge collected`
+                  : `Level ${adapter.prerequisiteBadgeLevel} badge required`
               }
             />
           </div>
@@ -1672,9 +1636,14 @@ function CertifyKnowledgeScreen({
           onClick={() => {
             void onMint();
           }}
-          disabled={!prerequisiteBadgeCollected || minted || isMinting}
+          disabled={
+            !prerequisiteBadgeCollected || minted || isMinting || !mintSupported
+          }
           className={`group inline-flex min-h-11 w-auto min-w-[220px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
-            !prerequisiteBadgeCollected || minted || isMinting
+            !prerequisiteBadgeCollected ||
+            minted ||
+            isMinting ||
+            !mintSupported
               ? "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
               : "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
           }`}
@@ -1683,14 +1652,22 @@ function CertifyKnowledgeScreen({
             ? "Certificate minted"
             : isMinting
               ? "Minting..."
-              : "Mint NFT Certificate"}
-          {!minted && !isMinting ? (
+              : mintSupported
+                ? "Mint NFT Certificate"
+                : "Certificate mint pending"}
+          {!minted && !isMinting && mintSupported ? (
             <ArrowRight
               className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
               aria-hidden="true"
             />
           ) : null}
         </button>
+        {!mintSupported ? (
+          <p className="max-w-xl text-sm leading-6 text-zinc-500">
+            Completion is recorded. Certificate minting will become available
+            when the RL2 credential endpoint is enabled.
+          </p>
+        ) : null}
       </div>
     </section>
   );
@@ -1783,9 +1760,11 @@ function SecurePatternCodeBlock({
 
 function AuditReportSubmitted({
   feedback,
+  labLabel,
   report,
 }: {
   feedback: string | null;
+  labLabel: string;
   report: AuditReportPreview;
 }) {
   return (
@@ -1796,7 +1775,7 @@ function AuditReportSubmitted({
           Audit Report Submitted
         </p>
         <p className="mt-3 text-sm leading-6 text-zinc-300">
-          Research Lab 1 completion is recorded. The final audit report has been
+          {labLabel} completion is recorded. The final audit report has been
           submitted.
         </p>
         {feedback ? (

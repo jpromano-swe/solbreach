@@ -24,6 +24,7 @@ import { useWallet } from "../lib/wallet/context";
 import { ResearchLabCatalog } from "./research-labs/catalog";
 import { buildAccountEvidence } from "./research-labs/account-evidence";
 import { LabContextPanel } from "./research-labs/context-panel";
+import { getResearchLabAdapter } from "./research-labs/lab-adapters";
 import {
   LabScenarioBriefing,
   ResearchLabSessionHeader,
@@ -61,22 +62,26 @@ export function ResearchLabsSection({
   isMintingResearchLabCertificate,
   level1BadgeCollected,
   level1BadgeEarned,
+  level2BadgeCollected,
   powerUserBadgeEarned,
   researchLabCertificateMinted,
   onBadgeStateChanged,
   onContinueToLevel2,
   onGoToLevel1Module,
+  onGoToLevel2Module,
   onMintResearchLabCertificate,
 }: {
   isCollectingLevel1Badge: boolean;
   isMintingResearchLabCertificate: boolean;
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
+  level2BadgeCollected: boolean;
   powerUserBadgeEarned: boolean;
   researchLabCertificateMinted: boolean;
   onBadgeStateChanged?: () => void;
   onContinueToLevel2: () => void;
   onGoToLevel1Module: () => void;
+  onGoToLevel2Module: () => void;
   onMintResearchLabCertificate: (options: {
     researchLabAccessToken: string;
     researchLabSessionId: string;
@@ -107,6 +112,11 @@ export function ResearchLabsSection({
       ? backendAuth
       : null;
   const isBackendAuthenticated = Boolean(activeBackendAuth?.accessToken);
+  const activeAdapter = getResearchLabAdapter(activeLab);
+  const activePrerequisiteBadgeCollected =
+    activeAdapter.prerequisiteBadgeLevel === 2
+      ? level2BadgeCollected
+      : level1BadgeCollected;
 
   const ensureLabAuth = useCallback(async () => {
     if (walletStatus !== "connected" || !wallet) {
@@ -195,6 +205,7 @@ export function ResearchLabsSection({
     onSessionChange: setSession,
     onPopulateReportDefaults: populateReportDefaults,
     onResetAuditReportStage: () => setAuditReportStage("BUILDER"),
+    questionnaire: activeAdapter.questionnaire,
     session,
   });
 
@@ -278,6 +289,7 @@ export function ResearchLabsSection({
 
   useEffect(() => {
     if (!activeLab || !session) return;
+    if (activeAdapter.code !== "RL1") return;
 
     const baseProperties = {
       activeTab: resolvedActiveTab,
@@ -349,6 +361,7 @@ export function ResearchLabsSection({
     }
   }, [
     activeFile?.path,
+    activeAdapter.code,
     activeLab,
     executeExploitView,
     resolvedActiveTab,
@@ -433,9 +446,20 @@ export function ResearchLabsSection({
   });
 
   const openLab = async (lab: ResearchLabManifest) => {
-    if (requiresLevel1Badge(lab) && !level1BadgeCollected) {
-      toast.message("Collect the Level 1 badge before opening this Research Lab.");
-      onGoToLevel1Module();
+    const adapter = getResearchLabAdapter(lab);
+    const prerequisiteCollected =
+      adapter.prerequisiteBadgeLevel === 2
+        ? level2BadgeCollected
+        : level1BadgeCollected;
+    if (!prerequisiteCollected) {
+      toast.message(
+        `Collect the Level ${adapter.prerequisiteBadgeLevel} badge before opening this Research Lab.`
+      );
+      if (adapter.prerequisiteBadgeLevel === 2) {
+        onGoToLevel2Module();
+      } else {
+        onGoToLevel1Module();
+      }
       return;
     }
 
@@ -521,20 +545,26 @@ export function ResearchLabsSection({
       (hint) => !revealedHints.includes(hint.id)
     );
     if (!nextHint) return;
-    trackLabEvent("rl1_hint_revealed", {
-      hintId: nextHint.id,
-      hintIndex: revealedHints.length + 1,
-    });
+    if (activeAdapter.code === "RL1") {
+      trackLabEvent("rl1_hint_revealed", {
+        hintId: nextHint.id,
+        hintIndex: revealedHints.length + 1,
+      });
+    }
     setRevealedHints([...revealedHints, nextHint.id]);
   };
 
   const openExploitFromContext = () => {
-    trackLabEvent("rl1_try_exploit_clicked");
+    if (activeAdapter.code === "RL1") {
+      trackLabEvent("rl1_try_exploit_clicked");
+    }
     setActiveTab("exploit");
   };
 
   const openFindingReportWithAnalytics = () => {
-    trackLabEvent("rl1_audit_report_opened");
+    if (activeAdapter.code === "RL1") {
+      trackLabEvent("rl1_audit_report_opened");
+    }
     openFindingReport();
   };
 
@@ -554,13 +584,22 @@ export function ResearchLabsSection({
       toast.error("Open an active Research Lab session before minting.");
       return;
     }
+    if (activeAdapter.code !== "RL1") {
+      toast.message("RL2 certificate minting is not enabled yet.");
+      return;
+    }
 
     const auth = await getActiveAuth();
     await onMintResearchLabCertificate({
       researchLabAccessToken: auth.accessToken,
       researchLabSessionId: session.sessionId,
     });
-  }, [getActiveAuth, onMintResearchLabCertificate, session]);
+  }, [
+    activeAdapter.code,
+    getActiveAuth,
+    onMintResearchLabCertificate,
+    session,
+  ]);
 
   if (!activeLab || !session) {
     return (
@@ -570,8 +609,10 @@ export function ResearchLabsSection({
         isLoading={isCatalogLoading}
         labs={labs}
         level1BadgeCollected={level1BadgeCollected}
+        level2BadgeCollected={level2BadgeCollected}
         onLoadCatalog={loadCatalog}
         onGoToLevel1Module={onGoToLevel1Module}
+        onGoToLevel2Module={onGoToLevel2Module}
         onOpenLab={openLab}
         walletStatus={walletStatus}
       />
@@ -597,6 +638,7 @@ export function ResearchLabsSection({
 
         <div className="mt-3 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
           <ResearchLabWorkspace
+            lab={activeLab}
             activeFile={activeFile}
             activeFileContent={activeFileContent}
             activeTab={resolvedActiveTab}
@@ -604,7 +646,9 @@ export function ResearchLabsSection({
             auditReportStage={auditReportStage}
             availableTabs={availableTabs}
             impactVerified={impactVerified}
-            inspectHintRevealed={revealedHints.includes("account-binding")}
+            inspectHintRevealed={revealedHints.includes(
+              activeAdapter.inspectHintId
+            )}
             findingReviewPassed={findingReviewPassed}
             files={session.fileEntries}
             isRunning={isRunning}
@@ -619,9 +663,14 @@ export function ResearchLabsSection({
             reviewStarted={reviewStarted}
             report={report}
             reportFields={reportFields}
-            level1BadgeCollected={level1BadgeCollected}
-            researchLabCertificateMinted={researchLabCertificateMinted}
-            isMintingResearchLabCertificate={isMintingResearchLabCertificate}
+            level1BadgeCollected={activePrerequisiteBadgeCollected}
+            researchLabCertificateMinted={
+              activeAdapter.code === "RL1" && researchLabCertificateMinted
+            }
+            isMintingResearchLabCertificate={
+              activeAdapter.code === "RL1" &&
+              isMintingResearchLabCertificate
+            }
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
             executeExploitView={executeExploitView}
@@ -657,15 +706,23 @@ export function ResearchLabsSection({
             auditReportStage={auditReportStage}
             findingReviewPassed={findingReviewPassed}
             impactVerified={impactVerified}
-            isCollectingLevel1Badge={isCollectingLevel1Badge}
-            isMintingResearchLabCertificate={isMintingResearchLabCertificate}
-            level1BadgeCollected={level1BadgeCollected}
+            isCollectingLevel1Badge={
+              activeAdapter.code === "RL1" && isCollectingLevel1Badge
+            }
+            isMintingResearchLabCertificate={
+              activeAdapter.code === "RL1" &&
+              isMintingResearchLabCertificate
+            }
+            level1BadgeCollected={activePrerequisiteBadgeCollected}
             level1BadgeEarned={
-              level1BadgeEarned ||
+              activePrerequisiteBadgeCollected ||
+              (activeAdapter.code === "RL1" && level1BadgeEarned) ||
               Boolean(report?.status === "accepted" || session.labCompleted)
             }
             powerUserBadgeEarned={powerUserBadgeEarned}
-            researchLabCertificateMinted={researchLabCertificateMinted}
+            researchLabCertificateMinted={
+              activeAdapter.code === "RL1" && researchLabCertificateMinted
+            }
             reportUnlocked={reportUnlocked}
             questionnaireResult={questionnaireResult}
             report={report}
@@ -695,10 +752,6 @@ export function ResearchLabsSection({
       </div>
     </section>
   );
-}
-
-function requiresLevel1Badge(lab: ResearchLabManifest) {
-  return lab.slug === "account-substitution" || lab.id === "rl1-account-substitution";
 }
 
 function deriveLabPhase({

@@ -15,7 +15,7 @@ import {
 } from "../../lib/research-labs/lab-state";
 import {
   emptyReportFields,
-  suggestedReportFieldDefaults,
+  getResearchLabReportConfig,
 } from "./report-utils";
 import type { AuditReportStage } from "./types";
 
@@ -32,6 +32,7 @@ export function useResearchLabReport({
   onSessionChange,
   session,
 }: UseResearchLabReportOptions) {
+  const reportConfig = getResearchLabReportConfig(activeLab);
   const [report, setReport] = useState<ResearchLabReport | null>(null);
   const [reportFields, setReportFields] =
     useState<ResearchLabReportFields>(emptyReportFields);
@@ -46,31 +47,31 @@ export function useResearchLabReport({
       ...fields,
       titleOptionId:
         fields?.titleOptionId ??
-        suggestedReportFieldDefaults.titleOptionId ??
+        reportConfig.suggestedDefaults.titleOptionId ??
         null,
       categoryOptionId:
         fields?.categoryOptionId ??
-        suggestedReportFieldDefaults.categoryOptionId ??
+        reportConfig.suggestedDefaults.categoryOptionId ??
         null,
       severityOptionId:
         fields?.severityOptionId ??
-        suggestedReportFieldDefaults.severityOptionId ??
+        reportConfig.suggestedDefaults.severityOptionId ??
         null,
       likelihoodOptionId:
         fields?.likelihoodOptionId ??
-        suggestedReportFieldDefaults.likelihoodOptionId ??
+        reportConfig.suggestedDefaults.likelihoodOptionId ??
         null,
       rootCauseOptionId:
         fields?.rootCauseOptionId ??
-        suggestedReportFieldDefaults.rootCauseOptionId ??
+        reportConfig.suggestedDefaults.rootCauseOptionId ??
         null,
       proofOfImpactOptionId:
         fields?.proofOfImpactOptionId ??
-        suggestedReportFieldDefaults.proofOfImpactOptionId ??
+        reportConfig.suggestedDefaults.proofOfImpactOptionId ??
         null,
       recommendedMitigationOptionId:
         fields?.recommendedMitigationOptionId ??
-        suggestedReportFieldDefaults.recommendedMitigationOptionId ??
+        reportConfig.suggestedDefaults.recommendedMitigationOptionId ??
         null,
       verifiedEvidenceRefs:
         fields?.verifiedEvidenceRefs?.length
@@ -78,7 +79,7 @@ export function useResearchLabReport({
           : session?.verifiedEvidenceRefs ?? [],
       optionalNotes: fields?.optionalNotes ?? "",
     }),
-    [session?.verifiedEvidenceRefs]
+    [reportConfig, session?.verifiedEvidenceRefs]
   );
 
   const populateReportDefaults = useCallback(() => {

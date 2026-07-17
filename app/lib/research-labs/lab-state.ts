@@ -69,6 +69,34 @@ const RL1_MANIFEST_OVERRIDES = {
   ] satisfies ResearchLabHint[],
 };
 
+const RL2_MANIFEST_OVERRIDES = {
+  title: "Yield Hijack",
+  summary:
+    "Investigate a high-APY staking protocol where a small deposit may affect a valuable position created by another staker.",
+  objective:
+    "Identify an account-isolation failure, demonstrate unauthorized reward capture, and preserve evidence of the resulting state changes.",
+  successCriteria:
+    "Verified evidence must show that a small attacker stake changed ownership of a pre-existing position and enabled the attacker to claim rewards they did not earn.",
+  objectives: [
+    "Inspect how staking positions are derived and identify the identities represented by the account",
+    "Compare the position derived for the existing staker and your wallet",
+    "Test whether a small stake can change ownership while preserving accumulated value",
+    "Claim the pending rewards, verify impact, and document the finding",
+  ],
+  hints: [
+    {
+      id: "position-derivation",
+      title: "Hint 1",
+      body: "Compare the staking-position address derived for each participant and review which identities appear in the PDA seeds.",
+    },
+    {
+      id: "preserved-rewards",
+      title: "Hint 2",
+      body: "After staking, inspect whether the position owner changes while its previously accumulated rewards remain available.",
+    },
+  ] satisfies ResearchLabHint[],
+};
+
 export type ResearchLabSessionStatus =
   | "provisioning"
   | "active"
@@ -195,6 +223,25 @@ export const FALLBACK_RESEARCH_LABS: ResearchLabManifest[] = [
     templateRef: "research-labs/account-substitution@v1",
     objectives: RL1_MANIFEST_OVERRIDES.objectives,
     hints: RL1_MANIFEST_OVERRIDES.hints,
+    files: [],
+  },
+  {
+    id: "rl2-yield-hijack",
+    slug: "yield-hijack",
+    title: RL2_MANIFEST_OVERRIDES.title,
+    difficulty: "Intermediate",
+    estimatedTime: "2-4 hours",
+    xpReward: 250,
+    status: "active",
+    summary: RL2_MANIFEST_OVERRIDES.summary,
+    objective: RL2_MANIFEST_OVERRIDES.objective,
+    allowedFiles: ["programs/yield_hijack/src/lib.rs"],
+    entryFile: "programs/yield_hijack/src/lib.rs",
+    testCommand: "anchor test --skip-deploy",
+    successCriteria: RL2_MANIFEST_OVERRIDES.successCriteria,
+    templateRef: "research-labs/yield-hijack@v1",
+    objectives: RL2_MANIFEST_OVERRIDES.objectives,
+    hints: RL2_MANIFEST_OVERRIDES.hints,
     files: [],
   },
 ];
@@ -405,9 +452,26 @@ export type WithdrawAgainstCreditPayload = {
   amount: number;
 };
 
+export type StakePayload = {
+  action_type: "STAKE";
+  amount: number;
+  source_account_ref: "attacker_stake_account";
+  stake_vault_ref: "stake_vault";
+  position_account_ref: "stake_position";
+};
+
+export type ClaimRewardsPayload = {
+  action_type: "CLAIM_REWARDS";
+  position_account_ref: "stake_position";
+  reward_vault_ref: "reward_vault";
+  destination_account_ref: "attacker_reward_account";
+};
+
 export type LabTransactionPayload =
   | DepositCollateralPayload
-  | WithdrawAgainstCreditPayload;
+  | WithdrawAgainstCreditPayload
+  | StakePayload
+  | ClaimRewardsPayload;
 
 export type TransactionResult = {
   transactionRef: string;
@@ -417,6 +481,10 @@ export type TransactionResult = {
   executionStatus: "success" | "failure";
   execution_status: "success" | "failure";
   logs: string[];
+  errorCode?: string;
+  error_code?: string;
+  parsedState?: Record<string, unknown>;
+  parsed_state?: Record<string, unknown>;
   accountDeltas?: Array<Record<string, unknown>>;
   account_deltas?: Array<Record<string, unknown>>;
   evidenceRefs?: string[];
@@ -612,14 +680,23 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
     stringValue(raw.slug) || stringValue(raw.id) || "account-substitution";
   const isRl1Template =
     id === "rl1-account-substitution" || slug === "account-substitution";
+  const isRl2Template = id === "rl2-yield-hijack" || slug === "yield-hijack";
+  const fallbackLab = isRl2Template
+    ? FALLBACK_RESEARCH_LABS[1]
+    : FALLBACK_RESEARCH_LABS[0];
+  const manifestOverrides = isRl2Template
+    ? RL2_MANIFEST_OVERRIDES
+    : isRl1Template
+      ? RL1_MANIFEST_OVERRIDES
+      : null;
 
   return {
     id,
     slug,
     title:
-      (isRl1Template ? RL1_MANIFEST_OVERRIDES.title : undefined) ||
+      manifestOverrides?.title ||
       stringValue(raw.title) ||
-      FALLBACK_RESEARCH_LABS[0].title,
+      fallbackLab.title,
     difficulty: titleCase(
       stringValue(raw.difficulty) ||
         stringValue(raw.difficulty_level) ||
@@ -632,47 +709,47 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
     xpReward: numberValue(raw.xp_reward ?? raw.xpReward, 250),
     status: (stringValue(raw.status) as ResearchLabStatus | "") || "active",
     summary:
-      (isRl1Template ? RL1_MANIFEST_OVERRIDES.summary : undefined) ||
+      manifestOverrides?.summary ||
       stringValue(raw.summary) ||
       stringValue(raw.description) ||
-      FALLBACK_RESEARCH_LABS[0].summary,
+      fallbackLab.summary,
     objective:
-      (isRl1Template ? RL1_MANIFEST_OVERRIDES.objective : undefined) ||
+      manifestOverrides?.objective ||
       stringValue(raw.objective) ||
       stringValue(raw.lab_objective) ||
-      FALLBACK_RESEARCH_LABS[0].objective,
+      fallbackLab.objective,
     allowedFiles:
       normalizeStringArray(raw.allowed_files ?? raw.allowedFiles) ??
-      FALLBACK_RESEARCH_LABS[0].allowedFiles,
+      fallbackLab.allowedFiles,
     entryFile:
       stringValue(raw.entry_file) ||
       stringValue(raw.entryFile) ||
-      FALLBACK_RESEARCH_LABS[0].entryFile,
+      fallbackLab.entryFile,
     testCommand:
       stringValue(raw.test_command) ||
       stringValue(raw.testCommand) ||
-      FALLBACK_RESEARCH_LABS[0].testCommand,
+      fallbackLab.testCommand,
     successCriteria:
-      (isRl1Template ? RL1_MANIFEST_OVERRIDES.successCriteria : undefined) ||
+      manifestOverrides?.successCriteria ||
       stringValue(raw.success_criteria) ||
       stringValue(raw.successCriteria) ||
-      FALLBACK_RESEARCH_LABS[0].successCriteria,
+      fallbackLab.successCriteria,
     templateRef:
       stringValue(raw.template_ref) ||
       stringValue(raw.templateRef) ||
-      FALLBACK_RESEARCH_LABS[0].templateRef,
+      fallbackLab.templateRef,
     objectives:
-      isRl1Template && RL1_MANIFEST_OVERRIDES.objectives.length
-        ? RL1_MANIFEST_OVERRIDES.objectives
+      manifestOverrides?.objectives.length
+        ? manifestOverrides.objectives
         : objectives.length
           ? objectives
-          : FALLBACK_RESEARCH_LABS[0].objectives,
+          : fallbackLab.objectives,
     hints:
-      isRl1Template && RL1_MANIFEST_OVERRIDES.hints.length
-        ? RL1_MANIFEST_OVERRIDES.hints
+      manifestOverrides?.hints.length
+        ? manifestOverrides.hints
         : hints.length
           ? hints
-          : FALLBACK_RESEARCH_LABS[0].hints,
+          : fallbackLab.hints,
     files: normalizeFiles(raw.files),
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import type { Level1AuthSession } from "../../lib/levels/level1-backend";
@@ -14,6 +14,7 @@ import {
   type SandboxAccountSummary,
 } from "../../lib/research-labs/lab-state";
 import { NEUTRAL_LABELS } from "./execute-exploit-tab";
+import { getResearchLabAdapter, isYieldHijackLab } from "./lab-adapters";
 import type { EnrichedTransactionResult } from "./types";
 
 type UseResearchLabTransactionsOptions = {
@@ -54,14 +55,21 @@ export function useResearchLabTransactions({
   }, []);
 
   const fetchAccountEvidence = useCallback(
-    async (auth: Level1AuthSession) => {
-      if (!session) return;
+    async (
+      auth: Level1AuthSession,
+      currentSession: ResearchLabSession | null = session
+    ) => {
+      if (!currentSession) return;
       try {
         const response = await getResearchLabAccounts(
           auth.accessToken,
-          session.sessionId
+          currentSession.sessionId
         );
-        setEvidenceAccounts(response.accounts ?? []);
+        setEvidenceAccounts(
+          (response.accounts ?? []).filter(
+            (account) => account.ref !== "shared_position"
+          )
+        );
       } catch {
         // silent — evidence fetch is non-critical
       }
@@ -69,13 +77,34 @@ export function useResearchLabTransactions({
     [session]
   );
 
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+
+    void getAuth()
+      .then((auth) => {
+        if (!cancelled) return fetchAccountEvidence(auth, session);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAccountEvidence, getAuth, session]);
+
   const executeTransaction = useCallback(
     async (payload: LabTransactionPayload) => {
       if (!activeLab || !session || isRunning) return;
       try {
         const auth = await getAuth();
 
+        const adapter = getResearchLabAdapter(activeLab);
+        const labelForRef = (ref: string | undefined) =>
+          ref
+            ? adapter.accountLabels[ref] ?? NEUTRAL_LABELS[ref] ?? ref
+            : undefined;
         const enrichedInputs = {
+          actionType: payload.action_type,
           collateralSourceRef:
             payload.action_type === "DEPOSIT_COLLATERAL"
               ? payload.collateral_account_ref
@@ -94,7 +123,49 @@ export function useResearchLabTransactions({
               ? NEUTRAL_LABELS[payload.vault_account_ref] ??
                 payload.vault_account_ref
               : undefined,
-          amount: payload.amount,
+          sourceAccountRef:
+            payload.action_type === "STAKE"
+              ? payload.source_account_ref
+              : undefined,
+          sourceAccountLabel:
+            payload.action_type === "STAKE"
+              ? labelForRef(payload.source_account_ref)
+              : undefined,
+          stakeVaultRef:
+            payload.action_type === "STAKE"
+              ? payload.stake_vault_ref
+              : undefined,
+          stakeVaultLabel:
+            payload.action_type === "STAKE"
+              ? labelForRef(payload.stake_vault_ref)
+              : undefined,
+          positionAccountRef:
+            payload.action_type === "STAKE" ||
+            payload.action_type === "CLAIM_REWARDS"
+              ? payload.position_account_ref
+              : undefined,
+          positionAccountLabel:
+            payload.action_type === "STAKE" ||
+            payload.action_type === "CLAIM_REWARDS"
+              ? labelForRef(payload.position_account_ref)
+              : undefined,
+          rewardVaultRef:
+            payload.action_type === "CLAIM_REWARDS"
+              ? payload.reward_vault_ref
+              : undefined,
+          rewardVaultLabel:
+            payload.action_type === "CLAIM_REWARDS"
+              ? labelForRef(payload.reward_vault_ref)
+              : undefined,
+          destinationAccountRef:
+            payload.action_type === "CLAIM_REWARDS"
+              ? payload.destination_account_ref
+              : undefined,
+          destinationAccountLabel:
+            payload.action_type === "CLAIM_REWARDS"
+              ? labelForRef(payload.destination_account_ref)
+              : undefined,
+          amount: "amount" in payload ? payload.amount : 0,
         };
 
         const result = await submitResearchLabTransaction(
@@ -122,14 +193,23 @@ export function useResearchLabTransactions({
         );
 
         if (enriched.executionStatus === "success") {
-          toast.success(
+          const successCopy =
             payload.action_type === "DEPOSIT_COLLATERAL"
               ? "Deposit submitted to sandbox"
-              : "Withdrawal submitted to sandbox"
-          );
-          await fetchAccountEvidence(auth);
+              : payload.action_type === "WITHDRAW_AGAINST_CREDIT"
+                ? "Withdrawal submitted to sandbox"
+                : payload.action_type === "STAKE"
+                  ? "Stake completed"
+                  : "Rewards claimed";
+          toast.success(successCopy);
+          await fetchAccountEvidence(auth, nextSession);
         } else {
-          showTransactionFailureToast(enriched.logs.at(-1));
+          showTransactionFailureToast(
+            enriched.logs.at(-1),
+            enriched.errorCode ?? enriched.error_code,
+            isYieldHijackLab(activeLab)
+          );
+          await fetchAccountEvidence(auth, nextSession);
         }
 
         if (nextSession.terminalLines.length > session.terminalLines.length) {
@@ -189,8 +269,7 @@ export function useResearchLabTransactions({
         await loadReport(auth, verifiedSession);
         onConsoleClose();
         toast.success("Impact Verified", {
-          description:
-            "Unauthorized treasury withdrawal reproduced. Continue to Report Finding when ready.",
+          description: getResearchLabAdapter(activeLab).impactVerifiedCopy,
         });
       } else {
         toast.error("Exploit proof did not verify", {
@@ -227,8 +306,14 @@ export function useResearchLabTransactions({
   };
 }
 
-function showTransactionFailureToast(lastLog: string | undefined) {
-  const description = normalizeTransactionFailureLog(lastLog);
+function showTransactionFailureToast(
+  lastLog: string | undefined,
+  errorCode?: string,
+  yieldHijack = false
+) {
+  const description = yieldHijack
+    ? normalizeYieldHijackFailure(lastLog, errorCode)
+    : normalizeTransactionFailureLog(lastLog);
 
   if (
     lastLog?.toLowerCase().includes("simulation") ||
@@ -245,6 +330,44 @@ function showTransactionFailureToast(lastLog: string | undefined) {
       description,
     });
   }
+}
+
+function normalizeYieldHijackFailure(
+  lastLog: string | undefined,
+  errorCode?: string
+) {
+  const normalized = `${errorCode ?? ""} ${lastLog ?? ""}`.toLowerCase();
+
+  if (
+    normalized.includes("invalid_position_owner") ||
+    normalized.includes("position owner")
+  ) {
+    return "Your wallet does not currently control this staking position.";
+  }
+  if (
+    normalized.includes("no_rewards") ||
+    normalized.includes("no pending rewards") ||
+    normalized.includes("rewards available")
+  ) {
+    return "This position has no pending rewards remaining.";
+  }
+  if (
+    normalized.includes("insufficient") ||
+    normalized.includes("stake balance")
+  ) {
+    return "Your stake account does not contain enough tokens.";
+  }
+  if (normalized.includes("invalid amount") || normalized.includes("amount")) {
+    return "Enter an amount between 1 and your available stake balance.";
+  }
+  if (normalized.includes("account ref") || normalized.includes("invalid account")) {
+    return "The selected session account is no longer valid. Refresh the lab.";
+  }
+  if (normalized.includes("unsupported")) {
+    return "This action is not supported by the current lab runtime.";
+  }
+
+  return lastLog ?? "Check transaction logs for details.";
 }
 
 function normalizeTransactionFailureLog(lastLog: string | undefined) {
