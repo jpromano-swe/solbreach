@@ -246,6 +246,30 @@ export const FALLBACK_RESEARCH_LABS: ResearchLabManifest[] = [
   },
 ];
 
+export function mergeResearchLabCatalog(
+  remoteLabs: ResearchLabManifest[]
+): ResearchLabManifest[] {
+  const mergedLabs = [...remoteLabs];
+
+  for (const fallbackLab of FALLBACK_RESEARCH_LABS) {
+    const remoteIndex = mergedLabs.findIndex(
+      (lab) => lab.id === fallbackLab.id || lab.slug === fallbackLab.slug
+    );
+
+    if (remoteIndex === -1) {
+      mergedLabs.push(fallbackLab);
+      continue;
+    }
+
+    mergedLabs[remoteIndex] = {
+      ...fallbackLab,
+      ...mergedLabs[remoteIndex],
+    };
+  }
+
+  return mergedLabs;
+}
+
 export async function listResearchLabs(accessToken: string) {
   const data = await researchLabsRequest<RawResearchLab[]>(
     "/api/v1/research-labs",

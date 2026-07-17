@@ -15,6 +15,7 @@ import {
   fetchResearchLabTerminal,
   getResearchLab,
   listResearchLabs,
+  mergeResearchLabCatalog,
   resetResearchLabSession,
   type ResearchLabManifest,
   type ResearchLabReport,
@@ -375,7 +376,7 @@ export function ResearchLabsSection({
     try {
       const auth = await ensureLabAuth();
       const nextLabs = await listResearchLabs(auth.accessToken);
-      setLabs(nextLabs.length ? nextLabs : FALLBACK_RESEARCH_LABS);
+      setLabs(mergeResearchLabCatalog(nextLabs));
     } catch (error) {
       const message = getErrorMessage(error);
       setCatalogError(message);
