@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   ArrowRight,
   Check,
@@ -431,11 +432,22 @@ function YieldHijackProtocolState({
               )}
             </button>
           </div>
-          <p className="mt-1 font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-            {rewardsVisible ? formatAmount(state.totalRewardsPaid) : "••••••"}
-          </p>
+          <div className="mt-1 flex items-center justify-center gap-3">
+            <Image
+              src="/usdc.png"
+              alt="USDC"
+              width={42}
+              height={42}
+              className="h-9 w-9 rounded-full sm:h-10 sm:w-10"
+            />
+            <p className="font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+              {rewardsVisible
+                ? `$${formatAmount(state.totalRewardsPaid)}`
+                : "$••••••"}
+            </p>
+          </div>
           <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8fffd0]">
-            REWARD
+            USDC
           </p>
         </section>
 
@@ -445,23 +457,33 @@ function YieldHijackProtocolState({
           href={explorerUrl}
         />
 
-        <div className="mt-5 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
-            <span>User&apos;s position</span>
-            <span className="text-right">Claimable rewards</span>
-          </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-zinc-200">
-                {state.positionOwnerLabel}
+        <div className="mt-5 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="min-w-[720px]">
+            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(135px,0.8fr)_minmax(150px,0.9fr)_minmax(165px,0.95fr)] gap-4 border-b border-white/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+              <span>User&apos;s position</span>
+              <span className="text-right">Current position</span>
+              <span className="text-right">Claimable rewards</span>
+              <span className="text-right">Total claimed reward</span>
+            </div>
+            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(135px,0.8fr)_minmax(150px,0.9fr)_minmax(165px,0.95fr)] items-center gap-4 px-4 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-zinc-200">
+                  {state.positionOwnerLabel}
+                </p>
+                <p className="mt-1 truncate font-mono text-[11px] text-zinc-600">
+                  {shortAddress(state.positionAddress)}
+                </p>
+              </div>
+              <p className="text-right font-mono text-sm font-semibold text-zinc-300">
+                {formatAmount(state.positionStakedAmount)} STAKE
               </p>
-              <p className="mt-1 truncate font-mono text-[11px] text-zinc-600">
-                {shortAddress(state.positionAddress)}
+              <p className="text-right font-mono text-sm font-semibold text-[#8fffd0]">
+                {formatAmount(state.pendingRewards)} USDC
+              </p>
+              <p className="text-right font-mono text-sm font-semibold text-[#d7c0ff]">
+                {formatAmount(state.attackerRewardBalance)} USDC
               </p>
             </div>
-            <p className="font-mono text-sm font-semibold text-[#8fffd0]">
-              {formatAmount(state.pendingRewards)} REWARD
-            </p>
           </div>
         </div>
       </div>
