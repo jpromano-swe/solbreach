@@ -246,30 +246,6 @@ export const FALLBACK_RESEARCH_LABS: ResearchLabManifest[] = [
   },
 ];
 
-export function mergeResearchLabCatalog(
-  remoteLabs: ResearchLabManifest[]
-): ResearchLabManifest[] {
-  const mergedLabs = [...remoteLabs];
-
-  for (const fallbackLab of FALLBACK_RESEARCH_LABS) {
-    const remoteIndex = mergedLabs.findIndex(
-      (lab) => lab.id === fallbackLab.id || lab.slug === fallbackLab.slug
-    );
-
-    if (remoteIndex === -1) {
-      mergedLabs.push(fallbackLab);
-      continue;
-    }
-
-    mergedLabs[remoteIndex] = {
-      ...fallbackLab,
-      ...mergedLabs[remoteIndex],
-    };
-  }
-
-  return mergedLabs;
-}
-
 export async function listResearchLabs(accessToken: string) {
   const data = await researchLabsRequest<RawResearchLab[]>(
     "/api/v1/research-labs",
@@ -464,6 +440,43 @@ export type SandboxAccountSnapshot = {
   data: Record<string, unknown>;
 };
 
+export type ResearchLabExplorerAccount = {
+  ref: string;
+  address: string;
+  label: string;
+  ownerProgram: string;
+  accountType: string;
+  lamports: number;
+  data: Record<string, unknown>;
+};
+
+export type ResearchLabExplorerRewardCandidate = {
+  walletAddress: string;
+  positionAddress: string;
+  pendingRewards: number;
+};
+
+export type ResearchLabExplorerSnapshot = {
+  sessionId: string;
+  enabled: boolean;
+  reason: string | null;
+  network: {
+    name: string;
+    kind: string;
+  };
+  program: {
+    ref: string;
+    address: string;
+    name: string;
+    version: string;
+    interfaceSource: string;
+    idl: Record<string, unknown>;
+  };
+  accounts: ResearchLabExplorerAccount[];
+  rewardCandidates: ResearchLabExplorerRewardCandidate[];
+  totalRewardsPaid: number;
+};
+
 export type DepositCollateralPayload = {
   action_type: "DEPOSIT_COLLATERAL";
   amount: number;
@@ -489,6 +502,7 @@ export type ClaimRewardsPayload = {
   position_account_ref: "stake_position";
   reward_vault_ref: "reward_vault";
   destination_account_ref: "attacker_reward_account";
+  target_wallet_address: string;
 };
 
 export type LabTransactionPayload =
@@ -536,6 +550,16 @@ export async function getResearchLabAccount(
 ) {
   return researchLabsRequest<{ account: SandboxAccountSnapshot }>(
     `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/accounts/${encodeURIComponent(accountRef)}`,
+    { accessToken }
+  );
+}
+
+export async function getResearchLabExplorer(
+  accessToken: string,
+  sessionId: string
+) {
+  return researchLabsRequest<ResearchLabExplorerSnapshot>(
+    `/api/v1/research-labs/sessions/${encodeURIComponent(sessionId)}/explorer`,
     { accessToken }
   );
 }
@@ -655,7 +679,9 @@ async function researchLabsRequest<T>(
   const { accessToken, ...fetchOptions } = options;
 
   if (!accessToken?.trim()) {
-    throw new Error("Connect and authenticate your wallet before loading Research Labs.");
+    throw new Error(
+      "Connect and authenticate your wallet before loading Research Labs."
+    );
   }
 
   const headers = new Headers(fetchOptions.headers);
@@ -718,9 +744,7 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
     id,
     slug,
     title:
-      manifestOverrides?.title ||
-      stringValue(raw.title) ||
-      fallbackLab.title,
+      manifestOverrides?.title || stringValue(raw.title) || fallbackLab.title,
     difficulty: titleCase(
       stringValue(raw.difficulty) ||
         stringValue(raw.difficulty_level) ||
@@ -762,18 +786,16 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
       stringValue(raw.template_ref) ||
       stringValue(raw.templateRef) ||
       fallbackLab.templateRef,
-    objectives:
-      manifestOverrides?.objectives.length
-        ? manifestOverrides.objectives
-        : objectives.length
-          ? objectives
-          : fallbackLab.objectives,
-    hints:
-      manifestOverrides?.hints.length
-        ? manifestOverrides.hints
-        : hints.length
-          ? hints
-          : fallbackLab.hints,
+    objectives: manifestOverrides?.objectives.length
+      ? manifestOverrides.objectives
+      : objectives.length
+        ? objectives
+        : fallbackLab.objectives,
+    hints: manifestOverrides?.hints.length
+      ? manifestOverrides.hints
+      : hints.length
+        ? hints
+        : fallbackLab.hints,
     files: normalizeFiles(raw.files),
   };
 }
@@ -948,8 +970,7 @@ function normalizeReportFields(raw: unknown): ResearchLabReportFields | null {
       fields.verified_evidence_refs ?? fields.verifiedEvidenceRefs
     ),
     optionalNotes:
-      stringValue(fields.optional_notes) ||
-      stringValue(fields.optionalNotes),
+      stringValue(fields.optional_notes) || stringValue(fields.optionalNotes),
   };
 }
 
@@ -979,11 +1000,13 @@ function normalizeReportAllowedValues(
       nonEmptyStringArray(values.title_option_id ?? values.titleOptionId) ??
       fallback.titleOptionId,
     categoryOptionId:
-      nonEmptyStringArray(values.category_option_id ?? values.categoryOptionId) ??
-      fallback.categoryOptionId,
+      nonEmptyStringArray(
+        values.category_option_id ?? values.categoryOptionId
+      ) ?? fallback.categoryOptionId,
     severityOptionId:
-      nonEmptyStringArray(values.severity_option_id ?? values.severityOptionId) ??
-      fallback.severityOptionId,
+      nonEmptyStringArray(
+        values.severity_option_id ?? values.severityOptionId
+      ) ?? fallback.severityOptionId,
     likelihoodOptionId:
       nonEmptyStringArray(
         values.likelihood_option_id ?? values.likelihoodOptionId
@@ -1021,8 +1044,7 @@ function denormalizeReportFields(fields: ResearchLabReportFields) {
     category_option_id: fields.categoryOptionId,
     root_cause_option_id: fields.rootCauseOptionId,
     proof_of_impact_option_id: fields.proofOfImpactOptionId,
-    recommended_mitigation_option_id:
-      fields.recommendedMitigationOptionId,
+    recommended_mitigation_option_id: fields.recommendedMitigationOptionId,
     verified_evidence_refs: fields.verifiedEvidenceRefs,
     optional_notes: fields.optionalNotes,
   };

@@ -42,6 +42,8 @@ export function ResearchLabWorkspace({
   auditReportStage,
   availableTabs,
   evidenceAccounts,
+  explorerAccessToken,
+  explorerSessionId,
   executeExploitView,
   impactVerified,
   inspectHintRevealed,
@@ -90,6 +92,8 @@ export function ResearchLabWorkspace({
   auditReportStage: AuditReportStage;
   availableTabs: WorkspaceTab[];
   evidenceAccounts: SandboxAccountSummary[];
+  explorerAccessToken: string | null;
+  explorerSessionId: string;
   executeExploitView: ExecuteExploitView;
   impactVerified: boolean;
   inspectHintRevealed: boolean;
@@ -167,6 +171,8 @@ export function ResearchLabWorkspace({
         <YieldHijackExecuteTab
           activeView={executeExploitView}
           evidenceAccounts={evidenceAccounts}
+          explorerAccessToken={explorerAccessToken}
+          explorerSessionId={explorerSessionId}
           impactVerified={impactVerified}
           isRunning={isRunning}
           txResults={txResults}

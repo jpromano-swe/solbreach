@@ -165,6 +165,10 @@ export function useResearchLabTransactions({
             payload.action_type === "CLAIM_REWARDS"
               ? labelForRef(payload.destination_account_ref)
               : undefined,
+          targetWalletAddress:
+            payload.action_type === "CLAIM_REWARDS"
+              ? payload.target_wallet_address
+              : undefined,
           amount: "amount" in payload ? payload.amount : 0,
         };
 
@@ -338,6 +342,18 @@ function normalizeYieldHijackFailure(
 ) {
   const normalized = `${errorCode ?? ""} ${lastLog ?? ""}`.toLowerCase();
 
+  if (
+    normalized.includes("target_wallet_required") ||
+    normalized.includes("select a wallet")
+  ) {
+    return "Paste a wallet from the unclaimed rewards list before claiming.";
+  }
+  if (
+    normalized.includes("invalid_target_wallet") ||
+    normalized.includes("target wallet")
+  ) {
+    return "The pasted wallet does not match the current reward position.";
+  }
   if (
     normalized.includes("invalid_position_owner") ||
     normalized.includes("position owner")

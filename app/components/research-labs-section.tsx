@@ -15,7 +15,6 @@ import {
   fetchResearchLabTerminal,
   getResearchLab,
   listResearchLabs,
-  mergeResearchLabCatalog,
   resetResearchLabSession,
   type ResearchLabManifest,
   type ResearchLabReport,
@@ -376,7 +375,7 @@ export function ResearchLabsSection({
     try {
       const auth = await ensureLabAuth();
       const nextLabs = await listResearchLabs(auth.accessToken);
-      setLabs(mergeResearchLabCatalog(nextLabs));
+      setLabs(nextLabs.length ? nextLabs : FALLBACK_RESEARCH_LABS);
     } catch (error) {
       const message = getErrorMessage(error);
       setCatalogError(message);
@@ -669,11 +668,12 @@ export function ResearchLabsSection({
               activeAdapter.code === "RL1" && researchLabCertificateMinted
             }
             isMintingResearchLabCertificate={
-              activeAdapter.code === "RL1" &&
-              isMintingResearchLabCertificate
+              activeAdapter.code === "RL1" && isMintingResearchLabCertificate
             }
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
+            explorerAccessToken={activeBackendAuth?.accessToken ?? null}
+            explorerSessionId={session.sessionId}
             executeExploitView={executeExploitView}
             onChangeReportFields={setReportFields}
             onChangeAuditReportStage={setAuditReportStage}
@@ -711,8 +711,7 @@ export function ResearchLabsSection({
               activeAdapter.code === "RL1" && isCollectingLevel1Badge
             }
             isMintingResearchLabCertificate={
-              activeAdapter.code === "RL1" &&
-              isMintingResearchLabCertificate
+              activeAdapter.code === "RL1" && isMintingResearchLabCertificate
             }
             level1BadgeCollected={activePrerequisiteBadgeCollected}
             level1BadgeEarned={

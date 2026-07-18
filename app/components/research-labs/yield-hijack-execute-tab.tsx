@@ -5,7 +5,10 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Eye,
+  EyeOff,
   Play,
+  Search,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -13,14 +16,12 @@ import type {
   LabTransactionPayload,
   SandboxAccountSummary,
 } from "../../lib/research-labs/lab-state";
-import type {
-  EnrichedTransactionResult,
-  ExecuteExploitView,
-} from "./types";
+import type { EnrichedTransactionResult, ExecuteExploitView } from "./types";
 import {
   AnimatedContentSwitch,
   EXECUTE_EXPLOIT_VIEW_TRANSITION_ORDER,
 } from "./workspace-tabs";
+import { YieldHijackExplorer } from "./yield-hijack-explorer";
 
 const BASELINE = {
   attackerRewardBalance: 0,
@@ -36,6 +37,8 @@ export function YieldHijackExecuteTab({
   evidenceAccounts,
   impactVerified,
   isRunning,
+  explorerAccessToken,
+  explorerSessionId,
   txResults,
   onChangeView,
   onExecuteTransaction,
@@ -46,6 +49,8 @@ export function YieldHijackExecuteTab({
   evidenceAccounts: SandboxAccountSummary[];
   impactVerified: boolean;
   isRunning: boolean;
+  explorerAccessToken: string | null;
+  explorerSessionId: string;
   txResults: EnrichedTransactionResult[];
   onChangeView: (view: ExecuteExploitView) => void;
   onExecuteTransaction: (payload: LabTransactionPayload) => Promise<void>;
@@ -53,6 +58,8 @@ export function YieldHijackExecuteTab({
   onProveImpact: () => void;
 }) {
   const [stakeAmount, setStakeAmount] = useState("1");
+  const [targetWallet, setTargetWallet] = useState("");
+  const [explorerOpen, setExplorerOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<"stake" | "claim" | null>(
     null
   );
@@ -66,7 +73,11 @@ export function YieldHijackExecuteTab({
     parsedAmount <= Math.min(100, state.attackerStakeBalance) &&
     !isRunning &&
     pendingAction === null;
-  const canClaim = !isRunning && pendingAction === null;
+  const canClaim =
+    targetWallet.trim().length > 0 && !isRunning && pendingAction === null;
+  const targetMatchesCandidate = state.rewardCandidates.some(
+    (candidate) => candidate.walletAddress === targetWallet.trim()
+  );
 
   const submitStake = async () => {
     if (!canStake) return;
@@ -93,6 +104,7 @@ export function YieldHijackExecuteTab({
         position_account_ref: "stake_position",
         reward_vault_ref: "reward_vault",
         destination_account_ref: "attacker_reward_account",
+        target_wallet_address: targetWallet.trim(),
       });
     } finally {
       setPendingAction(null);
@@ -109,104 +121,116 @@ export function YieldHijackExecuteTab({
         value, then review the returned evidence.
       </p>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(280px,0.52fr)_minmax(0,1.48fr)]">
+        <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
           <div>
-            <p className="text-sm font-semibold text-zinc-200">
+            <p className="text-sm font-semibold text-zinc-100">
               Exploiter Interface
             </p>
-            <p className="mt-2 text-xs leading-6 text-zinc-500">
-              Stake a small amount or test whether the current position already
-              allows your wallet to claim its pending rewards.
+            <p className="mt-1.5 text-xs leading-5 text-zinc-500">
+              Contribute to the shared position, then target a wallet with
+              unclaimed rewards.
             </p>
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-white">Stake</p>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">
-                    Add STAKE to the current pool position.
-                  </p>
-                </div>
-                <span className="font-mono text-xs text-zinc-500">
-                  {formatAmount(state.attackerStakeBalance)} available
-                </span>
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label
+                  htmlFor="rl2-stake-amount"
+                  className="text-xs font-semibold text-zinc-200"
+                >
+                  Stake
+                </label>
+                <p className="mt-1 text-[11px] text-zinc-600">
+                  Overwrite the shared position owner.
+                </p>
               </div>
-              <label className="mt-4 block">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
-                  Amount to stake
-                </span>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={Math.min(100, state.attackerStakeBalance)}
-                    value={stakeAmount}
-                    disabled={isRunning || pendingAction !== null}
-                    onChange={(event) => setStakeAmount(event.target.value)}
-                    className="min-h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 font-mono text-sm text-zinc-100 outline-none transition focus:border-[#14f195]/45 disabled:opacity-55"
-                  />
-                  <span className="text-xs font-medium text-zinc-500">
-                    STAKE
-                  </span>
-                </div>
-              </label>
+              <span className="font-mono text-[11px] text-zinc-500">
+                {formatAmount(state.attackerStakeBalance)} available
+              </span>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                id="rl2-stake-amount"
+                aria-label="Amount to stake"
+                type="number"
+                min={1}
+                max={Math.min(100, state.attackerStakeBalance)}
+                value={stakeAmount}
+                disabled={isRunning || pendingAction !== null}
+                onChange={(event) => setStakeAmount(event.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-xs text-zinc-100 outline-none transition focus:border-[#14f195]/45 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55"
+              />
               <button
                 type="button"
                 onClick={() => void submitStake()}
                 disabled={!canStake}
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl border border-[#14f195]/25 bg-[#14f195]/10 px-4 text-sm font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-[#14f195]/25 bg-[#14f195]/10 px-3 text-xs font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
               >
-                {pendingAction === "stake" ? "Staking..." : "Stake Tokens"}
-              </button>
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    Claim Rewards
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">
-                    Ask the program to pay every reward currently recorded on
-                    the position.
-                  </p>
-                </div>
-                <span className="font-mono text-xs text-zinc-500">
-                  {formatAmount(state.pendingRewards)} pending
-                </span>
-              </div>
-              <div className="mt-4 border-y border-white/10 py-3">
-                <StateRow
-                  label="Destination"
-                  value="Your Reward Account"
-                />
-                <StateRow
-                  label="Amount"
-                  value="Read from position"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => void claimRewards()}
-                disabled={!canClaim}
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 text-sm font-semibold text-[#d7c0ff] transition hover:bg-[#9945ff]/18 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
-              >
-                {pendingAction === "claim"
-                  ? "Claiming..."
-                  : "Claim Pending Rewards"}
+                {pendingAction === "stake" ? "Staking..." : "Stake"}
               </button>
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label
+                  htmlFor="rl2-target-wallet"
+                  className="text-xs font-semibold text-zinc-200"
+                >
+                  Claim Rewards
+                </label>
+                <p className="mt-1 text-[11px] leading-5 text-zinc-600">
+                  Paste a wallet from the protocol list.
+                </p>
+              </div>
+              <span className="font-mono text-[11px] text-zinc-500">
+                {formatAmount(state.pendingRewards)} pending
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExplorerOpen(true)}
+              disabled={!explorerAccessToken}
+              className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-3 text-xs font-semibold text-zinc-300 hover:border-[#9945ff]/30 hover:bg-[#9945ff]/8 hover:text-[#d7c0ff] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <Search className="h-3.5 w-3.5" aria-hidden="true" />
+              Open SolBreach Explorer
+            </button>
+            <input
+              id="rl2-target-wallet"
+              aria-label="Target wallet address"
+              type="text"
+              value={targetWallet}
+              disabled={isRunning || pendingAction !== null}
+              onChange={(event) => setTargetWallet(event.target.value.trim())}
+              placeholder="Paste target wallet"
+              className={`mt-3 h-10 w-full rounded-lg border bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition placeholder:text-zinc-700 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55 ${
+                targetWallet
+                  ? targetMatchesCandidate
+                    ? "border-[#14f195]/45"
+                    : "border-amber-300/35"
+                  : "border-white/10 focus:border-[#9945ff]/50"
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => void claimRewards()}
+              disabled={!canClaim}
+              className="mt-2 inline-flex h-10 items-center justify-center rounded-lg border border-[#9945ff]/30 bg-[#9945ff]/12 px-3 text-xs font-semibold text-[#d7c0ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
+            >
+              {pendingAction === "claim" ? "Claiming..." : "Claim Rewards"}
+            </button>
+          </div>
+
+          <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/10 pt-4">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
                 Latest Action
               </p>
-              <p className="mt-1 text-xs text-zinc-400">
+              <p className="mt-1 truncate text-[11px] text-zinc-400">
                 {txResults[0]
                   ? yieldHijackTransactionTitle(txResults[0])
                   : "No transactions submitted yet."}
@@ -216,15 +240,19 @@ export function YieldHijackExecuteTab({
               type="button"
               onClick={onOpenEvidenceReview}
               disabled={txResults.length === 0}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#9945ff]/25 bg-[#9945ff]/10 px-4 text-xs font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/16 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#9945ff]/25 bg-[#9945ff]/10 px-3 text-[11px] font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/16 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Review Evidence
-              <ArrowRight className="h-3.5 w-3.5" />
+              Evidence
+              <ArrowRight className="h-3 w-3" />
             </button>
           </div>
         </section>
 
-        <YieldHijackProtocolState state={state} />
+        <YieldHijackProtocolState
+          state={state}
+          explorerAvailable={Boolean(explorerAccessToken)}
+          onOpenExplorer={() => setExplorerOpen(true)}
+        />
       </div>
     </div>
   );
@@ -241,7 +269,7 @@ export function YieldHijackExecuteTab({
               key={item.id}
               type="button"
               onClick={() => onChangeView(item.id)}
-              className={`min-h-9 rounded-lg px-3 text-sm transition ${
+              className={`min-h-10 rounded-lg px-3 text-sm transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] ${
                 activeView === item.id
                   ? "bg-[#9945ff]/18 text-[#d7c0ff]"
                   : "text-zinc-500 hover:text-zinc-300"
@@ -271,61 +299,126 @@ export function YieldHijackExecuteTab({
           />
         )}
       </AnimatedContentSwitch>
+
+      {explorerOpen && explorerAccessToken ? (
+        <YieldHijackExplorer
+          accessToken={explorerAccessToken}
+          sessionId={explorerSessionId}
+          txResults={txResults}
+          onClose={() => setExplorerOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function YieldHijackProtocolState({ state }: { state: YieldHijackState }) {
+function YieldHijackProtocolState({
+  state,
+  explorerAvailable,
+  onOpenExplorer,
+}: {
+  state: YieldHijackState;
+  explorerAvailable: boolean;
+  onOpenExplorer: () => void;
+}) {
+  const [rewardsVisible, setRewardsVisible] = useState(true);
+
   return (
-    <aside className="h-fit rounded-2xl border border-white/10 bg-black/25 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-white">Protocol State</p>
-        <span className="text-[11px] font-medium text-[#8fffd0]">Live</span>
+    <aside className="h-fit overflow-hidden rounded-2xl border border-white/10 bg-[#08090b]">
+      <div className="border-b border-white/10 bg-white/[0.025] px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+              BreachStake
+            </p>
+            <p className="mt-1 text-sm font-semibold text-white">
+              Rewards Program
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 px-2.5 py-1 text-[10px] font-medium text-[#8fffd0]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#14f195]" />
+            Live
+          </span>
+        </div>
       </div>
 
-      <StateGroup title="Your Wallet">
-        <StateRow
-          label="Stake balance"
-          value={`${formatAmount(state.attackerStakeBalance)} STAKE`}
-        />
-        <StateRow
-          label="Reward balance"
-          value={`${formatAmount(state.attackerRewardBalance)} REWARD`}
-        />
-      </StateGroup>
+      <div className="p-5">
+        <section className="rounded-xl border border-white/10 bg-white/[0.025] px-5 py-5 text-center">
+          <div className="flex items-center justify-center gap-1.5">
+            <p className="text-xs font-medium text-zinc-500">
+              Total rewards paid
+            </p>
+            <button
+              type="button"
+              onClick={() => setRewardsVisible((visible) => !visible)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]"
+              aria-label={
+                rewardsVisible
+                  ? "Hide total rewards paid"
+                  : "Show total rewards paid"
+              }
+            >
+              {rewardsVisible ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+          <p className="mt-1 font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+            {rewardsVisible ? formatAmount(state.totalRewardsPaid) : "••••••"}
+          </p>
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8fffd0]">
+            REWARD
+          </p>
+        </section>
 
-      <StateGroup title="Existing Position">
-        <StateRow label="Owner" value={state.positionOwnerLabel} />
-        <StateRow
-          label="Staked amount"
-          value={`${formatAmount(state.positionStakedAmount)} STAKE`}
-        />
-        <StateRow
-          label="Pending rewards"
-          value={`${formatAmount(state.pendingRewards)} REWARD`}
-        />
-        <StateRow
-          label="Position PDA"
-          value={shortAddress(state.positionAddress)}
-        />
-      </StateGroup>
+        <div className="mt-5 border-t border-white/10 pt-5">
+          <p className="text-sm font-semibold text-zinc-200">
+            Investigate protocol state
+          </p>
+          <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-500">
+            Open the session explorer to inspect the public IDL, decoded
+            accounts, and transaction history before selecting a claim target.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenExplorer}
+            disabled={!explorerAvailable}
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 text-sm font-semibold text-[#d7c0ff] hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-zinc-600"
+          >
+            <Search className="h-4 w-4" aria-hidden="true" />
+            Open SolBreach Explorer
+          </button>
+        </div>
 
-      <StateGroup title="Protocol Vaults">
-        <StateRow
-          label="Stake vault"
-          value={`${formatAmount(state.stakeVaultBalance)} STAKE`}
-        />
-        <StateRow
-          label="Reward vault"
-          value={`${formatAmount(state.rewardVaultBalance)} REWARD`}
-        />
-      </StateGroup>
-
-      <div className="mt-4 border-t border-white/10 pt-4 text-xs leading-5 text-zinc-500">
-        Baseline: the position held 50,000 STAKE and 12,500 pending REWARD
-        before your first successful action.
+        <div className="mt-5 grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-3">
+          <ProtocolMetric
+            label="Reward vault"
+            value={`${formatAmount(state.rewardVaultBalance)} REWARD`}
+          />
+          <ProtocolMetric
+            label="Your rewards"
+            value={`${formatAmount(state.attackerRewardBalance)} REWARD`}
+          />
+          <ProtocolMetric
+            label="Position owner"
+            value={state.positionOwnerLabel}
+          />
+        </div>
       </div>
     </aside>
+  );
+}
+
+function ProtocolMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+        {label}
+      </p>
+      <p className="mt-1.5 truncate font-mono text-xs text-zinc-300">{value}</p>
+    </div>
   );
 }
 
@@ -423,7 +516,7 @@ function YieldHijackEvidenceReview({
                         <button
                           type="button"
                           onClick={() => setExpandedTx(expanded ? null : key)}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/[0.06] hover:text-white"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/[0.06] hover:text-white focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]"
                           aria-label={
                             expanded
                               ? "Collapse transaction details"
@@ -478,10 +571,7 @@ function YieldHijackEvidenceReview({
               label="Existing Staker Position"
               value={shortAddress(victimPda)}
             />
-            <StateRow
-              label="Your Position"
-              value={shortAddress(attackerPda)}
-            />
+            <StateRow label="Your Position" value={shortAddress(attackerPda)} />
             <p className="pt-2 text-xs leading-5 text-zinc-500">
               {impactVerified
                 ? "Both participant derivations resolved to the same staking position."
@@ -566,23 +656,6 @@ function EvidenceSection({
   );
 }
 
-function StateGroup({
-  children,
-  title,
-}: {
-  children: React.ReactNode;
-  title: string;
-}) {
-  return (
-    <div className="mt-4 border-t border-white/10 pt-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
-        {title}
-      </p>
-      <div className="mt-3 space-y-2">{children}</div>
-    </div>
-  );
-}
-
 function StateRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 text-xs">
@@ -600,8 +673,14 @@ type YieldHijackState = {
   positionAddress: string;
   positionOwnerLabel: string;
   positionStakedAmount: number;
+  rewardCandidates: Array<{
+    pendingRewards: number;
+    positionAddress: string;
+    walletAddress: string;
+  }>;
   rewardVaultBalance: number;
   stakeVaultBalance: number;
+  totalRewardsPaid: number;
 };
 
 function deriveYieldHijackState(
@@ -615,6 +694,10 @@ function deriveYieldHijackState(
         typeof result.protocolState === "object" &&
         Object.keys(result.protocolState).length > 0
     )?.protocolState ?? null;
+  const protocolAttacker = recordFromRecord(latestProtocolState, ["attacker"]);
+  const protocolPool = recordFromRecord(latestProtocolState, ["pool"]);
+  const protocolPosition = recordFromRecord(latestProtocolState, ["position"]);
+  const protocolVictim = recordFromRecord(latestProtocolState, ["victim"]);
   const position = findAccount(accounts, "stake_position");
   const attackerStake = findAccount(accounts, "attacker_stake_account");
   const attackerReward = findAccount(accounts, "attacker_reward_account");
@@ -630,15 +713,15 @@ function deriveYieldHijackState(
     .reduce((sum, result) => sum + result.inputs.amount, 0);
 
   const attackerStakeBalance = numberFromSources(
-    latestProtocolState,
+    protocolAttacker,
     attackerStake?.data,
-    ["attackerStakeBalance", "attacker_stake_balance", "stakeBalance", "balance"],
+    ["stakeBalance", "stake_balance", "balance"],
     Math.max(0, BASELINE.attackerStakeBalance - successfulStakeAmount)
   );
   const attackerRewardBalance = numberFromSources(
-    latestProtocolState,
+    protocolAttacker,
     attackerReward?.data,
-    ["attackerRewardBalance", "attacker_reward_balance", "rewardBalance", "balance"],
+    ["rewardBalance", "reward_balance", "balance"],
     txResults.some(
       (result) =>
         result.executionStatus === "success" &&
@@ -647,33 +730,77 @@ function deriveYieldHijackState(
       ? BASELINE.pendingRewards
       : BASELINE.attackerRewardBalance
   );
+  const pendingRewards = numberFromSources(
+    protocolPosition,
+    position?.data,
+    ["pendingRewards", "pending_rewards", "rewards"],
+    attackerRewardBalance > 0 ? 0 : BASELINE.pendingRewards
+  );
+  const positionAddress =
+    stringFromRecord(protocolPosition, ["address", "positionAddress"]) ??
+    stringFromRecord(position?.data, ["address", "pubkey", "pda"]) ??
+    position?.owner ??
+    "Unavailable";
+  const rawCandidates = arrayFromRecord(latestProtocolState, [
+    "rewardCandidates",
+    "reward_candidates",
+  ]);
+  const victimWallet =
+    stringFromRecord(protocolVictim, ["wallet", "walletAddress"]) ??
+    stringFromRecord(protocolPosition, ["baselineOwner", "baseline_owner"]) ??
+    stringFromRecord(position?.data, ["baselineOwner", "baseline_owner"]);
+  const rewardCandidates =
+    rawCandidates === null
+      ? victimWallet && pendingRewards > 0
+        ? [
+            {
+              walletAddress: victimWallet,
+              pendingRewards,
+              positionAddress,
+            },
+          ]
+        : []
+      : rawCandidates
+          .map((candidate) => {
+            const walletAddress = stringFromRecord(candidate, [
+              "walletAddress",
+              "wallet_address",
+              "wallet",
+            ]);
+            if (!walletAddress) return null;
+            return {
+              walletAddress,
+              pendingRewards: numberFromSources(
+                candidate,
+                undefined,
+                ["pendingRewards", "pending_rewards", "amount"],
+                0
+              ),
+              positionAddress:
+                stringFromRecord(candidate, [
+                  "positionAddress",
+                  "position_address",
+                ]) ?? positionAddress,
+            };
+          })
+          .filter(
+            (
+              candidate
+            ): candidate is {
+              pendingRewards: number;
+              positionAddress: string;
+              walletAddress: string;
+            } => candidate !== null
+          );
 
   return {
     attackerContribution: successfulStakeAmount,
     attackerRewardBalance,
     attackerStakeBalance,
-    pendingRewards: numberFromSources(
-      latestProtocolState,
-      position?.data,
-      ["pendingRewards", "pending_rewards", "rewards"],
-      attackerRewardBalance > 0 ? 0 : BASELINE.pendingRewards
-    ),
-    positionAddress:
-      stringFromRecord(latestProtocolState, [
-        "positionAddress",
-        "position_address",
-        "stakePositionAddress",
-      ]) ??
-      stringFromRecord(position?.data, ["address", "pubkey", "pda"]) ??
-      position?.owner ??
-      "Unavailable",
+    pendingRewards,
+    positionAddress,
     positionOwnerLabel: friendlyOwner(
-      stringFromRecord(latestProtocolState, [
-        "positionOwner",
-        "position_owner",
-        "owner",
-        "ownerLabel",
-      ]) ??
+      stringFromRecord(protocolPosition, ["owner", "ownerLabel"]) ??
         stringFromRecord(position?.data, [
           "position_owner",
           "positionOwner",
@@ -683,22 +810,34 @@ function deriveYieldHijackState(
       successfulStakeAmount > 0
     ),
     positionStakedAmount: numberFromSources(
-      latestProtocolState,
+      protocolPosition,
       position?.data,
-      ["positionStakedAmount", "position_staked_amount", "stakedAmount", "staked_amount", "amount"],
+      ["stakedAmount", "staked_amount", "amount"],
       BASELINE.positionStakedAmount + successfulStakeAmount
     ),
+    rewardCandidates,
     rewardVaultBalance: numberFromSources(
-      latestProtocolState,
+      protocolPool,
       rewardVault?.data,
       ["rewardVaultBalance", "reward_vault_balance", "balance", "amount"],
       BASELINE.rewardVaultBalance - attackerRewardBalance
     ),
     stakeVaultBalance: numberFromSources(
-      latestProtocolState,
+      protocolPool,
       stakeVault?.data,
       ["stakeVaultBalance", "stake_vault_balance", "balance", "amount"],
       BASELINE.stakeVaultBalance + successfulStakeAmount
+    ),
+    totalRewardsPaid: numberFromSources(
+      latestProtocolState,
+      undefined,
+      [
+        "totalRewardsPaid",
+        "total_rewards_paid",
+        "rewardsClaimedTotal",
+        "rewards_claimed_total",
+      ],
+      attackerRewardBalance
     ),
   };
 }
@@ -717,7 +856,8 @@ function yieldHijackTransactionDescription(result: EnrichedTransactionResult) {
       ? "Pending rewards moved from the protocol vault to your reward account."
       : `${formatAmount(result.inputs.amount)} STAKE submitted to the current position.`;
   }
-  const code = result.errorCode ?? result.error_code ?? result.logs.at(-1) ?? "";
+  const code =
+    result.errorCode ?? result.error_code ?? result.logs.at(-1) ?? "";
   const normalized = code.toLowerCase();
   if (normalized.includes("position_owner")) {
     return "The current signer does not own this staking position.";
@@ -770,7 +910,9 @@ function normalizedDeltas(result: EnrichedTransactionResult) {
         after: formatUnknown(after),
       };
     })
-    .filter((delta) => delta.before !== "Unavailable" || delta.after !== "Unavailable");
+    .filter(
+      (delta) => delta.before !== "Unavailable" || delta.after !== "Unavailable"
+    );
 }
 
 function findAccount(accounts: SandboxAccountSummary[], ref: string) {
@@ -802,6 +944,35 @@ function stringFromRecord(
   for (const key of keys) {
     const value = record?.[key];
     if (typeof value === "string" && value.trim()) return value;
+  }
+  return null;
+}
+
+function recordFromRecord(
+  record: Record<string, unknown> | null | undefined,
+  keys: string[]
+) {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+  }
+  return null;
+}
+
+function arrayFromRecord(
+  record: Record<string, unknown> | null | undefined,
+  keys: string[]
+) {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (Array.isArray(value)) {
+      return value.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item)
+      );
+    }
   }
   return null;
 }
@@ -857,5 +1028,7 @@ function humanize(value: string) {
 
 function shortAddress(value: string) {
   if (!value || value === "Unavailable") return value;
-  return value.length > 14 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+  return value.length > 14
+    ? `${value.slice(0, 6)}...${value.slice(-4)}`
+    : value;
 }
