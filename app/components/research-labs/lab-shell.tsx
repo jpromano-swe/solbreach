@@ -4,10 +4,7 @@ import { ArrowLeft, MoreHorizontal, RefreshCcw } from "lucide-react";
 import { useState } from "react";
 
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
-import {
-  getResearchLabAdapter,
-  isYieldHijackLab,
-} from "./lab-adapters";
+import { getResearchLabAdapter } from "./lab-adapters";
 import type { LabPhase, SandboxStatus } from "./types";
 
 const LAB_SHELL_COPY = {
@@ -125,29 +122,6 @@ export function LabScenarioBriefing({
               lab.summary ||
               LAB_SHELL_COPY.scenario}
           </p>
-          {isYieldHijackLab(lab) ? (
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-500">
-              <span>
-                APY <strong className="font-medium text-zinc-300">2,500%</strong>
-              </span>
-              <span>
-                Existing position{" "}
-                <strong className="font-medium text-zinc-300">
-                  50,000 STAKE
-                </strong>
-              </span>
-              <span>
-                Pending rewards{" "}
-                <strong className="font-medium text-zinc-300">
-                  12,500 REWARD
-                </strong>
-              </span>
-              <span>
-                Your balance{" "}
-                <strong className="font-medium text-zinc-300">100 STAKE</strong>
-              </span>
-            </div>
-          ) : null}
         </div>
         {/* <InvestigationStepper phase={_phase} /> */}
       </div>
