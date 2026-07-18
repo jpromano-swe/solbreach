@@ -89,6 +89,12 @@ type WalletNonceResponse = {
 };
 
 function getStoredAuth(walletAddress: string): Level1AuthSession | null {
+  const parsed = readStoredBackendWalletAuth();
+  if (!parsed || parsed.walletAddress !== walletAddress) return null;
+  return parsed;
+}
+
+export function readStoredBackendWalletAuth(): Level1AuthSession | null {
   if (typeof window === "undefined") return null;
 
   try {
@@ -96,11 +102,7 @@ function getStoredAuth(walletAddress: string): Level1AuthSession | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Level1AuthSession;
-    if (
-      parsed.walletAddress !== walletAddress ||
-      !parsed.accessToken ||
-      !parsed.refreshToken
-    ) {
+    if (!parsed.walletAddress || !parsed.accessToken || !parsed.refreshToken) {
       return null;
     }
 

@@ -21,7 +21,6 @@ import {
   AnimatedContentSwitch,
   EXECUTE_EXPLOIT_VIEW_TRANSITION_ORDER,
 } from "./workspace-tabs";
-import { YieldHijackExplorer } from "./yield-hijack-explorer";
 
 const BASELINE = {
   attackerRewardBalance: 0,
@@ -60,10 +59,12 @@ export function YieldHijackExecuteTab({
   const [stakeAmount, setStakeAmount] = useState("1");
   const [claimInstruction, setClaimInstruction] = useState("");
   const [targetWallet, setTargetWallet] = useState("");
-  const [explorerOpen, setExplorerOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<"stake" | "claim" | null>(
     null
   );
+  const explorerUrl = `/research-labs/explorer?sessionId=${encodeURIComponent(
+    explorerSessionId
+  )}`;
   const state = useMemo(
     () => deriveYieldHijackState(txResults, evidenceAccounts),
     [evidenceAccounts, txResults]
@@ -159,12 +160,14 @@ export function YieldHijackExecuteTab({
               <input
                 id="rl2-stake-amount"
                 aria-label="Amount to stake"
-                type="number"
-                min={1}
-                max={Math.min(100, state.attackerStakeBalance)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={stakeAmount}
                 disabled={isRunning || pendingAction !== null}
-                onChange={(event) => setStakeAmount(event.target.value)}
+                onChange={(event) =>
+                  setStakeAmount(event.target.value.replace(/\D/g, ""))
+                }
                 className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-xs text-zinc-100 outline-none transition focus:border-[#14f195]/45 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55"
               />
               <button
@@ -195,15 +198,11 @@ export function YieldHijackExecuteTab({
                 {formatAmount(state.pendingRewards)} pending
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setExplorerOpen(true)}
-              disabled={!explorerAccessToken}
-              className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-3 text-xs font-semibold text-zinc-300 hover:border-[#9945ff]/30 hover:bg-[#9945ff]/8 hover:text-[#d7c0ff] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              <Search className="h-3.5 w-3.5" aria-hidden="true" />
-              Open SolBreach Explorer
-            </button>
+            <ExplorerRouteLink
+              available={Boolean(explorerAccessToken)}
+              className="mt-3 min-h-10 w-full justify-center px-3 text-xs"
+              href={explorerUrl}
+            />
             <div className="mt-3 grid gap-2">
               <div>
                 <label
@@ -290,7 +289,7 @@ export function YieldHijackExecuteTab({
         <YieldHijackProtocolState
           state={state}
           explorerAvailable={Boolean(explorerAccessToken)}
-          onOpenExplorer={() => setExplorerOpen(true)}
+          explorerUrl={explorerUrl}
         />
       </div>
     </div>
@@ -338,27 +337,55 @@ export function YieldHijackExecuteTab({
           />
         )}
       </AnimatedContentSwitch>
-
-      {explorerOpen && explorerAccessToken ? (
-        <YieldHijackExplorer
-          accessToken={explorerAccessToken}
-          sessionId={explorerSessionId}
-          txResults={txResults}
-          onClose={() => setExplorerOpen(false)}
-        />
-      ) : null}
     </div>
+  );
+}
+
+function ExplorerRouteLink({
+  available,
+  className,
+  href,
+}: {
+  available: boolean;
+  className: string;
+  href: string;
+}) {
+  const sharedClassName = `inline-flex items-center gap-2 rounded-lg border font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] ${className}`;
+
+  if (!available) {
+    return (
+      <button
+        type="button"
+        disabled
+        className={`${sharedClassName} cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-600`}
+      >
+        <Search className="h-4 w-4" aria-hidden="true" />
+        Open SolBreach Explorer
+      </button>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${sharedClassName} border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff] hover:bg-[#9945ff]/18`}
+    >
+      <Search className="h-4 w-4" aria-hidden="true" />
+      Open SolBreach Explorer
+    </a>
   );
 }
 
 function YieldHijackProtocolState({
   state,
   explorerAvailable,
-  onOpenExplorer,
+  explorerUrl,
 }: {
   state: YieldHijackState;
   explorerAvailable: boolean;
-  onOpenExplorer: () => void;
+  explorerUrl: string;
 }) {
   const [rewardsVisible, setRewardsVisible] = useState(true);
 
@@ -385,7 +412,7 @@ function YieldHijackProtocolState({
         <section className="rounded-xl border border-white/10 bg-white/[0.025] px-5 py-5 text-center">
           <div className="flex items-center justify-center gap-1.5">
             <p className="text-xs font-medium text-zinc-500">
-              Total rewards paid
+              Pool rewards payed
             </p>
             <button
               type="button"
@@ -393,8 +420,8 @@ function YieldHijackProtocolState({
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]"
               aria-label={
                 rewardsVisible
-                  ? "Hide total rewards paid"
-                  : "Show total rewards paid"
+                  ? "Hide pool rewards payed"
+                  : "Show pool rewards payed"
               }
             >
               {rewardsVisible ? (
@@ -412,52 +439,33 @@ function YieldHijackProtocolState({
           </p>
         </section>
 
-        <div className="mt-5 border-t border-white/10 pt-5">
-          <p className="text-sm font-semibold text-zinc-200">
-            Investigate protocol state
-          </p>
-          <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-500">
-            Open the session explorer to inspect the public IDL, decoded
-            accounts, and transaction history before selecting a claim target.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenExplorer}
-            disabled={!explorerAvailable}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 text-sm font-semibold text-[#d7c0ff] hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-zinc-600"
-          >
-            <Search className="h-4 w-4" aria-hidden="true" />
-            Open SolBreach Explorer
-          </button>
-        </div>
+        <ExplorerRouteLink
+          available={explorerAvailable}
+          className="mt-5 min-h-11 px-4 text-sm"
+          href={explorerUrl}
+        />
 
-        <div className="mt-5 grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-3">
-          <ProtocolMetric
-            label="Reward vault"
-            value={`${formatAmount(state.rewardVaultBalance)} REWARD`}
-          />
-          <ProtocolMetric
-            label="Your rewards"
-            value={`${formatAmount(state.attackerRewardBalance)} REWARD`}
-          />
-          <ProtocolMetric
-            label="Position owner"
-            value={state.positionOwnerLabel}
-          />
+        <div className="mt-5 overflow-hidden rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+            <span>User&apos;s position</span>
+            <span className="text-right">Claimable rewards</span>
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-zinc-200">
+                {state.positionOwnerLabel}
+              </p>
+              <p className="mt-1 truncate font-mono text-[11px] text-zinc-600">
+                {shortAddress(state.positionAddress)}
+              </p>
+            </div>
+            <p className="font-mono text-sm font-semibold text-[#8fffd0]">
+              {formatAmount(state.pendingRewards)} REWARD
+            </p>
+          </div>
         </div>
       </div>
     </aside>
-  );
-}
-
-function ProtocolMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
-        {label}
-      </p>
-      <p className="mt-1.5 truncate font-mono text-xs text-zinc-300">{value}</p>
-    </div>
   );
 }
 
@@ -810,6 +818,7 @@ function deriveYieldHijackState(
   const protocolPool = recordFromRecord(latestProtocolState, ["pool"]);
   const protocolPosition = recordFromRecord(latestProtocolState, ["position"]);
   const protocolVictim = recordFromRecord(latestProtocolState, ["victim"]);
+  const poolConfig = findAccount(accounts, "pool_config");
   const position = findAccount(accounts, "stake_position");
   const attackerStake = findAccount(accounts, "attacker_stake_account");
   const attackerReward = findAccount(accounts, "attacker_reward_account");
@@ -942,7 +951,7 @@ function deriveYieldHijackState(
     ),
     totalRewardsPaid: numberFromSources(
       latestProtocolState,
-      undefined,
+      poolConfig?.data,
       [
         "totalRewardsPaid",
         "total_rewards_paid",

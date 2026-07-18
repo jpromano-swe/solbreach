@@ -25,8 +25,10 @@ import { toast } from "sonner";
 
 import {
   getResearchLabExplorer,
+  listResearchLabTransactions,
   type ResearchLabExplorerAccount,
   type ResearchLabExplorerSnapshot,
+  type TransactionResult,
 } from "../../lib/research-labs/lab-state";
 import type { EnrichedTransactionResult } from "./types";
 
@@ -62,13 +64,15 @@ const EXPLORER_VIEWS: Array<{
 export function YieldHijackExplorer({
   accessToken,
   sessionId,
-  txResults,
+  txResults: providedTransactions,
   onClose,
+  standalone = false,
 }: {
   accessToken: string;
   sessionId: string;
-  txResults: EnrichedTransactionResult[];
-  onClose: () => void;
+  txResults?: EnrichedTransactionResult[];
+  onClose?: () => void;
+  standalone?: boolean;
 }) {
   const [snapshot, setSnapshot] = useState<ResearchLabExplorerSnapshot | null>(
     null
@@ -83,25 +87,41 @@ export function YieldHijackExplorer({
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [persistedTransactions, setPersistedTransactions] = useState<
+    EnrichedTransactionResult[]
+  >([]);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const txResults = providedTransactions ?? persistedTransactions;
 
   const loadSnapshot = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const nextSnapshot = await getResearchLabExplorer(accessToken, sessionId);
+      const [nextSnapshot, transactionHistory] = await Promise.all([
+        getResearchLabExplorer(accessToken, sessionId),
+        providedTransactions === undefined
+          ? listResearchLabTransactions(accessToken, sessionId)
+          : Promise.resolve(null),
+      ]);
       if (!nextSnapshot.enabled) {
         throw new Error(
           nextSnapshot.reason || "Explorer is not enabled for this lab."
         );
       }
       setSnapshot(nextSnapshot);
+      if (transactionHistory) {
+        setPersistedTransactions(
+          (transactionHistory.transactions ?? [])
+            .map(normalizeExplorerTransaction)
+            .reverse()
+        );
+      }
     } catch (loadError) {
       setError(getErrorMessage(loadError));
     } finally {
       setLoading(false);
     }
-  }, [accessToken, sessionId]);
+  }, [accessToken, providedTransactions, sessionId]);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -112,6 +132,7 @@ export function YieldHijackExplorer({
   }, [loadSnapshot]);
 
   useEffect(() => {
+    if (!onClose) return;
     closeButtonRef.current?.focus();
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -160,14 +181,28 @@ export function YieldHijackExplorer({
   };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[100] text-zinc-100">
+    <div
+      className={
+        standalone
+          ? "min-h-screen bg-[#121313] text-zinc-100"
+          : "pointer-events-none fixed inset-0 z-[100] text-zinc-100"
+      }
+    >
       <section
-        className="pointer-events-auto absolute inset-0 overflow-y-auto bg-[#121313] shadow-2xl shadow-black/50 xl:inset-y-4 xl:left-auto xl:right-4 xl:w-[68vw] xl:min-w-[820px] xl:max-w-[1120px] xl:rounded-2xl xl:border xl:border-white/15"
-        role="dialog"
-        aria-modal="false"
+        className={
+          standalone
+            ? "min-h-screen bg-[#121313]"
+            : "pointer-events-auto absolute inset-0 overflow-y-auto bg-[#121313] shadow-2xl shadow-black/50 xl:inset-y-4 xl:left-auto xl:right-4 xl:w-[68vw] xl:min-w-[820px] xl:max-w-[1120px] xl:rounded-2xl xl:border xl:border-white/15"
+        }
+        role={standalone ? undefined : "dialog"}
+        aria-modal={standalone ? undefined : false}
         aria-label="SolBreach Explorer"
       >
-        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#191a1a]/95 backdrop-blur-xl xl:rounded-t-2xl">
+        <header
+          className={`sticky top-0 z-30 border-b border-white/10 bg-[#191a1a]/95 backdrop-blur-xl ${
+            standalone ? "" : "xl:rounded-t-2xl"
+          }`}
+        >
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center">
             <div className="flex min-w-0 items-center justify-between gap-3 lg:w-72">
               <button
@@ -246,15 +281,17 @@ export function YieldHijackExplorer({
                   aria-hidden="true"
                 />
               </button>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-red-400/25 hover:bg-red-500/8 hover:text-red-200 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a]"
-                aria-label="Close explorer"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
+              {onClose ? (
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-red-400/25 hover:bg-red-500/8 hover:text-red-200 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a]"
+                  aria-label="Close explorer"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
             </div>
           </div>
         </header>
@@ -1445,6 +1482,49 @@ function formatExplorerValue(value: unknown) {
   if (typeof value === "boolean") return value ? "true" : "false";
   if (typeof value === "number") return formatAmount(value);
   return String(value);
+}
+
+function normalizeExplorerTransaction(
+  result: TransactionResult
+): EnrichedTransactionResult {
+  const parameters =
+    result.parameters ?? result.parametersJson ?? result.parameters_json ?? {};
+  const protocolState = result.protocolState ?? result.protocol_state;
+  const rejectionCode = protocolState?.lastRejectedReason;
+  const parameter = (key: string) => {
+    const value = parameters[key];
+    return typeof value === "string" && value.trim() ? value : undefined;
+  };
+  const amountValue = parameters.amount;
+  const amount =
+    typeof amountValue === "number"
+      ? amountValue
+      : typeof amountValue === "string" && Number.isFinite(Number(amountValue))
+        ? Number(amountValue)
+        : 0;
+
+  return {
+    ...result,
+    instructionType: result.instructionType ?? result.instruction_type ?? "",
+    executionStatus:
+      result.executionStatus ?? result.execution_status ?? "failure",
+    logs: result.logs ?? [],
+    errorCode:
+      result.errorCode ??
+      result.error_code ??
+      (typeof rejectionCode === "string" ? rejectionCode : undefined),
+    inputs: {
+      actionType: result.instructionType ?? result.instruction_type,
+      sourceAccountRef: parameter("source_account_ref"),
+      stakeVaultRef: parameter("stake_vault_ref"),
+      positionAccountRef: parameter("position_account_ref"),
+      rewardVaultRef: parameter("reward_vault_ref"),
+      destinationAccountRef: parameter("destination_account_ref"),
+      instructionName: parameter("instruction_name"),
+      targetWalletAddress: parameter("target_wallet_address"),
+      amount,
+    },
+  };
 }
 
 function explorerTransactionRef(transaction: EnrichedTransactionResult) {
