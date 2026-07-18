@@ -432,23 +432,25 @@ function YieldHijackProtocolState({
               )}
             </button>
           </div>
-          <div className="mt-1 flex items-center justify-center gap-3">
-            <Image
-              src="/usdc.png"
-              alt="USDC"
-              width={42}
-              height={42}
-              className="h-9 w-9 rounded-full sm:h-10 sm:w-10"
-            />
-            <p className="font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-              {rewardsVisible
-                ? `$${formatAmount(state.totalRewardsPaid)}`
-                : "$••••••"}
-            </p>
+          <div className="mt-1 flex justify-center">
+            <div className="relative text-center">
+              <Image
+                src="/usdc.png"
+                alt="USDC"
+                width={42}
+                height={42}
+                className="absolute right-full top-1/2 mr-3 h-9 w-9 -translate-y-1/2 rounded-full sm:h-10 sm:w-10"
+              />
+              <p className="font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+                {rewardsVisible
+                  ? `$${formatAmount(state.totalRewardsPaid)}`
+                  : "$••••••"}
+              </p>
+              <p className="mt-2 text-[10px] font-semibold tracking-[0.18em] text-[#8fffd0]">
+                USDC in rewards
+              </p>
+            </div>
           </div>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8fffd0]">
-            USDC
-          </p>
         </section>
 
         <ExplorerRouteLink
