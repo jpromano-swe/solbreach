@@ -453,7 +453,11 @@ export type ResearchLabExplorerAccount = {
 export type ResearchLabExplorerRewardCandidate = {
   walletAddress: string;
   positionAddress: string;
+  positionRef: string;
+  positionLabel: string;
   pendingRewards: number;
+  rewardMintRef: string;
+  rewardSymbol: string;
 };
 
 export type ResearchLabExplorerSnapshot = {
@@ -474,6 +478,11 @@ export type ResearchLabExplorerSnapshot = {
   };
   accounts: ResearchLabExplorerAccount[];
   rewardCandidates: ResearchLabExplorerRewardCandidate[];
+  rewardAsset: {
+    mintRef: string;
+    symbol: string;
+    decimals: number;
+  };
   totalRewardsPaid: number;
 };
 
