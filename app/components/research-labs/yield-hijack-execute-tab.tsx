@@ -58,6 +58,7 @@ export function YieldHijackExecuteTab({
   onProveImpact: () => void;
 }) {
   const [stakeAmount, setStakeAmount] = useState("1");
+  const [claimInstruction, setClaimInstruction] = useState("");
   const [targetWallet, setTargetWallet] = useState("");
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<"stake" | "claim" | null>(
@@ -74,7 +75,10 @@ export function YieldHijackExecuteTab({
     !isRunning &&
     pendingAction === null;
   const canClaim =
-    targetWallet.trim().length > 0 && !isRunning && pendingAction === null;
+    claimInstruction.trim().length > 0 &&
+    targetWallet.trim().length > 0 &&
+    !isRunning &&
+    pendingAction === null;
   const targetMatchesCandidate = state.rewardCandidates.some(
     (candidate) => candidate.walletAddress === targetWallet.trim()
   );
@@ -104,6 +108,7 @@ export function YieldHijackExecuteTab({
         position_account_ref: "stake_position",
         reward_vault_ref: "reward_vault",
         destination_account_ref: "attacker_reward_account",
+        instruction_name: claimInstruction.trim(),
         target_wallet_address: targetWallet.trim(),
       });
     } finally {
@@ -199,22 +204,56 @@ export function YieldHijackExecuteTab({
               <Search className="h-3.5 w-3.5" aria-hidden="true" />
               Open SolBreach Explorer
             </button>
-            <input
-              id="rl2-target-wallet"
-              aria-label="Target wallet address"
-              type="text"
-              value={targetWallet}
-              disabled={isRunning || pendingAction !== null}
-              onChange={(event) => setTargetWallet(event.target.value.trim())}
-              placeholder="Paste target wallet"
-              className={`mt-3 h-10 w-full rounded-lg border bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition placeholder:text-zinc-700 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55 ${
-                targetWallet
-                  ? targetMatchesCandidate
-                    ? "border-[#14f195]/45"
-                    : "border-amber-300/35"
-                  : "border-white/10 focus:border-[#9945ff]/50"
-              }`}
-            />
+            <div className="mt-3 grid gap-2">
+              <div>
+                <label
+                  htmlFor="rl2-claim-instruction"
+                  className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600"
+                >
+                  Program instruction
+                </label>
+                <input
+                  id="rl2-claim-instruction"
+                  type="text"
+                  value={claimInstruction}
+                  disabled={isRunning || pendingAction !== null}
+                  onChange={(event) =>
+                    setClaimInstruction(event.target.value.trim())
+                  }
+                  placeholder="Paste instruction name"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-[#9945ff]/50 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="rl2-target-wallet"
+                  className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600"
+                >
+                  Target wallet
+                </label>
+                <input
+                  id="rl2-target-wallet"
+                  type="text"
+                  value={targetWallet}
+                  disabled={isRunning || pendingAction !== null}
+                  onChange={(event) =>
+                    setTargetWallet(event.target.value.trim())
+                  }
+                  placeholder="Paste target wallet"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className={`mt-1.5 h-10 w-full rounded-lg border bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition placeholder:text-zinc-700 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55 ${
+                    targetWallet
+                      ? targetMatchesCandidate
+                        ? "border-[#14f195]/45"
+                        : "border-amber-300/35"
+                      : "border-white/10 focus:border-[#9945ff]/50"
+                  }`}
+                />
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => void claimRewards()}
@@ -596,19 +635,10 @@ function YieldHijackEvidenceReview({
             />
           </EvidenceSection>
 
-          <EvidenceSection title="Reward Transfer">
-            <StateRow label="Pending before" value="12,500 REWARD" />
-            <StateRow
-              label="Your reward gain"
-              value={`${formatAmount(state.attackerRewardBalance)} REWARD`}
-            />
-            <StateRow
-              label="Reward vault delta"
-              value={`${formatSignedAmount(
-                state.rewardVaultBalance - BASELINE.rewardVaultBalance
-              )} REWARD`}
-            />
-          </EvidenceSection>
+          <AccountStateDeltas
+            attackerRewardBalance={state.attackerRewardBalance}
+            victimRewardBalance={state.pendingRewards}
+          />
 
           {impactVerified ? (
             <div className="rounded-xl border border-[#14f195]/25 bg-[#14f195]/8 p-4">
@@ -653,6 +683,88 @@ function EvidenceSection({
       </p>
       <div className="mt-3 space-y-2">{children}</div>
     </section>
+  );
+}
+
+function AccountStateDeltas({
+  attackerRewardBalance,
+  victimRewardBalance,
+}: {
+  attackerRewardBalance: number;
+  victimRewardBalance: number;
+}) {
+  return (
+    <section>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+        Account State Deltas
+      </p>
+      <div className="mt-3 space-y-3">
+        <BalanceDeltaCard
+          label="Your Reward Balance"
+          initialValue={BASELINE.attackerRewardBalance}
+          currentValue={attackerRewardBalance}
+        />
+        <BalanceDeltaCard
+          label="Victim's Reward Balance"
+          initialValue={BASELINE.pendingRewards}
+          currentValue={victimRewardBalance}
+        />
+      </div>
+    </section>
+  );
+}
+
+function BalanceDeltaCard({
+  currentValue,
+  initialValue,
+  label,
+}: {
+  currentValue: number;
+  initialValue: number;
+  label: string;
+}) {
+  const delta = currentValue - initialValue;
+  const changed = delta !== 0;
+
+  return (
+    <article className="rounded-xl border border-white/10 bg-black/20 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          {label}
+        </p>
+        <span
+          className={`rounded-md border px-2 py-1 font-mono text-[10px] ${
+            changed
+              ? delta > 0
+                ? "border-[#14f195]/25 bg-[#14f195]/8 text-[#8fffd0]"
+                : "border-red-400/25 bg-red-500/8 text-red-200"
+              : "border-white/10 bg-white/[0.025] text-zinc-600"
+          }`}
+        >
+          {changed
+            ? `${delta > 0 ? "+" : ""}${formatAmount(delta)}`
+            : "No change"}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-2">
+        <BalanceValue label="Initial balance" value={initialValue} />
+        <ArrowRight className="h-4 w-4 justify-self-center text-zinc-700" />
+        <BalanceValue label="Current balance" value={currentValue} />
+      </div>
+    </article>
+  );
+}
+
+function BalanceValue({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+        {label}
+      </p>
+      <p className="mt-1 truncate font-mono text-xs text-zinc-300">
+        {formatAmount(value)} REWARD
+      </p>
+    </div>
   );
 }
 
@@ -896,12 +1008,14 @@ function normalizedDeltas(result: EnrichedTransactionResult) {
         "before",
         "before_value",
         "beforeValue",
+        "valueBefore",
         "old",
       ]);
       const after = valueFromRecord(delta, [
         "after",
         "after_value",
         "afterValue",
+        "valueAfter",
         "new",
       ]);
       return {
@@ -1005,11 +1119,6 @@ function formatAmount(value: number) {
   return Math.max(0, value).toLocaleString("en-US", {
     maximumFractionDigits: 2,
   });
-}
-
-function formatSignedAmount(value: number) {
-  if (value === 0) return "0";
-  return `${value > 0 ? "+" : ""}${value.toLocaleString("en-US")}`;
 }
 
 function formatUnknown(value: unknown) {

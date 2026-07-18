@@ -75,6 +75,7 @@ export type EnrichedTransactionResult = TransactionResult & {
     rewardVaultLabel?: string;
     destinationAccountRef?: string;
     destinationAccountLabel?: string;
+    instructionName?: string;
     targetWalletAddress?: string;
     amount: number;
   };

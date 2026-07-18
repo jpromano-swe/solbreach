@@ -502,6 +502,7 @@ export type ClaimRewardsPayload = {
   position_account_ref: "stake_position";
   reward_vault_ref: "reward_vault";
   destination_account_ref: "attacker_reward_account";
+  instruction_name: string;
   target_wallet_address: string;
 };
 
@@ -518,6 +519,9 @@ export type TransactionResult = {
   instruction_type: string;
   executionStatus: "success" | "failure";
   execution_status: "success" | "failure";
+  parameters?: Record<string, unknown>;
+  parametersJson?: Record<string, unknown>;
+  parameters_json?: Record<string, unknown>;
   logs: string[];
   errorCode?: string;
   error_code?: string;
@@ -528,6 +532,7 @@ export type TransactionResult = {
   evidenceRefs?: string[];
   evidence_refs?: string[];
   protocolState?: Record<string, unknown>;
+  protocol_state?: Record<string, unknown>;
   submittedAt?: string;
   submitted_at?: string;
   userFacingEvidence?: string[];

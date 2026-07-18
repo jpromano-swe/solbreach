@@ -112,8 +112,6 @@ export function YieldHijackExplorer({
   }, [loadSnapshot]);
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     closeButtonRef.current?.focus();
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -122,7 +120,6 @@ export function YieldHijackExplorer({
     window.addEventListener("keydown", closeOnEscape);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [onClose]);
@@ -163,181 +160,183 @@ export function YieldHijackExplorer({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] overflow-y-auto bg-[#121313] text-zinc-100"
-      role="dialog"
-      aria-modal="true"
-      aria-label="SolBreach Explorer"
-    >
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#191a1a]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center">
-          <div className="flex min-w-0 items-center justify-between gap-3 lg:w-72">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedAccountRef(null);
-                setSelectedTransactionRef(null);
-                setActiveView("overview");
-              }}
-              className="inline-flex min-h-10 items-center gap-2 rounded-lg px-1 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a]"
-              aria-label="Open explorer overview"
-            >
-              <Image
-                src="/logo_crop.png"
-                alt="SolBreach"
-                width={112}
-                height={35}
-                className="h-7 w-auto object-contain"
-                priority
-              />
-              <span className="border-l border-white/10 pl-2 text-xs font-semibold tracking-wide text-zinc-300">
-                Explorer
-              </span>
-            </button>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-[#9945ff]/30 bg-[#9945ff]/12 px-2 py-1 text-[10px] font-semibold text-[#d7c0ff] lg:hidden">
-              <CircleDot className="h-3 w-3" aria-hidden="true" />
-              SVM
-            </span>
-          </div>
-
-          <div className="relative min-w-0 flex-1">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-              aria-hidden="true"
-            />
-            <label htmlFor="rl2-explorer-search" className="sr-only">
-              Search program, accounts, or wallet addresses
-            </label>
-            <input
-              id="rl2-explorer-search"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && searchResults[0]) {
-                  selectSearchResult(searchResults[0]);
-                }
-              }}
-              placeholder="Search program, accounts, or wallet addresses"
-              autoComplete="off"
-              className="h-11 w-full rounded-lg border border-white/10 bg-[#242525] pl-10 pr-4 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-[#9945ff]/45 focus-visible:ring-2 focus-visible:ring-[#14f195]/70"
-            />
-            {query.trim() ? (
-              <SearchResults
-                query={query}
-                results={searchResults}
-                onSelect={selectSearchResult}
-              />
-            ) : null}
-          </div>
-
-          <div className="flex items-center justify-end gap-2">
-            <span className="hidden items-center gap-1.5 rounded-md border border-[#9945ff]/30 bg-[#9945ff]/12 px-2.5 py-1.5 text-[10px] font-semibold text-[#d7c0ff] lg:inline-flex">
-              <CircleDot className="h-3 w-3" aria-hidden="true" />
-              SolBreach SVM
-            </span>
-            <button
-              type="button"
-              onClick={() => void loadSnapshot()}
-              disabled={loading}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:bg-white/[0.07] hover:text-white focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a] disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Refresh explorer data"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                aria-hidden="true"
-              />
-            </button>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-red-400/25 hover:bg-red-500/8 hover:text-red-200 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a]"
-              aria-label="Close explorer"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto flex max-w-7xl flex-col px-4 py-5 lg:flex-row lg:gap-6">
-        <nav
-          className="mb-5 flex gap-1 overflow-x-auto border-b border-white/10 pb-2 lg:mb-0 lg:w-56 lg:shrink-0 lg:flex-col lg:border-b-0 lg:pb-0"
-          aria-label="Explorer sections"
-        >
-          {EXPLORER_VIEWS.map((view) => {
-            const Icon = view.icon;
-            const active = activeView === view.id;
-            return (
+    <div className="pointer-events-none fixed inset-0 z-[100] text-zinc-100">
+      <section
+        className="pointer-events-auto absolute inset-0 overflow-y-auto bg-[#121313] shadow-2xl shadow-black/50 xl:inset-y-4 xl:left-auto xl:right-4 xl:w-[68vw] xl:min-w-[820px] xl:max-w-[1120px] xl:rounded-2xl xl:border xl:border-white/15"
+        role="dialog"
+        aria-modal="false"
+        aria-label="SolBreach Explorer"
+      >
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#191a1a]/95 backdrop-blur-xl xl:rounded-t-2xl">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center">
+            <div className="flex min-w-0 items-center justify-between gap-3 lg:w-72">
               <button
-                key={view.id}
                 type="button"
                 onClick={() => {
-                  setActiveView(view.id);
                   setSelectedAccountRef(null);
                   setSelectedTransactionRef(null);
+                  setActiveView("overview");
                 }}
-                className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121313] ${
-                  active
-                    ? "bg-[#9945ff]/14 text-[#d7c0ff]"
-                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
-                }`}
-                aria-current={active ? "page" : undefined}
+                className="inline-flex min-h-10 items-center gap-2 rounded-lg px-1 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a]"
+                aria-label="Open explorer overview"
               >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                {view.label}
+                <Image
+                  src="/logo_crop.png"
+                  alt="SolBreach"
+                  width={112}
+                  height={35}
+                  className="h-7 w-auto object-contain"
+                  priority
+                />
+                <span className="border-l border-white/10 pl-2 text-xs font-semibold tracking-wide text-zinc-300">
+                  Explorer
+                </span>
               </button>
-            );
-          })}
-        </nav>
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#9945ff]/30 bg-[#9945ff]/12 px-2 py-1 text-[10px] font-semibold text-[#d7c0ff] lg:hidden">
+                <CircleDot className="h-3 w-3" aria-hidden="true" />
+                SVM
+              </span>
+            </div>
 
-        <main className="min-w-0 flex-1">
-          {loading && !snapshot ? (
-            <ExplorerLoading />
-          ) : error ? (
-            <ExplorerError message={error} onRetry={loadSnapshot} />
-          ) : snapshot ? (
-            selectedAccount ? (
-              <AccountDetail
-                account={selectedAccount}
-                candidateWallet={
-                  snapshot.rewardCandidates.find(
-                    (candidate) =>
-                      candidate.positionAddress === selectedAccount.address
-                  )?.walletAddress ?? null
-                }
-                onBack={() => setSelectedAccountRef(null)}
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+                aria-hidden="true"
               />
-            ) : selectedTransaction ? (
-              <TransactionDetail
-                transaction={selectedTransaction}
-                onBack={() => setSelectedTransactionRef(null)}
+              <label htmlFor="rl2-explorer-search" className="sr-only">
+                Search program, accounts, or wallet addresses
+              </label>
+              <input
+                id="rl2-explorer-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && searchResults[0]) {
+                    selectSearchResult(searchResults[0]);
+                  }
+                }}
+                placeholder="Search program, accounts, or wallet addresses"
+                autoComplete="off"
+                className="h-11 w-full rounded-lg border border-white/10 bg-[#242525] pl-10 pr-4 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-[#9945ff]/45 focus-visible:ring-2 focus-visible:ring-[#14f195]/70"
               />
-            ) : activeView === "overview" ? (
-              <ExplorerOverview
-                snapshot={snapshot}
-                txResults={txResults}
-                onOpenAccount={openAccount}
-                onOpenTransaction={openTransaction}
-                onViewChange={setActiveView}
-              />
-            ) : activeView === "accounts" ? (
-              <AccountsTable
-                accounts={snapshot.accounts}
-                onOpenAccount={openAccount}
-              />
-            ) : activeView === "transactions" ? (
-              <TransactionsTable
-                txResults={txResults}
-                onOpenTransaction={openTransaction}
-              />
-            ) : (
-              <ProgramInterface snapshot={snapshot} />
-            )
-          ) : null}
-        </main>
-      </div>
+              {query.trim() ? (
+                <SearchResults
+                  query={query}
+                  results={searchResults}
+                  onSelect={selectSearchResult}
+                />
+              ) : null}
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <span className="hidden items-center gap-1.5 rounded-md border border-[#9945ff]/30 bg-[#9945ff]/12 px-2.5 py-1.5 text-[10px] font-semibold text-[#d7c0ff] lg:inline-flex">
+                <CircleDot className="h-3 w-3" aria-hidden="true" />
+                SolBreach SVM
+              </span>
+              <button
+                type="button"
+                onClick={() => void loadSnapshot()}
+                disabled={loading}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:bg-white/[0.07] hover:text-white focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Refresh explorer data"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-red-400/25 hover:bg-red-500/8 hover:text-red-200 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#191a1a]"
+                aria-label="Close explorer"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="mx-auto flex max-w-7xl flex-col px-4 py-5 lg:flex-row lg:gap-6">
+          <nav
+            className="mb-5 flex gap-1 overflow-x-auto border-b border-white/10 pb-2 lg:mb-0 lg:w-48 lg:shrink-0 lg:flex-col lg:border-b-0 lg:pb-0"
+            aria-label="Explorer sections"
+          >
+            {EXPLORER_VIEWS.map((view) => {
+              const Icon = view.icon;
+              const active = activeView === view.id;
+              return (
+                <button
+                  key={view.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveView(view.id);
+                    setSelectedAccountRef(null);
+                    setSelectedTransactionRef(null);
+                  }}
+                  className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121313] ${
+                    active
+                      ? "bg-[#9945ff]/14 text-[#d7c0ff]"
+                      : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"
+                  }`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  {view.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          <main className="min-w-0 flex-1">
+            {loading && !snapshot ? (
+              <ExplorerLoading />
+            ) : error ? (
+              <ExplorerError message={error} onRetry={loadSnapshot} />
+            ) : snapshot ? (
+              selectedAccount ? (
+                <AccountDetail
+                  account={selectedAccount}
+                  candidateWallet={
+                    snapshot.rewardCandidates.find(
+                      (candidate) =>
+                        candidate.positionAddress === selectedAccount.address
+                    )?.walletAddress ?? null
+                  }
+                  onBack={() => setSelectedAccountRef(null)}
+                />
+              ) : selectedTransaction ? (
+                <TransactionDetail
+                  transaction={selectedTransaction}
+                  onBack={() => setSelectedTransactionRef(null)}
+                />
+              ) : activeView === "overview" ? (
+                <ExplorerOverview
+                  snapshot={snapshot}
+                  txResults={txResults}
+                  onOpenAccount={openAccount}
+                  onOpenTransaction={openTransaction}
+                  onViewChange={setActiveView}
+                />
+              ) : activeView === "accounts" ? (
+                <AccountsTable
+                  accounts={snapshot.accounts}
+                  onOpenAccount={openAccount}
+                />
+              ) : activeView === "transactions" ? (
+                <TransactionsTable
+                  txResults={txResults}
+                  onOpenTransaction={openTransaction}
+                />
+              ) : (
+                <ProgramInterface snapshot={snapshot} />
+              )
+            ) : null}
+          </main>
+        </div>
+      </section>
     </div>
   );
 }
@@ -847,6 +846,18 @@ function TransactionDetail({
             value={formatTimestamp(
               transaction.submittedAt ?? transaction.submitted_at
             )}
+          />
+          <DetailRow
+            label="Submitted instruction"
+            value={
+              transaction.inputs.instructionName ? (
+                <code className="font-mono text-xs text-[#c7a6ff]">
+                  {transaction.inputs.instructionName}
+                </code>
+              ) : (
+                "—"
+              )
+            }
           />
           <DetailRow
             label="Target wallet"
