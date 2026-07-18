@@ -44,6 +44,7 @@ export function ResearchLabWorkspace({
   evidenceAccounts,
   explorerAccessToken,
   explorerSessionId,
+  userWalletAddress,
   executeExploitView,
   impactVerified,
   inspectHintRevealed,
@@ -94,6 +95,7 @@ export function ResearchLabWorkspace({
   evidenceAccounts: SandboxAccountSummary[];
   explorerAccessToken: string | null;
   explorerSessionId: string;
+  userWalletAddress: string;
   executeExploitView: ExecuteExploitView;
   impactVerified: boolean;
   inspectHintRevealed: boolean;
@@ -173,6 +175,7 @@ export function ResearchLabWorkspace({
           evidenceAccounts={evidenceAccounts}
           explorerAccessToken={explorerAccessToken}
           explorerSessionId={explorerSessionId}
+          userWalletAddress={userWalletAddress}
           impactVerified={impactVerified}
           isRunning={isRunning}
           txResults={txResults}

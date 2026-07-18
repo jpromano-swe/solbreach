@@ -39,6 +39,7 @@ export function YieldHijackExecuteTab({
   isRunning,
   explorerAccessToken,
   explorerSessionId,
+  userWalletAddress,
   txResults,
   onChangeView,
   onExecuteTransaction,
@@ -51,6 +52,7 @@ export function YieldHijackExecuteTab({
   isRunning: boolean;
   explorerAccessToken: string | null;
   explorerSessionId: string;
+  userWalletAddress: string;
   txResults: EnrichedTransactionResult[];
   onChangeView: (view: ExecuteExploitView) => void;
   onExecuteTransaction: (payload: LabTransactionPayload) => Promise<void>;
@@ -291,6 +293,7 @@ export function YieldHijackExecuteTab({
           state={state}
           explorerAvailable={Boolean(explorerAccessToken)}
           explorerUrl={explorerUrl}
+          userWalletAddress={userWalletAddress}
         />
       </div>
     </div>
@@ -383,10 +386,12 @@ function YieldHijackProtocolState({
   state,
   explorerAvailable,
   explorerUrl,
+  userWalletAddress,
 }: {
   state: YieldHijackState;
   explorerAvailable: boolean;
   explorerUrl: string;
+  userWalletAddress: string;
 }) {
   const [rewardsVisible, setRewardsVisible] = useState(true);
 
@@ -469,11 +474,8 @@ function YieldHijackProtocolState({
             </div>
             <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(135px,0.8fr)_minmax(150px,0.9fr)_minmax(165px,0.95fr)] items-center gap-4 px-4 py-4">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-zinc-200">
-                  {state.positionOwnerLabel}
-                </p>
-                <p className="mt-1 truncate font-mono text-[11px] text-zinc-600">
-                  {shortAddress(state.positionAddress)}
+                <p className="truncate font-mono text-sm font-medium text-zinc-200">
+                  {shortAddress(userWalletAddress)}
                 </p>
               </div>
               <p className="text-right font-mono text-sm font-semibold text-zinc-300">

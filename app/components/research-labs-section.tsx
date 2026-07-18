@@ -674,6 +674,9 @@ export function ResearchLabsSection({
             evidenceAccounts={evidenceAccounts}
             explorerAccessToken={activeBackendAuth?.accessToken ?? null}
             explorerSessionId={session.sessionId}
+            userWalletAddress={
+              activeBackendAuth?.walletAddress ?? wallet?.account.address ?? ""
+            }
             executeExploitView={executeExploitView}
             onChangeReportFields={setReportFields}
             onChangeAuditReportStage={setAuditReportStage}
