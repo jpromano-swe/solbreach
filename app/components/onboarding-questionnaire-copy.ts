@@ -12,6 +12,7 @@ type OnboardingCopy = {
     title: string;
   };
   steps: readonly string[];
+  mobileSteps: readonly string[];
   progress: {
     of: string;
     step: string;
@@ -66,6 +67,8 @@ type OnboardingCopy = {
     intentLegend: string;
     organizationLabel: string;
     organizationPlaceholder: string;
+    optionalDescription: string;
+    optionalTitle: string;
     title: string;
   };
   options: {
@@ -142,6 +145,18 @@ const english: OnboardingCopy = {
       "Tell us where you are in your Solana security journey. We review each application before opening access.",
   },
   steps: ["Contact", "Profile", "Learning", "Beta fit"],
+  mobileSteps: [
+    "Contact",
+    "Your profile",
+    "Solana experience",
+    "Security experience",
+    "Main goals",
+    "Learning sources",
+    "Guided labs",
+    "Beta timing",
+    "Feedback",
+    "Optional details",
+  ],
   progress: { step: "Step", of: "of" },
   navigation: {
     back: "Back",
@@ -191,6 +206,9 @@ const english: OnboardingCopy = {
     feedbackLegend: "How would you prefer to share feedback?",
     organizationLabel: "Organization or community (optional)",
     organizationPlaceholder: "Organization name",
+    optionalTitle: "Anything else we should know?",
+    optionalDescription:
+      "These details are optional and help us review your application.",
     futureLabsLabel: "Future labs you want (optional)",
     futureLabsPlaceholder: "Signer checks, CPI, token logic...",
     additionalLabel: "Anything else? (optional)",
@@ -291,6 +309,18 @@ const spanish: OnboardingCopy = {
       "Cuéntanos en qué etapa de tu recorrido por la seguridad en Solana estás. Revisamos cada solicitud antes de habilitar el acceso.",
   },
   steps: ["Contacto", "Perfil", "Aprendizaje", "Participación"],
+  mobileSteps: [
+    "Contacto",
+    "Tu perfil",
+    "Experiencia con Solana",
+    "Experiencia en seguridad",
+    "Objetivos principales",
+    "Fuentes de aprendizaje",
+    "Laboratorios guiados",
+    "Disponibilidad",
+    "Feedback",
+    "Datos opcionales",
+  ],
   progress: { step: "Paso", of: "de" },
   navigation: {
     back: "Atrás",
@@ -343,6 +373,9 @@ const spanish: OnboardingCopy = {
     feedbackLegend: "¿Cómo preferirías compartir feedback?",
     organizationLabel: "Organización o comunidad (opcional)",
     organizationPlaceholder: "Nombre de la organización",
+    optionalTitle: "¿Algo más que debamos saber?",
+    optionalDescription:
+      "Estos datos son opcionales y nos ayudan a revisar tu solicitud.",
     futureLabsLabel: "Laboratorios futuros que te interesan (opcional)",
     futureLabsPlaceholder: "Firmantes, CPI, lógica de tokens...",
     additionalLabel: "¿Algo más? (opcional)",

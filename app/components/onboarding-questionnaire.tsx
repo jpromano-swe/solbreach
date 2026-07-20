@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
+import { useMobileLayout } from "../hooks/use-mobile-layout";
 import { submitOnboardingResponse } from "../lib/onboarding";
 import { useOnboardingLanguageTransition } from "./onboarding-language-transition";
 import {
@@ -17,10 +18,12 @@ import {
 } from "./onboarding-questionnaire-fields";
 import {
   buildOnboardingSubmission,
+  DESKTOP_ONBOARDING_PAGES,
   INITIAL_ONBOARDING_FORM,
+  MOBILE_ONBOARDING_PAGES,
   type OnboardingFormErrors,
   type OnboardingFormState,
-  validateOnboardingStep,
+  validateOnboardingQuestions,
 } from "./onboarding-questionnaire-model";
 import { QuestionnaireStep } from "./onboarding-questionnaire-steps";
 
@@ -33,7 +36,12 @@ export function OnboardingQuestionnaire() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const isMobile = useMobileLayout();
   const copy = ONBOARDING_COPY[locale];
+  const pages = isMobile ? MOBILE_ONBOARDING_PAGES : DESKTOP_ONBOARDING_PAGES;
+  const stepLabels = isMobile ? copy.mobileSteps : copy.steps;
+  const activeStep = Math.min(currentStep, pages.length - 1);
+  const activePage = pages[activeStep];
   const languageContentRef = useOnboardingLanguageTransition(locale);
 
   function updateField<K extends keyof OnboardingFormState>(
@@ -45,15 +53,19 @@ export function OnboardingQuestionnaire() {
   }
 
   function validateCurrentStep(step: number) {
-    const nextErrors = validateOnboardingStep(form, step, copy.validation);
+    const nextErrors = validateOnboardingQuestions(
+      form,
+      pages[step].validation,
+      copy.validation
+    );
     setErrors(nextErrors);
     focusFirstError(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
 
   function goToNextStep() {
-    if (!validateCurrentStep(currentStep)) return;
-    setCurrentStep((step) => Math.min(step + 1, copy.steps.length - 1));
+    if (!validateCurrentStep(activeStep)) return;
+    setCurrentStep((step) => Math.min(step + 1, pages.length - 1));
   }
 
   function goToPreviousStep() {
@@ -63,7 +75,11 @@ export function OnboardingQuestionnaire() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validateCurrentStep(copy.steps.length - 1)) return;
+    if (activeStep < pages.length - 1) {
+      goToNextStep();
+      return;
+    }
+    if (!validateCurrentStep(activeStep)) return;
 
     setIsSubmitting(true);
     setErrors({});
@@ -110,13 +126,20 @@ export function OnboardingQuestionnaire() {
             <OnboardingSuccess copy={copy} />
           ) : (
             <form aria-busy={isSubmitting} noValidate onSubmit={handleSubmit}>
-              <QuestionnaireProgress copy={copy} currentStep={currentStep} />
-              <div className="mt-10 min-h-[390px]">
+              <QuestionnaireProgress
+                copy={copy}
+                currentStep={activeStep}
+                steps={stepLabels}
+              />
+              <div
+                key={activePage.id}
+                className="mt-10 min-h-[360px] md:min-h-[390px]"
+              >
                 <QuestionnaireStep
                   copy={copy}
-                  currentStep={currentStep}
                   errors={errors}
                   form={form}
+                  pageId={activePage.id}
                   updateField={updateField}
                 />
               </div>
@@ -124,10 +147,11 @@ export function OnboardingQuestionnaire() {
               <SubmissionError copy={copy} message={errors.submission} />
               <QuestionnaireNavigation
                 copy={copy}
-                currentStep={currentStep}
+                currentStep={activeStep}
                 isSubmitting={isSubmitting}
                 onBack={goToPreviousStep}
                 onContinue={goToNextStep}
+                totalSteps={pages.length}
               />
             </form>
           )}
@@ -238,14 +262,16 @@ function QuestionnaireNavigation({
   isSubmitting,
   onBack,
   onContinue,
+  totalSteps,
 }: {
   copy: OnboardingCopy;
   currentStep: number;
   isSubmitting: boolean;
   onBack: () => void;
   onContinue: () => void;
+  totalSteps: number;
 }) {
-  const isLastStep = currentStep === copy.steps.length - 1;
+  const isLastStep = currentStep === totalSteps - 1;
 
   return (
     <div className="mt-8 flex items-center justify-between gap-4 border-t border-border pt-6">

@@ -6,19 +6,21 @@ import type { OnboardingCopy } from "./onboarding-questionnaire-copy";
 export function QuestionnaireProgress({
   copy,
   currentStep,
+  steps,
 }: {
   copy: OnboardingCopy;
   currentStep: number;
+  steps: readonly string[];
 }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-4 text-sm">
         <p data-language-line className="font-medium text-foreground">
           {copy.progress.step} {currentStep + 1} {copy.progress.of}{" "}
-          {copy.steps.length}
+          {steps.length}
         </p>
         <p data-language-line className="text-muted">
-          {copy.steps[currentStep]}
+          {steps[currentStep]}
         </p>
       </div>
       <div
@@ -28,7 +30,7 @@ export function QuestionnaireProgress({
         <div
           className="h-full rounded-full bg-[#9945ff] transition-[width] duration-200"
           style={{
-            width: `${((currentStep + 1) / copy.steps.length) * 100}%`,
+            width: `${((currentStep + 1) / steps.length) * 100}%`,
           }}
         />
       </div>
@@ -124,6 +126,7 @@ export function Field({
 
 export function OptionGroup({
   error,
+  hideLegend = false,
   id,
   legend,
   onChange,
@@ -131,6 +134,7 @@ export function OptionGroup({
   value,
 }: {
   error?: string;
+  hideLegend?: boolean;
   id: string;
   legend: string;
   onChange: (value: string) => void;
@@ -145,7 +149,9 @@ export function OptionGroup({
     >
       <legend
         data-language-line
-        className="text-sm font-medium text-foreground"
+        className={
+          hideLegend ? "sr-only" : "text-sm font-medium text-foreground"
+        }
       >
         {legend}
       </legend>
@@ -174,6 +180,7 @@ export function OptionGroup({
 
 export function MultiOptionGroup({
   error,
+  hideLegend = false,
   id,
   legend,
   onToggle,
@@ -181,6 +188,7 @@ export function MultiOptionGroup({
   values,
 }: {
   error?: string;
+  hideLegend?: boolean;
   id: string;
   legend: string;
   onToggle: (value: string) => void;
@@ -195,7 +203,9 @@ export function MultiOptionGroup({
     >
       <legend
         data-language-line
-        className="text-sm font-medium text-foreground"
+        className={
+          hideLegend ? "sr-only" : "text-sm font-medium text-foreground"
+        }
       >
         {legend}
       </legend>
@@ -229,11 +239,13 @@ export function MultiOptionGroup({
 export function RatingGroup({
   copy,
   error,
+  hideLegend = false,
   onChange,
   value,
 }: {
   copy: OnboardingCopy;
   error?: string;
+  hideLegend?: boolean;
   onChange: (value: number) => void;
   value: number | null;
 }) {
@@ -246,7 +258,9 @@ export function RatingGroup({
     >
       <legend
         data-language-line
-        className="text-sm font-medium text-foreground"
+        className={
+          hideLegend ? "sr-only" : "text-sm font-medium text-foreground"
+        }
       >
         {copy.learning.ratingLegend}
       </legend>

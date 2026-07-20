@@ -18,6 +18,7 @@ import {
 import {
   type OnboardingFormErrors,
   type OnboardingFormState,
+  type OnboardingPageId,
 } from "./onboarding-questionnaire-model";
 import type { OnboardingCopy } from "./onboarding-questionnaire-copy";
 
@@ -34,13 +35,31 @@ type StepProps = {
 };
 
 export function QuestionnaireStep({
-  currentStep,
+  pageId,
   ...props
-}: StepProps & { currentStep: number }) {
-  if (currentStep === 0) return <ContactStep {...props} />;
-  if (currentStep === 1) return <ProfileStep {...props} />;
-  if (currentStep === 2) return <LearningStep {...props} />;
-  return <BetaFitStep {...props} />;
+}: StepProps & { pageId: OnboardingPageId }) {
+  if (pageId === "contact") return <ContactStep {...props} />;
+  if (pageId === "profileGroup") return <ProfileStep {...props} />;
+  if (pageId === "learningGroup") return <LearningStep {...props} />;
+  if (pageId === "betaGroup") return <BetaFitStep {...props} />;
+  if (
+    pageId === "profile" ||
+    pageId === "solanaLevel" ||
+    pageId === "securityExperience"
+  ) {
+    return <ProfileQuestionStep {...props} question={pageId} />;
+  }
+  if (
+    pageId === "mainGoal" ||
+    pageId === "currentLearningSources" ||
+    pageId === "guidedLabUsefulness"
+  ) {
+    return <LearningQuestionStep {...props} question={pageId} />;
+  }
+  if (pageId === "betaIntent" || pageId === "feedbackWillingness") {
+    return <BetaQuestionStep {...props} question={pageId} />;
+  }
+  return <OptionalStep {...props} />;
 }
 
 function ContactStep({ copy, errors, form, updateField }: StepProps) {
@@ -168,6 +187,86 @@ function ProfileStep({ copy, errors, form, updateField }: StepProps) {
   );
 }
 
+function ProfileQuestionStep({
+  copy,
+  errors,
+  form,
+  question,
+  updateField,
+}: StepProps & {
+  question: "profile" | "securityExperience" | "solanaLevel";
+}) {
+  if (question === "profile") {
+    return (
+      <div>
+        <StepHeading
+          title={copy.profile.profileLegend}
+          description={copy.profile.description}
+        />
+        <div className="mt-8">
+          <OptionGroup
+            hideLegend
+            id="profile"
+            legend={copy.profile.profileLegend}
+            error={errors.profile}
+            options={copy.options.profiles}
+            value={form.profile}
+            onChange={(value) =>
+              updateField("profile", value as OnboardingProfile)
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (question === "solanaLevel") {
+    return (
+      <div>
+        <StepHeading
+          title={copy.profile.solanaLegend}
+          description={copy.profile.description}
+        />
+        <div className="mt-8">
+          <OptionGroup
+            hideLegend
+            id="solanaLevel"
+            legend={copy.profile.solanaLegend}
+            error={errors.solanaLevel}
+            options={copy.options.solanaLevels}
+            value={form.solanaLevel}
+            onChange={(value) =>
+              updateField("solanaLevel", value as SolanaLevel)
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <StepHeading
+        title={copy.profile.securityLegend}
+        description={copy.profile.description}
+      />
+      <div className="mt-8">
+        <OptionGroup
+          hideLegend
+          id="securityExperience"
+          legend={copy.profile.securityLegend}
+          error={errors.securityExperience}
+          options={copy.options.security}
+          value={form.securityExperience}
+          onChange={(value) =>
+            updateField("securityExperience", value as SecurityExperience)
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 function LearningStep({ copy, errors, form, updateField }: StepProps) {
   return (
     <div>
@@ -221,6 +320,81 @@ function LearningStep({ copy, errors, form, updateField }: StepProps) {
   );
 }
 
+function LearningQuestionStep({
+  copy,
+  errors,
+  form,
+  question,
+  updateField,
+}: StepProps & {
+  question: "currentLearningSources" | "guidedLabUsefulness" | "mainGoal";
+}) {
+  if (question === "mainGoal") {
+    return (
+      <div>
+        <StepHeading
+          title={copy.learning.goalsLegend}
+          description={copy.learning.description}
+        />
+        <div className="mt-8">
+          <MultiOptionGroup
+            hideLegend
+            id="mainGoal"
+            legend={copy.learning.goalsLegend}
+            error={errors.mainGoal}
+            options={copy.options.goals}
+            values={form.mainGoal}
+            onToggle={(value) =>
+              updateField(
+                "mainGoal",
+                toggleArrayValue(form.mainGoal, value as MainGoal)
+              )
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (question === "currentLearningSources") {
+    return (
+      <div>
+        <StepHeading
+          title={copy.learning.sourcesLegend}
+          description={copy.learning.description}
+        />
+        <div className="mt-8">
+          <LearningSourcesGroup
+            copy={copy}
+            errors={errors}
+            form={form}
+            hideLegend
+            updateField={updateField}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <StepHeading
+        title={copy.learning.ratingLegend}
+        description={copy.learning.description}
+      />
+      <div className="mt-8">
+        <RatingGroup
+          copy={copy}
+          error={errors.guidedLabUsefulness}
+          hideLegend
+          value={form.guidedLabUsefulness}
+          onChange={(value) => updateField("guidedLabUsefulness", value)}
+        />
+      </div>
+    </div>
+  );
+}
+
 function BetaFitStep({ copy, errors, form, updateField }: StepProps) {
   return (
     <div>
@@ -258,6 +432,89 @@ function BetaFitStep({ copy, errors, form, updateField }: StepProps) {
         <OptionalFields copy={copy} form={form} updateField={updateField} />
       </div>
     </div>
+  );
+}
+
+function BetaQuestionStep({
+  copy,
+  errors,
+  form,
+  question,
+  updateField,
+}: StepProps & {
+  question: "betaIntent" | "feedbackWillingness";
+}) {
+  const isIntent = question === "betaIntent";
+  const title = isIntent ? copy.beta.intentLegend : copy.beta.feedbackLegend;
+
+  return (
+    <div>
+      <StepHeading title={title} description={copy.beta.description} />
+      <div className="mt-8">
+        <OptionGroup
+          hideLegend
+          id={question}
+          legend={title}
+          error={isIntent ? errors.betaIntent : errors.feedbackWillingness}
+          options={isIntent ? copy.options.betaIntent : copy.options.feedback}
+          value={isIntent ? form.betaIntent : form.feedbackWillingness}
+          onChange={(value) =>
+            updateField(question, value as OnboardingFormState[typeof question])
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function OptionalStep({
+  copy,
+  form,
+  updateField,
+}: Pick<StepProps, "copy" | "form" | "updateField">) {
+  return (
+    <div>
+      <StepHeading
+        title={copy.beta.optionalTitle}
+        description={copy.beta.optionalDescription}
+      />
+      <div className="mt-8">
+        <OptionalFields copy={copy} form={form} updateField={updateField} />
+      </div>
+    </div>
+  );
+}
+
+function LearningSourcesGroup({
+  copy,
+  errors,
+  form,
+  hideLegend = false,
+  updateField,
+}: StepProps & { hideLegend?: boolean }) {
+  return (
+    <MultiOptionGroup
+      hideLegend={hideLegend}
+      id="currentLearningSources"
+      legend={copy.learning.sourcesLegend}
+      error={errors.currentLearningSources}
+      options={copy.options.learningSources}
+      values={form.currentLearningSources}
+      onToggle={(value) => {
+        const source = value as LearningSource;
+        const current = form.currentLearningSources;
+        const next =
+          source === "no_clear_path"
+            ? current.includes(source)
+              ? []
+              : [source]
+            : toggleArrayValue(
+                current.filter((item) => item !== "no_clear_path"),
+                source
+              );
+        updateField("currentLearningSources", next);
+      }}
+    />
   );
 }
 

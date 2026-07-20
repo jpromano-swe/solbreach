@@ -49,6 +49,67 @@ export type OnboardingValidationMessages = {
   solanaLevel: string;
 };
 
+export type OnboardingQuestionId =
+  | "contact"
+  | "profile"
+  | "solanaLevel"
+  | "securityExperience"
+  | "mainGoal"
+  | "currentLearningSources"
+  | "guidedLabUsefulness"
+  | "betaIntent"
+  | "feedbackWillingness"
+  | "optional";
+
+export type OnboardingPageId =
+  | OnboardingQuestionId
+  | "profileGroup"
+  | "learningGroup"
+  | "betaGroup";
+
+export type OnboardingPage = {
+  id: OnboardingPageId;
+  validation: readonly OnboardingQuestionId[];
+};
+
+export const DESKTOP_ONBOARDING_PAGES: readonly OnboardingPage[] = [
+  { id: "contact", validation: ["contact"] },
+  {
+    id: "profileGroup",
+    validation: ["profile", "solanaLevel", "securityExperience"],
+  },
+  {
+    id: "learningGroup",
+    validation: ["mainGoal", "currentLearningSources", "guidedLabUsefulness"],
+  },
+  {
+    id: "betaGroup",
+    validation: ["betaIntent", "feedbackWillingness"],
+  },
+];
+
+export const MOBILE_ONBOARDING_PAGES: readonly OnboardingPage[] = [
+  { id: "contact", validation: ["contact"] },
+  { id: "profile", validation: ["profile"] },
+  { id: "solanaLevel", validation: ["solanaLevel"] },
+  { id: "securityExperience", validation: ["securityExperience"] },
+  { id: "mainGoal", validation: ["mainGoal"] },
+  {
+    id: "currentLearningSources",
+    validation: ["currentLearningSources"],
+  },
+  {
+    id: "guidedLabUsefulness",
+    validation: ["guidedLabUsefulness"],
+  },
+  { id: "betaIntent", validation: ["betaIntent"] },
+  {
+    id: "feedbackWillingness",
+    validation: ["feedbackWillingness"],
+  },
+  { id: "optional", validation: [] },
+];
+
 export const INITIAL_ONBOARDING_FORM: OnboardingFormState = {
   additionalNotes: "",
   betaIntent: "",
@@ -66,14 +127,16 @@ export const INITIAL_ONBOARDING_FORM: OnboardingFormState = {
   solanaLevel: "",
 };
 
-export function validateOnboardingStep(
+export function validateOnboardingQuestions(
   form: OnboardingFormState,
-  step: number,
+  questions: readonly OnboardingQuestionId[],
   messages: OnboardingValidationMessages
 ) {
   const errors: OnboardingFormErrors = {};
+  const includes = (question: OnboardingQuestionId) =>
+    questions.includes(question);
 
-  if (step === 0) {
+  if (includes("contact")) {
     if (form.name.trim().length < 2) {
       errors.name = messages.name;
     }
@@ -82,32 +145,47 @@ export function validateOnboardingStep(
     }
   }
 
-  if (step === 1) {
+  if (includes("profile")) {
     if (!form.profile) errors.profile = messages.profile;
+  }
+
+  if (includes("solanaLevel")) {
     if (!form.solanaLevel) {
       errors.solanaLevel = messages.solanaLevel;
     }
+  }
+
+  if (includes("securityExperience")) {
     if (!form.securityExperience) {
       errors.securityExperience = messages.securityExperience;
     }
   }
 
-  if (step === 2) {
+  if (includes("mainGoal")) {
     if (form.mainGoal.length === 0) {
       errors.mainGoal = messages.mainGoal;
     }
+  }
+
+  if (includes("currentLearningSources")) {
     if (form.currentLearningSources.length === 0) {
       errors.currentLearningSources = messages.currentLearningSources;
     }
+  }
+
+  if (includes("guidedLabUsefulness")) {
     if (form.guidedLabUsefulness === null) {
       errors.guidedLabUsefulness = messages.guidedLabUsefulness;
     }
   }
 
-  if (step === 3) {
+  if (includes("betaIntent")) {
     if (!form.betaIntent) {
       errors.betaIntent = messages.betaIntent;
     }
+  }
+
+  if (includes("feedbackWillingness")) {
     if (!form.feedbackWillingness) {
       errors.feedbackWillingness = messages.feedbackWillingness;
     }
