@@ -11,6 +11,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { OnboardingQuestionnaire } from "./onboarding-questionnaire";
 
 const LANDING_RUST_CODE_KEYWORDS = new Set([
   "Account",
@@ -50,6 +51,17 @@ export function LandingPageSection({
   documentationUrl: string;
 }) {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+  const handleRequestBetaAccess = () => {
+    if (enableAppEntry) {
+      onPlayNow();
+      return;
+    }
+
+    window.history.replaceState(null, "", "#onboarding");
+    document
+      .getElementById("onboarding")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const heroSlides = [
     {
       code: `#[derive(Accounts)]
@@ -127,28 +139,17 @@ Bind collateral mint and vault accounts to protocol config.`,
           </span>
         </p>
 
-        {enableAppEntry ? (
-          <button
-            type="button"
-            onClick={onPlayNow}
-            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Request Beta Access
-            <ArrowRight
-              className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
-              aria-hidden="true"
-            />
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 shadow-none opacity-90"
-          >
-            Beta Test Closed
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleRequestBetaAccess}
+          className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          Request Beta Access
+          <ArrowRight
+            className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+            aria-hidden="true"
+          />
+        </button>
       </div>
 
       <HeroProductCarousel
@@ -171,9 +172,9 @@ Bind collateral mint and vault accounts to protocol config.`,
       </div>
 
       <FeatureShowcaseSection />
+      {!enableAppEntry ? <OnboardingQuestionnaire /> : null}
       <LandingCtaSection
-        enableAppEntry={enableAppEntry}
-        onGetStarted={onPlayNow}
+        onGetStarted={handleRequestBetaAccess}
         documentationUrl={documentationUrl}
       />
     </section>
@@ -181,11 +182,9 @@ Bind collateral mint and vault accounts to protocol config.`,
 }
 
 function LandingCtaSection({
-  enableAppEntry,
   onGetStarted,
   documentationUrl,
 }: {
-  enableAppEntry: boolean;
   onGetStarted: () => void;
   documentationUrl: string;
 }) {
@@ -213,28 +212,17 @@ function LandingCtaSection({
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          {enableAppEntry ? (
-            <button
-              type="button"
-              onClick={onGetStarted}
-              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Request Beta Access
-              <ArrowRight
-                className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
-                aria-hidden="true"
-              />
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 opacity-90"
-            >
-              Beta Test Closed
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onGetStarted}
+            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Request Beta Access
+            <ArrowRight
+              className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+              aria-hidden="true"
+            />
+          </button>
           <a
             href={documentationUrl}
             target="_blank"
@@ -515,9 +503,7 @@ function HeroCodeWindow({
                 <span className="select-none text-right text-[11px] text-muted/55">
                   {lineNumber}
                 </span>
-                <span className="whitespace-pre">
-                  {renderRustLine(line)}
-                </span>
+                <span className="whitespace-pre">{renderRustLine(line)}</span>
               </span>
             );
           })}
