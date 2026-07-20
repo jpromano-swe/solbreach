@@ -1,22 +1,23 @@
 import { ArrowRight, Check, CheckCircle2 } from "lucide-react";
 
-import {
-  ONBOARDING_STEPS,
-  type QuestionnaireOption,
-} from "./onboarding-questionnaire-model";
+import { type QuestionnaireOption } from "./onboarding-questionnaire-model";
+import type { OnboardingCopy } from "./onboarding-questionnaire-copy";
 
 export function QuestionnaireProgress({
+  copy,
   currentStep,
 }: {
+  copy: OnboardingCopy;
   currentStep: number;
 }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-4 text-sm">
         <p className="font-medium text-foreground">
-          Step {currentStep + 1} of {ONBOARDING_STEPS.length}
+          {copy.progress.step} {currentStep + 1} {copy.progress.of}{" "}
+          {copy.steps.length}
         </p>
-        <p className="text-muted">{ONBOARDING_STEPS[currentStep]}</p>
+        <p className="text-muted">{copy.steps[currentStep]}</p>
       </div>
       <div
         className="mt-3 h-1 overflow-hidden rounded-full bg-accent"
@@ -25,7 +26,7 @@ export function QuestionnaireProgress({
         <div
           className="h-full rounded-full bg-[#9945ff] transition-[width] duration-200"
           style={{
-            width: `${((currentStep + 1) / ONBOARDING_STEPS.length) * 100}%`,
+            width: `${((currentStep + 1) / copy.steps.length) * 100}%`,
           }}
         />
       </div>
@@ -33,21 +34,20 @@ export function QuestionnaireProgress({
   );
 }
 
-export function OnboardingSuccess() {
+export function OnboardingSuccess({ copy }: { copy: OnboardingCopy }) {
   return (
     <div className="flex min-h-[520px] max-w-xl flex-col justify-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#14f195]/30 bg-[#14f195]/10 text-[#14f195]">
         <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
       </div>
       <p className="mt-8 text-xs font-semibold uppercase tracking-[0.28em] text-[#14f195]">
-        Application received
+        {copy.success.eyebrow}
       </p>
       <h3 className="mt-4 text-4xl font-semibold tracking-[-0.05em]">
-        Thanks for helping shape the beta.
+        {copy.success.title}
       </h3>
       <p className="mt-5 text-base leading-7 text-muted">
-        We will review your answers and use your preferred contact channel if a
-        beta group matches your profile.
+        {copy.success.description}
       </p>
       <a
         href="https://solbreach.gitbook.io/documentation"
@@ -55,7 +55,7 @@ export function OnboardingSuccess() {
         rel="noopener noreferrer"
         className="mt-8 inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-full border border-border bg-accent/70 px-5 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
       >
-        Explore the documentation
+        {copy.success.documentation}
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </a>
     </div>
@@ -118,7 +118,7 @@ export function OptionGroup({
   id: string;
   legend: string;
   onChange: (value: string) => void;
-  options: QuestionnaireOption[];
+  options: readonly QuestionnaireOption[];
   value: string;
 }) {
   return (
@@ -163,7 +163,7 @@ export function MultiOptionGroup({
   id: string;
   legend: string;
   onToggle: (value: string) => void;
-  options: QuestionnaireOption[];
+  options: readonly QuestionnaireOption[];
   values: string[];
 }) {
   return (
@@ -201,10 +201,12 @@ export function MultiOptionGroup({
 }
 
 export function RatingGroup({
+  copy,
   error,
   onChange,
   value,
 }: {
+  copy: OnboardingCopy;
   error?: string;
   onChange: (value: number) => void;
   value: number | null;
@@ -217,7 +219,7 @@ export function RatingGroup({
       tabIndex={-1}
     >
       <legend className="text-sm font-medium text-foreground">
-        How useful would guided, hands-on security labs be for you?
+        {copy.learning.ratingLegend}
       </legend>
       <div className="mt-3 grid grid-cols-5 gap-2">
         {[1, 2, 3, 4, 5].map((score) => (
@@ -237,8 +239,8 @@ export function RatingGroup({
         ))}
       </div>
       <div className="mt-2 flex justify-between text-xs text-muted">
-        <span>Not useful</span>
-        <span>Very useful</span>
+        <span>{copy.learning.ratingMin}</span>
+        <span>{copy.learning.ratingMax}</span>
       </div>
       <ErrorMessage id={id} error={error} />
     </fieldset>

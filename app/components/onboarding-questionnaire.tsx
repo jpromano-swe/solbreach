@@ -1,9 +1,15 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 import { submitOnboardingResponse } from "../lib/onboarding";
+import {
+  ONBOARDING_COPY,
+  type OnboardingCopy,
+  type OnboardingLocale,
+} from "./onboarding-questionnaire-copy";
 import {
   OnboardingSuccess,
   QuestionnaireProgress,
@@ -11,7 +17,6 @@ import {
 import {
   buildOnboardingSubmission,
   INITIAL_ONBOARDING_FORM,
-  ONBOARDING_STEPS,
   type OnboardingFormErrors,
   type OnboardingFormState,
   validateOnboardingStep,
@@ -19,6 +24,7 @@ import {
 import { QuestionnaireStep } from "./onboarding-questionnaire-steps";
 
 export function OnboardingQuestionnaire() {
+  const [locale, setLocale] = useState<OnboardingLocale>("es");
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<OnboardingFormErrors>({});
   const [form, setForm] = useState<OnboardingFormState>(
@@ -26,6 +32,7 @@ export function OnboardingQuestionnaire() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const copy = ONBOARDING_COPY[locale];
 
   function updateField<K extends keyof OnboardingFormState>(
     field: K,
@@ -36,7 +43,7 @@ export function OnboardingQuestionnaire() {
   }
 
   function validateCurrentStep(step: number) {
-    const nextErrors = validateOnboardingStep(form, step);
+    const nextErrors = validateOnboardingStep(form, step, copy.validation);
     setErrors(nextErrors);
     focusFirstError(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -44,7 +51,7 @@ export function OnboardingQuestionnaire() {
 
   function goToNextStep() {
     if (!validateCurrentStep(currentStep)) return;
-    setCurrentStep((step) => Math.min(step + 1, ONBOARDING_STEPS.length - 1));
+    setCurrentStep((step) => Math.min(step + 1, copy.steps.length - 1));
   }
 
   function goToPreviousStep() {
@@ -54,7 +61,7 @@ export function OnboardingQuestionnaire() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validateCurrentStep(ONBOARDING_STEPS.length - 1)) return;
+    if (!validateCurrentStep(copy.steps.length - 1)) return;
 
     setIsSubmitting(true);
     setErrors({});
@@ -68,7 +75,7 @@ export function OnboardingQuestionnaire() {
         submission:
           error instanceof Error
             ? error.message
-            : "We could not submit your application. Try again.",
+            : copy.submissionError.fallback,
       });
     } finally {
       setIsSubmitting(false);
@@ -78,20 +85,30 @@ export function OnboardingQuestionnaire() {
   return (
     <section
       id="onboarding"
+      lang={locale}
       aria-labelledby="onboarding-title"
       className="scroll-mt-24 border-y border-border bg-card/40"
     >
+      <LanguageSelector
+        copy={copy}
+        locale={locale}
+        onChange={(nextLocale) => {
+          setLocale(nextLocale);
+          setErrors({});
+        }}
+      />
       <div className="grid min-h-[620px] lg:grid-cols-[0.72fr_1.28fr]">
-        <OnboardingBriefing />
+        <OnboardingBriefing copy={copy} />
 
         <div className="px-6 py-8 sm:px-10 lg:px-12 lg:py-12">
           {isSubmitted ? (
-            <OnboardingSuccess />
+            <OnboardingSuccess copy={copy} />
           ) : (
             <form aria-busy={isSubmitting} noValidate onSubmit={handleSubmit}>
-              <QuestionnaireProgress currentStep={currentStep} />
+              <QuestionnaireProgress copy={copy} currentStep={currentStep} />
               <div className="mt-10 min-h-[390px]">
                 <QuestionnaireStep
+                  copy={copy}
                   currentStep={currentStep}
                   errors={errors}
                   form={form}
@@ -99,8 +116,9 @@ export function OnboardingQuestionnaire() {
                 />
               </div>
 
-              <SubmissionError message={errors.submission} />
+              <SubmissionError copy={copy} message={errors.submission} />
               <QuestionnaireNavigation
+                copy={copy}
                 currentStep={currentStep}
                 isSubmitting={isSubmitting}
                 onBack={goToPreviousStep}
@@ -114,40 +132,79 @@ export function OnboardingQuestionnaire() {
   );
 }
 
-function OnboardingBriefing() {
+function LanguageSelector({
+  copy,
+  locale,
+  onChange,
+}: {
+  copy: OnboardingCopy;
+  locale: OnboardingLocale;
+  onChange: (locale: OnboardingLocale) => void;
+}) {
   return (
-    <div className="border-b border-border px-6 py-10 sm:px-10 lg:border-b-0 lg:border-r lg:py-12">
-      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#14f195]">
-        Private beta
-      </p>
-      <h2
-        id="onboarding-title"
-        className="mt-5 max-w-md text-4xl font-semibold tracking-[-0.055em] sm:text-5xl"
+    <div className="flex justify-end px-6 pb-1 pt-5 sm:px-10 lg:px-12">
+      <div
+        role="group"
+        aria-label={copy.languageLabel}
+        className="flex items-center gap-2 text-xs font-semibold tracking-[0.12em]"
       >
-        Help us place you in the right beta group.
-      </h2>
-      <p className="mt-5 max-w-md text-base leading-7 text-muted">
-        Tell us where you are in your Solana security journey. We review each
-        application before opening access.
-      </p>
-
-      <div className="mt-10 space-y-4 border-t border-border pt-6 text-sm text-muted">
-        {[
-          "Four short steps",
-          "No wallet required",
-          "Applications are reviewed manually",
-        ].map((detail) => (
-          <p key={detail} className="flex items-start gap-3">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#14f195]" />
-            {detail}
-          </p>
+        {(["es", "en"] as const).map((option, index) => (
+          <span key={option} className="flex items-center gap-2">
+            {index > 0 ? (
+              <span className="text-border" aria-hidden="true">
+                /
+              </span>
+            ) : null}
+            <button
+              type="button"
+              aria-pressed={locale === option}
+              onClick={() => onChange(option)}
+              className={`rounded-sm px-1 py-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] ${
+                locale === option
+                  ? "text-[#14f195]"
+                  : "text-muted hover:text-foreground"
+              }`}
+            >
+              {option.toUpperCase()}
+            </button>
+          </span>
         ))}
       </div>
     </div>
   );
 }
 
-function SubmissionError({ message }: { message?: string }) {
+function OnboardingBriefing({ copy }: { copy: OnboardingCopy }) {
+  return (
+    <div className="border-b border-border px-6 py-10 sm:px-10 lg:border-b-0 lg:border-r lg:py-12">
+      <Image
+        src="/logo_crop.png"
+        alt="SolBreach"
+        width={1480}
+        height={304}
+        priority
+        className="h-11 w-auto"
+      />
+      <h2
+        id="onboarding-title"
+        className="mt-5 max-w-md text-4xl font-semibold tracking-[-0.055em] sm:text-5xl"
+      >
+        {copy.briefing.title}
+      </h2>
+      <p className="mt-5 max-w-md text-base leading-7 text-muted">
+        {copy.briefing.description}
+      </p>
+    </div>
+  );
+}
+
+function SubmissionError({
+  copy,
+  message,
+}: {
+  copy: OnboardingCopy;
+  message?: string;
+}) {
   return message ? (
     <div
       role="alert"
@@ -155,7 +212,7 @@ function SubmissionError({ message }: { message?: string }) {
     >
       <AlertCircle className="mt-1 h-4 w-4 shrink-0" aria-hidden="true" />
       <div>
-        <p className="font-medium">Application not submitted</p>
+        <p className="font-medium">{copy.submissionError.title}</p>
         <p className="text-red-200/75">{message}</p>
       </div>
     </div>
@@ -163,17 +220,19 @@ function SubmissionError({ message }: { message?: string }) {
 }
 
 function QuestionnaireNavigation({
+  copy,
   currentStep,
   isSubmitting,
   onBack,
   onContinue,
 }: {
+  copy: OnboardingCopy;
   currentStep: number;
   isSubmitting: boolean;
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
+  const isLastStep = currentStep === copy.steps.length - 1;
 
   return (
     <div className="mt-8 flex items-center justify-between gap-4 border-t border-border pt-6">
@@ -184,7 +243,7 @@ function QuestionnaireNavigation({
         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium text-muted transition enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back
+        {copy.navigation.back}
       </button>
 
       <button
@@ -194,10 +253,10 @@ function QuestionnaireNavigation({
         className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-semibold text-white transition hover:bg-[#8b35f6] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
         {isSubmitting
-          ? "Submitting..."
+          ? copy.navigation.submitting
           : isLastStep
-            ? "Request Beta Access"
-            : "Continue"}
+            ? copy.navigation.submit
+            : copy.navigation.continue}
         {!isSubmitting ? (
           <ArrowRight
             className="h-4 w-4 transition-transform group-hover:translate-x-1"

@@ -16,16 +16,10 @@ import {
   StepHeading,
 } from "./onboarding-questionnaire-fields";
 import {
-  BETA_INTENT_OPTIONS,
-  FEEDBACK_OPTIONS,
-  GOAL_OPTIONS,
-  LEARNING_SOURCE_OPTIONS,
-  PROFILE_OPTIONS,
-  SECURITY_OPTIONS,
-  SOLANA_LEVEL_OPTIONS,
   type OnboardingFormErrors,
   type OnboardingFormState,
 } from "./onboarding-questionnaire-model";
+import type { OnboardingCopy } from "./onboarding-questionnaire-copy";
 
 export type UpdateOnboardingField = <K extends keyof OnboardingFormState>(
   field: K,
@@ -33,6 +27,7 @@ export type UpdateOnboardingField = <K extends keyof OnboardingFormState>(
 ) => void;
 
 type StepProps = {
+  copy: OnboardingCopy;
   errors: OnboardingFormErrors;
   form: OnboardingFormState;
   updateField: UpdateOnboardingField;
@@ -48,7 +43,7 @@ export function QuestionnaireStep({
   return <BetaFitStep {...props} />;
 }
 
-function ContactStep({ errors, form, updateField }: StepProps) {
+function ContactStep({ copy, errors, form, updateField }: StepProps) {
   const contactPlaceholder =
     form.preferredContactChannel === "email"
       ? "you@example.com"
@@ -59,25 +54,32 @@ function ContactStep({ errors, form, updateField }: StepProps) {
   return (
     <div>
       <StepHeading
-        title="How should we identify and contact you?"
-        description="Use the contact channel you check most often."
+        title={copy.contact.title}
+        description={copy.contact.description}
       />
       <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        <Field label="Name or handle" error={errors.name} fieldId="name">
+        <Field
+          label={copy.contact.nameLabel}
+          error={errors.name}
+          fieldId="name"
+        >
           <input
             id="onboarding-name"
             autoComplete="name"
             aria-invalid={errors.name ? "true" : undefined}
             aria-describedby={errorDescription("name", errors.name)}
             onChange={(event) => updateField("name", event.target.value)}
-            placeholder="Your name"
+            placeholder={copy.contact.namePlaceholder}
             spellCheck={false}
             value={form.name}
             className={inputClass(errors.name)}
           />
         </Field>
 
-        <Field label="Preferred contact" fieldId="preferredContactChannel">
+        <Field
+          label={copy.contact.preferredLabel}
+          fieldId="preferredContactChannel"
+        >
           <select
             id="onboarding-preferredContactChannel"
             value={form.preferredContactChannel}
@@ -96,7 +98,11 @@ function ContactStep({ errors, form, updateField }: StepProps) {
         </Field>
 
         <div className="sm:col-span-2">
-          <Field label="Contact" error={errors.contact} fieldId="contact">
+          <Field
+            label={copy.contact.contactLabel}
+            error={errors.contact}
+            fieldId="contact"
+          >
             <input
               id="onboarding-contact"
               autoComplete={
@@ -121,19 +127,19 @@ function ContactStep({ errors, form, updateField }: StepProps) {
   );
 }
 
-function ProfileStep({ errors, form, updateField }: StepProps) {
+function ProfileStep({ copy, errors, form, updateField }: StepProps) {
   return (
     <div>
       <StepHeading
-        title="Where are you in the Solana ecosystem?"
-        description="Choose the options that best describe your current work."
+        title={copy.profile.title}
+        description={copy.profile.description}
       />
       <div className="mt-8 space-y-8">
         <OptionGroup
           id="profile"
-          legend="Your profile"
+          legend={copy.profile.profileLegend}
           error={errors.profile}
-          options={PROFILE_OPTIONS}
+          options={copy.options.profiles}
           value={form.profile}
           onChange={(value) =>
             updateField("profile", value as OnboardingProfile)
@@ -141,17 +147,17 @@ function ProfileStep({ errors, form, updateField }: StepProps) {
         />
         <OptionGroup
           id="solanaLevel"
-          legend="Solana experience"
+          legend={copy.profile.solanaLegend}
           error={errors.solanaLevel}
-          options={SOLANA_LEVEL_OPTIONS}
+          options={copy.options.solanaLevels}
           value={form.solanaLevel}
           onChange={(value) => updateField("solanaLevel", value as SolanaLevel)}
         />
         <OptionGroup
           id="securityExperience"
-          legend="Security experience"
+          legend={copy.profile.securityLegend}
           error={errors.securityExperience}
-          options={SECURITY_OPTIONS}
+          options={copy.options.security}
           value={form.securityExperience}
           onChange={(value) =>
             updateField("securityExperience", value as SecurityExperience)
@@ -162,19 +168,19 @@ function ProfileStep({ errors, form, updateField }: StepProps) {
   );
 }
 
-function LearningStep({ errors, form, updateField }: StepProps) {
+function LearningStep({ copy, errors, form, updateField }: StepProps) {
   return (
     <div>
       <StepHeading
-        title="What do you want to improve?"
-        description="Select every answer that applies."
+        title={copy.learning.title}
+        description={copy.learning.description}
       />
       <div className="mt-8 space-y-8">
         <MultiOptionGroup
           id="mainGoal"
-          legend="Main goals"
+          legend={copy.learning.goalsLegend}
           error={errors.mainGoal}
-          options={GOAL_OPTIONS}
+          options={copy.options.goals}
           values={form.mainGoal}
           onToggle={(value) =>
             updateField(
@@ -185,9 +191,9 @@ function LearningStep({ errors, form, updateField }: StepProps) {
         />
         <MultiOptionGroup
           id="currentLearningSources"
-          legend="Where do you learn security today?"
+          legend={copy.learning.sourcesLegend}
           error={errors.currentLearningSources}
-          options={LEARNING_SOURCE_OPTIONS}
+          options={copy.options.learningSources}
           values={form.currentLearningSources}
           onToggle={(value) => {
             const source = value as LearningSource;
@@ -205,6 +211,7 @@ function LearningStep({ errors, form, updateField }: StepProps) {
           }}
         />
         <RatingGroup
+          copy={copy}
           error={errors.guidedLabUsefulness}
           value={form.guidedLabUsefulness}
           onChange={(value) => updateField("guidedLabUsefulness", value)}
@@ -214,19 +221,19 @@ function LearningStep({ errors, form, updateField }: StepProps) {
   );
 }
 
-function BetaFitStep({ errors, form, updateField }: StepProps) {
+function BetaFitStep({ copy, errors, form, updateField }: StepProps) {
   return (
     <div>
       <StepHeading
-        title="How would you participate in the beta?"
-        description="This helps us plan access groups and feedback sessions."
+        title={copy.beta.title}
+        description={copy.beta.description}
       />
       <div className="mt-8 space-y-8">
         <OptionGroup
           id="betaIntent"
-          legend="When could you try SolBreach?"
+          legend={copy.beta.intentLegend}
           error={errors.betaIntent}
-          options={BETA_INTENT_OPTIONS}
+          options={copy.options.betaIntent}
           value={form.betaIntent}
           onChange={(value) =>
             updateField(
@@ -237,9 +244,9 @@ function BetaFitStep({ errors, form, updateField }: StepProps) {
         />
         <OptionGroup
           id="feedbackWillingness"
-          legend="How would you prefer to share feedback?"
+          legend={copy.beta.feedbackLegend}
           error={errors.feedbackWillingness}
-          options={FEEDBACK_OPTIONS}
+          options={copy.options.feedback}
           value={form.feedbackWillingness}
           onChange={(value) =>
             updateField(
@@ -248,22 +255,20 @@ function BetaFitStep({ errors, form, updateField }: StepProps) {
             )
           }
         />
-        <OptionalFields form={form} updateField={updateField} />
+        <OptionalFields copy={copy} form={form} updateField={updateField} />
       </div>
     </div>
   );
 }
 
 function OptionalFields({
+  copy,
   form,
   updateField,
-}: Pick<StepProps, "form" | "updateField">) {
+}: Pick<StepProps, "copy" | "form" | "updateField">) {
   return (
     <div className="grid gap-5 sm:grid-cols-2">
-      <Field
-        label="Organization or community (optional)"
-        fieldId="organizationName"
-      >
+      <Field label={copy.beta.organizationLabel} fieldId="organizationName">
         <input
           id="onboarding-organizationName"
           autoComplete="organization"
@@ -271,35 +276,32 @@ function OptionalFields({
           onChange={(event) =>
             updateField("organizationName", event.target.value)
           }
-          placeholder="Organization name"
+          placeholder={copy.beta.organizationPlaceholder}
           value={form.organizationName}
           className={inputClass()}
         />
       </Field>
-      <Field
-        label="Future labs you want (optional)"
-        fieldId="futureLabsInterest"
-      >
+      <Field label={copy.beta.futureLabsLabel} fieldId="futureLabsInterest">
         <input
           id="onboarding-futureLabsInterest"
           maxLength={1000}
           onChange={(event) =>
             updateField("futureLabsInterest", event.target.value)
           }
-          placeholder="Signer checks, CPI, token logic..."
+          placeholder={copy.beta.futureLabsPlaceholder}
           value={form.futureLabsInterest}
           className={inputClass()}
         />
       </Field>
       <div className="sm:col-span-2">
-        <Field label="Anything else? (optional)" fieldId="additionalNotes">
+        <Field label={copy.beta.additionalLabel} fieldId="additionalNotes">
           <textarea
             id="onboarding-additionalNotes"
             maxLength={1000}
             onChange={(event) =>
               updateField("additionalNotes", event.target.value)
             }
-            placeholder="Add context that would help us review your application."
+            placeholder={copy.beta.additionalPlaceholder}
             rows={3}
             value={form.additionalNotes}
             className={`${inputClass()} min-h-24 resize-y py-3`}
