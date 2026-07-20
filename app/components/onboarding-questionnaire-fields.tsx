@@ -13,11 +13,13 @@ export function QuestionnaireProgress({
   return (
     <div>
       <div className="flex items-center justify-between gap-4 text-sm">
-        <p className="font-medium text-foreground">
+        <p data-language-line className="font-medium text-foreground">
           {copy.progress.step} {currentStep + 1} {copy.progress.of}{" "}
           {copy.steps.length}
         </p>
-        <p className="text-muted">{copy.steps[currentStep]}</p>
+        <p data-language-line className="text-muted">
+          {copy.steps[currentStep]}
+        </p>
       </div>
       <div
         className="mt-3 h-1 overflow-hidden rounded-full bg-accent"
@@ -40,13 +42,19 @@ export function OnboardingSuccess({ copy }: { copy: OnboardingCopy }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#14f195]/30 bg-[#14f195]/10 text-[#14f195]">
         <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
       </div>
-      <p className="mt-8 text-xs font-semibold uppercase tracking-[0.28em] text-[#14f195]">
+      <p
+        data-language-line
+        className="mt-8 text-xs font-semibold uppercase tracking-[0.28em] text-[#14f195]"
+      >
         {copy.success.eyebrow}
       </p>
-      <h3 className="mt-4 text-4xl font-semibold tracking-[-0.05em]">
+      <h3
+        data-language-line
+        className="mt-4 text-4xl font-semibold tracking-[-0.05em]"
+      >
         {copy.success.title}
       </h3>
-      <p className="mt-5 text-base leading-7 text-muted">
+      <p data-language-line className="mt-5 text-base leading-7 text-muted">
         {copy.success.description}
       </p>
       <a
@@ -55,7 +63,7 @@ export function OnboardingSuccess({ copy }: { copy: OnboardingCopy }) {
         rel="noopener noreferrer"
         className="mt-8 inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-full border border-border bg-accent/70 px-5 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
       >
-        {copy.success.documentation}
+        <span data-language-line>{copy.success.documentation}</span>
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </a>
     </div>
@@ -71,8 +79,15 @@ export function StepHeading({
 }) {
   return (
     <div>
-      <h3 className="text-2xl font-semibold tracking-[-0.035em]">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
+      <h3
+        data-language-line
+        className="text-2xl font-semibold tracking-[-0.035em]"
+      >
+        {title}
+      </h3>
+      <p data-language-line className="mt-2 text-sm leading-6 text-muted">
+        {description}
+      </p>
     </div>
   );
 }
@@ -92,6 +107,7 @@ export function Field({
     <div className="space-y-2">
       <label
         htmlFor={`onboarding-${fieldId}`}
+        data-language-line
         className="text-sm font-medium text-foreground"
       >
         {label}
@@ -127,7 +143,12 @@ export function OptionGroup({
       aria-describedby={errorDescription(id, error)}
       tabIndex={-1}
     >
-      <legend className="text-sm font-medium text-foreground">{legend}</legend>
+      <legend
+        data-language-line
+        className="text-sm font-medium text-foreground"
+      >
+        {legend}
+      </legend>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <label
@@ -142,7 +163,7 @@ export function OptionGroup({
               onChange={() => onChange(option.value)}
               className="h-4 w-4 accent-[#9945ff]"
             />
-            {option.label}
+            <span data-language-line>{option.label}</span>
           </label>
         ))}
       </div>
@@ -172,7 +193,12 @@ export function MultiOptionGroup({
       aria-describedby={errorDescription(id, error)}
       tabIndex={-1}
     >
-      <legend className="text-sm font-medium text-foreground">{legend}</legend>
+      <legend
+        data-language-line
+        className="text-sm font-medium text-foreground"
+      >
+        {legend}
+      </legend>
       <div className="mt-3 flex flex-wrap gap-2">
         {options.map((option) => {
           const checked = values.includes(option.value);
@@ -190,7 +216,7 @@ export function MultiOptionGroup({
               {checked ? (
                 <Check className="h-3.5 w-3.5 text-[#b892ff]" aria-hidden />
               ) : null}
-              {option.label}
+              <span data-language-line>{option.label}</span>
             </label>
           );
         })}
@@ -218,7 +244,10 @@ export function RatingGroup({
       aria-describedby={errorDescription(id, error)}
       tabIndex={-1}
     >
-      <legend className="text-sm font-medium text-foreground">
+      <legend
+        data-language-line
+        className="text-sm font-medium text-foreground"
+      >
         {copy.learning.ratingLegend}
       </legend>
       <div className="mt-3 grid grid-cols-5 gap-2">
@@ -239,8 +268,8 @@ export function RatingGroup({
         ))}
       </div>
       <div className="mt-2 flex justify-between text-xs text-muted">
-        <span>{copy.learning.ratingMin}</span>
-        <span>{copy.learning.ratingMax}</span>
+        <span data-language-line>{copy.learning.ratingMin}</span>
+        <span data-language-line>{copy.learning.ratingMax}</span>
       </div>
       <ErrorMessage id={id} error={error} />
     </fieldset>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { submitOnboardingResponse } from "../lib/onboarding";
+import { useOnboardingLanguageTransition } from "./onboarding-language-transition";
 import {
   ONBOARDING_COPY,
   type OnboardingCopy,
@@ -33,6 +34,7 @@ export function OnboardingQuestionnaire() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const copy = ONBOARDING_COPY[locale];
+  const languageContentRef = useOnboardingLanguageTransition(locale);
 
   function updateField<K extends keyof OnboardingFormState>(
     field: K,
@@ -97,7 +99,10 @@ export function OnboardingQuestionnaire() {
           setErrors({});
         }}
       />
-      <div className="grid min-h-[620px] lg:grid-cols-[0.72fr_1.28fr]">
+      <div
+        ref={languageContentRef}
+        className="grid min-h-[620px] lg:grid-cols-[0.72fr_1.28fr]"
+      >
         <OnboardingBriefing copy={copy} />
 
         <div className="px-6 py-8 sm:px-10 lg:px-12 lg:py-12">
@@ -187,11 +192,15 @@ function OnboardingBriefing({ copy }: { copy: OnboardingCopy }) {
       />
       <h2
         id="onboarding-title"
+        data-language-line
         className="mt-5 max-w-md text-4xl font-semibold tracking-[-0.055em] sm:text-5xl"
       >
         {copy.briefing.title}
       </h2>
-      <p className="mt-5 max-w-md text-base leading-7 text-muted">
+      <p
+        data-language-line
+        className="mt-5 max-w-md text-base leading-7 text-muted"
+      >
         {copy.briefing.description}
       </p>
     </div>
@@ -212,8 +221,12 @@ function SubmissionError({
     >
       <AlertCircle className="mt-1 h-4 w-4 shrink-0" aria-hidden="true" />
       <div>
-        <p className="font-medium">{copy.submissionError.title}</p>
-        <p className="text-red-200/75">{message}</p>
+        <p data-language-line className="font-medium">
+          {copy.submissionError.title}
+        </p>
+        <p data-language-line className="text-red-200/75">
+          {message}
+        </p>
       </div>
     </div>
   ) : null;
@@ -243,7 +256,7 @@ function QuestionnaireNavigation({
         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium text-muted transition enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {copy.navigation.back}
+        <span data-language-line>{copy.navigation.back}</span>
       </button>
 
       <button
@@ -252,11 +265,13 @@ function QuestionnaireNavigation({
         disabled={isSubmitting}
         className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-semibold text-white transition hover:bg-[#8b35f6] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
-        {isSubmitting
-          ? copy.navigation.submitting
-          : isLastStep
-            ? copy.navigation.submit
-            : copy.navigation.continue}
+        <span data-language-line>
+          {isSubmitting
+            ? copy.navigation.submitting
+            : isLastStep
+              ? copy.navigation.submit
+              : copy.navigation.continue}
+        </span>
         {!isSubmitting ? (
           <ArrowRight
             className="h-4 w-4 transition-transform group-hover:translate-x-1"
