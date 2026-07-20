@@ -42,6 +42,7 @@ export function QuestionnaireStep({
   if (pageId === "profileGroup") return <ProfileStep {...props} />;
   if (pageId === "learningGroup") return <LearningStep {...props} />;
   if (pageId === "betaGroup") return <BetaFitStep {...props} />;
+  if (pageId === "review") return <ReviewStep {...props} />;
   if (
     pageId === "profile" ||
     pageId === "solanaLevel" ||
@@ -481,6 +482,44 @@ function OptionalStep({
       <div className="mt-8">
         <OptionalFields copy={copy} form={form} updateField={updateField} />
       </div>
+    </div>
+  );
+}
+
+function ReviewStep({ copy, form }: Pick<StepProps, "copy" | "form">) {
+  const details = [
+    { label: copy.review.nameLabel, value: form.name.trim() },
+    { label: copy.review.contactLabel, value: form.contact.trim() },
+    {
+      label: copy.review.companyLabel,
+      value: form.organizationName.trim() || copy.review.notProvided,
+    },
+  ];
+
+  return (
+    <div>
+      <StepHeading
+        title={copy.review.title}
+        description={copy.review.description}
+      />
+      <dl className="mt-8 divide-y divide-border border-y border-border">
+        {details.map((detail) => (
+          <div
+            key={detail.label}
+            className="grid gap-1 py-4 sm:grid-cols-[140px_1fr] sm:items-center"
+          >
+            <dt
+              data-language-line
+              className="text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+            >
+              {detail.label}
+            </dt>
+            <dd className="break-words text-sm font-medium text-foreground sm:text-right">
+              {detail.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

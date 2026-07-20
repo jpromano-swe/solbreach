@@ -33,6 +33,14 @@ type OnboardingCopy = {
     eyebrow: string;
     title: string;
   };
+  review: {
+    companyLabel: string;
+    contactLabel: string;
+    description: string;
+    nameLabel: string;
+    notProvided: string;
+    title: string;
+  };
   contact: {
     contactLabel: string;
     description: string;
@@ -143,7 +151,7 @@ const english: OnboardingCopy = {
     description:
       "Tell us where you are in your Solana security journey. We review each application before opening access.",
   },
-  steps: ["Contact", "Profile", "Learning", "Beta fit"],
+  steps: ["Contact", "Profile", "Learning", "Beta fit", "Review"],
   mobileSteps: [
     "Contact",
     "Your profile",
@@ -155,6 +163,7 @@ const english: OnboardingCopy = {
     "Beta timing",
     "Feedback",
     "Optional details",
+    "Review",
   ],
   progress: { step: "Step", of: "of" },
   navigation: {
@@ -173,6 +182,15 @@ const english: OnboardingCopy = {
     description:
       "We will review your answers and use your preferred contact channel if a beta group matches your profile.",
     documentation: "Explore the documentation",
+  },
+  review: {
+    title: "Review your request",
+    description:
+      "Confirm these details before sending your beta access request.",
+    nameLabel: "Name",
+    contactLabel: "Contact",
+    companyLabel: "Company",
+    notProvided: "Not provided",
   },
   contact: {
     title: "How should we identify and contact you?",
@@ -194,7 +212,7 @@ const english: OnboardingCopy = {
     description: "Select every answer that applies.",
     goalsLegend: "Main goals",
     sourcesLegend: "Where do you learn security today?",
-    ratingLegend: "How useful would guided, hands-on security labs be for you?",
+    ratingLegend: "How useful would security practice labs be for you?",
     ratingMin: "Not useful",
     ratingMax: "Very useful",
   },
@@ -306,7 +324,7 @@ const spanish: OnboardingCopy = {
     description:
       "Cuéntanos en qué etapa de tu recorrido por la seguridad en Solana estás. Revisamos cada solicitud antes de habilitar el acceso.",
   },
-  steps: ["Contacto", "Perfil", "Aprendizaje", "Participación"],
+  steps: ["Contacto", "Perfil", "Aprendizaje", "Participación", "Revisión"],
   mobileSteps: [
     "Contacto",
     "Tu perfil",
@@ -318,6 +336,7 @@ const spanish: OnboardingCopy = {
     "Disponibilidad",
     "Feedback",
     "Datos opcionales",
+    "Revisión",
   ],
   progress: { step: "Paso", of: "de" },
   navigation: {
@@ -336,6 +355,15 @@ const spanish: OnboardingCopy = {
     description:
       "Revisaremos tus respuestas y usaremos tu canal de contacto preferido si tu perfil coincide con uno de los grupos beta.",
     documentation: "Explorar la documentación",
+  },
+  review: {
+    title: "Revisa tu solicitud",
+    description:
+      "Confirma estos datos antes de enviar tu solicitud de acceso beta.",
+    nameLabel: "Nombre",
+    contactLabel: "Contacto",
+    companyLabel: "Empresa",
+    notProvided: "No especificada",
   },
   contact: {
     title: "¿Cómo debemos identificarte y contactarte?",
@@ -359,7 +387,7 @@ const spanish: OnboardingCopy = {
     goalsLegend: "Objetivos principales",
     sourcesLegend: "¿Dónde aprendes seguridad actualmente?",
     ratingLegend:
-      "¿Qué tan útiles serían para ti los laboratorios prácticos y guiados de seguridad?",
+      "¿Qué tan útiles serían para ti los laboratorios de práctica de seguridad?",
     ratingMin: "Nada útiles",
     ratingMax: "Muy útiles",
   },

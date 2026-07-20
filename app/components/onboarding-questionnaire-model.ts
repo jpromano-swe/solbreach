@@ -65,12 +65,25 @@ export type OnboardingPageId =
   | OnboardingQuestionId
   | "profileGroup"
   | "learningGroup"
-  | "betaGroup";
+  | "betaGroup"
+  | "review";
 
 export type OnboardingPage = {
   id: OnboardingPageId;
   validation: readonly OnboardingQuestionId[];
 };
+
+const REQUIRED_ONBOARDING_QUESTIONS: readonly OnboardingQuestionId[] = [
+  "contact",
+  "profile",
+  "solanaLevel",
+  "securityExperience",
+  "mainGoal",
+  "currentLearningSources",
+  "guidedLabUsefulness",
+  "betaIntent",
+  "feedbackWillingness",
+];
 
 export const DESKTOP_ONBOARDING_PAGES: readonly OnboardingPage[] = [
   { id: "contact", validation: ["contact"] },
@@ -86,6 +99,7 @@ export const DESKTOP_ONBOARDING_PAGES: readonly OnboardingPage[] = [
     id: "betaGroup",
     validation: ["betaIntent", "feedbackWillingness"],
   },
+  { id: "review", validation: REQUIRED_ONBOARDING_QUESTIONS },
 ];
 
 export const MOBILE_ONBOARDING_PAGES: readonly OnboardingPage[] = [
@@ -108,6 +122,7 @@ export const MOBILE_ONBOARDING_PAGES: readonly OnboardingPage[] = [
     validation: ["feedbackWillingness"],
   },
   { id: "optional", validation: [] },
+  { id: "review", validation: REQUIRED_ONBOARDING_QUESTIONS },
 ];
 
 export const INITIAL_ONBOARDING_FORM: OnboardingFormState = {
