@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>SolBreach Private Beta</title>
+    <style>
+      html,
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        background: #070808 !important;
+      }
+
+      table,
+      td {
+        border-collapse: collapse !important;
+      }
+
+      img {
+        border: 0;
+        display: block;
+        height: auto;
+        line-height: 100%;
+        outline: none;
+        text-decoration: none;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .email-shell {
+        width: 100%;
+        background: #070808;
+      }
+
+      .email-card {
+        width: 100%;
+        max-width: 640px;
+      }
+
+      .mobile-padding {
+        padding-left: 48px;
+        padding-right: 48px;
+      }
+
+      .feature-column {
+        width: 33.333%;
+        vertical-align: top;
+      }
+
+      @media screen and (max-width: 640px) {
+        .mobile-padding {
+          padding-left: 24px !important;
+          padding-right: 24px !important;
+        }
+
+        .mobile-heading {
+          font-size: 34px !important;
+          line-height: 39px !important;
+        }
+
+        .feature-column {
+          display: block !important;
+          width: 100% !important;
+          padding: 0 0 22px !important;
+        }
+
+        .feature-spacer {
+          display: none !important;
+        }
+
+        .cta-link {
+          display: block !important;
+          text-align: center !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Replace provider placeholders such as {{first_name}} and {{unsubscribe_url}} if needed. -->
+    <div
+      style="
+        display: none;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        color: transparent;
+      "
+    >
+      Practice finding real Solana security issues before shipping to
+      production.
+    </div>
+
+    <table
+      role="presentation"
+      class="email-shell"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      border="0"
+    >
+      <tr>
+        <td align="center" style="padding: 28px 12px">
+          <table
+            role="presentation"
+            class="email-card"
+            width="640"
+            cellspacing="0"
+            cellpadding="0"
+            border="0"
+            style="
+              width: 100%;
+              max-width: 640px;
+              overflow: hidden;
+              border: 1px solid #262626;
+              border-radius: 8px;
+              background: #101112;
+            "
+          >
+            <tr>
+              <td
+                class="mobile-padding"
+                style="padding-top: 34px; padding-bottom: 30px"
+              >
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                >
+                  <tr>
+                    <td align="left">
+                      <a
+                        href="https://solbreach.com"
+                        target="_blank"
+                        style="text-decoration: none"
+                      >
+                        <img
+                          src="https://solbreach.com/logo_crop.png"
+                          width="204"
+                          alt="SolBreach"
+                          style="width: 204px; max-width: 62%; height: auto"
+                        />
+                      </a>
+                    </td>
+                    <td
+                      align="right"
+                      style="
+                        color: #71717a;
+                        font-family: Arial, Helvetica, sans-serif;
+                        font-size: 11px;
+                        line-height: 16px;
+                      "
+                    >
+                      <a
+                        href="{{view_in_browser_url}}"
+                        target="_blank"
+                        style="color: #a1a1aa; text-decoration: underline"
+                        >View online</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                style="
+                  height: 1px;
+                  background: #262626;
+                  font-size: 1px;
+                  line-height: 1px;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="mobile-padding"
+                style="padding-top: 54px; padding-bottom: 54px"
+              >
+                <p
+                  style="
+                    margin: 0 0 20px;
+                    color: #b892ff;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 12px;
+                    font-weight: 700;
+                    letter-spacing: 2.4px;
+                    line-height: 18px;
+                    text-transform: uppercase;
+                  "
+                >
+                  Private beta
+                </p>
+
+                <h1
+                  class="mobile-heading"
+                  style="
+                    margin: 0;
+                    color: #fafafa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 46px;
+                    font-weight: 700;
+                    letter-spacing: 0;
+                    line-height: 51px;
+                  "
+                >
+                  Security training for
+                  <span style="color: #14f195">Solana builders.</span>
+                </h1>
+
+                <p
+                  style="
+                    margin: 26px 0 0;
+                    max-width: 510px;
+                    color: #b4b4bc;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 18px;
+                    line-height: 29px;
+                  "
+                >
+                  Hi {{first_name}}, practice finding real security issues,
+                  prove they matter, and learn how to fix vulnerable Solana
+                  programs before shipping to production.
+                </p>
+
+                <table
+                  role="presentation"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                  style="margin-top: 34px"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      bgcolor="#9945ff"
+                      style="border-radius: 6px; background: #9945ff"
+                    >
+                      <a
+                        class="cta-link"
+                        href="https://beta.solbreach.com/onboarding"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 15px 25px;
+                          color: #ffffff;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 15px;
+                          font-weight: 700;
+                          line-height: 18px;
+                          text-decoration: none;
+                        "
+                        >Request Beta Access&nbsp;&nbsp;&#8594;</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="mobile-padding" style="padding-bottom: 54px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                  style="
+                    border-top: 1px solid #262626;
+                    border-bottom: 1px solid #262626;
+                  "
+                >
+                  <tr>
+                    <td
+                      class="feature-column"
+                      style="padding: 28px 18px 28px 0"
+                    >
+                      <p
+                        style="
+                          margin: 0 0 10px;
+                          color: #14f195;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 12px;
+                          font-weight: 700;
+                          letter-spacing: 1.4px;
+                          text-transform: uppercase;
+                        "
+                      >
+                        01 Inspect
+                      </p>
+                      <p
+                        style="
+                          margin: 0;
+                          color: #a1a1aa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 14px;
+                          line-height: 22px;
+                        "
+                      >
+                        Trace accounts, PDAs, authorities, and program state.
+                      </p>
+                    </td>
+                    <td
+                      class="feature-spacer"
+                      style="width: 1px; background: #262626"
+                    ></td>
+                    <td class="feature-column" style="padding: 28px 18px">
+                      <p
+                        style="
+                          margin: 0 0 10px;
+                          color: #b892ff;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 12px;
+                          font-weight: 700;
+                          letter-spacing: 1.4px;
+                          text-transform: uppercase;
+                        "
+                      >
+                        02 Exploit
+                      </p>
+                      <p
+                        style="
+                          margin: 0;
+                          color: #a1a1aa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 14px;
+                          line-height: 22px;
+                        "
+                      >
+                        Test vulnerable programs in controlled sandbox
+                        environments.
+                      </p>
+                    </td>
+                    <td
+                      class="feature-spacer"
+                      style="width: 1px; background: #262626"
+                    ></td>
+                    <td
+                      class="feature-column"
+                      style="padding: 28px 0 28px 18px"
+                    >
+                      <p
+                        style="
+                          margin: 0 0 10px;
+                          color: #14f195;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 12px;
+                          font-weight: 700;
+                          letter-spacing: 1.4px;
+                          text-transform: uppercase;
+                        "
+                      >
+                        03 Report
+                      </p>
+                      <p
+                        style="
+                          margin: 0;
+                          color: #a1a1aa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 14px;
+                          line-height: 22px;
+                        "
+                      >
+                        Verify impact and turn evidence into an audit-style
+                        finding.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="mobile-padding" style="padding-bottom: 52px">
+                <h2
+                  style="
+                    margin: 0 0 14px;
+                    color: #fafafa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 24px;
+                    line-height: 31px;
+                  "
+                >
+                  Learn the workflow, not just the bug.
+                </h2>
+                <p
+                  style="
+                    margin: 0;
+                    color: #a1a1aa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 15px;
+                    line-height: 25px;
+                  "
+                >
+                  Start with guided Vulnerability Modules, continue into applied
+                  Research Labs, and record validated progress against your
+                  wallet.
+                </p>
+
+                <p
+                  style="
+                    margin: 28px 0 0;
+                    color: #d4d4d8;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 15px;
+                    line-height: 24px;
+                  "
+                >
+                  Closed-beta access is limited. Complete the short application
+                  so we can place you in the right testing group.
+                </p>
+
+                <p
+                  style="
+                    margin: 22px 0 0;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 14px;
+                    line-height: 22px;
+                  "
+                >
+                  <a
+                    href="https://beta.solbreach.com/onboarding"
+                    target="_blank"
+                    style="
+                      color: #b892ff;
+                      font-weight: 700;
+                      text-decoration: underline;
+                    "
+                    >Request access to SolBreach</a
+                  >
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                style="
+                  height: 1px;
+                  background: #262626;
+                  font-size: 1px;
+                  line-height: 1px;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="mobile-padding"
+                style="padding-top: 30px; padding-bottom: 34px"
+              >
+                <p
+                  style="
+                    margin: 0 0 12px;
+                    color: #71717a;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 12px;
+                    line-height: 19px;
+                  "
+                >
+                  SolBreach is a security training layer for Solana builders.
+                </p>
+                <p
+                  style="
+                    margin: 0;
+                    color: #52525b;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 11px;
+                    line-height: 18px;
+                  "
+                >
+                  <a
+                    href="https://solbreach.gitbook.io/documentation"
+                    target="_blank"
+                    style="color: #a1a1aa; text-decoration: underline"
+                    >Documentation</a
+                  >
+                  &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+                  <a
+                    href="https://x.com/solbreach_app"
+                    target="_blank"
+                    style="color: #a1a1aa; text-decoration: underline"
+                    >X / @solbreach_app</a
+                  >
+                  &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+                  <a
+                    href="{{unsubscribe_url}}"
+                    target="_blank"
+                    style="color: #a1a1aa; text-decoration: underline"
+                    >Unsubscribe</a
+                  >
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
