@@ -73,12 +73,13 @@ export function OnboardingQuestionnaire() {
     setCurrentStep((step) => Math.max(step - 1, 0));
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (activeStep < pages.length - 1) {
-      goToNextStep();
-      return;
-    }
+    if (activeStep < pages.length - 1) goToNextStep();
+  }
+
+  async function submitResponse() {
+    if (activePage.id !== "review" || isSubmitting) return;
     if (!validateCurrentStep(activeStep)) return;
 
     setIsSubmitting(true);
@@ -125,7 +126,11 @@ export function OnboardingQuestionnaire() {
           {isSubmitted ? (
             <OnboardingSuccess copy={copy} />
           ) : (
-            <form aria-busy={isSubmitting} noValidate onSubmit={handleSubmit}>
+            <form
+              aria-busy={isSubmitting}
+              noValidate
+              onSubmit={handleFormSubmit}
+            >
               <QuestionnaireProgress
                 copy={copy}
                 currentStep={activeStep}
@@ -150,6 +155,7 @@ export function OnboardingQuestionnaire() {
                 currentStep={activeStep}
                 isSubmitting={isSubmitting}
                 onBack={goToPreviousStep}
+                onConfirm={submitResponse}
                 onContinue={goToNextStep}
                 totalSteps={pages.length}
               />
@@ -262,6 +268,7 @@ function QuestionnaireNavigation({
   currentStep,
   isSubmitting,
   onBack,
+  onConfirm,
   onContinue,
   totalSteps,
 }: {
@@ -269,6 +276,7 @@ function QuestionnaireNavigation({
   currentStep: number;
   isSubmitting: boolean;
   onBack: () => void;
+  onConfirm: () => void;
   onContinue: () => void;
   totalSteps: number;
 }) {
@@ -287,8 +295,8 @@ function QuestionnaireNavigation({
       </button>
 
       <button
-        type={isLastStep ? "submit" : "button"}
-        onClick={isLastStep ? undefined : onContinue}
+        type="button"
+        onClick={isLastStep ? onConfirm : onContinue}
         disabled={isSubmitting}
         className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-semibold text-white transition hover:bg-[#8b35f6] disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
