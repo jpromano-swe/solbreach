@@ -5,6 +5,11 @@ import type {
 
 export type OnboardingLocale = "en" | "es";
 
+type QuestionCopy = {
+  description?: string;
+  title: string;
+};
+
 type OnboardingCopy = {
   languageLabel: string;
   briefing: {
@@ -12,7 +17,6 @@ type OnboardingCopy = {
     title: string;
   };
   steps: readonly string[];
-  mobileSteps: readonly string[];
   progress: {
     of: string;
     step: string;
@@ -33,60 +37,54 @@ type OnboardingCopy = {
     eyebrow: string;
     title: string;
   };
-  review: {
-    companyLabel: string;
-    contactLabel: string;
-    description: string;
-    nameLabel: string;
-    notProvided: string;
-    title: string;
-  };
-  contact: {
-    contactLabel: string;
-    description: string;
-    nameLabel: string;
-    namePlaceholder: string;
-    preferredLabel: string;
-    title: string;
-  };
-  profile: {
-    description: string;
-    profileLegend: string;
-    securityLegend: string;
-    solanaLegend: string;
-    title: string;
-  };
-  learning: {
-    description: string;
-    goalsLegend: string;
-    ratingLegend: string;
-    ratingMax: string;
-    ratingMin: string;
-    sourcesLegend: string;
-    title: string;
-  };
-  beta: {
-    additionalLabel: string;
-    additionalPlaceholder: string;
-    description: string;
-    feedbackLegend: string;
-    futureLabsLabel: string;
-    futureLabsPlaceholder: string;
-    intentLegend: string;
-    organizationLabel: string;
-    organizationPlaceholder: string;
-    optionalDescription: string;
-    optionalTitle: string;
-    title: string;
+  questions: {
+    profile: QuestionCopy;
+    realExperience: QuestionCopy;
+    securityLearningAttempt: QuestionCopy;
+    learningActions: QuestionCopy;
+    learningBlockers: QuestionCopy;
+    hardestPracticeStep: QuestionCopy & { placeholder: string };
+    preferredFormats: QuestionCopy;
+    practiceSignals: QuestionCopy;
+    problemIntensity: QuestionCopy & {
+      max: string;
+      min: string;
+      reasonLabel: string;
+      reasonPlaceholder: string;
+    };
+    betaIntent: QuestionCopy & {
+      contactLabel: string;
+      contactPlaceholder: string;
+    };
   };
   options: {
     betaIntent: QuestionnaireOption[];
-    feedback: QuestionnaireOption[];
-    goals: QuestionnaireOption[];
-    learningSources: QuestionnaireOption[];
+    learningActions: QuestionnaireOption[];
+    learningBlockers: QuestionnaireOption[];
+    practiceSignals: QuestionnaireOption[];
+    preferredFormats: QuestionnaireOption[];
     profiles: QuestionnaireOption[];
-    security: QuestionnaireOption[];
-    solanaLevels: QuestionnaireOption[];
+    realExperience: QuestionnaireOption[];
+    securityLearningAttempt: QuestionnaireOption[];
+  };
+  review: {
+    contactLabel: string;
+    description: string;
+    labels: Record<
+      | "profile"
+      | "realExperience"
+      | "securityLearningAttempt"
+      | "learningActions"
+      | "learningBlockers"
+      | "hardestPracticeStep"
+      | "preferredFormats"
+      | "practiceSignals"
+      | "problemIntensity"
+      | "betaIntent",
+      string
+    >;
+    notProvided: string;
+    title: string;
   };
   validation: OnboardingValidationMessages;
 };
@@ -95,46 +93,61 @@ const optionValues = {
   profiles: [
     "solana_developer",
     "web3_developer_new_to_solana",
+    "backend_or_rust_developer",
     "student_or_junior_builder",
-    "security_researcher",
-    "educator_bootcamp_community",
-    "protocol_or_technical_team",
-    "other",
+    "security_researcher_or_auditor",
+    "community_bootcamp_or_team",
   ],
-  solanaLevels: [
-    "learning_basics",
+  realExperience: [
+    "not_built_anything",
     "built_simple_project",
-    "worked_with_anchor_or_programs",
-    "advanced",
+    "worked_anchor_or_solana_programs",
+    "rust_experience",
+    "joined_hackathons",
+    "contributed_real_projects",
   ],
-  security: [
-    "almost_none",
-    "read_writeups_or_audit_reports",
-    "joined_ctfs",
-    "reviewed_code_or_found_bugs",
-    "works_or_wants_auditing",
+  securityLearningAttempt: [
+    "active",
+    "lightly",
+    "tried_and_stopped",
+    "interested_not_started",
+    "not_priority",
   ],
-  goals: [
-    "learn_solana_security_through_practice",
-    "understand_real_vulnerabilities",
-    "prepare_for_cohorts_or_audits",
-    "become_safer_builder_before_shipping",
-    "get_visible_proof_of_skill",
-    "evaluate_developers_or_students",
+  learningActions: [
+    "docs_or_audit_reports",
+    "exploit_writeups",
+    "videos_or_workshops",
+    "ai_for_code_or_bugs",
+    "ctfs_or_challenges",
+    "reviewed_or_exploited_real_code",
+    "nothing_concrete",
   ],
-  learningSources: [
-    "docs",
-    "audit_reports",
-    "x_threads",
-    "youtube",
-    "cohorts",
-    "ctfs",
-    "ai_tools",
-    "mentorship",
+  learningBlockers: [
     "no_clear_path",
+    "too_much_theory",
+    "resources_too_advanced",
+    "hard_to_identify_bugs",
+    "hard_to_reproduce_exploits",
+    "lacked_feedback",
+    "not_stuck",
+  ],
+  preferredFormats: [
+    "guided_modules",
+    "research_labs",
+    "audit_environments",
+    "scored_challenges",
+    "mentor_feedback",
+    "final_report_or_certificate",
+  ],
+  practiceSignals: [
+    "execute_exploit",
+    "see_state_changes",
+    "validation_checks",
+    "real_cases",
+    "feedback_or_explanation",
+    "final_report",
   ],
   betaIntent: ["try_this_week", "try_later", "maybe", "not_now"],
-  feedback: ["short_call", "form", "chat", "not_now"],
 } as const;
 
 function options(
@@ -147,349 +160,413 @@ function options(
 const english: OnboardingCopy = {
   languageLabel: "Language",
   briefing: {
-    title: "Help us place you in the right beta group.",
+    title: "Help us understand how Solana builders learn security.",
     description:
-      "Tell us where you are in your Solana security journey. We review each application before opening access.",
+      "We’re building SolBreach to help Solana developers move from reading about vulnerabilities to practicing them in a guided and verifiable environment. This form helps us understand what you’ve tried, where you got stuck, and whether it makes sense to invite you to the beta.",
   },
-  steps: ["Contact", "Profile", "Learning", "Beta fit", "Review"],
-  mobileSteps: [
-    "Contact",
-    "Your profile",
-    "Solana experience",
-    "Security experience",
-    "Main goals",
-    "Learning sources",
-    "Guided labs",
-    "Beta timing",
-    "Feedback",
-    "Optional details",
+  steps: [
+    "Profile",
+    "Experience",
+    "Security learning",
+    "What you tried",
+    "Blockers",
+    "Theory to practice",
+    "Learning format",
+    "Hands-on practice",
+    "Problem strength",
+    "Beta interest",
     "Review",
   ],
   progress: { step: "Step", of: "of" },
   navigation: {
     back: "Back",
     continue: "Continue",
-    submit: "Request Beta Access",
-    submitting: "Submitting...",
+    submit: "Send responses",
+    submitting: "Sending...",
   },
   submissionError: {
-    title: "Application not submitted",
-    fallback: "We could not submit your application. Try again.",
+    title: "Responses not submitted",
+    fallback: "We could not submit your responses. Try again.",
   },
   success: {
-    eyebrow: "Application received",
-    title: "Thanks for helping shape the beta.",
+    eyebrow: "Responses received",
+    title: "Thank you for helping us.",
     description:
-      "We will review your answers and use your preferred contact channel if a beta group matches your profile.",
+      "We’ll use these answers to improve the first Research Lab and invite beta testers who can give real feedback.",
     documentation: "Explore the documentation",
   },
-  review: {
-    title: "Review your request",
-    description:
-      "Confirm these details before sending your beta access request.",
-    nameLabel: "Name",
-    contactLabel: "Contact",
-    companyLabel: "Company",
-    notProvided: "Not provided",
-  },
-  contact: {
-    title: "How should we identify and contact you?",
-    description: "Use the contact channel you check most often.",
-    nameLabel: "Name or handle",
-    namePlaceholder: "Your name",
-    preferredLabel: "Preferred contact",
-    contactLabel: "Contact",
-  },
-  profile: {
-    title: "Where are you in the Solana ecosystem?",
-    description: "Choose the options that best describe your current work.",
-    profileLegend: "Your profile",
-    solanaLegend: "Solana experience",
-    securityLegend: "Security experience",
-  },
-  learning: {
-    title: "What do you want to improve?",
-    description: "Select every answer that applies.",
-    goalsLegend: "Main goals",
-    sourcesLegend: "Where do you learn security today?",
-    ratingLegend: "How useful would security practice labs be for you?",
-    ratingMin: "Not useful",
-    ratingMax: "Very useful",
-  },
-  beta: {
-    title: "How would you participate in the beta?",
-    description: "This helps us plan access groups and feedback sessions.",
-    intentLegend: "When could you try SolBreach?",
-    feedbackLegend: "How would you prefer to share feedback?",
-    organizationLabel: "Organization or community (optional)",
-    organizationPlaceholder: "Organization name",
-    optionalTitle: "Anything else we should know?",
-    optionalDescription:
-      "These details are optional and help us review your application.",
-    futureLabsLabel: "Future labs you want (optional)",
-    futureLabsPlaceholder: "Signer checks, CPI, token logic...",
-    additionalLabel: "Anything else? (optional)",
-    additionalPlaceholder:
-      "Add context that would help us review your application.",
+  questions: {
+    profile: { title: "Which best describes your current profile?" },
+    realExperience: {
+      title: "What real experience do you have with Solana or Rust?",
+      description: "Select every answer that applies.",
+    },
+    securityLearningAttempt: {
+      title: "Have you ever tried to learn Solana security or auditing?",
+    },
+    learningActions: {
+      title: "What have you actually done to learn Solana security?",
+      description: "Select every answer that applies.",
+    },
+    learningBlockers: {
+      title: "Where did you get stuck the most?",
+      description: "Select every answer that applies.",
+    },
+    hardestPracticeStep: {
+      title: "What was the hardest part when moving from theory to practice?",
+      description: "A concrete example is more useful than a general answer.",
+      placeholder: "Share a concrete experience if you can.",
+    },
+    preferredFormats: {
+      title: "What format would help you most to learn Solana security?",
+      description: "Select every answer that applies.",
+    },
+    practiceSignals: {
+      title:
+        "What would make the experience feel like it is not “just theory”?",
+      description: "Select every answer that applies.",
+    },
+    problemIntensity: {
+      title: "How strong is this problem for you today?",
+      description: "Choose a score from 1 to 5.",
+      min: "Not a problem right now",
+      max: "An important problem",
+      reasonLabel: "Why did you choose that number? (optional)",
+      reasonPlaceholder: "Add a short reason",
+    },
+    betaIntent: {
+      title:
+        "Would you try a first version of SolBreach focused on one complete Research Lab?",
+      contactLabel: "Leave your contact so we can invite you to the beta",
+      contactPlaceholder: "Email, Telegram, or X",
+    },
   },
   options: {
     profiles: options(
       [
         "Solana developer",
         "Web3 developer new to Solana",
+        "Backend or Rust developer",
         "Student or junior builder",
-        "Junior security researcher",
-        "Educator or community leader",
-        "Protocol or technical team",
-        "Other",
+        "Security researcher or auditor",
+        "Community, bootcamp, or team",
       ],
       optionValues.profiles
     ),
-    solanaLevels: options(
+    realExperience: options(
       [
-        "Learning the basics",
-        "Built a simple Solana project",
-        "Worked with Anchor or Solana programs",
-        "Advanced",
+        "I haven’t built anything yet",
+        "I built something simple",
+        "I worked with Anchor or Solana programs",
+        "I have Rust experience",
+        "I joined hackathons",
+        "I contributed to real projects",
       ],
-      optionValues.solanaLevels
+      optionValues.realExperience
     ),
-    security: options(
+    securityLearningAttempt: options(
       [
-        "Almost none",
-        "Read writeups or audit reports",
-        "Joined CTFs",
-        "Reviewed code or found bugs",
-        "Work in or want to enter auditing",
+        "Yes, actively",
+        "Yes, lightly",
+        "I tried and stopped",
+        "Not yet, but I’m interested",
+        "Not a priority right now",
       ],
-      optionValues.security
+      optionValues.securityLearningAttempt
     ),
-    goals: options(
+    learningActions: options(
       [
-        "Learn Solana security through practice",
-        "Understand real vulnerability patterns",
-        "Prepare for cohorts or audits",
-        "Ship safer Solana programs",
-        "Build visible proof of skill",
-        "Evaluate developers or students",
+        "Read docs or audit reports",
+        "Read exploit writeups",
+        "Watched videos or workshops",
+        "Used AI to understand code or bugs",
+        "Joined CTFs or challenges",
+        "Tried to review or exploit real code",
+        "I haven’t done anything concrete yet",
       ],
-      optionValues.goals
+      optionValues.learningActions
     ),
-    learningSources: options(
+    learningBlockers: options(
       [
-        "Documentation",
-        "Audit reports",
-        "X threads",
-        "YouTube",
-        "Cohorts",
-        "CTFs",
-        "AI tools",
-        "Mentorship",
-        "I do not have a clear path",
+        "I didn’t find a clear path",
+        "Too much theory, not enough practice",
+        "Resources were too advanced",
+        "I struggled to identify real bugs",
+        "I struggled to reproduce or exploit vulnerabilities",
+        "I lacked feedback or guidance",
+        "I didn’t get especially stuck",
       ],
-      optionValues.learningSources
+      optionValues.learningBlockers
+    ),
+    preferredFormats: options(
+      [
+        "Step-by-step guided modules",
+        "Research Labs with exploration",
+        "Real-audit-like environments",
+        "CTFs or scored challenges",
+        "Mentor or reviewer feedback",
+        "Final report or certificate",
+      ],
+      optionValues.preferredFormats
+    ),
+    practiceSignals: options(
+      [
+        "Execute or simulate the exploit",
+        "See real state or account changes",
+        "Have validation checks",
+        "Connect it to real cases",
+        "Get feedback or explanation",
+        "Generate a final report",
+      ],
+      optionValues.practiceSignals
     ),
     betaIntent: options(
       [
-        "I can try it this week",
-        "I want to try it later",
-        "Maybe",
+        "Yes, this week",
+        "Yes, in the next few weeks",
+        "Maybe, depending on the content",
         "Not right now",
       ],
       optionValues.betaIntent
     ),
-    feedback: options(
-      ["Short call", "Feedback form", "Chat", "Not right now"],
-      optionValues.feedback
-    ),
+  },
+  review: {
+    title: "Review your responses",
+    description: "Confirm your answers before sending them.",
+    contactLabel: "Beta contact",
+    notProvided: "Not provided",
+    labels: {
+      profile: "Profile",
+      realExperience: "Experience",
+      securityLearningAttempt: "Security learning",
+      learningActions: "What you tried",
+      learningBlockers: "Blockers",
+      hardestPracticeStep: "Hardest step",
+      preferredFormats: "Learning format",
+      practiceSignals: "Hands-on signals",
+      problemIntensity: "Problem strength",
+      betaIntent: "Beta interest",
+    },
   },
   validation: {
-    name: "Enter at least two characters.",
-    contact: "Add the contact where we should reach you.",
     profile: "Choose the closest profile.",
-    solanaLevel: "Choose your current Solana level.",
-    securityExperience: "Choose your current security experience.",
-    mainGoal: "Choose at least one goal.",
-    currentLearningSources: "Choose at least one learning source.",
-    guidedLabUsefulness: "Choose a usefulness score.",
-    betaIntent: "Tell us when you could try the beta.",
-    feedbackWillingness: "Choose how you would prefer to share feedback.",
+    realExperience: "Choose at least one experience.",
+    securityLearningAttempt: "Choose one answer.",
+    learningActions: "Choose at least one action.",
+    learningBlockers: "Choose at least one blocker.",
+    hardestPracticeStep: "Share at least a short example.",
+    preferredFormats: "Choose at least one format.",
+    practiceSignals: "Choose at least one answer.",
+    problemIntensity: "Choose a score from 1 to 5.",
+    betaIntent: "Choose your current interest.",
+    contact: "Add an email, Telegram username, or X handle.",
   },
 };
 
 const spanish: OnboardingCopy = {
   languageLabel: "Idioma",
   briefing: {
-    title: "Ayúdanos a ubicarte en el grupo beta adecuado.",
+    title:
+      "Ayúdanos a entender cómo aprenden seguridad los builders de Solana.",
     description:
-      "Cuéntanos en qué etapa de tu recorrido por la seguridad en Solana estás. Revisamos cada solicitud antes de habilitar el acceso.",
+      "Estamos construyendo SolBreach para ayudar a developers de Solana a pasar de leer sobre vulnerabilidades a practicarlas en un entorno guiado y verificable. Este formulario nos ayuda a entender qué intentaste, dónde te trabaste y si tiene sentido invitarte a la beta.",
   },
-  steps: ["Contacto", "Perfil", "Aprendizaje", "Participación", "Revisión"],
-  mobileSteps: [
-    "Contacto",
-    "Tu perfil",
-    "Experiencia con Solana",
-    "Experiencia en seguridad",
-    "Objetivos principales",
-    "Fuentes de aprendizaje",
-    "Laboratorios guiados",
-    "Disponibilidad",
-    "Feedback",
-    "Datos opcionales",
+  steps: [
+    "Perfil",
+    "Experiencia",
+    "Aprendizaje de seguridad",
+    "Qué intentaste",
+    "Bloqueos",
+    "De teoría a práctica",
+    "Formato de aprendizaje",
+    "Práctica real",
+    "Intensidad del problema",
+    "Interés en la beta",
     "Revisión",
   ],
   progress: { step: "Paso", of: "de" },
   navigation: {
     back: "Atrás",
     continue: "Continuar",
-    submit: "Solicitar acceso beta",
+    submit: "Enviar respuestas",
     submitting: "Enviando...",
   },
   submissionError: {
-    title: "No se pudo enviar la solicitud",
-    fallback: "No pudimos enviar tu solicitud. Inténtalo nuevamente.",
+    title: "No se enviaron las respuestas",
+    fallback: "No pudimos enviar tus respuestas. Inténtalo nuevamente.",
   },
   success: {
-    eyebrow: "Solicitud recibida",
-    title: "Gracias por ayudarnos a construir la beta.",
+    eyebrow: "Respuestas recibidas",
+    title: "Gracias por ayudarnos.",
     description:
-      "Revisaremos tus respuestas y usaremos tu canal de contacto preferido si tu perfil coincide con uno de los grupos beta.",
+      "Vamos a usar estas respuestas para ajustar el primer Research Lab y seleccionar beta testers que puedan darnos feedback real.",
     documentation: "Explorar la documentación",
   },
-  review: {
-    title: "Revisa tu solicitud",
-    description:
-      "Confirma estos datos antes de enviar tu solicitud de acceso beta.",
-    nameLabel: "Nombre",
-    contactLabel: "Contacto",
-    companyLabel: "Empresa",
-    notProvided: "No especificada",
-  },
-  contact: {
-    title: "¿Cómo debemos identificarte y contactarte?",
-    description: "Usa el canal de contacto que revisas con más frecuencia.",
-    nameLabel: "Nombre o alias",
-    namePlaceholder: "Tu nombre",
-    preferredLabel: "Contacto preferido",
-    contactLabel: "Contacto",
-  },
-  profile: {
-    title: "¿Dónde te encuentras dentro del ecosistema Solana?",
-    description:
-      "Elige las opciones que mejor describan tu experiencia actual.",
-    profileLegend: "Tu perfil",
-    solanaLegend: "Experiencia con Solana",
-    securityLegend: "Experiencia en seguridad",
-  },
-  learning: {
-    title: "¿Qué quieres mejorar?",
-    description: "Selecciona todas las opciones que correspondan.",
-    goalsLegend: "Objetivos principales",
-    sourcesLegend: "¿Dónde aprendes seguridad actualmente?",
-    ratingLegend:
-      "¿Qué tan útiles serían para ti los laboratorios de práctica de seguridad?",
-    ratingMin: "Nada útiles",
-    ratingMax: "Muy útiles",
-  },
-  beta: {
-    title: "¿Cómo participarías en la beta?",
-    description:
-      "Esto nos ayuda a planificar grupos de acceso y sesiones de feedback.",
-    intentLegend: "¿Cuándo podrías probar SolBreach?",
-    feedbackLegend: "¿Cómo preferirías compartir feedback?",
-    organizationLabel: "Organización o comunidad (opcional)",
-    organizationPlaceholder: "Nombre de la organización",
-    optionalTitle: "¿Algo más que debamos saber?",
-    optionalDescription:
-      "Estos datos son opcionales y nos ayudan a revisar tu solicitud.",
-    futureLabsLabel: "Laboratorios futuros que te interesan (opcional)",
-    futureLabsPlaceholder: "Firmantes, CPI, lógica de tokens...",
-    additionalLabel: "¿Algo más? (opcional)",
-    additionalPlaceholder:
-      "Agrega información que nos ayude a revisar tu solicitud.",
+  questions: {
+    profile: { title: "¿Cuál describe mejor tu perfil actual?" },
+    realExperience: {
+      title: "¿Qué experiencia real tenés con Solana o Rust?",
+      description: "Seleccioná todas las opciones que correspondan.",
+    },
+    securityLearningAttempt: {
+      title: "¿Alguna vez intentaste aprender seguridad o auditoría en Solana?",
+    },
+    learningActions: {
+      title: "¿Qué hiciste concretamente para aprender seguridad en Solana?",
+      description: "Seleccioná todas las opciones que correspondan.",
+    },
+    learningBlockers: {
+      title: "¿Dónde te trabaste más?",
+      description: "Seleccioná todas las opciones que correspondan.",
+    },
+    hardestPracticeStep: {
+      title: "¿Cuál fue la parte más difícil al pasar de teoría a práctica?",
+      description:
+        "Una experiencia concreta es más útil que una respuesta general.",
+      placeholder: "Contanos una experiencia concreta si podés.",
+    },
+    preferredFormats: {
+      title: "¿Qué formato te ayudaría más a aprender seguridad en Solana?",
+      description: "Seleccioná todas las opciones que correspondan.",
+    },
+    practiceSignals: {
+      title: "¿Qué haría que la experiencia no se sienta como “solo teoría”?",
+      description: "Seleccioná todas las opciones que correspondan.",
+    },
+    problemIntensity: {
+      title: "¿Qué tan fuerte es este problema para vos hoy?",
+      description: "Elegí un puntaje del 1 al 5.",
+      min: "No es un problema ahora",
+      max: "Es un problema importante",
+      reasonLabel: "¿Por qué elegiste ese número? (opcional)",
+      reasonPlaceholder: "Agregá una razón breve",
+    },
+    betaIntent: {
+      title:
+        "¿Probarías una primera versión de SolBreach enfocada en un Research Lab completo?",
+      contactLabel: "Dejanos tu contacto para invitarte a la beta",
+      contactPlaceholder: "Email, Telegram o X",
+    },
   },
   options: {
     profiles: options(
       [
-        "Desarrollador de Solana",
-        "Desarrollador Web3 nuevo en Solana",
-        "Estudiante o builder junior",
-        "Investigador junior de seguridad",
-        "Educador o líder de comunidad",
-        "Protocolo o equipo técnico",
-        "Otro",
+        "Developer Solana",
+        "Developer Web3 nuevo en Solana",
+        "Backend o Rust developer",
+        "Estudiante o junior builder",
+        "Security researcher o auditor",
+        "Comunidad, bootcamp o equipo",
       ],
       optionValues.profiles
     ),
-    solanaLevels: options(
+    realExperience: options(
       [
-        "Aprendiendo los fundamentos",
-        "Construí un proyecto simple en Solana",
-        "Trabajé con Anchor o programas de Solana",
-        "Avanzado",
+        "Todavía no construí nada",
+        "Construí algo simple",
+        "Trabajé con Anchor o programas Solana",
+        "Tengo experiencia con Rust",
+        "Participé en hackathons",
+        "Contribuí a proyectos reales",
       ],
-      optionValues.solanaLevels
+      optionValues.realExperience
     ),
-    security: options(
+    securityLearningAttempt: options(
       [
-        "Casi ninguna",
-        "Leí writeups o reportes de auditoría",
-        "Participé en CTFs",
-        "Revisé código o encontré bugs",
-        "Trabajo o quiero entrar en auditoría",
+        "Sí, activamente",
+        "Sí, pero de forma superficial",
+        "Lo intenté y lo dejé",
+        "Todavía no, pero me interesa",
+        "No es una prioridad ahora",
       ],
-      optionValues.security
+      optionValues.securityLearningAttempt
     ),
-    goals: options(
+    learningActions: options(
       [
-        "Aprender seguridad en Solana mediante la práctica",
-        "Entender patrones reales de vulnerabilidades",
-        "Prepararme para cohorts o auditorías",
-        "Desplegar programas de Solana más seguros",
-        "Construir evidencia visible de mis habilidades",
-        "Evaluar desarrolladores o estudiantes",
+        "Leí documentación o audit reports",
+        "Leí writeups de exploits",
+        "Vi videos o workshops",
+        "Usé AI para entender código o bugs",
+        "Participé en CTFs o challenges",
+        "Intenté revisar o explotar código real",
+        "Todavía no hice nada concreto",
       ],
-      optionValues.goals
+      optionValues.learningActions
     ),
-    learningSources: options(
+    learningBlockers: options(
       [
-        "Documentación",
-        "Reportes de auditoría",
-        "Hilos en X",
-        "YouTube",
-        "Cohorts",
-        "CTFs",
-        "Herramientas de IA",
-        "Mentoría",
-        "No tengo un camino claro",
+        "No encontré un camino claro",
+        "Mucha teoría, poca práctica",
+        "Recursos demasiado avanzados",
+        "Me costó identificar bugs reales",
+        "Me costó reproducir o explotar vulnerabilidades",
+        "Me faltó feedback o acompañamiento",
+        "No me trabé especialmente",
       ],
-      optionValues.learningSources
+      optionValues.learningBlockers
+    ),
+    preferredFormats: options(
+      [
+        "Módulos guiados paso a paso",
+        "Research Labs con exploración",
+        "Entornos parecidos a una auditoría real",
+        "CTFs o challenges con scoring",
+        "Feedback de mentor o reviewer",
+        "Reporte o certificado final",
+      ],
+      optionValues.preferredFormats
+    ),
+    practiceSignals: options(
+      [
+        "Ejecutar o simular el exploit",
+        "Ver cambios reales en estado o cuentas",
+        "Tener checks de validación",
+        "Conectarlo con casos reales",
+        "Recibir feedback o explicación",
+        "Generar un reporte final",
+      ],
+      optionValues.practiceSignals
     ),
     betaIntent: options(
       [
-        "Puedo probarlo esta semana",
-        "Quiero probarlo más adelante",
-        "Tal vez",
-        "Ahora no",
+        "Sí, esta semana",
+        "Sí, en las próximas semanas",
+        "Tal vez, según el contenido",
+        "No por ahora",
       ],
       optionValues.betaIntent
     ),
-    feedback: options(
-      ["Llamada breve", "Formulario de feedback", "Chat", "Ahora no"],
-      optionValues.feedback
-    ),
+  },
+  review: {
+    title: "Revisá tus respuestas",
+    description: "Confirmá tus respuestas antes de enviarlas.",
+    contactLabel: "Contacto para la beta",
+    notProvided: "No especificado",
+    labels: {
+      profile: "Perfil",
+      realExperience: "Experiencia",
+      securityLearningAttempt: "Aprendizaje de seguridad",
+      learningActions: "Qué intentaste",
+      learningBlockers: "Bloqueos",
+      hardestPracticeStep: "Parte más difícil",
+      preferredFormats: "Formato de aprendizaje",
+      practiceSignals: "Señales de práctica",
+      problemIntensity: "Intensidad del problema",
+      betaIntent: "Interés en la beta",
+    },
   },
   validation: {
-    name: "Ingresa al menos dos caracteres.",
-    contact: "Agrega el contacto donde podamos escribirte.",
-    profile: "Elige el perfil más cercano.",
-    solanaLevel: "Elige tu nivel actual en Solana.",
-    securityExperience: "Elige tu experiencia actual en seguridad.",
-    mainGoal: "Elige al menos un objetivo.",
-    currentLearningSources: "Elige al menos una fuente de aprendizaje.",
-    guidedLabUsefulness: "Elige un puntaje de utilidad.",
-    betaIntent: "Indica cuándo podrías probar la beta.",
-    feedbackWillingness: "Elige cómo preferirías compartir feedback.",
+    profile: "Elegí el perfil más cercano.",
+    realExperience: "Elegí al menos una experiencia.",
+    securityLearningAttempt: "Elegí una respuesta.",
+    learningActions: "Elegí al menos una acción.",
+    learningBlockers: "Elegí al menos un bloqueo.",
+    hardestPracticeStep: "Compartí al menos un ejemplo breve.",
+    preferredFormats: "Elegí al menos un formato.",
+    practiceSignals: "Elegí al menos una respuesta.",
+    problemIntensity: "Elegí un puntaje del 1 al 5.",
+    betaIntent: "Elegí tu nivel de interés actual.",
+    contact: "Agregá un email, usuario de Telegram o cuenta de X.",
   },
 };
 

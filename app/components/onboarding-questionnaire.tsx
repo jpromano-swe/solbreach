@@ -4,7 +4,6 @@ import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
-import { useMobileLayout } from "../hooks/use-mobile-layout";
 import { submitOnboardingResponse } from "../lib/onboarding";
 import { useOnboardingLanguageTransition } from "./onboarding-language-transition";
 import {
@@ -18,9 +17,8 @@ import {
 } from "./onboarding-questionnaire-fields";
 import {
   buildOnboardingSubmission,
-  DESKTOP_ONBOARDING_PAGES,
   INITIAL_ONBOARDING_FORM,
-  MOBILE_ONBOARDING_PAGES,
+  ONBOARDING_PAGES,
   type OnboardingFormErrors,
   type OnboardingFormState,
   validateOnboardingQuestions,
@@ -36,10 +34,9 @@ export function OnboardingQuestionnaire() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const isMobile = useMobileLayout();
   const copy = ONBOARDING_COPY[locale];
-  const pages = isMobile ? MOBILE_ONBOARDING_PAGES : DESKTOP_ONBOARDING_PAGES;
-  const stepLabels = isMobile ? copy.mobileSteps : copy.steps;
+  const pages = ONBOARDING_PAGES;
+  const stepLabels = copy.steps;
   const activeStep = Math.min(currentStep, pages.length - 1);
   const activePage = pages[activeStep];
   const languageContentRef = useOnboardingLanguageTransition(locale);
@@ -136,10 +133,7 @@ export function OnboardingQuestionnaire() {
                 currentStep={activeStep}
                 steps={stepLabels}
               />
-              <div
-                key={activePage.id}
-                className="mt-10 min-h-[360px] md:min-h-[390px]"
-              >
+              <div key={activePage.id} className="mt-10 min-h-[420px]">
                 <QuestionnaireStep
                   copy={copy}
                   errors={errors}

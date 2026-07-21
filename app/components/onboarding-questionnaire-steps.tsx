@@ -1,11 +1,3 @@
-import type {
-  LearningSource,
-  MainGoal,
-  OnboardingProfile,
-  PreferredContactChannel,
-  SecurityExperience,
-  SolanaLevel,
-} from "../lib/onboarding";
 import {
   errorDescription,
   Field,
@@ -16,9 +8,17 @@ import {
   StepHeading,
 } from "./onboarding-questionnaire-fields";
 import {
+  type BetaInterest,
+  type CustomerProfile,
+  type LearningAction,
+  type LearningBlocker,
+  type LearningFormat,
   type OnboardingFormErrors,
   type OnboardingFormState,
-  type OnboardingPageId,
+  type OnboardingQuestionId,
+  type PracticeSignal,
+  type RealExperience,
+  type SecurityLearningAttempt,
 } from "./onboarding-questionnaire-model";
 import type { OnboardingCopy } from "./onboarding-questionnaire-copy";
 
@@ -37,457 +37,358 @@ type StepProps = {
 export function QuestionnaireStep({
   pageId,
   ...props
-}: StepProps & { pageId: OnboardingPageId }) {
-  if (pageId === "contact") return <ContactStep {...props} />;
-  if (pageId === "profileGroup") return <ProfileStep {...props} />;
-  if (pageId === "learningGroup") return <LearningStep {...props} />;
-  if (pageId === "betaGroup") return <BetaFitStep {...props} />;
-  if (pageId === "review") return <ReviewStep {...props} />;
-  if (
-    pageId === "profile" ||
-    pageId === "solanaLevel" ||
-    pageId === "securityExperience"
-  ) {
-    return <ProfileQuestionStep {...props} question={pageId} />;
+}: StepProps & { pageId: OnboardingQuestionId }) {
+  switch (pageId) {
+    case "profile":
+      return <ProfileStep {...props} />;
+    case "realExperience":
+      return <RealExperienceStep {...props} />;
+    case "securityLearningAttempt":
+      return <SecurityLearningStep {...props} />;
+    case "learningActions":
+      return <LearningActionsStep {...props} />;
+    case "learningBlockers":
+      return <LearningBlockersStep {...props} />;
+    case "hardestPracticeStep":
+      return <HardestPracticeStep {...props} />;
+    case "preferredFormats":
+      return <PreferredFormatsStep {...props} />;
+    case "practiceSignals":
+      return <PracticeSignalsStep {...props} />;
+    case "problemIntensity":
+      return <ProblemIntensityStep {...props} />;
+    case "betaIntent":
+      return <BetaIntentStep {...props} />;
+    case "review":
+      return <ReviewStep {...props} />;
   }
-  if (
-    pageId === "mainGoal" ||
-    pageId === "currentLearningSources" ||
-    pageId === "guidedLabUsefulness"
-  ) {
-    return <LearningQuestionStep {...props} question={pageId} />;
-  }
-  if (pageId === "betaIntent" || pageId === "feedbackWillingness") {
-    return <BetaQuestionStep {...props} question={pageId} />;
-  }
-  return <OptionalStep {...props} />;
-}
-
-function ContactStep({ copy, errors, form, updateField }: StepProps) {
-  const contactPlaceholder =
-    form.preferredContactChannel === "email" ? "you@example.com" : "@username";
-
-  return (
-    <div>
-      <StepHeading
-        title={copy.contact.title}
-        description={copy.contact.description}
-      />
-      <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        <Field
-          label={copy.contact.nameLabel}
-          error={errors.name}
-          fieldId="name"
-        >
-          <input
-            id="onboarding-name"
-            autoComplete="name"
-            aria-invalid={errors.name ? "true" : undefined}
-            aria-describedby={errorDescription("name", errors.name)}
-            onChange={(event) => updateField("name", event.target.value)}
-            placeholder={copy.contact.namePlaceholder}
-            spellCheck={false}
-            value={form.name}
-            className={inputClass(errors.name)}
-          />
-        </Field>
-
-        <Field
-          label={copy.contact.preferredLabel}
-          fieldId="preferredContactChannel"
-        >
-          <select
-            id="onboarding-preferredContactChannel"
-            value={form.preferredContactChannel}
-            onChange={(event) =>
-              updateField(
-                "preferredContactChannel",
-                event.target.value as PreferredContactChannel
-              )
-            }
-            className={inputClass()}
-          >
-            <option value="email">Email</option>
-            <option value="telegram">Telegram</option>
-          </select>
-        </Field>
-
-        <div className="sm:col-span-2">
-          <Field
-            label={copy.contact.contactLabel}
-            error={errors.contact}
-            fieldId="contact"
-          >
-            <input
-              id="onboarding-contact"
-              autoComplete={
-                form.preferredContactChannel === "email" ? "email" : "off"
-              }
-              aria-invalid={errors.contact ? "true" : undefined}
-              aria-describedby={errorDescription("contact", errors.contact)}
-              inputMode={
-                form.preferredContactChannel === "email" ? "email" : "text"
-              }
-              onChange={(event) => updateField("contact", event.target.value)}
-              placeholder={contactPlaceholder}
-              spellCheck={false}
-              type={form.preferredContactChannel === "email" ? "email" : "text"}
-              value={form.contact}
-              className={inputClass(errors.contact)}
-            />
-          </Field>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function ProfileStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.profile;
   return (
-    <div>
-      <StepHeading
-        title={copy.profile.title}
-        description={copy.profile.description}
+    <QuestionFrame title={question.title} description={question.description}>
+      <OptionGroup
+        hideLegend
+        id="profile"
+        legend={question.title}
+        error={errors.profile}
+        options={copy.options.profiles}
+        value={form.profile}
+        onChange={(value) => updateField("profile", value as CustomerProfile)}
       />
-      <div className="mt-8 space-y-8">
-        <OptionGroup
-          id="profile"
-          legend={copy.profile.profileLegend}
-          error={errors.profile}
-          options={copy.options.profiles}
-          value={form.profile}
-          onChange={(value) =>
-            updateField("profile", value as OnboardingProfile)
-          }
-        />
-        <OptionGroup
-          id="solanaLevel"
-          legend={copy.profile.solanaLegend}
-          error={errors.solanaLevel}
-          options={copy.options.solanaLevels}
-          value={form.solanaLevel}
-          onChange={(value) => updateField("solanaLevel", value as SolanaLevel)}
-        />
-        <OptionGroup
-          id="securityExperience"
-          legend={copy.profile.securityLegend}
-          error={errors.securityExperience}
-          options={copy.options.security}
-          value={form.securityExperience}
-          onChange={(value) =>
-            updateField("securityExperience", value as SecurityExperience)
-          }
-        />
-      </div>
-    </div>
+    </QuestionFrame>
   );
 }
 
-function ProfileQuestionStep({
-  copy,
-  errors,
-  form,
-  question,
-  updateField,
-}: StepProps & {
-  question: "profile" | "securityExperience" | "solanaLevel";
-}) {
-  if (question === "profile") {
-    return (
-      <div>
-        <StepHeading
-          title={copy.profile.profileLegend}
-          description={copy.profile.description}
-        />
-        <div className="mt-8">
-          <OptionGroup
-            hideLegend
-            id="profile"
-            legend={copy.profile.profileLegend}
-            error={errors.profile}
-            options={copy.options.profiles}
-            value={form.profile}
-            onChange={(value) =>
-              updateField("profile", value as OnboardingProfile)
-            }
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (question === "solanaLevel") {
-    return (
-      <div>
-        <StepHeading
-          title={copy.profile.solanaLegend}
-          description={copy.profile.description}
-        />
-        <div className="mt-8">
-          <OptionGroup
-            hideLegend
-            id="solanaLevel"
-            legend={copy.profile.solanaLegend}
-            error={errors.solanaLevel}
-            options={copy.options.solanaLevels}
-            value={form.solanaLevel}
-            onChange={(value) =>
-              updateField("solanaLevel", value as SolanaLevel)
-            }
-          />
-        </div>
-      </div>
-    );
-  }
-
+function RealExperienceStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.realExperience;
   return (
-    <div>
-      <StepHeading
-        title={copy.profile.securityLegend}
-        description={copy.profile.description}
-      />
-      <div className="mt-8">
-        <OptionGroup
-          hideLegend
-          id="securityExperience"
-          legend={copy.profile.securityLegend}
-          error={errors.securityExperience}
-          options={copy.options.security}
-          value={form.securityExperience}
-          onChange={(value) =>
-            updateField("securityExperience", value as SecurityExperience)
-          }
-        />
-      </div>
-    </div>
-  );
-}
-
-function LearningStep({ copy, errors, form, updateField }: StepProps) {
-  return (
-    <div>
-      <StepHeading
-        title={copy.learning.title}
-        description={copy.learning.description}
-      />
-      <div className="mt-8 space-y-8">
-        <MultiOptionGroup
-          id="mainGoal"
-          legend={copy.learning.goalsLegend}
-          error={errors.mainGoal}
-          options={copy.options.goals}
-          values={form.mainGoal}
-          onToggle={(value) =>
-            updateField(
-              "mainGoal",
-              toggleArrayValue(form.mainGoal, value as MainGoal)
+    <QuestionFrame title={question.title} description={question.description}>
+      <MultiOptionGroup
+        hideLegend
+        id="realExperience"
+        legend={question.title}
+        error={errors.realExperience}
+        options={copy.options.realExperience}
+        values={form.realExperience}
+        onToggle={(value) =>
+          updateField(
+            "realExperience",
+            exclusiveToggle(
+              form.realExperience,
+              value as RealExperience,
+              "not_built_anything"
             )
+          )
+        }
+      />
+    </QuestionFrame>
+  );
+}
+
+function SecurityLearningStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.securityLearningAttempt;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <OptionGroup
+        hideLegend
+        id="securityLearningAttempt"
+        legend={question.title}
+        error={errors.securityLearningAttempt}
+        options={copy.options.securityLearningAttempt}
+        value={form.securityLearningAttempt}
+        onChange={(value) =>
+          updateField(
+            "securityLearningAttempt",
+            value as SecurityLearningAttempt
+          )
+        }
+      />
+    </QuestionFrame>
+  );
+}
+
+function LearningActionsStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.learningActions;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <MultiOptionGroup
+        hideLegend
+        id="learningActions"
+        legend={question.title}
+        error={errors.learningActions}
+        options={copy.options.learningActions}
+        values={form.learningActions}
+        onToggle={(value) =>
+          updateField(
+            "learningActions",
+            exclusiveToggle(
+              form.learningActions,
+              value as LearningAction,
+              "nothing_concrete"
+            )
+          )
+        }
+      />
+    </QuestionFrame>
+  );
+}
+
+function LearningBlockersStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.learningBlockers;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <MultiOptionGroup
+        hideLegend
+        id="learningBlockers"
+        legend={question.title}
+        error={errors.learningBlockers}
+        options={copy.options.learningBlockers}
+        values={form.learningBlockers}
+        onToggle={(value) =>
+          updateField(
+            "learningBlockers",
+            exclusiveToggle(
+              form.learningBlockers,
+              value as LearningBlocker,
+              "not_stuck"
+            )
+          )
+        }
+      />
+    </QuestionFrame>
+  );
+}
+
+function HardestPracticeStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.hardestPracticeStep;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <Field
+        label={question.title}
+        error={errors.hardestPracticeStep}
+        fieldId="hardestPracticeStep"
+      >
+        <textarea
+          id="onboarding-hardestPracticeStep"
+          aria-invalid={errors.hardestPracticeStep ? "true" : undefined}
+          aria-describedby={errorDescription(
+            "hardestPracticeStep",
+            errors.hardestPracticeStep
+          )}
+          maxLength={600}
+          onChange={(event) =>
+            updateField("hardestPracticeStep", event.target.value)
           }
+          placeholder={question.placeholder}
+          rows={7}
+          value={form.hardestPracticeStep}
+          className={`${inputClass(errors.hardestPracticeStep)} min-h-44 resize-y py-3 leading-6`}
         />
-        <MultiOptionGroup
-          id="currentLearningSources"
-          legend={copy.learning.sourcesLegend}
-          error={errors.currentLearningSources}
-          options={copy.options.learningSources}
-          values={form.currentLearningSources}
-          onToggle={(value) => {
-            const source = value as LearningSource;
-            const current = form.currentLearningSources;
-            const next =
-              source === "no_clear_path"
-                ? current.includes(source)
-                  ? []
-                  : [source]
-                : toggleArrayValue(
-                    current.filter((item) => item !== "no_clear_path"),
-                    source
-                  );
-            updateField("currentLearningSources", next);
-          }}
-        />
-        <RatingGroup
-          copy={copy}
-          error={errors.guidedLabUsefulness}
-          value={form.guidedLabUsefulness}
-          onChange={(value) => updateField("guidedLabUsefulness", value)}
-        />
-      </div>
-    </div>
+      </Field>
+    </QuestionFrame>
   );
 }
 
-function LearningQuestionStep({
-  copy,
-  errors,
-  form,
-  question,
-  updateField,
-}: StepProps & {
-  question: "currentLearningSources" | "guidedLabUsefulness" | "mainGoal";
-}) {
-  if (question === "mainGoal") {
-    return (
-      <div>
-        <StepHeading
-          title={copy.learning.goalsLegend}
-          description={copy.learning.description}
-        />
-        <div className="mt-8">
-          <MultiOptionGroup
-            hideLegend
-            id="mainGoal"
-            legend={copy.learning.goalsLegend}
-            error={errors.mainGoal}
-            options={copy.options.goals}
-            values={form.mainGoal}
-            onToggle={(value) =>
-              updateField(
-                "mainGoal",
-                toggleArrayValue(form.mainGoal, value as MainGoal)
-              )
-            }
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (question === "currentLearningSources") {
-    return (
-      <div>
-        <StepHeading
-          title={copy.learning.sourcesLegend}
-          description={copy.learning.description}
-        />
-        <div className="mt-8">
-          <LearningSourcesGroup
-            copy={copy}
-            errors={errors}
-            form={form}
-            hideLegend
-            updateField={updateField}
-          />
-        </div>
-      </div>
-    );
-  }
-
+function PreferredFormatsStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.preferredFormats;
   return (
-    <div>
-      <StepHeading
-        title={copy.learning.ratingLegend}
-        description={copy.learning.description}
+    <QuestionFrame title={question.title} description={question.description}>
+      <MultiOptionGroup
+        hideLegend
+        id="preferredFormats"
+        legend={question.title}
+        error={errors.preferredFormats}
+        options={copy.options.preferredFormats}
+        values={form.preferredFormats}
+        onToggle={(value) =>
+          updateField(
+            "preferredFormats",
+            toggleArrayValue(form.preferredFormats, value as LearningFormat)
+          )
+        }
       />
-      <div className="mt-8">
+    </QuestionFrame>
+  );
+}
+
+function PracticeSignalsStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.practiceSignals;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <MultiOptionGroup
+        hideLegend
+        id="practiceSignals"
+        legend={question.title}
+        error={errors.practiceSignals}
+        options={copy.options.practiceSignals}
+        values={form.practiceSignals}
+        onToggle={(value) =>
+          updateField(
+            "practiceSignals",
+            toggleArrayValue(form.practiceSignals, value as PracticeSignal)
+          )
+        }
+      />
+    </QuestionFrame>
+  );
+}
+
+function ProblemIntensityStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.problemIntensity;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <div className="space-y-7">
         <RatingGroup
-          copy={copy}
-          error={errors.guidedLabUsefulness}
           hideLegend
-          value={form.guidedLabUsefulness}
-          onChange={(value) => updateField("guidedLabUsefulness", value)}
+          id="problemIntensity"
+          legend={question.title}
+          error={errors.problemIntensity}
+          maxLabel={question.max}
+          minLabel={question.min}
+          value={form.problemIntensity}
+          onChange={(value) => updateField("problemIntensity", value)}
         />
+        <Field label={question.reasonLabel} fieldId="problemIntensityReason">
+          <input
+            id="onboarding-problemIntensityReason"
+            maxLength={240}
+            onChange={(event) =>
+              updateField("problemIntensityReason", event.target.value)
+            }
+            placeholder={question.reasonPlaceholder}
+            value={form.problemIntensityReason}
+            className={inputClass()}
+          />
+        </Field>
       </div>
-    </div>
+    </QuestionFrame>
   );
 }
 
-function BetaFitStep({ copy, errors, form, updateField }: StepProps) {
+function BetaIntentStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.betaIntent;
+  const needsContact = Boolean(
+    form.betaIntent && form.betaIntent !== "not_now"
+  );
+
   return (
-    <div>
-      <StepHeading
-        title={copy.beta.title}
-        description={copy.beta.description}
-      />
-      <div className="mt-8 space-y-8">
+    <QuestionFrame title={question.title} description={question.description}>
+      <div className="space-y-7">
         <OptionGroup
+          hideLegend
           id="betaIntent"
-          legend={copy.beta.intentLegend}
+          legend={question.title}
           error={errors.betaIntent}
           options={copy.options.betaIntent}
           value={form.betaIntent}
-          onChange={(value) =>
-            updateField(
-              "betaIntent",
-              value as OnboardingFormState["betaIntent"]
-            )
-          }
+          onChange={(value) => updateField("betaIntent", value as BetaInterest)}
         />
-        <OptionGroup
-          id="feedbackWillingness"
-          legend={copy.beta.feedbackLegend}
-          error={errors.feedbackWillingness}
-          options={copy.options.feedback}
-          value={form.feedbackWillingness}
-          onChange={(value) =>
-            updateField(
-              "feedbackWillingness",
-              value as OnboardingFormState["feedbackWillingness"]
-            )
-          }
-        />
-        <OptionalFields copy={copy} form={form} updateField={updateField} />
+        {needsContact ? (
+          <div className="border-t border-border pt-6">
+            <Field
+              label={question.contactLabel}
+              error={errors.contact}
+              fieldId="contact"
+            >
+              <input
+                id="onboarding-contact"
+                autoComplete="off"
+                aria-invalid={errors.contact ? "true" : undefined}
+                aria-describedby={errorDescription("contact", errors.contact)}
+                maxLength={320}
+                onChange={(event) => updateField("contact", event.target.value)}
+                placeholder={question.contactPlaceholder}
+                spellCheck={false}
+                value={form.contact}
+                className={inputClass(errors.contact)}
+              />
+            </Field>
+          </div>
+        ) : null}
       </div>
-    </div>
+    </QuestionFrame>
   );
 }
 
-function BetaQuestionStep({
-  copy,
-  errors,
-  form,
-  question,
-  updateField,
-}: StepProps & {
-  question: "betaIntent" | "feedbackWillingness";
-}) {
-  const isIntent = question === "betaIntent";
-  const title = isIntent ? copy.beta.intentLegend : copy.beta.feedbackLegend;
-
-  return (
-    <div>
-      <StepHeading title={title} description={copy.beta.description} />
-      <div className="mt-8">
-        <OptionGroup
-          hideLegend
-          id={question}
-          legend={title}
-          error={isIntent ? errors.betaIntent : errors.feedbackWillingness}
-          options={isIntent ? copy.options.betaIntent : copy.options.feedback}
-          value={isIntent ? form.betaIntent : form.feedbackWillingness}
-          onChange={(value) =>
-            updateField(question, value as OnboardingFormState[typeof question])
-          }
-        />
-      </div>
-    </div>
-  );
-}
-
-function OptionalStep({
-  copy,
-  form,
-  updateField,
-}: Pick<StepProps, "copy" | "form" | "updateField">) {
-  return (
-    <div>
-      <StepHeading
-        title={copy.beta.optionalTitle}
-        description={copy.beta.optionalDescription}
-      />
-      <div className="mt-8">
-        <OptionalFields copy={copy} form={form} updateField={updateField} />
-      </div>
-    </div>
-  );
-}
-
-function ReviewStep({ copy, form }: Pick<StepProps, "copy" | "form">) {
+function ReviewStep({ copy, form }: StepProps) {
   const details = [
-    { label: copy.review.nameLabel, value: form.name.trim() },
-    { label: copy.review.contactLabel, value: form.contact.trim() },
     {
-      label: copy.review.companyLabel,
-      value: form.organizationName.trim() || copy.review.notProvided,
+      label: copy.review.labels.profile,
+      value: optionLabel(copy.options.profiles, form.profile),
+    },
+    {
+      label: copy.review.labels.realExperience,
+      value: optionLabels(copy.options.realExperience, form.realExperience),
+    },
+    {
+      label: copy.review.labels.securityLearningAttempt,
+      value: optionLabel(
+        copy.options.securityLearningAttempt,
+        form.securityLearningAttempt
+      ),
+    },
+    {
+      label: copy.review.labels.learningActions,
+      value: optionLabels(copy.options.learningActions, form.learningActions),
+    },
+    {
+      label: copy.review.labels.learningBlockers,
+      value: optionLabels(copy.options.learningBlockers, form.learningBlockers),
+    },
+    {
+      label: copy.review.labels.hardestPracticeStep,
+      value: form.hardestPracticeStep.trim(),
+    },
+    {
+      label: copy.review.labels.preferredFormats,
+      value: optionLabels(copy.options.preferredFormats, form.preferredFormats),
+    },
+    {
+      label: copy.review.labels.practiceSignals,
+      value: optionLabels(copy.options.practiceSignals, form.practiceSignals),
+    },
+    {
+      label: copy.review.labels.problemIntensity,
+      value: form.problemIntensity
+        ? `${form.problemIntensity}/5${
+            form.problemIntensityReason.trim()
+              ? ` — ${form.problemIntensityReason.trim()}`
+              : ""
+          }`
+        : copy.review.notProvided,
+    },
+    {
+      label: copy.review.labels.betaIntent,
+      value: optionLabel(copy.options.betaIntent, form.betaIntent),
+    },
+    {
+      label: copy.review.contactLabel,
+      value:
+        form.betaIntent === "not_now"
+          ? copy.review.notProvided
+          : form.contact.trim() || copy.review.notProvided,
     },
   ];
 
@@ -497,20 +398,23 @@ function ReviewStep({ copy, form }: Pick<StepProps, "copy" | "form">) {
         title={copy.review.title}
         description={copy.review.description}
       />
-      <dl className="mt-8 divide-y divide-border border-y border-border">
+      <dl className="mt-8 max-h-[430px] divide-y divide-border overflow-y-auto border-y border-border pr-3">
         {details.map((detail) => (
           <div
             key={detail.label}
-            className="grid gap-1 py-4 sm:grid-cols-[140px_1fr] sm:items-center"
+            className="grid gap-2 py-4 sm:grid-cols-[170px_1fr]"
           >
             <dt
               data-language-line
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-muted"
+              className="text-xs font-semibold uppercase tracking-[0.14em] text-muted"
             >
               {detail.label}
             </dt>
-            <dd className="break-words text-sm font-medium text-foreground sm:text-right">
-              {detail.value}
+            <dd
+              data-language-line
+              className="break-words text-sm leading-6 text-foreground sm:text-right"
+            >
+              {detail.value || copy.review.notProvided}
             </dd>
           </div>
         ))}
@@ -519,87 +423,51 @@ function ReviewStep({ copy, form }: Pick<StepProps, "copy" | "form">) {
   );
 }
 
-function LearningSourcesGroup({
-  copy,
-  errors,
-  form,
-  hideLegend = false,
-  updateField,
-}: StepProps & { hideLegend?: boolean }) {
+function QuestionFrame({
+  children,
+  description,
+  title,
+}: {
+  children: React.ReactNode;
+  description?: string;
+  title: string;
+}) {
   return (
-    <MultiOptionGroup
-      hideLegend={hideLegend}
-      id="currentLearningSources"
-      legend={copy.learning.sourcesLegend}
-      error={errors.currentLearningSources}
-      options={copy.options.learningSources}
-      values={form.currentLearningSources}
-      onToggle={(value) => {
-        const source = value as LearningSource;
-        const current = form.currentLearningSources;
-        const next =
-          source === "no_clear_path"
-            ? current.includes(source)
-              ? []
-              : [source]
-            : toggleArrayValue(
-                current.filter((item) => item !== "no_clear_path"),
-                source
-              );
-        updateField("currentLearningSources", next);
-      }}
-    />
+    <div>
+      <StepHeading title={title} description={description} />
+      <div className="mt-8">{children}</div>
+    </div>
   );
 }
 
-function OptionalFields({
-  copy,
-  form,
-  updateField,
-}: Pick<StepProps, "copy" | "form" | "updateField">) {
-  return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      <Field label={copy.beta.organizationLabel} fieldId="organizationName">
-        <input
-          id="onboarding-organizationName"
-          autoComplete="organization"
-          maxLength={200}
-          onChange={(event) =>
-            updateField("organizationName", event.target.value)
-          }
-          placeholder={copy.beta.organizationPlaceholder}
-          value={form.organizationName}
-          className={inputClass()}
-        />
-      </Field>
-      <Field label={copy.beta.futureLabsLabel} fieldId="futureLabsInterest">
-        <input
-          id="onboarding-futureLabsInterest"
-          maxLength={1000}
-          onChange={(event) =>
-            updateField("futureLabsInterest", event.target.value)
-          }
-          placeholder={copy.beta.futureLabsPlaceholder}
-          value={form.futureLabsInterest}
-          className={inputClass()}
-        />
-      </Field>
-      <div className="sm:col-span-2">
-        <Field label={copy.beta.additionalLabel} fieldId="additionalNotes">
-          <textarea
-            id="onboarding-additionalNotes"
-            maxLength={1000}
-            onChange={(event) =>
-              updateField("additionalNotes", event.target.value)
-            }
-            placeholder={copy.beta.additionalPlaceholder}
-            rows={3}
-            value={form.additionalNotes}
-            className={`${inputClass()} min-h-24 resize-y py-3`}
-          />
-        </Field>
-      </div>
-    </div>
+function optionLabel(
+  options: readonly { label: string; value: string }[],
+  value: string
+) {
+  return options.find((option) => option.value === value)?.label ?? "";
+}
+
+function optionLabels(
+  options: readonly { label: string; value: string }[],
+  values: string[]
+) {
+  return values
+    .map((value) => optionLabel(options, value))
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function exclusiveToggle<T extends string>(
+  values: T[],
+  value: T,
+  exclusiveValue: T
+) {
+  if (value === exclusiveValue) {
+    return values.includes(value) ? [] : [value];
+  }
+  return toggleArrayValue(
+    values.filter((item) => item !== exclusiveValue),
+    value
   );
 }
 

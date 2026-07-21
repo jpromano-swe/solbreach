@@ -24,54 +24,82 @@ test("requires an explicit confirmation before submitting onboarding", async ({
   await page.goto("/onboarding");
   await page.getByRole("button", { name: "EN", exact: true }).click();
 
-  await page.locator("#onboarding-name").fill("Security Builder");
-  await page.locator("#onboarding-contact").fill("builder@example.com");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-
   await page.locator('input[name="profile"]').first().check({ force: true });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+
   await page
-    .locator('input[name="solanaLevel"]')
-    .first()
-    .check({ force: true });
-  await page
-    .locator('input[name="securityExperience"]')
+    .locator("#onboarding-realExperience input")
     .first()
     .check({ force: true });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   await page
-    .locator("#onboarding-mainGoal input")
+    .locator('input[name="securityLearningAttempt"]')
     .first()
     .check({ force: true });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+
   await page
-    .locator("#onboarding-currentLearningSources input")
+    .locator("#onboarding-learningActions input")
     .first()
     .check({ force: true });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+
   await page
-    .locator('input[name="guidedLabUsefulness"]')
+    .locator("#onboarding-learningBlockers input")
+    .first()
+    .check({ force: true });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+  await page
+    .locator("#onboarding-hardestPracticeStep")
+    .fill("Turning a report into a reproducible exploit was the hardest part.");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+  await page
+    .locator("#onboarding-preferredFormats input")
+    .first()
+    .check({ force: true });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+  await page
+    .locator("#onboarding-practiceSignals input")
+    .first()
+    .check({ force: true });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+
+  await page
+    .locator('input[name="problemIntensity"]')
     .nth(3)
     .check({ force: true });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   await page.locator('input[name="betaIntent"]').first().check({ force: true });
-  await page
-    .locator('input[name="feedbackWillingness"]')
-    .first()
-    .check({ force: true });
-  await page.locator("#onboarding-organizationName").fill("SolBreach");
+  await page.locator("#onboarding-contact").fill("builder@example.com");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Review your request" })
+    page.getByRole("heading", { name: "Review your responses" })
   ).toBeVisible();
   expect(submissions).toHaveLength(0);
 
   await page
-    .getByRole("button", { name: "Request Beta Access", exact: true })
+    .getByRole("button", { name: "Send responses", exact: true })
     .click();
 
   await expect.poll(() => submissions.length).toBe(1);
+  expect(submissions[0]).toMatchObject({
+    betaIntent: "try_this_week",
+    contact: "builder@example.com",
+    guidedLabUsefulness: 4,
+  });
+  expect(submissions[0]).toMatchObject({
+    additionalNotes: expect.stringContaining(
+      "Turning a report into a reproducible exploit"
+    ),
+    futureLabsInterest: expect.stringContaining("blockers=no_clear_path"),
+  });
   await expect(
-    page.getByRole("heading", { name: "Thanks for helping shape the beta." })
+    page.getByRole("heading", { name: "Thank you for helping us." })
   ).toBeVisible();
 });

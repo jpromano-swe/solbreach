@@ -76,7 +76,7 @@ export function StepHeading({
   description,
   title,
 }: {
-  description: string;
+  description?: string;
   title: string;
 }) {
   return (
@@ -87,9 +87,11 @@ export function StepHeading({
       >
         {title}
       </h3>
-      <p data-language-line className="mt-2 text-sm leading-6 text-muted">
-        {description}
-      </p>
+      {description ? (
+        <p data-language-line className="mt-2 text-sm leading-6 text-muted">
+          {description}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -237,19 +239,24 @@ export function MultiOptionGroup({
 }
 
 export function RatingGroup({
-  copy,
   error,
   hideLegend = false,
+  id,
+  legend,
+  maxLabel,
+  minLabel,
   onChange,
   value,
 }: {
-  copy: OnboardingCopy;
   error?: string;
   hideLegend?: boolean;
+  id: string;
+  legend: string;
+  maxLabel: string;
+  minLabel: string;
   onChange: (value: number) => void;
   value: number | null;
 }) {
-  const id = "guidedLabUsefulness";
   return (
     <fieldset
       id={`onboarding-${id}`}
@@ -262,7 +269,7 @@ export function RatingGroup({
           hideLegend ? "sr-only" : "text-sm font-medium text-foreground"
         }
       >
-        {copy.learning.ratingLegend}
+        {legend}
       </legend>
       <div className="mt-3 grid grid-cols-5 gap-2">
         {[1, 2, 3, 4, 5].map((score) => (
@@ -282,8 +289,8 @@ export function RatingGroup({
         ))}
       </div>
       <div className="mt-2 flex justify-between text-xs text-muted">
-        <span data-language-line>{copy.learning.ratingMin}</span>
-        <span data-language-line>{copy.learning.ratingMax}</span>
+        <span data-language-line>{minLabel}</span>
+        <span data-language-line>{maxLabel}</span>
       </div>
       <ErrorMessage id={id} error={error} />
     </fieldset>
