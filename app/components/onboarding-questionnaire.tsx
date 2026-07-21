@@ -219,7 +219,7 @@ function OnboardingBriefing({ copy }: { copy: OnboardingCopy }) {
         width={1480}
         height={304}
         priority
-        className="h-11 w-auto"
+        className="h-20 w-auto"
       />
       <h2
         id="onboarding-title"

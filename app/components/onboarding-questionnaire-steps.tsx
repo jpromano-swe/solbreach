@@ -65,11 +65,7 @@ export function QuestionnaireStep({
 
 function ContactStep({ copy, errors, form, updateField }: StepProps) {
   const contactPlaceholder =
-    form.preferredContactChannel === "email"
-      ? "you@example.com"
-      : form.preferredContactChannel === "telegram"
-        ? "@username"
-        : "username";
+    form.preferredContactChannel === "email" ? "you@example.com" : "@username";
 
   return (
     <div>
@@ -113,7 +109,6 @@ function ContactStep({ copy, errors, form, updateField }: StepProps) {
           >
             <option value="email">Email</option>
             <option value="telegram">Telegram</option>
-            <option value="discord">Discord</option>
           </select>
         </Field>
 

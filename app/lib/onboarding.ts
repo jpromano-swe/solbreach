@@ -47,7 +47,7 @@ export type BetaIntent = "try_this_week" | "try_later" | "maybe" | "not_now";
 
 export type FeedbackWillingness = "short_call" | "form" | "chat" | "not_now";
 
-export type PreferredContactChannel = "discord" | "email" | "telegram";
+export type PreferredContactChannel = "email" | "telegram";
 
 export type OnboardingSubmission = {
   additionalNotes: string | null;
