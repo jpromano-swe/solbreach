@@ -177,6 +177,7 @@ function LanguageSelector({
         aria-label={copy.languageLabel}
         className="flex items-center gap-2 text-xs font-semibold tracking-[0.12em]"
       >
+        <span className="mr-1 text-muted">{copy.languageLabel}</span>
         {(["es", "en"] as const).map((option, index) => (
           <span key={option} className="flex items-center gap-2">
             {index > 0 ? (

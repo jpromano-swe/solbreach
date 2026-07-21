@@ -145,7 +145,7 @@ function options(
 }
 
 const english: OnboardingCopy = {
-  languageLabel: "Questionnaire language",
+  languageLabel: "Language",
   briefing: {
     title: "Help us place you in the right beta group.",
     description:
@@ -318,7 +318,7 @@ const english: OnboardingCopy = {
 };
 
 const spanish: OnboardingCopy = {
-  languageLabel: "Idioma del cuestionario",
+  languageLabel: "Idioma",
   briefing: {
     title: "Ayúdanos a ubicarte en el grupo beta adecuado.",
     description:
