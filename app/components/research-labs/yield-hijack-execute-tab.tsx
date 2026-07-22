@@ -1,5 +1,6 @@
 "use client";
 
+import NumberFlow from "@number-flow/react";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -181,9 +182,11 @@ export function YieldHijackExecuteTab({
                   Overwrite the shared position owner.
                 </p>
               </div>
-              <span className="font-mono text-[11px] text-zinc-500">
-                {formatAmount(state.userStakeBalance)} available
-              </span>
+              <AnimatedProtocolNumber
+                className="font-mono text-[11px] text-zinc-500"
+                suffix=" available"
+                value={state.userStakeBalance}
+              />
             </div>
             <div className="mt-3 flex items-center gap-2">
               <input
@@ -317,8 +320,6 @@ export function YieldHijackExecuteTab({
 
         <YieldHijackProtocolState
           state={state}
-          explorerAvailable={Boolean(explorerAccessToken)}
-          explorerUrl={explorerUrl}
           isRunning={isRunning || pendingAction !== null}
           userWalletAddress={userWalletAddress}
           onClaimOwnRewards={claimOwnRewards}
@@ -412,15 +413,11 @@ function ExplorerRouteLink({
 
 function YieldHijackProtocolState({
   state,
-  explorerAvailable,
-  explorerUrl,
   isRunning,
   userWalletAddress,
   onClaimOwnRewards,
 }: {
   state: YieldHijackState;
-  explorerAvailable: boolean;
-  explorerUrl: string;
   isRunning: boolean;
   userWalletAddress: string;
   onClaimOwnRewards: () => void;
@@ -478,23 +475,23 @@ function YieldHijackProtocolState({
                 height={42}
                 className="absolute right-full top-1/2 mr-3 h-9 w-9 -translate-y-1/2 rounded-full sm:h-10 sm:w-10"
               />
-              <p className="font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-                {rewardsVisible
-                  ? `$${formatAmount(state.totalRewardsPaid)}`
-                  : "$••••••"}
-              </p>
+              {rewardsVisible ? (
+                <AnimatedProtocolNumber
+                  className="font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl"
+                  prefix="$"
+                  value={state.totalRewardsPaid}
+                />
+              ) : (
+                <p className="font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+                  $••••••
+                </p>
+              )}
               <p className="mt-2 text-[10px] font-semibold tracking-[0.18em] text-[#8fffd0]">
                 USDC in rewards
               </p>
             </div>
           </div>
         </section>
-
-        <ExplorerRouteLink
-          available={explorerAvailable}
-          className="mt-5 min-h-11 px-4 text-sm"
-          href={explorerUrl}
-        />
 
         <div className="mt-5 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
           <div className="min-w-[700px]">
@@ -511,15 +508,21 @@ function YieldHijackProtocolState({
                   {shortAddress(userWalletAddress)}
                 </p>
               </div>
-              <p className="text-right font-mono text-sm font-semibold text-zinc-300">
-                {formatAmount(state.userPositionStakedAmount)} STAKE
-              </p>
-              <p className="text-right font-mono text-sm font-semibold text-[#8fffd0]">
-                {formatAmount(state.userPendingRewards)} USDC
-              </p>
-              <p className="text-right font-mono text-sm font-semibold text-[#d7c0ff]">
-                {formatAmount(state.userRewardBalance)} USDC
-              </p>
+              <AnimatedProtocolNumber
+                className="justify-self-end font-mono text-sm font-semibold text-zinc-300"
+                suffix=" STAKE"
+                value={state.userPositionStakedAmount}
+              />
+              <AnimatedProtocolNumber
+                className="justify-self-end font-mono text-sm font-semibold text-[#8fffd0]"
+                suffix=" USDC"
+                value={state.userPendingRewards}
+              />
+              <AnimatedProtocolNumber
+                className="justify-self-end font-mono text-sm font-semibold text-[#d7c0ff]"
+                suffix=" USDC"
+                value={state.userRewardBalance}
+              />
               <button
                 type="button"
                 onClick={onClaimOwnRewards}
@@ -1194,6 +1197,34 @@ function friendlyOwner(value: string | null, stakeObserved: boolean) {
 function parseStakeAmount(value: string) {
   const parsed = Number(value);
   return Number.isInteger(parsed) ? parsed : 0;
+}
+
+function AnimatedProtocolNumber({
+  className = "font-mono",
+  decimals = 0,
+  prefix,
+  suffix,
+  value,
+}: {
+  className?: string;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
+  value: number;
+}) {
+  return (
+    <span className={`inline-flex items-baseline gap-1 ${className}`}>
+      {prefix ? <span>{prefix}</span> : null}
+      <NumberFlow
+        value={value}
+        format={{
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        }}
+      />
+      {suffix ? <span>{suffix}</span> : null}
+    </span>
+  );
 }
 
 function formatAmount(value: number) {
