@@ -460,6 +460,19 @@ export type ResearchLabExplorerRewardCandidate = {
   rewardSymbol: string;
 };
 
+export type ResearchLabExplorerParticipant = {
+  ref: string;
+  label: string;
+  walletAddress: string;
+  positionRef: string;
+  positionAddress: string;
+  stakeAmount: number;
+  claimableRewards: number;
+  rewardMintRef: string;
+  rewardSymbol: string;
+  status: string;
+};
+
 export type ResearchLabExplorerSnapshot = {
   sessionId: string;
   enabled: boolean;
@@ -477,6 +490,7 @@ export type ResearchLabExplorerSnapshot = {
     idl: Record<string, unknown>;
   };
   accounts: ResearchLabExplorerAccount[];
+  participants: ResearchLabExplorerParticipant[];
   rewardCandidates: ResearchLabExplorerRewardCandidate[];
   rewardAsset: {
     mintRef: string;

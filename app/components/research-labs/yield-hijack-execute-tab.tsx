@@ -86,9 +86,6 @@ export function YieldHijackExecuteTab({
     targetWallet.trim().length > 0 &&
     !isRunning &&
     pendingAction === null;
-  const targetMatchesCandidate = state.rewardCandidates.some(
-    (candidate) => candidate.walletAddress === targetWallet.trim()
-  );
 
   const submitStake = async () => {
     if (!canStake) return;
@@ -276,13 +273,7 @@ export function YieldHijackExecuteTab({
                   placeholder="Paste target wallet"
                   autoComplete="off"
                   spellCheck={false}
-                  className={`mt-1.5 h-10 w-full rounded-lg border bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition placeholder:text-zinc-700 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55 ${
-                    targetWallet
-                      ? targetMatchesCandidate
-                        ? "border-[#14f195]/45"
-                        : "border-amber-300/35"
-                      : "border-white/10 focus:border-[#9945ff]/50"
-                  }`}
+                  className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-[#9945ff]/50 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55"
                 />
               </div>
             </div>

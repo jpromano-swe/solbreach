@@ -336,12 +336,10 @@ export function YieldHijackExplorer({
               selectedAccount ? (
                 <AccountDetail
                   account={selectedAccount}
-                  candidateWallet={
-                    snapshot.rewardCandidates.find(
-                      (candidate) =>
-                        candidate.positionRef === selectedAccount.ref
-                    )?.walletAddress ?? null
-                  }
+                  candidateWallet={candidateWalletForAccount(
+                    snapshot,
+                    selectedAccount
+                  )}
                   onBack={() => setSelectedAccountRef(null)}
                 />
               ) : selectedTransaction ? (
@@ -489,6 +487,37 @@ function ExplorerOverview({
           />
         </dl>
       </section>
+
+      {snapshot.participants?.length ? (
+        <section className="mt-5 min-w-0">
+          <SectionHeader
+            title="Pool participants"
+            actionLabel="View accounts"
+            onAction={() => onViewChange("accounts")}
+          />
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+            {snapshot.participants.map((participant) => (
+              <button
+                key={participant.ref}
+                type="button"
+                onClick={() => onOpenAccount(participant.ref)}
+                className="min-h-24 rounded-lg border border-white/10 bg-[#202121] px-3 py-3 text-left transition hover:border-[#14f195]/25 hover:bg-white/[0.035] focus-visible:ring-2 focus-visible:ring-[#14f195]"
+              >
+                <span className="block text-xs font-semibold text-zinc-300">
+                  {participant.label}
+                </span>
+                <span className="mt-2 block truncate font-mono text-xs text-[#9bdbff]">
+                  {shortAddress(participant.walletAddress, 6)}
+                </span>
+                <span className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-zinc-600">
+                  <WalletCards className="h-3 w-3" aria-hidden="true" />
+                  Decoded wallet
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <section className="min-w-0">
@@ -1490,6 +1519,24 @@ function buildSearchResults(
   }
 
   return results.slice(0, 8);
+}
+
+function candidateWalletForAccount(
+  snapshot: ResearchLabExplorerSnapshot,
+  account: ResearchLabExplorerAccount
+) {
+  const directCandidate = snapshot.rewardCandidates.find(
+    (candidate) => candidate.positionRef === account.ref
+  );
+  if (directCandidate) return directCandidate.walletAddress;
+
+  const walletAddress = stringFromUnknown(account.data.walletAddress);
+  if (!walletAddress) return null;
+  return snapshot.rewardCandidates.some(
+    (candidate) => candidate.walletAddress === walletAddress
+  )
+    ? walletAddress
+    : null;
 }
 
 function idlItems(
