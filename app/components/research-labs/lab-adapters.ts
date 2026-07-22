@@ -189,10 +189,10 @@ const rl2Adapter: ResearchLabFrontendAdapter = {
     stake_vault: "Protocol Stake Vault",
     reward_vault: "Protocol Reward Vault",
     stake_position: "Staking Position",
-    attacker_stake_account: "Your Stake Account",
-    attacker_reward_account: "Your Reward Account",
-    victim_stake_account: "Existing Staker Account",
-    victim_reward_account: "Existing Staker Reward Account",
+    user_stake_account: "Your Stake Account",
+    user_reward_account: "Your Reward Account",
+    existing_staker_stake_account: "Existing Staker Account",
+    existing_staker_reward_account: "Existing Staker Reward Account",
   },
   briefing: {
     heading: "Investigate a high-APY staking protocol.",
@@ -202,7 +202,7 @@ const rl2Adapter: ResearchLabFrontendAdapter = {
       "Identify an account-isolation failure, demonstrate unauthorized reward capture, and preserve evidence of the resulting state changes.",
   },
   impactVerifiedCopy:
-    "A small attacker deposit changed ownership of a pre-existing staking position, preserving its accumulated value and allowing the attacker to claim rewards they did not earn.",
+    "A submitted stake changed ownership of a pre-existing staking position while preserving its accumulated value and enabling a different wallet to claim those rewards.",
   inspectChecks: [
     "Protocol source reviewed",
     "Staking position inspected",

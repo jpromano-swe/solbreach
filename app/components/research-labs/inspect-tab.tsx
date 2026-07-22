@@ -142,13 +142,23 @@ function CodeTab({
   }, [applyVulnerableDecorations, displayedFileContent]);
 
   return (
-    <div className={`grid h-full ${shouldShowTree ? "grid-cols-[280px_minmax(0,1fr)]" : "grid-cols-1"}`}>
-      {shouldShowTree ? <FileTree activeFile={activeFile} files={files} onSelectFile={onSelectFile} /> : null}
+    <div
+      className={`grid h-full ${shouldShowTree ? "grid-cols-[280px_minmax(0,1fr)]" : "grid-cols-1"}`}
+    >
+      {shouldShowTree ? (
+        <FileTree
+          activeFile={activeFile}
+          files={files}
+          onSelectFile={onSelectFile}
+        />
+      ) : null}
       <div className="min-w-0 overflow-hidden">
         <div className="flex h-12 items-center justify-between border-b border-white/10 px-4">
           <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-400">
             <FileCode2 className="h-4 w-4 text-[#b892ff]" />
-            <span className="truncate">{activeFile?.path ?? "No file selected"}</span>
+            <span className="truncate">
+              {activeFile?.path ?? "No file selected"}
+            </span>
           </div>
         </div>
         <div className="h-[calc(100%-48px)]">
@@ -192,7 +202,10 @@ const inspectAnswerComment = [
 const inspectDefaultComment =
   "// Deposit collateral into the lending position.";
 
-function formatInspectSnippetComment(content: string, inspectHintRevealed: boolean) {
+function formatInspectSnippetComment(
+  content: string,
+  inspectHintRevealed: boolean
+) {
   const sanitizedContent = content
     .replace(
       /^[ \t]*\/\/ Vulnerable: this function trusts the caller-supplied collateral account amount\r?\n[ \t]*\/\/ without proving that the token account mint equals ACCEPTED_COLLATERAL_MINT\.\r?\n?/gm,
@@ -271,10 +284,7 @@ function getVulnerableSnippetRange(content: string) {
   };
 }
 
-function getInspectSnippetRange(
-  content: string,
-  lab: ResearchLabManifest
-) {
+function getInspectSnippetRange(content: string, lab: ResearchLabManifest) {
   if (!isYieldHijackLab(lab)) return getVulnerableSnippetRange(content);
 
   const lines = content.split("\n");
@@ -302,7 +312,9 @@ function FileTree({
 }) {
   return (
     <div className="border-r border-white/10 bg-black/15 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">Visible Files</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
+        Visible Files
+      </p>
       <div className="mt-4 space-y-1 text-sm">
         <TreeRow icon={<FolderOpen />} label="lab/" depth={0} />
         <TreeRow icon={<FolderOpen />} label="programs/" depth={1} />
@@ -320,9 +332,20 @@ function FileTree({
   );
 }
 
-function TreeRow({ icon, label, depth }: { icon: ReactNode; label: string; depth: number }) {
+function TreeRow({
+  icon,
+  label,
+  depth,
+}: {
+  icon: ReactNode;
+  label: string;
+  depth: number;
+}) {
   return (
-    <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-zinc-500" style={{ paddingLeft: 8 + depth * 12 }}>
+    <div
+      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-zinc-500"
+      style={{ paddingLeft: 8 + depth * 12 }}
+    >
       <span className="h-4 w-4">{icon}</span>
       {label}
     </div>
@@ -346,7 +369,9 @@ function FileRow({
       type="button"
       onClick={() => onSelectFile(file.path)}
       className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition ${
-        active ? "bg-[#9945ff]/18 text-white" : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+        active
+          ? "bg-[#9945ff]/18 text-white"
+          : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
       }`}
       style={{ paddingLeft: 8 + depth * 12 }}
     >
@@ -366,34 +391,52 @@ function AccountsTab({
   return (
     <div className="h-full overflow-auto p-5">
       <div className="mb-5 max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">Protocol State</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
+          Protocol State
+        </p>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
           Accounts involved in the program.
         </p>
       </div>
-      <div className={`grid gap-4 ${compact ? "grid-cols-1" : "xl:grid-cols-2 2xl:grid-cols-3"}`}>
+      <div
+        className={`grid gap-4 ${compact ? "grid-cols-1" : "xl:grid-cols-2 2xl:grid-cols-3"}`}
+      >
         {accounts.map((account) => (
-          <div key={account.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <div
+            key={account.id}
+            className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-white">{account.label}</p>
-                <p className="mt-1 font-mono text-xs text-zinc-500">{account.address}</p>
+                <p className="text-sm font-semibold text-white">
+                  {account.label}
+                </p>
+                <p className="mt-1 font-mono text-xs text-zinc-500">
+                  {account.address}
+                </p>
               </div>
-              <span className="text-[11px] text-[#8fffd0]">
-                Visible
-              </span>
+              <span className="text-[11px] text-[#8fffd0]">Visible</span>
             </div>
             <div className="mt-4 space-y-2 text-sm">
               <StateLine label="Owner" value={account.owner} />
               <StateLine label="Role" value={account.role} />
-              {account.authority ? <StateLine label="Authority" value={account.authority} /> : null}
-              {account.mint ? <StateLine label="Mint" value={account.mint} /> : null}
+              {account.authority ? (
+                <StateLine label="Authority" value={account.authority} />
+              ) : null}
+              {account.mint ? (
+                <StateLine label="Mint" value={account.mint} />
+              ) : null}
             </div>
             <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
               {account.state.map((item) => (
-                <div key={item.label} className="flex items-center justify-between gap-4 py-1 text-xs">
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between gap-4 py-1 text-xs"
+                >
                   <span className="text-zinc-500">{item.label}</span>
-                  <span className="font-mono text-zinc-300">{item.after ?? item.value}</span>
+                  <span className="font-mono text-zinc-300">
+                    {item.after ?? item.value}
+                  </span>
                 </div>
               ))}
             </div>
@@ -414,8 +457,8 @@ function YieldHijackAccountsTab({
   const pool = findAccount(accounts, "pool_config");
   const stakeVault = findAccount(accounts, "stake_vault");
   const rewardVault = findAccount(accounts, "reward_vault");
-  const attackerStake = findAccount(accounts, "attacker_stake_account");
-  const attackerReward = findAccount(accounts, "attacker_reward_account");
+  const userStake = findAccount(accounts, "user_stake_account");
+  const userReward = findAccount(accounts, "user_reward_account");
   const owner = stringFromData(position?.data, [
     "owner_label",
     "ownerLabel",
@@ -432,19 +475,19 @@ function YieldHijackAccountsTab({
   const positionAddress =
     stringFromData(position?.data, ["address", "pubkey", "pda"]) ??
     addressFromAccount(position);
-  const victimPositionAddress =
+  const existingStakerPositionAddress =
     stringFromData(position?.data, [
-      "victim_position_address",
-      "victimPositionAddress",
-      "victim_pda",
-      "victimPda",
+      "existing_staker_position_address",
+      "existingStakerPositionAddress",
+      "existing_staker_pda",
+      "existingStakerPda",
     ]) ?? positionAddress;
-  const attackerPositionAddress =
+  const userPositionAddress =
     stringFromData(position?.data, [
-      "attacker_position_address",
-      "attackerPositionAddress",
-      "attacker_pda",
-      "attackerPda",
+      "user_position_address",
+      "userPositionAddress",
+      "user_pda",
+      "userPda",
     ]) ?? positionAddress;
 
   return (
@@ -511,11 +554,11 @@ function YieldHijackAccountsTab({
         <InspectStateGroup title="Your Wallet">
           <InspectStateRow
             label="Stake balance"
-            value={`${formatTokenAmount(accountBalance(attackerStake, 100))} STAKE`}
+            value={`${formatTokenAmount(accountBalance(userStake, 100))} STAKE`}
           />
           <InspectStateRow
             label="Reward balance"
-            value={`${formatTokenAmount(accountBalance(attackerReward, 0))} REWARD`}
+            value={`${formatTokenAmount(accountBalance(userReward, 0))} REWARD`}
           />
         </InspectStateGroup>
 
@@ -531,17 +574,18 @@ function YieldHijackAccountsTab({
             />
           </button>
           <p className="mt-2 text-xs leading-5 text-zinc-500">
-            Compare how the protocol derives a staking position for each participant.
+            Compare how the protocol derives a staking position for each
+            participant.
           </p>
           {comparisonOpen ? (
             <div className="mt-4 space-y-3 border-l border-[#9945ff]/30 pl-4">
               <DerivationRow
                 label="Existing Staker Position"
-                address={victimPositionAddress}
+                address={existingStakerPositionAddress}
               />
               <DerivationRow
                 label="Your Position"
-                address={attackerPositionAddress}
+                address={userPositionAddress}
               />
             </div>
           ) : null}
@@ -630,7 +674,11 @@ function numberFromData(
   for (const key of keys) {
     const value = data?.[key];
     if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+    if (
+      typeof value === "string" &&
+      value.trim() &&
+      Number.isFinite(Number(value))
+    ) {
       return Number(value);
     }
   }
@@ -646,7 +694,9 @@ function friendlyPositionOwner(value: string | null) {
 
 function shortAddress(value: string) {
   if (!value || value === "Unavailable") return value;
-  return value.length > 14 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+  return value.length > 14
+    ? `${value.slice(0, 6)}...${value.slice(-4)}`
+    : value;
 }
 
 function formatTokenAmount(value: number) {
@@ -659,7 +709,9 @@ function StateLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-zinc-500">{label}</span>
-      <span className="truncate text-right font-mono text-xs text-zinc-300">{value}</span>
+      <span className="truncate text-right font-mono text-xs text-zinc-300">
+        {value}
+      </span>
     </div>
   );
 }

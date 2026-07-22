@@ -24,10 +24,10 @@ import {
 } from "./workspace-tabs";
 
 const BASELINE = {
-  attackerPendingRewards: 250,
-  attackerPositionStakedAmount: 1_000,
-  attackerRewardBalance: 0,
-  attackerStakeBalance: 100,
+  userPendingRewards: 250,
+  userPositionStakedAmount: 1_000,
+  userRewardBalance: 0,
+  userStakeBalance: 100,
   pendingRewards: 12_500,
   positionStakedAmount: 50_000,
   rewardVaultBalance: 500_000,
@@ -77,7 +77,7 @@ export function YieldHijackExecuteTab({
   const parsedAmount = parseStakeAmount(stakeAmount);
   const canStake =
     parsedAmount >= 1 &&
-    parsedAmount <= Math.min(100, state.attackerStakeBalance) &&
+    parsedAmount <= Math.min(100, state.userStakeBalance) &&
     !isRunning &&
     pendingAction === null;
   const canClaim =
@@ -96,7 +96,7 @@ export function YieldHijackExecuteTab({
       await onExecuteTransaction({
         action_type: "STAKE",
         amount: parsedAmount,
-        source_account_ref: "attacker_stake_account",
+        source_account_ref: "user_stake_account",
         stake_vault_ref: "stake_vault",
         position_account_ref: "stake_position",
       });
@@ -113,7 +113,7 @@ export function YieldHijackExecuteTab({
         action_type: "CLAIM_REWARDS",
         position_account_ref: "stake_position",
         reward_vault_ref: "reward_vault",
-        destination_account_ref: "attacker_reward_account",
+        destination_account_ref: "user_reward_account",
         instruction_name: claimInstruction.trim(),
         target_wallet_address: targetWallet.trim(),
       });
@@ -124,8 +124,8 @@ export function YieldHijackExecuteTab({
 
   const claimOwnRewards = async () => {
     if (
-      state.attackerPendingRewards <= 0 ||
-      !state.attackerWallet ||
+      state.userPendingRewards <= 0 ||
+      !state.userWallet ||
       isRunning ||
       pendingAction !== null
     ) {
@@ -137,9 +137,9 @@ export function YieldHijackExecuteTab({
         action_type: "CLAIM_REWARDS",
         position_account_ref: "stake_position",
         reward_vault_ref: "reward_vault",
-        destination_account_ref: "attacker_reward_account",
+        destination_account_ref: "user_reward_account",
         instruction_name: "claim_rewards",
-        target_wallet_address: state.attackerWallet,
+        target_wallet_address: state.userWallet,
       });
     } finally {
       setPendingAction(null);
@@ -182,7 +182,7 @@ export function YieldHijackExecuteTab({
                 </p>
               </div>
               <span className="font-mono text-[11px] text-zinc-500">
-                {formatAmount(state.attackerStakeBalance)} available
+                {formatAmount(state.userStakeBalance)} available
               </span>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -512,18 +512,18 @@ function YieldHijackProtocolState({
                 </p>
               </div>
               <p className="text-right font-mono text-sm font-semibold text-zinc-300">
-                {formatAmount(state.attackerPositionStakedAmount)} STAKE
+                {formatAmount(state.userPositionStakedAmount)} STAKE
               </p>
               <p className="text-right font-mono text-sm font-semibold text-[#8fffd0]">
-                {formatAmount(state.attackerPendingRewards)} USDC
+                {formatAmount(state.userPendingRewards)} USDC
               </p>
               <p className="text-right font-mono text-sm font-semibold text-[#d7c0ff]">
-                {formatAmount(state.attackerRewardBalance)} USDC
+                {formatAmount(state.userRewardBalance)} USDC
               </p>
               <button
                 type="button"
                 onClick={onClaimOwnRewards}
-                disabled={isRunning || state.attackerPendingRewards <= 0}
+                disabled={isRunning || state.userPendingRewards <= 0}
                 className="inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-lg border border-[#14f195]/25 bg-[#14f195]/10 px-2 text-xs font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-zinc-600"
               >
                 Claim rewards
@@ -566,17 +566,17 @@ function YieldHijackEvidenceReview({
       result.inputs.claimScope !== "own"
   );
   const position = findAccount(evidenceAccounts, "stake_position");
-  const victimPda =
+  const existingStakerPda =
     stringFromRecord(position?.data, [
-      "victim_position_address",
-      "victimPositionAddress",
-      "victim_pda",
+      "existing_staker_position_address",
+      "existingStakerPositionAddress",
+      "existing_staker_pda",
     ]) ?? state.positionAddress;
-  const attackerPda =
+  const userPda =
     stringFromRecord(position?.data, [
-      "attacker_position_address",
-      "attackerPositionAddress",
-      "attacker_pda",
+      "user_position_address",
+      "userPositionAddress",
+      "user_pda",
     ]) ?? state.positionAddress;
 
   return (
@@ -684,9 +684,9 @@ function YieldHijackEvidenceReview({
           <EvidenceSection title="Position Derivation">
             <StateRow
               label="Existing Staker Position"
-              value={shortAddress(victimPda)}
+              value={shortAddress(existingStakerPda)}
             />
-            <StateRow label="Your Position" value={shortAddress(attackerPda)} />
+            <StateRow label="Your Position" value={shortAddress(userPda)} />
             <p className="pt-2 text-xs leading-5 text-zinc-500">
               {impactVerified
                 ? "Both participant derivations resolved to the same staking position."
@@ -707,13 +707,13 @@ function YieldHijackEvidenceReview({
             />
             <StateRow
               label="Your contribution"
-              value={`${formatAmount(state.attackerContribution)} STAKE`}
+              value={`${formatAmount(state.userContribution)} STAKE`}
             />
           </EvidenceSection>
 
           <AccountStateDeltas
-            attackerRewardBalance={state.attackerRewardBalance}
-            victimRewardBalance={state.pendingRewards}
+            userRewardBalance={state.userRewardBalance}
+            existingStakerRewardBalance={state.pendingRewards}
           />
 
           {impactVerified ? (
@@ -758,11 +758,11 @@ function EvidenceSection({
 }
 
 function AccountStateDeltas({
-  attackerRewardBalance,
-  victimRewardBalance,
+  userRewardBalance,
+  existingStakerRewardBalance,
 }: {
-  attackerRewardBalance: number;
-  victimRewardBalance: number;
+  userRewardBalance: number;
+  existingStakerRewardBalance: number;
 }) {
   return (
     <section>
@@ -772,13 +772,13 @@ function AccountStateDeltas({
       <div className="mt-3 space-y-3">
         <BalanceDeltaCard
           label="Your Reward Balance"
-          initialValue={BASELINE.attackerRewardBalance}
-          currentValue={attackerRewardBalance}
+          initialValue={BASELINE.userRewardBalance}
+          currentValue={userRewardBalance}
         />
         <BalanceDeltaCard
-          label="Victim's Reward Balance"
+          label="Existing Staker Reward Balance"
           initialValue={BASELINE.pendingRewards}
-          currentValue={victimRewardBalance}
+          currentValue={existingStakerRewardBalance}
         />
       </div>
     </section>
@@ -831,12 +831,12 @@ function StateRow({ label, value }: { label: string; value: string }) {
 }
 
 type YieldHijackState = {
-  attackerContribution: number;
-  attackerPendingRewards: number;
-  attackerPositionStakedAmount: number;
-  attackerRewardBalance: number;
-  attackerStakeBalance: number;
-  attackerWallet: string;
+  userContribution: number;
+  userPendingRewards: number;
+  userPositionStakedAmount: number;
+  userRewardBalance: number;
+  userStakeBalance: number;
+  userWallet: string;
   pendingRewards: number;
   positionAddress: string;
   positionOwnerLabel: string;
@@ -862,14 +862,20 @@ function deriveYieldHijackState(
         typeof result.protocolState === "object" &&
         Object.keys(result.protocolState).length > 0
     )?.protocolState ?? null;
-  const protocolAttacker = recordFromRecord(latestProtocolState, ["attacker"]);
+  const protocolUser =
+    recordFromRecord(latestProtocolState, ["user"]) ??
+    recordFromRecord(latestProtocolState, ["attacker"]);
   const protocolPool = recordFromRecord(latestProtocolState, ["pool"]);
   const protocolPosition = recordFromRecord(latestProtocolState, ["position"]);
-  const protocolVictim = recordFromRecord(latestProtocolState, ["victim"]);
+  const protocolExistingStaker =
+    recordFromRecord(latestProtocolState, [
+      "existingStaker",
+      "existing_staker",
+    ]) ?? recordFromRecord(latestProtocolState, ["victim"]);
   const poolConfig = findAccount(accounts, "pool_config");
   const position = findAccount(accounts, "stake_position");
-  const attackerStake = findAccount(accounts, "attacker_stake_account");
-  const attackerReward = findAccount(accounts, "attacker_reward_account");
+  const userStake = findAccount(accounts, "user_stake_account");
+  const userReward = findAccount(accounts, "user_reward_account");
   const stakeVault = findAccount(accounts, "stake_vault");
   const rewardVault = findAccount(accounts, "reward_vault");
   const successfulStakeAmount = txResults
@@ -881,42 +887,38 @@ function deriveYieldHijackState(
     )
     .reduce((sum, result) => sum + result.inputs.amount, 0);
 
-  const attackerStakeBalance = numberFromSources(
-    protocolAttacker,
-    attackerStake?.data,
+  const userStakeBalance = numberFromSources(
+    protocolUser,
+    userStake?.data,
     ["stakeBalance", "stake_balance", "balance"],
-    Math.max(0, BASELINE.attackerStakeBalance - successfulStakeAmount)
+    Math.max(0, BASELINE.userStakeBalance - successfulStakeAmount)
   );
-  const attackerRewardBalance = numberFromSources(
-    protocolAttacker,
-    attackerReward?.data,
+  const userRewardBalance = numberFromSources(
+    protocolUser,
+    userReward?.data,
     ["rewardBalance", "reward_balance", "balance"],
-    BASELINE.attackerRewardBalance
+    BASELINE.userRewardBalance
   );
-  const attackerWallet =
-    stringFromRecord(protocolAttacker, ["wallet", "walletAddress"]) ??
-    stringFromRecord(attackerReward?.data, [
-      "owner",
-      "wallet",
-      "walletAddress",
-    ]) ??
+  const userWallet =
+    stringFromRecord(protocolUser, ["wallet", "walletAddress"]) ??
+    stringFromRecord(userReward?.data, ["owner", "wallet", "walletAddress"]) ??
     "";
-  const attackerPendingRewards = numberFromSources(
-    protocolAttacker,
-    attackerReward?.data,
+  const userPendingRewards = numberFromSources(
+    protocolUser,
+    userReward?.data,
     [
       "pendingRewards",
       "pending_rewards",
       "claimableRewards",
       "claimable_rewards",
     ],
-    BASELINE.attackerPendingRewards
+    BASELINE.userPendingRewards
   );
-  const attackerPositionStakedAmount = numberFromSources(
-    protocolAttacker,
+  const userPositionStakedAmount = numberFromSources(
+    protocolUser,
     undefined,
     ["positionStakedAmount", "position_staked_amount"],
-    BASELINE.attackerPositionStakedAmount + successfulStakeAmount
+    BASELINE.userPositionStakedAmount + successfulStakeAmount
   );
   const pendingRewards = numberFromSources(
     protocolPosition,
@@ -933,16 +935,16 @@ function deriveYieldHijackState(
     "rewardCandidates",
     "reward_candidates",
   ]);
-  const victimWallet =
-    stringFromRecord(protocolVictim, ["wallet", "walletAddress"]) ??
+  const existingStakerWallet =
+    stringFromRecord(protocolExistingStaker, ["wallet", "walletAddress"]) ??
     stringFromRecord(protocolPosition, ["baselineOwner", "baseline_owner"]) ??
     stringFromRecord(position?.data, ["baselineOwner", "baseline_owner"]);
   const rewardCandidates =
     rawCandidates === null
-      ? victimWallet && pendingRewards > 0
+      ? existingStakerWallet && pendingRewards > 0
         ? [
             {
-              walletAddress: victimWallet,
+              walletAddress: existingStakerWallet,
               pendingRewards,
               positionAddress,
             },
@@ -982,12 +984,12 @@ function deriveYieldHijackState(
           );
 
   return {
-    attackerContribution: successfulStakeAmount,
-    attackerPendingRewards,
-    attackerPositionStakedAmount,
-    attackerRewardBalance,
-    attackerStakeBalance,
-    attackerWallet,
+    userContribution: successfulStakeAmount,
+    userPendingRewards,
+    userPositionStakedAmount,
+    userRewardBalance,
+    userStakeBalance,
+    userWallet,
     pendingRewards,
     positionAddress,
     positionOwnerLabel: friendlyOwner(
@@ -1011,7 +1013,7 @@ function deriveYieldHijackState(
       protocolPool,
       rewardVault?.data,
       ["rewardVaultBalance", "reward_vault_balance", "balance", "amount"],
-      BASELINE.rewardVaultBalance - attackerRewardBalance
+      BASELINE.rewardVaultBalance - userRewardBalance
     ),
     stakeVaultBalance: numberFromSources(
       protocolPool,
@@ -1028,7 +1030,7 @@ function deriveYieldHijackState(
         "rewardsClaimedTotal",
         "rewards_claimed_total",
       ],
-      attackerRewardBalance
+      userRewardBalance
     ),
   };
 }

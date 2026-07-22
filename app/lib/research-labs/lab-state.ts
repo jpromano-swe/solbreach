@@ -76,7 +76,7 @@ const RL2_MANIFEST_OVERRIDES = {
   objective:
     "Identify an account-isolation failure, demonstrate unauthorized reward capture, and preserve evidence of the resulting state changes.",
   successCriteria:
-    "Verified evidence must show that a small attacker stake changed ownership of a pre-existing position and enabled the attacker to claim rewards they did not earn.",
+    "Verified evidence must show that a small stake changed ownership of a pre-existing position and enabled a different wallet to claim its accumulated rewards.",
   objectives: [
     "Inspect how staking positions are derived and identify the identities represented by the account",
     "Compare the position derived for the existing staker and your wallet",
@@ -501,7 +501,7 @@ export type WithdrawAgainstCreditPayload = {
 export type StakePayload = {
   action_type: "STAKE";
   amount: number;
-  source_account_ref: "attacker_stake_account";
+  source_account_ref: "user_stake_account";
   stake_vault_ref: "stake_vault";
   position_account_ref: "stake_position";
 };
@@ -510,7 +510,7 @@ export type ClaimRewardsPayload = {
   action_type: "CLAIM_REWARDS";
   position_account_ref: "stake_position";
   reward_vault_ref: "reward_vault";
-  destination_account_ref: "attacker_reward_account";
+  destination_account_ref: "user_reward_account";
   instruction_name: string;
   target_wallet_address: string;
 };
