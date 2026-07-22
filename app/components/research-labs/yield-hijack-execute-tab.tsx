@@ -497,15 +497,15 @@ function YieldHijackProtocolState({
         />
 
         <div className="mt-5 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
-          <div className="min-w-[780px]">
-            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(130px,0.75fr)_minmax(145px,0.85fr)_minmax(155px,0.9fr)_minmax(125px,0.7fr)] gap-4 border-b border-white/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+          <div className="min-w-[700px]">
+            <div className="grid grid-cols-[minmax(140px,1fr)_minmax(110px,0.75fr)_minmax(125px,0.85fr)_minmax(130px,0.85fr)_140px] gap-3 border-b border-white/10 px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
               <span>User&apos;s position</span>
               <span className="text-right">Current position</span>
               <span className="text-right">Claimable rewards</span>
               <span className="text-right">Total claimed reward</span>
-              <span className="text-right">Action</span>
+              <span aria-hidden="true" />
             </div>
-            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(130px,0.75fr)_minmax(145px,0.85fr)_minmax(155px,0.9fr)_minmax(125px,0.7fr)] items-center gap-4 px-4 py-4">
+            <div className="grid grid-cols-[minmax(140px,1fr)_minmax(110px,0.75fr)_minmax(125px,0.85fr)_minmax(130px,0.85fr)_140px] items-center gap-3 px-3 py-3.5">
               <div className="min-w-0">
                 <p className="truncate font-mono text-sm font-medium text-zinc-200">
                   {shortAddress(userWalletAddress)}
@@ -524,7 +524,7 @@ function YieldHijackProtocolState({
                 type="button"
                 onClick={onClaimOwnRewards}
                 disabled={isRunning || state.attackerPendingRewards <= 0}
-                className="ml-auto inline-flex min-h-9 items-center justify-center rounded-lg border border-[#14f195]/25 bg-[#14f195]/10 px-3 text-xs font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-zinc-600"
+                className="inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-lg border border-[#14f195]/25 bg-[#14f195]/10 px-2 text-xs font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-zinc-600"
               >
                 Claim rewards
               </button>
