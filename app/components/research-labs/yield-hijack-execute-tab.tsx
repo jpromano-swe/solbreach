@@ -815,19 +815,45 @@ function BalanceDeltaCard({
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-2">
         <BalanceValue label="Initial balance" value={initialValue} />
         <ArrowRight className="h-4 w-4 justify-self-center text-zinc-700" />
-        <BalanceValue label="Current balance" value={currentValue} />
+        <BalanceValue
+          label="Current balance"
+          value={currentValue}
+          highlighted
+        />
       </div>
     </article>
   );
 }
 
-function BalanceValue({ label, value }: { label: string; value: number }) {
+function BalanceValue({
+  highlighted = false,
+  label,
+  value,
+}: {
+  highlighted?: boolean;
+  label: string;
+  value: number;
+}) {
   return (
-    <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+    <div
+      className={`min-w-0 rounded-lg border px-3 py-2.5 ${
+        highlighted
+          ? "border-[#14f195]/30 bg-[#14f195]/8 shadow-[inset_0_0_20px_rgba(20,241,149,0.035)]"
+          : "border-white/10 bg-white/[0.02]"
+      }`}
+    >
+      <p
+        className={`text-[9px] font-semibold uppercase tracking-[0.16em] ${
+          highlighted ? "text-[#79d9b2]" : "text-zinc-600"
+        }`}
+      >
         {label}
       </p>
-      <p className="mt-1 truncate font-mono text-xs text-zinc-300">
+      <p
+        className={`mt-1 truncate font-mono text-xs ${
+          highlighted ? "text-[#b5f7d8]" : "text-zinc-300"
+        }`}
+      >
         {formatAmount(value)} REWARD
       </p>
     </div>
