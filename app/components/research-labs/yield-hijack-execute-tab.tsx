@@ -678,12 +678,7 @@ function YieldHijackEvidenceReview({
             <div className="rounded-xl border border-[#14f195]/25 bg-[#14f195]/8 p-4">
               <p className="flex items-center gap-2 text-sm font-semibold text-[#8fffd0]">
                 <Check className="h-4 w-4" />
-                Impact verified
-              </p>
-              <p className="mt-2 text-xs leading-5 text-zinc-300">
-                A small attacker deposit changed ownership of a pre-existing
-                staking position, preserving its accumulated value and allowing
-                the attacker to claim rewards they did not earn.
+                Impacte Verified
               </p>
             </div>
           ) : (
@@ -757,29 +752,11 @@ function BalanceDeltaCard({
   initialValue: number;
   label: string;
 }) {
-  const delta = currentValue - initialValue;
-  const changed = delta !== 0;
-
   return (
     <article className="rounded-xl border border-white/10 bg-black/20 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-          {label}
-        </p>
-        <span
-          className={`rounded-md border px-2 py-1 font-mono text-[10px] ${
-            changed
-              ? delta > 0
-                ? "border-[#14f195]/25 bg-[#14f195]/8 text-[#8fffd0]"
-                : "border-red-400/25 bg-red-500/8 text-red-200"
-              : "border-white/10 bg-white/[0.025] text-zinc-600"
-          }`}
-        >
-          {changed
-            ? `${delta > 0 ? "+" : ""}${formatAmount(delta)}`
-            : "No change"}
-        </span>
-      </div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </p>
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] items-center gap-2">
         <BalanceValue label="Initial balance" value={initialValue} />
         <ArrowRight className="h-4 w-4 justify-self-center text-zinc-700" />
