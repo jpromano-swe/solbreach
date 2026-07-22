@@ -24,6 +24,8 @@ import {
 } from "./workspace-tabs";
 
 const BASELINE = {
+  attackerPendingRewards: 250,
+  attackerPositionStakedAmount: 1_000,
   attackerRewardBalance: 0,
   attackerStakeBalance: 100,
   pendingRewards: 12_500,
@@ -62,9 +64,9 @@ export function YieldHijackExecuteTab({
   const [stakeAmount, setStakeAmount] = useState("1");
   const [claimInstruction, setClaimInstruction] = useState("");
   const [targetWallet, setTargetWallet] = useState("");
-  const [pendingAction, setPendingAction] = useState<"stake" | "claim" | null>(
-    null
-  );
+  const [pendingAction, setPendingAction] = useState<
+    "stake" | "claim-target" | "claim-own" | null
+  >(null);
   const explorerUrl = `/research-labs/explorer?sessionId=${encodeURIComponent(
     explorerSessionId
   )}`;
@@ -105,7 +107,7 @@ export function YieldHijackExecuteTab({
 
   const claimRewards = async () => {
     if (!canClaim) return;
-    setPendingAction("claim");
+    setPendingAction("claim-target");
     try {
       await onExecuteTransaction({
         action_type: "CLAIM_REWARDS",
@@ -114,6 +116,30 @@ export function YieldHijackExecuteTab({
         destination_account_ref: "attacker_reward_account",
         instruction_name: claimInstruction.trim(),
         target_wallet_address: targetWallet.trim(),
+      });
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const claimOwnRewards = async () => {
+    if (
+      state.attackerPendingRewards <= 0 ||
+      !state.attackerWallet ||
+      isRunning ||
+      pendingAction !== null
+    ) {
+      return;
+    }
+    setPendingAction("claim-own");
+    try {
+      await onExecuteTransaction({
+        action_type: "CLAIM_REWARDS",
+        position_account_ref: "stake_position",
+        reward_vault_ref: "reward_vault",
+        destination_account_ref: "attacker_reward_account",
+        instruction_name: "claim_rewards",
+        target_wallet_address: state.attackerWallet,
       });
     } finally {
       setPendingAction(null);
@@ -143,7 +169,7 @@ export function YieldHijackExecuteTab({
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
-            <div className="flex items-center justify-between gap-3">
+            <div>
               <div>
                 <label
                   htmlFor="rl2-stake-amount"
@@ -194,12 +220,10 @@ export function YieldHijackExecuteTab({
                   Claim Rewards
                 </label>
                 <p className="mt-1 text-[11px] leading-5 text-zinc-600">
-                  Paste a wallet from the protocol list.
+                  Use the program instruction and a wallet discovered through
+                  Explorer.
                 </p>
               </div>
-              <span className="font-mono text-[11px] text-zinc-500">
-                {formatAmount(state.pendingRewards)} pending
-              </span>
             </div>
             <ExplorerRouteLink
               available={Boolean(explorerAccessToken)}
@@ -262,7 +286,9 @@ export function YieldHijackExecuteTab({
               disabled={!canClaim}
               className="mt-2 inline-flex h-10 items-center justify-center rounded-lg border border-[#9945ff]/30 bg-[#9945ff]/12 px-3 text-xs font-semibold text-[#d7c0ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
             >
-              {pendingAction === "claim" ? "Claiming..." : "Claim Rewards"}
+              {pendingAction === "claim-target"
+                ? "Claiming..."
+                : "Claim Rewards"}
             </button>
           </div>
 
@@ -293,7 +319,9 @@ export function YieldHijackExecuteTab({
           state={state}
           explorerAvailable={Boolean(explorerAccessToken)}
           explorerUrl={explorerUrl}
+          isRunning={isRunning || pendingAction !== null}
           userWalletAddress={userWalletAddress}
+          onClaimOwnRewards={claimOwnRewards}
         />
       </div>
     </div>
@@ -386,12 +414,16 @@ function YieldHijackProtocolState({
   state,
   explorerAvailable,
   explorerUrl,
+  isRunning,
   userWalletAddress,
+  onClaimOwnRewards,
 }: {
   state: YieldHijackState;
   explorerAvailable: boolean;
   explorerUrl: string;
+  isRunning: boolean;
   userWalletAddress: string;
+  onClaimOwnRewards: () => void;
 }) {
   const [rewardsVisible, setRewardsVisible] = useState(true);
 
@@ -465,28 +497,37 @@ function YieldHijackProtocolState({
         />
 
         <div className="mt-5 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
-          <div className="min-w-[720px]">
-            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(135px,0.8fr)_minmax(150px,0.9fr)_minmax(165px,0.95fr)] gap-4 border-b border-white/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+          <div className="min-w-[780px]">
+            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(130px,0.75fr)_minmax(145px,0.85fr)_minmax(155px,0.9fr)_minmax(125px,0.7fr)] gap-4 border-b border-white/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
               <span>User&apos;s position</span>
               <span className="text-right">Current position</span>
               <span className="text-right">Claimable rewards</span>
               <span className="text-right">Total claimed reward</span>
+              <span className="text-right">Action</span>
             </div>
-            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(135px,0.8fr)_minmax(150px,0.9fr)_minmax(165px,0.95fr)] items-center gap-4 px-4 py-4">
+            <div className="grid grid-cols-[minmax(180px,1.2fr)_minmax(130px,0.75fr)_minmax(145px,0.85fr)_minmax(155px,0.9fr)_minmax(125px,0.7fr)] items-center gap-4 px-4 py-4">
               <div className="min-w-0">
                 <p className="truncate font-mono text-sm font-medium text-zinc-200">
                   {shortAddress(userWalletAddress)}
                 </p>
               </div>
               <p className="text-right font-mono text-sm font-semibold text-zinc-300">
-                {formatAmount(state.positionStakedAmount)} STAKE
+                {formatAmount(state.attackerPositionStakedAmount)} STAKE
               </p>
               <p className="text-right font-mono text-sm font-semibold text-[#8fffd0]">
-                {formatAmount(state.pendingRewards)} USDC
+                {formatAmount(state.attackerPendingRewards)} USDC
               </p>
               <p className="text-right font-mono text-sm font-semibold text-[#d7c0ff]">
                 {formatAmount(state.attackerRewardBalance)} USDC
               </p>
+              <button
+                type="button"
+                onClick={onClaimOwnRewards}
+                disabled={isRunning || state.attackerPendingRewards <= 0}
+                className="ml-auto inline-flex min-h-9 items-center justify-center rounded-lg border border-[#14f195]/25 bg-[#14f195]/10 px-3 text-xs font-semibold text-[#8fffd0] transition hover:bg-[#14f195]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-zinc-600"
+              >
+                Claim rewards
+              </button>
             </div>
           </div>
         </div>
@@ -521,7 +562,8 @@ function YieldHijackEvidenceReview({
   const hasSuccessfulClaim = txResults.some(
     (result) =>
       result.instructionType.includes("CLAIM") &&
-      result.executionStatus === "success"
+      result.executionStatus === "success" &&
+      result.inputs.claimScope !== "own"
   );
   const position = findAccount(evidenceAccounts, "stake_position");
   const victimPda =
@@ -790,8 +832,11 @@ function StateRow({ label, value }: { label: string; value: string }) {
 
 type YieldHijackState = {
   attackerContribution: number;
+  attackerPendingRewards: number;
+  attackerPositionStakedAmount: number;
   attackerRewardBalance: number;
   attackerStakeBalance: number;
+  attackerWallet: string;
   pendingRewards: number;
   positionAddress: string;
   positionOwnerLabel: string;
@@ -846,19 +891,38 @@ function deriveYieldHijackState(
     protocolAttacker,
     attackerReward?.data,
     ["rewardBalance", "reward_balance", "balance"],
-    txResults.some(
-      (result) =>
-        result.executionStatus === "success" &&
-        result.instructionType.includes("CLAIM")
-    )
-      ? BASELINE.pendingRewards
-      : BASELINE.attackerRewardBalance
+    BASELINE.attackerRewardBalance
+  );
+  const attackerWallet =
+    stringFromRecord(protocolAttacker, ["wallet", "walletAddress"]) ??
+    stringFromRecord(attackerReward?.data, [
+      "owner",
+      "wallet",
+      "walletAddress",
+    ]) ??
+    "";
+  const attackerPendingRewards = numberFromSources(
+    protocolAttacker,
+    attackerReward?.data,
+    [
+      "pendingRewards",
+      "pending_rewards",
+      "claimableRewards",
+      "claimable_rewards",
+    ],
+    BASELINE.attackerPendingRewards
+  );
+  const attackerPositionStakedAmount = numberFromSources(
+    protocolAttacker,
+    undefined,
+    ["positionStakedAmount", "position_staked_amount"],
+    BASELINE.attackerPositionStakedAmount + successfulStakeAmount
   );
   const pendingRewards = numberFromSources(
     protocolPosition,
     position?.data,
     ["pendingRewards", "pending_rewards", "rewards"],
-    attackerRewardBalance > 0 ? 0 : BASELINE.pendingRewards
+    BASELINE.pendingRewards
   );
   const positionAddress =
     stringFromRecord(protocolPosition, ["address", "positionAddress"]) ??
@@ -919,8 +983,11 @@ function deriveYieldHijackState(
 
   return {
     attackerContribution: successfulStakeAmount,
+    attackerPendingRewards,
+    attackerPositionStakedAmount,
     attackerRewardBalance,
     attackerStakeBalance,
+    attackerWallet,
     pendingRewards,
     positionAddress,
     positionOwnerLabel: friendlyOwner(

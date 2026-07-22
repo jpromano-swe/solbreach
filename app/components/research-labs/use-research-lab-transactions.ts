@@ -213,6 +213,12 @@ export function useResearchLabTransactions({
           session.sessionId,
           payload
         );
+        const resultParameters =
+          result.parameters ??
+          result.parametersJson ??
+          result.parameters_json ??
+          {};
+        const rawClaimScope = parameterString(resultParameters, "claim_scope");
         const enriched: EnrichedTransactionResult = {
           ...result,
           instructionType:
@@ -224,7 +230,13 @@ export function useResearchLabTransactions({
             result.errorCode ??
             result.error_code ??
             getBackendRejectionCode(result),
-          inputs: enrichedInputs,
+          inputs: {
+            ...enrichedInputs,
+            claimScope:
+              rawClaimScope === "own" || rawClaimScope === "exploit"
+                ? rawClaimScope
+                : undefined,
+          },
         };
 
         setTxResults((prev) => [enriched, ...prev]);
@@ -396,6 +408,7 @@ function enrichPersistedTransaction(
       destinationAccountLabel: labelForRef(destinationAccountRef),
       instructionName: parameterString(parameters, "instruction_name"),
       targetWalletAddress: parameterString(parameters, "target_wallet_address"),
+      claimScope: claimScopeFromParameters(parameters),
       amount: parameterNumber(parameters, "amount"),
     },
   };
@@ -410,6 +423,11 @@ function getBackendRejectionCode(result: TransactionResult) {
 function parameterString(parameters: Record<string, unknown>, key: string) {
   const value = parameters[key];
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function claimScopeFromParameters(parameters: Record<string, unknown>) {
+  const value = parameterString(parameters, "claim_scope");
+  return value === "own" || value === "exploit" ? value : undefined;
 }
 
 function parameterNumber(parameters: Record<string, unknown>, key: string) {

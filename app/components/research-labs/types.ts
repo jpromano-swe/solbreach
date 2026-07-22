@@ -77,6 +77,7 @@ export type EnrichedTransactionResult = TransactionResult & {
     destinationAccountLabel?: string;
     instructionName?: string;
     targetWalletAddress?: string;
+    claimScope?: "own" | "exploit";
     amount: number;
   };
 };

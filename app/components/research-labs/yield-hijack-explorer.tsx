@@ -27,7 +27,6 @@ import {
   getResearchLabExplorer,
   listResearchLabTransactions,
   type ResearchLabExplorerAccount,
-  type ResearchLabExplorerRewardCandidate,
   type ResearchLabExplorerSnapshot,
   type TransactionResult,
 } from "../../lib/research-labs/lab-state";
@@ -491,12 +490,6 @@ function ExplorerOverview({
         </dl>
       </section>
 
-      <RewardCandidatesTable
-        candidates={snapshot.rewardCandidates}
-        rewardSymbol={snapshot.rewardAsset.symbol}
-        onOpenAccount={onOpenAccount}
-      />
-
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <section className="min-w-0">
           <SectionHeader
@@ -559,92 +552,6 @@ function ExplorerOverview({
         </section>
       </div>
     </div>
-  );
-}
-
-function RewardCandidatesTable({
-  candidates,
-  rewardSymbol,
-  onOpenAccount,
-}: {
-  candidates: ResearchLabExplorerRewardCandidate[];
-  rewardSymbol: string;
-  onOpenAccount: (accountRef: string) => void;
-}) {
-  return (
-    <section className="mt-5 min-w-0">
-      <SectionHeaderStatic
-        title="Positions with unclaimed rewards"
-        detail={`${candidates.length} ${candidates.length === 1 ? "position" : "positions"}`}
-      />
-      <div className="mt-2 max-w-full overflow-x-auto rounded-lg border border-white/10 bg-[#202121]">
-        {candidates.length ? (
-          <table className="w-full min-w-[760px] text-left">
-            <thead className="border-b border-white/10 bg-black/10 text-[11px] uppercase tracking-wider text-zinc-500">
-              <tr>
-                <th className="px-3 py-3 font-medium">Position</th>
-                <th className="px-3 py-3 font-medium">Owner wallet</th>
-                <th className="px-3 py-3 text-right font-medium">
-                  Claimable rewards
-                </th>
-                <th className="w-28 px-3 py-3 text-right font-medium">
-                  Account
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/8">
-              {candidates.map((candidate) => (
-                <tr
-                  key={`${candidate.positionRef}-${candidate.walletAddress}`}
-                  className="hover:bg-white/[0.025]"
-                >
-                  <td className="px-3 py-3">
-                    <button
-                      type="button"
-                      onClick={() => onOpenAccount(candidate.positionRef)}
-                      className="block min-h-10 max-w-72 text-left focus-visible:ring-2 focus-visible:ring-[#14f195]"
-                    >
-                      <span className="block text-sm font-medium text-[#9bdbff] hover:underline">
-                        {candidate.positionLabel}
-                      </span>
-                      <span className="mt-1 block truncate font-mono text-xs text-zinc-500">
-                        {shortAddress(candidate.positionAddress, 8)}
-                      </span>
-                    </button>
-                  </td>
-                  <td className="px-3 py-3">
-                    <CopyableAddress address={candidate.walletAddress} />
-                  </td>
-                  <td className="px-3 py-3 text-right font-mono text-sm font-semibold tabular-nums text-[#8fffd0]">
-                    {formatAmount(candidate.pendingRewards)}{" "}
-                    {candidate.rewardSymbol || rewardSymbol}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onOpenAccount(candidate.positionRef)}
-                      className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-zinc-300 hover:bg-white/[0.05] hover:text-white focus-visible:ring-2 focus-visible:ring-[#14f195]"
-                    >
-                      Inspect
-                      <ChevronRight
-                        className="h-3.5 w-3.5"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <EmptyState
-            icon={WalletCards}
-            title="No unclaimed positions"
-            description="This session has no staking positions with pending rewards."
-          />
-        )}
-      </div>
-    </section>
   );
 }
 
@@ -1302,21 +1209,6 @@ function SectionHeader({
         {actionLabel}
         <ChevronRight className="h-3 w-3" aria-hidden="true" />
       </button>
-    </div>
-  );
-}
-
-function SectionHeaderStatic({
-  title,
-  detail,
-}: {
-  title: string;
-  detail: string;
-}) {
-  return (
-    <div className="flex min-h-10 items-center justify-between gap-3">
-      <h2 className="text-sm font-semibold text-zinc-200">{title}</h2>
-      <span className="text-xs font-medium text-zinc-500">{detail}</span>
     </div>
   );
 }

@@ -12,10 +12,7 @@ import type {
   ResearchLabSession,
 } from "../../lib/research-labs/lab-state";
 import { deriveProtocolState } from "./execute-exploit-tab";
-import {
-  getResearchLabAdapter,
-  isYieldHijackLab,
-} from "./lab-adapters";
+import { getResearchLabAdapter, isYieldHijackLab } from "./lab-adapters";
 import { ReviewCheckpointPanel } from "./report-tab";
 import type {
   AuditReportStage,
@@ -217,9 +214,7 @@ export function LabContextPanel({
             activeStep="review"
             criticalTotal={criticalTotal}
             evidenceTitle="Inspection Checks"
-            evidenceItems={[
-              ...adapter.inspectChecks,
-            ]}
+            evidenceItems={[...adapter.inspectChecks]}
             showReviewRules={false}
             title="Inspect Checkpoint"
             unlockTitle="Exploit Interface"
@@ -309,7 +304,8 @@ function ExecuteExploitContext({
     ? txResults.some(
         (result) =>
           result.executionStatus === "success" &&
-          result.instructionType.includes("CLAIM")
+          result.instructionType.includes("CLAIM") &&
+          result.inputs.claimScope !== "own"
       )
     : protocolState.borrowedAmount > 0;
   const chainHints = adapter.exploitHints;
@@ -341,10 +337,10 @@ function ExecuteExploitContext({
               : !depositSubmitted
                 ? "Deposit not submitted"
                 : protocolState.depositKind === "regular"
-                ? "Canonical collateral deposited"
-                : protocolState.depositKind === "exploit"
-                  ? "Non-canonical credit route created"
-                  : "Unsupported deposit path observed",
+                  ? "Canonical collateral deposited"
+                  : protocolState.depositKind === "exploit"
+                    ? "Non-canonical credit route created"
+                    : "Unsupported deposit path observed",
             active: depositSubmitted,
           },
           {
@@ -355,10 +351,10 @@ function ExecuteExploitContext({
               : !withdrawalSubmitted
                 ? "Borrow not submitted"
                 : protocolState.depositKind === "regular"
-                ? "Canonical borrow executed"
-                : protocolState.hasMaxDrain
-                  ? "Treasury drain path executed"
-                  : "Borrow executed against observed credit",
+                  ? "Canonical borrow executed"
+                  : protocolState.hasMaxDrain
+                    ? "Treasury drain path executed"
+                    : "Borrow executed against observed credit",
             active: withdrawalSubmitted,
           },
           { label: "Impact verified", active: impactVerified },
@@ -775,11 +771,7 @@ function CertificateCheckpointPanel({
           <CheckpointRuleRow
             label="Prerequisite"
             value={
-              badgeCollected
-                ? "Collected"
-                : badgeEarned
-                  ? "Ready"
-                  : "Syncing"
+              badgeCollected ? "Collected" : badgeEarned ? "Ready" : "Syncing"
             }
           />
           <CheckpointRuleRow
