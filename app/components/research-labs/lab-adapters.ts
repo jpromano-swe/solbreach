@@ -216,9 +216,9 @@ const rl2Adapter: ResearchLabFrontendAdapter = {
     "Reward transfer",
   ],
   exploitHints: [
-    "Compare how the protocol derives a staking position for the existing staker and for your wallet.",
-    "Stake a minimal amount, then inspect whether ownership changes while the existing principal and rewards remain.",
-    "If your wallet controls the position, test whether the pending rewards can be claimed.",
+    "Stake a small amount from the Exploiter Interface, then compare the Current Position value before and after the transaction.",
+    "Open SolBreach Explorer and investigate the public program interface and decoded accounts. You need both a callable instruction and a wallet whose position still has rewards.",
+    "In Explorer, inspect Program Interface > Instructions to find the claim function. Then open Accounts > Staking Position and read its owner address. Those are the two values required by the claim form.",
   ],
   securePattern: {
     title: "Secure Pattern: Identity-Scoped PDAs",

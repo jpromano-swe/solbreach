@@ -169,7 +169,10 @@ export function YieldHijackExecuteTab({
             </p>
           </div>
 
-          <div className="mt-4 border-t border-white/10 pt-4">
+          <div
+            className="mt-4 border-t border-white/10 pt-4"
+            data-tour="rl2-stake-controls"
+          >
             <div>
               <div>
                 <label
@@ -390,6 +393,7 @@ function ExplorerRouteLink({
       <button
         type="button"
         disabled
+        data-tour="rl2-open-explorer"
         className={`${sharedClassName} cursor-not-allowed border-white/10 bg-white/[0.03] text-zinc-600`}
       >
         <Search className="h-4 w-4" aria-hidden="true" />
@@ -403,6 +407,7 @@ function ExplorerRouteLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      data-tour="rl2-open-explorer"
       className={`${sharedClassName} border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff] hover:bg-[#9945ff]/18`}
     >
       <Search className="h-4 w-4" aria-hidden="true" />
@@ -466,14 +471,14 @@ function YieldHijackProtocolState({
               )}
             </button>
           </div>
-          <div className="mt-1 flex justify-center">
-            <div className="relative text-center">
+          <div className="mt-1 flex flex-col items-center">
+            <div className="flex items-center justify-center gap-3">
               <Image
                 src="/usdc.png"
                 alt="USDC"
                 width={42}
                 height={42}
-                className="absolute right-full top-1/2 mr-3 h-9 w-9 -translate-y-1/2 rounded-full sm:h-10 sm:w-10"
+                className="h-9 w-9 shrink-0 rounded-full sm:h-10 sm:w-10"
               />
               {rewardsVisible ? (
                 <AnimatedProtocolNumber
@@ -486,10 +491,10 @@ function YieldHijackProtocolState({
                   $••••••
                 </p>
               )}
-              <p className="mt-2 text-[10px] font-semibold tracking-[0.18em] text-[#8fffd0]">
-                USDC in rewards
-              </p>
             </div>
+            <p className="mt-2 text-[10px] font-semibold tracking-[0.18em] text-[#8fffd0]">
+              USDC in rewards
+            </p>
           </div>
         </section>
 
@@ -508,11 +513,16 @@ function YieldHijackProtocolState({
                   {shortAddress(userWalletAddress)}
                 </p>
               </div>
-              <AnimatedProtocolNumber
-                className="justify-self-end font-mono text-sm font-semibold text-zinc-300"
-                suffix=" STAKE"
-                value={state.userPositionStakedAmount}
-              />
+              <div
+                className="justify-self-end"
+                data-tour="rl2-current-position"
+              >
+                <AnimatedProtocolNumber
+                  className="font-mono text-sm font-semibold text-zinc-300"
+                  suffix=" STAKE"
+                  value={state.userPositionStakedAmount}
+                />
+              </div>
               <AnimatedProtocolNumber
                 className="justify-self-end font-mono text-sm font-semibold text-[#8fffd0]"
                 suffix=" USDC"

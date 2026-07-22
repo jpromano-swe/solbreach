@@ -317,7 +317,13 @@ function ExecuteExploitContext({
       Math.min(current + 1, chainHints.length)
     );
 
-    if (nextHintIndex === 0 && !isYieldHijack) {
+    if (isYieldHijack) {
+      if (nextHintIndex === 0) {
+        window.setTimeout(startYieldHijackStakeTour, 80);
+      } else if (nextHintIndex === 1) {
+        window.setTimeout(startYieldHijackExplorerTour, 80);
+      }
+    } else if (nextHintIndex === 0) {
       window.setTimeout(startExploitHypothesisTour, 80);
     }
   };
@@ -454,6 +460,93 @@ function startExploitHypothesisTour() {
           title: "Step 3: Set deposit amount",
           description:
             "Submit an amount to observe whether collateral credit and pool liquidity update as expected.",
+          side: "right",
+          align: "center",
+        },
+      },
+    ],
+  }).drive();
+}
+
+function startYieldHijackStakeTour() {
+  const requiredTargets = [
+    "[data-tour='rl2-stake-controls']",
+    "[data-tour='rl2-current-position']",
+  ];
+
+  if (requiredTargets.some((selector) => !document.querySelector(selector))) {
+    return;
+  }
+
+  driver({
+    allowClose: true,
+    animate: true,
+    disableActiveInteraction: false,
+    doneBtnText: "Done",
+    nextBtnText: "Next",
+    overlayColor: "#020404",
+    overlayOpacity: 0.72,
+    popoverClass: "solbreach-driver-popover",
+    popoverOffset: 14,
+    prevBtnText: "Back",
+    showButtons: ["next", "previous", "close"],
+    showProgress: true,
+    stagePadding: 8,
+    stageRadius: 14,
+    steps: [
+      {
+        element: "[data-tour='rl2-stake-controls']",
+        popover: {
+          title: "Stake through the exploiter",
+          description:
+            "Submit a small stake from this interface and observe which protocol state changes.",
+          side: "right",
+          align: "center",
+        },
+      },
+      {
+        element: "[data-tour='rl2-current-position']",
+        popover: {
+          title: "Check the current position",
+          description:
+            "Compare this value before and after staking. The increase confirms that your transaction reached the active position.",
+          side: "bottom",
+          align: "center",
+        },
+      },
+    ],
+  }).drive();
+}
+
+function startYieldHijackExplorerTour() {
+  const explorerTarget = "[data-tour='rl2-open-explorer']";
+
+  if (!document.querySelector(explorerTarget)) {
+    return;
+  }
+
+  driver({
+    allowClose: true,
+    animate: true,
+    disableActiveInteraction: false,
+    doneBtnText: "Investigate",
+    nextBtnText: "Next",
+    overlayColor: "#020404",
+    overlayOpacity: 0.72,
+    popoverClass: "solbreach-driver-popover",
+    popoverOffset: 14,
+    prevBtnText: "Back",
+    showButtons: ["next", "previous", "close"],
+    showProgress: false,
+    stagePadding: 8,
+    stageRadius: 14,
+    steps: [
+      {
+        element: explorerTarget,
+        popover: {
+          title: "Investigate before claiming",
+          description:
+            "Open Explorer in a new tab. Inspect the public IDL and decoded position accounts to recover the instruction and wallet required by the claim form.",
           side: "right",
           align: "center",
         },
