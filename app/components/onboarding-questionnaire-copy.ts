@@ -391,7 +391,7 @@ const spanish: OnboardingCopy = {
   briefing: {
     title: "¿Cómo aprenden seguridad los builders de Solana?",
     description:
-      "Cuéntanos qué intentaste, dónde te trabaste y si tiene sentido invitarte a probar SolBreach.",
+      "Cuéntanos qué intentaste, dónde te trabaste y si te gustaría probar una primera version de SolBreach.",
   },
   steps: [
     "Perfil",
