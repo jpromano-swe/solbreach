@@ -186,10 +186,14 @@ export function useFindingReview({
         answers: backendAnswers,
         sessionId: session.sessionId,
       });
-      const incorrectIds =
+      const localIncorrectIds = getIncorrectRequiredQuestionIds(
+        result,
+        questionnaire
+      );
+      const backendIncorrectIds =
         review.failedQuestionIds ??
         review.failed_question_ids ??
-        getIncorrectRequiredQuestionIds(result, questionnaire);
+        [];
       const attempts =
         review.findingReviewAttempts ??
         review.finding_review_attempts ??
@@ -197,8 +201,23 @@ export function useFindingReview({
       const passed = Boolean(
         review.findingReviewPassed ?? review.finding_review_passed
       );
+      const incorrectIds = passed
+        ? []
+        : resolveRetryQuestionIds({
+            backendIncorrectIds,
+            localIncorrectIds,
+            questionnaire,
+          });
+      const nextResult = passed
+        ? result
+        : mergeBackendReviewFailure({
+            failedQuestionIds: incorrectIds,
+            questionnaire,
+            result,
+            score: review.score,
+          });
 
-      setQuestionnaireResult(result);
+      setQuestionnaireResult(nextResult);
       setRetryQuestionIds(incorrectIds);
       setReviewAttempts(attempts);
 
@@ -351,6 +370,72 @@ function orderQuestionsById(
   const missingQuestions = questions.filter((question) => !orderedIds.has(question.id));
 
   return [...orderedQuestions, ...missingQuestions];
+}
+
+function resolveRetryQuestionIds({
+  backendIncorrectIds,
+  localIncorrectIds,
+  questionnaire,
+}: {
+  backendIncorrectIds: string[];
+  localIncorrectIds: string[];
+  questionnaire: QuestionnaireDefinition;
+}) {
+  const validQuestionIds = new Set(
+    questionnaire.questions.map((question) => question.id)
+  );
+  const matchingBackendIds = backendIncorrectIds.filter((questionId) =>
+    validQuestionIds.has(questionId)
+  );
+  if (matchingBackendIds.length) return matchingBackendIds;
+
+  const matchingLocalIds = localIncorrectIds.filter((questionId) =>
+    validQuestionIds.has(questionId)
+  );
+  if (matchingLocalIds.length) return matchingLocalIds;
+
+  return questionnaire.questions
+    .filter(isRequiredQuestion)
+    .map((question) => question.id);
+}
+
+function mergeBackendReviewFailure({
+  failedQuestionIds,
+  questionnaire,
+  result,
+  score,
+}: {
+  failedQuestionIds: string[];
+  questionnaire: QuestionnaireDefinition;
+  result: QuestionnaireResult;
+  score?: number;
+}): QuestionnaireResult {
+  const failedQuestionIdSet = new Set(failedQuestionIds);
+  const criticalQuestionIds = new Set(
+    questionnaire.questions
+      .filter((question) => question.critical)
+      .map((question) => question.id)
+  );
+  const failedCriticalQuestions = failedQuestionIds.filter((questionId) =>
+    criticalQuestionIds.has(questionId)
+  );
+  const results = result.results.map((item) =>
+    failedQuestionIdSet.has(item.questionId)
+      ? { ...item, correct: false, pointsEarned: 0 }
+      : item
+  );
+  const fallbackScore = results.reduce(
+    (total, item) => total + item.pointsEarned,
+    0
+  );
+
+  return {
+    ...result,
+    failedCriticalQuestions,
+    passed: false,
+    results,
+    score: typeof score === "number" ? score : fallbackScore,
+  };
 }
 
 function shuffleItems<T>(items: T[]) {
