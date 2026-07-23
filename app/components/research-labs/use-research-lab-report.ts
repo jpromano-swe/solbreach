@@ -14,9 +14,11 @@ import {
   type ResearchLabSession,
 } from "../../lib/research-labs/lab-state";
 import {
+  buildReportDefaultsFromQuestionnaireAnswers,
   emptyReportFields,
   getResearchLabReportConfig,
 } from "./report-utils";
+import type { QuestionnaireAnswer } from "../../lib/research-labs/rl1-questionnaire";
 import type { AuditReportStage } from "./types";
 
 type UseResearchLabReportOptions = {
@@ -42,48 +44,65 @@ export function useResearchLabReport({
   const [isReportSubmitting, setIsReportSubmitting] = useState(false);
 
   const resolveReportFields = useCallback(
-    (fields?: Partial<ResearchLabReportFields> | null) => ({
-      ...emptyReportFields,
-      ...fields,
-      titleOptionId:
-        fields?.titleOptionId ??
-        reportConfig.suggestedDefaults.titleOptionId ??
-        null,
-      categoryOptionId:
-        fields?.categoryOptionId ??
-        reportConfig.suggestedDefaults.categoryOptionId ??
-        null,
-      severityOptionId:
-        fields?.severityOptionId ??
-        reportConfig.suggestedDefaults.severityOptionId ??
-        null,
-      likelihoodOptionId:
-        fields?.likelihoodOptionId ??
-        reportConfig.suggestedDefaults.likelihoodOptionId ??
-        null,
-      rootCauseOptionId:
-        fields?.rootCauseOptionId ??
-        reportConfig.suggestedDefaults.rootCauseOptionId ??
-        null,
-      proofOfImpactOptionId:
-        fields?.proofOfImpactOptionId ??
-        reportConfig.suggestedDefaults.proofOfImpactOptionId ??
-        null,
-      recommendedMitigationOptionId:
-        fields?.recommendedMitigationOptionId ??
-        reportConfig.suggestedDefaults.recommendedMitigationOptionId ??
-        null,
-      verifiedEvidenceRefs:
-        fields?.verifiedEvidenceRefs?.length
-          ? fields.verifiedEvidenceRefs
-          : session?.verifiedEvidenceRefs ?? [],
-      optionalNotes: fields?.optionalNotes ?? "",
-    }),
+    (
+      fields?: Partial<ResearchLabReportFields> | null,
+      answers: QuestionnaireAnswer[] = []
+    ) => {
+      const answerDefaults = buildReportDefaultsFromQuestionnaireAnswers(
+        answers,
+        reportConfig
+      );
+
+      return {
+        ...emptyReportFields,
+        ...fields,
+        titleOptionId:
+          fields?.titleOptionId ??
+          answerDefaults.titleOptionId ??
+          reportConfig.suggestedDefaults.titleOptionId ??
+          null,
+        categoryOptionId:
+          fields?.categoryOptionId ??
+          answerDefaults.categoryOptionId ??
+          reportConfig.suggestedDefaults.categoryOptionId ??
+          null,
+        severityOptionId:
+          fields?.severityOptionId ??
+          answerDefaults.severityOptionId ??
+          reportConfig.suggestedDefaults.severityOptionId ??
+          null,
+        likelihoodOptionId:
+          fields?.likelihoodOptionId ??
+          answerDefaults.likelihoodOptionId ??
+          reportConfig.suggestedDefaults.likelihoodOptionId ??
+          null,
+        rootCauseOptionId:
+          fields?.rootCauseOptionId ??
+          answerDefaults.rootCauseOptionId ??
+          reportConfig.suggestedDefaults.rootCauseOptionId ??
+          null,
+        proofOfImpactOptionId:
+          fields?.proofOfImpactOptionId ??
+          answerDefaults.proofOfImpactOptionId ??
+          reportConfig.suggestedDefaults.proofOfImpactOptionId ??
+          null,
+        recommendedMitigationOptionId:
+          fields?.recommendedMitigationOptionId ??
+          answerDefaults.recommendedMitigationOptionId ??
+          reportConfig.suggestedDefaults.recommendedMitigationOptionId ??
+          null,
+        verifiedEvidenceRefs:
+          fields?.verifiedEvidenceRefs?.length
+            ? fields.verifiedEvidenceRefs
+            : session?.verifiedEvidenceRefs ?? [],
+        optionalNotes: fields?.optionalNotes ?? "",
+      };
+    },
     [reportConfig, session?.verifiedEvidenceRefs]
   );
 
-  const populateReportDefaults = useCallback(() => {
-    setReportFields((fields) => resolveReportFields(fields));
+  const populateReportDefaults = useCallback((answers: QuestionnaireAnswer[] = []) => {
+    setReportFields((fields) => resolveReportFields(fields, answers));
   }, [resolveReportFields]);
 
   const resetReport = useCallback(() => {

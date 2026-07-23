@@ -33,7 +33,7 @@ type UseFindingReviewOptions = {
   ) => Promise<ResearchLabReport>;
   onOpenReportTab: () => void;
   onSessionChange: (session: ResearchLabSession) => void;
-  onPopulateReportDefaults: () => void;
+  onPopulateReportDefaults: (answers: QuestionnaireAnswer[]) => void;
   onResetAuditReportStage: () => void;
   questionnaire: QuestionnaireDefinition;
   session: ResearchLabSession | null;
@@ -237,7 +237,7 @@ export function useFindingReview({
 
       if (passed) {
         await loadReport(auth, nextSession);
-        onPopulateReportDefaults();
+        onPopulateReportDefaults(questionnaireAnswers);
         setReviewMode("full");
         setReviewIndex(0);
         setReportOpened(false);

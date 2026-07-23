@@ -362,6 +362,91 @@ export function getResearchLabReportConfig(
     : rl1ReportConfig;
 }
 
+export function buildReportDefaultsFromQuestionnaireAnswers(
+  answers: QuestionnaireAnswer[],
+  config: ResearchLabReportConfig
+): Partial<ResearchLabReportFields> {
+  const defaults = { ...config.suggestedDefaults };
+  const singleAnswers = new Map<string, string>();
+  const multiAnswers = new Map<string, string[]>();
+
+  for (const answer of answers) {
+    if ("selectedOptionId" in answer) {
+      singleAnswers.set(answer.questionId, answer.selectedOptionId);
+    }
+    if ("selectedOptionIds" in answer) {
+      multiAnswers.set(answer.questionId, answer.selectedOptionIds);
+    }
+  }
+
+  if (config.labLabel === "Research Lab 2") {
+    if (
+      singleAnswers.get("q1_vulnerability_category") ===
+      "static_pda_missing_user_identity"
+    ) {
+      defaults.titleOptionId = "static_staking_position_reward_hijack";
+      defaults.categoryOptionId = "static_pda";
+      defaults.rootCauseOptionId = "static_pda_missing_user_seed";
+    }
+
+    if (
+      singleAnswers.get("q3_exploit_sequence") ===
+        "existing_rewards_same_pda_stake_overwrite_claim" ||
+      singleAnswers.get("q5_impact") === "unauthorized_preexisting_reward_claim"
+    ) {
+      defaults.proofOfImpactOptionId = "position_owner_overwrite_reward_claim";
+    }
+
+    if (singleAnswers.get("q7_severity") === "high") {
+      defaults.severityOptionId = "high";
+      defaults.likelihoodOptionId = "high";
+    }
+
+    if (
+      singleAnswers.get("q8_recommended_fix") === "scope_pda_by_pool_and_user"
+    ) {
+      defaults.recommendedMitigationOptionId =
+        "scope_position_pda_by_pool_and_user";
+    }
+  } else {
+    if (singleAnswers.get("q1_vulnerability_category") === "account_substitution") {
+      defaults.titleOptionId = "missing_constraints_counterfeit_credit";
+      defaults.categoryOptionId = "account_substitution";
+    }
+
+    if (
+      singleAnswers.get("q3_credit_origin") ===
+        "invalid_account_relationship_created_credit" ||
+      singleAnswers.get("q4_exploit_sequence") ===
+        "invalid_deposit_then_treasury_withdrawal" ||
+      singleAnswers.get("q5_treasury_impact") ===
+        "real_protocol_value_left_treasury"
+    ) {
+      defaults.proofOfImpactOptionId = "counterfeit_credit_withdraws_treasury";
+      defaults.rootCauseOptionId = "missing_account_binding";
+    }
+
+    if (
+      singleAnswers.get("q8_recommended_fix") === "bind_accounts_to_approved_config"
+    ) {
+      defaults.recommendedMitigationOptionId =
+        "bind_accounts_to_approved_config";
+    }
+  }
+
+  const rl2Evidence = multiAnswers.get("q6_evidence") ?? [];
+  if (
+    config.labLabel === "Research Lab 2" &&
+    rl2Evidence.includes("position_pda_collision") &&
+    rl2Evidence.includes("owner_changed_after_stake") &&
+    rl2Evidence.includes("reward_delta_matches")
+  ) {
+    defaults.proofOfImpactOptionId = "position_owner_overwrite_reward_claim";
+  }
+
+  return pruneUnavailableReportDefaults(defaults, config);
+}
+
 export function isRequiredQuestion(question: QuestionnaireQuestion) {
   return question.type !== "free_text_optional";
 }
@@ -509,6 +594,61 @@ export function getOptionSnippet(
 ) {
   if (!id) return null;
   return options.find((option) => option.id === id)?.snippet ?? null;
+}
+
+function pruneUnavailableReportDefaults(
+  defaults: Partial<ResearchLabReportFields>,
+  config: ResearchLabReportConfig
+) {
+  return {
+    ...defaults,
+    titleOptionId: hasReportOption(config.titleOptions, defaults.titleOptionId)
+      ? defaults.titleOptionId
+      : null,
+    categoryOptionId: hasReportOption(
+      config.categoryOptions,
+      defaults.categoryOptionId
+    )
+      ? defaults.categoryOptionId
+      : null,
+    severityOptionId: hasReportOption(
+      config.severityOptions,
+      defaults.severityOptionId
+    )
+      ? defaults.severityOptionId
+      : null,
+    likelihoodOptionId: hasReportOption(
+      config.likelihoodOptions,
+      defaults.likelihoodOptionId
+    )
+      ? defaults.likelihoodOptionId
+      : null,
+    rootCauseOptionId: hasReportOption(
+      config.rootCauseOptions,
+      defaults.rootCauseOptionId
+    )
+      ? defaults.rootCauseOptionId
+      : null,
+    proofOfImpactOptionId: hasReportOption(
+      config.proofOfImpactOptions,
+      defaults.proofOfImpactOptionId
+    )
+      ? defaults.proofOfImpactOptionId
+      : null,
+    recommendedMitigationOptionId: hasReportOption(
+      config.mitigationOptions,
+      defaults.recommendedMitigationOptionId
+    )
+      ? defaults.recommendedMitigationOptionId
+      : null,
+  };
+}
+
+function hasReportOption(
+  options: ReportOption[],
+  id: string | null | undefined
+) {
+  return Boolean(id && options.some((option) => option.id === id));
 }
 
 export function buildAuditReportPreview(
