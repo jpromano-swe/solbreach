@@ -3,6 +3,7 @@ import type {
   MainGoal,
   OnboardingProfile,
   OnboardingSubmission,
+  PreferredContactChannel,
   SecurityExperience,
   SolanaLevel,
 } from "../lib/onboarding";
@@ -69,10 +70,12 @@ export type BetaInterest = "try_this_week" | "try_later" | "maybe" | "not_now";
 export type OnboardingFormState = {
   betaIntent: BetaInterest | "";
   contact: string;
+  contactName: string;
   hardestPracticeStep: string;
   learningActions: LearningAction[];
   learningBlockers: LearningBlocker[];
   preferredFormats: LearningFormat[];
+  preferredContactChannel: PreferredContactChannel | "";
   practiceSignals: PracticeSignal[];
   problemIntensity: number | null;
   problemIntensityReason: string;
@@ -93,7 +96,7 @@ export type QuestionnaireOption = {
 export type OnboardingValidationMessages = Record<
   Exclude<OnboardingQuestionId, "review">,
   string
-> & { contact: string };
+> & { contact: string; contactName: string; preferredContactChannel: string };
 
 export type OnboardingQuestionId =
   | "profile"
@@ -106,6 +109,7 @@ export type OnboardingQuestionId =
   | "practiceSignals"
   | "problemIntensity"
   | "betaIntent"
+  | "contactDetails"
   | "review";
 
 export type OnboardingPage = {
@@ -130,6 +134,7 @@ export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
   { id: "practiceSignals", validation: ["practiceSignals"] },
   { id: "problemIntensity", validation: ["problemIntensity"] },
   { id: "betaIntent", validation: ["betaIntent"] },
+  { id: "contactDetails", validation: ["contactDetails"] },
   {
     id: "review",
     validation: [
@@ -143,6 +148,7 @@ export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
       "practiceSignals",
       "problemIntensity",
       "betaIntent",
+      "contactDetails",
     ],
   },
 ];
@@ -150,10 +156,12 @@ export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
 export const INITIAL_ONBOARDING_FORM: OnboardingFormState = {
   betaIntent: "",
   contact: "",
+  contactName: "",
   hardestPracticeStep: "",
   learningActions: [],
   learningBlockers: [],
   preferredFormats: [],
+  preferredContactChannel: "",
   practiceSignals: [],
   problemIntensity: null,
   problemIntensityReason: "",
@@ -202,7 +210,21 @@ export function validateOnboardingQuestions(
   if (includes("betaIntent")) {
     if (!form.betaIntent) {
       errors.betaIntent = messages.betaIntent;
-    } else if (form.betaIntent !== "not_now" && !form.contact.trim()) {
+    } else if (
+      form.betaIntent !== "not_now" &&
+      !form.preferredContactChannel
+    ) {
+      errors.preferredContactChannel = messages.preferredContactChannel;
+    }
+  }
+  if (includes("contactDetails") && form.betaIntent !== "not_now") {
+    if (!form.preferredContactChannel) {
+      errors.preferredContactChannel = messages.preferredContactChannel;
+    }
+    if (!form.contactName.trim()) {
+      errors.contactName = messages.contactName;
+    }
+    if (!form.contact.trim()) {
       errors.contact = messages.contact;
     }
   }
@@ -235,11 +257,15 @@ export function buildOnboardingSubmission(
     futureLabsInterest: buildDiscoveryMetadata(form),
     guidedLabUsefulness: form.problemIntensity,
     mainGoal: mapLearningFormats(form.preferredFormats),
-    name: "Solana builder",
+    name:
+      form.betaIntent === "not_now"
+        ? form.contactName.trim() || "Solana builder"
+        : form.contactName.trim(),
     organizationName: null,
-    preferredContactChannel: inferContactChannel(
-      form.betaIntent === "not_now" ? "" : form.contact
-    ),
+    preferredContactChannel:
+      form.betaIntent === "not_now"
+        ? "email"
+        : form.preferredContactChannel || "email",
     profile: mapProfile(form.profile),
     securityExperience: mapSecurityExperience(form.securityLearningAttempt),
     solanaLevel: mapSolanaLevel(form.realExperience),
@@ -272,13 +298,6 @@ function buildDiscoveryMetadata(form: OnboardingFormState) {
   ]
     .join(";")
     .slice(0, 1000);
-}
-
-function inferContactChannel(contact: string) {
-  const normalized = contact.trim();
-  return normalized.startsWith("@") && !normalized.includes(".")
-    ? ("telegram" as const)
-    : ("email" as const);
 }
 
 function mapProfile(profile: CustomerProfile): OnboardingProfile {

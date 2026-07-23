@@ -59,6 +59,8 @@ export function QuestionnaireStep({
       return <ProblemIntensityStep {...props} />;
     case "betaIntent":
       return <BetaIntentStep {...props} />;
+    case "contactDetails":
+      return <ContactDetailsStep {...props} />;
     case "review":
       return <ReviewStep {...props} />;
   }
@@ -186,7 +188,7 @@ function HardestPracticeStep({ copy, errors, form, updateField }: StepProps) {
   return (
     <QuestionFrame title={question.title} description={question.description}>
       <Field
-        label={question.title}
+        label={copy.review.labels.hardestPracticeStep}
         error={errors.hardestPracticeStep}
         fieldId="hardestPracticeStep"
       >
@@ -197,14 +199,14 @@ function HardestPracticeStep({ copy, errors, form, updateField }: StepProps) {
             "hardestPracticeStep",
             errors.hardestPracticeStep
           )}
-          maxLength={600}
+          maxLength={100}
           onChange={(event) =>
             updateField("hardestPracticeStep", event.target.value)
           }
           placeholder={question.placeholder}
-          rows={7}
+          rows={4}
           value={form.hardestPracticeStep}
-          className={`${inputClass(errors.hardestPracticeStep)} min-h-44 resize-y py-3 leading-6`}
+          className={`${inputClass(errors.hardestPracticeStep)} min-h-28 resize-y py-3 leading-6`}
         />
       </Field>
     </QuestionFrame>
@@ -289,7 +291,7 @@ function ProblemIntensityStep({ copy, errors, form, updateField }: StepProps) {
 
 function BetaIntentStep({ copy, errors, form, updateField }: StepProps) {
   const question = copy.questions.betaIntent;
-  const needsContact = Boolean(
+  const needsContactChannel = Boolean(
     form.betaIntent && form.betaIntent !== "not_now"
   );
 
@@ -303,30 +305,108 @@ function BetaIntentStep({ copy, errors, form, updateField }: StepProps) {
           error={errors.betaIntent}
           options={copy.options.betaIntent}
           value={form.betaIntent}
-          onChange={(value) => updateField("betaIntent", value as BetaInterest)}
+          onChange={(value) => {
+            updateField("betaIntent", value as BetaInterest);
+            if (value === "not_now") {
+              updateField("preferredContactChannel", "");
+              updateField("contactName", "");
+              updateField("contact", "");
+            }
+          }}
         />
-        {needsContact ? (
+        {needsContactChannel ? (
           <div className="border-t border-border pt-6">
             <Field
-              label={question.contactLabel}
-              error={errors.contact}
-              fieldId="contact"
+              label={copy.questions.contactDetails.contactChannelLabel}
+              error={errors.preferredContactChannel}
+              fieldId="preferredContactChannel"
             >
-              <input
-                id="onboarding-contact"
-                autoComplete="off"
-                aria-invalid={errors.contact ? "true" : undefined}
-                aria-describedby={errorDescription("contact", errors.contact)}
-                maxLength={320}
-                onChange={(event) => updateField("contact", event.target.value)}
-                placeholder={question.contactPlaceholder}
-                spellCheck={false}
-                value={form.contact}
-                className={inputClass(errors.contact)}
-              />
+              <select
+                id="onboarding-preferredContactChannel"
+                aria-invalid={
+                  errors.preferredContactChannel ? "true" : undefined
+                }
+                aria-describedby={errorDescription(
+                  "preferredContactChannel",
+                  errors.preferredContactChannel
+                )}
+                onChange={(event) =>
+                  updateField(
+                    "preferredContactChannel",
+                    event.target
+                      .value as OnboardingFormState["preferredContactChannel"]
+                  )
+                }
+                value={form.preferredContactChannel}
+                className={inputClass(errors.preferredContactChannel)}
+              >
+                <option value="" disabled>
+                  {copy.questions.contactDetails.contactChannelLabel}
+                </option>
+                {copy.options.contactChannels.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
         ) : null}
+      </div>
+    </QuestionFrame>
+  );
+}
+
+function ContactDetailsStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.contactDetails;
+  const contactType =
+    form.preferredContactChannel === "email" ? "email" : "text";
+  const autocomplete =
+    form.preferredContactChannel === "email" ? "email" : "off";
+
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          label={question.contactNameLabel}
+          error={errors.contactName}
+          fieldId="contactName"
+        >
+          <input
+            id="onboarding-contactName"
+            autoComplete="name"
+            aria-invalid={errors.contactName ? "true" : undefined}
+            aria-describedby={errorDescription(
+              "contactName",
+              errors.contactName
+            )}
+            maxLength={120}
+            onChange={(event) => updateField("contactName", event.target.value)}
+            placeholder={question.contactNamePlaceholder}
+            spellCheck={false}
+            value={form.contactName}
+            className={inputClass(errors.contactName)}
+          />
+        </Field>
+        <Field
+          label={question.contactLabel}
+          error={errors.contact}
+          fieldId="contact"
+        >
+          <input
+            id="onboarding-contact"
+            autoComplete={autocomplete}
+            type={contactType}
+            aria-invalid={errors.contact ? "true" : undefined}
+            aria-describedby={errorDescription("contact", errors.contact)}
+            maxLength={320}
+            onChange={(event) => updateField("contact", event.target.value)}
+            placeholder={question.contactPlaceholder}
+            spellCheck={false}
+            value={form.contact}
+            className={inputClass(errors.contact)}
+          />
+        </Field>
       </div>
     </QuestionFrame>
   );
@@ -382,6 +462,23 @@ function ReviewStep({ copy, form }: StepProps) {
     {
       label: copy.review.labels.betaIntent,
       value: optionLabel(copy.options.betaIntent, form.betaIntent),
+    },
+    {
+      label: copy.questions.contactDetails.contactNameLabel,
+      value:
+        form.betaIntent === "not_now"
+          ? copy.review.notProvided
+          : form.contactName.trim() || copy.review.notProvided,
+    },
+    {
+      label: copy.review.contactChannelLabel,
+      value:
+        form.betaIntent === "not_now"
+          ? copy.review.notProvided
+          : optionLabel(
+              copy.options.contactChannels,
+              form.preferredContactChannel
+            ),
     },
     {
       label: copy.review.contactLabel,

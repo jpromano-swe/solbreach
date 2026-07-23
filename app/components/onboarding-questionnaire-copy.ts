@@ -52,13 +52,18 @@ type OnboardingCopy = {
       reasonLabel: string;
       reasonPlaceholder: string;
     };
-    betaIntent: QuestionCopy & {
+    betaIntent: QuestionCopy;
+    contactDetails: QuestionCopy & {
+      contactChannelLabel: string;
       contactLabel: string;
+      contactNameLabel: string;
+      contactNamePlaceholder: string;
       contactPlaceholder: string;
     };
   };
   options: {
     betaIntent: QuestionnaireOption[];
+    contactChannels: QuestionnaireOption[];
     learningActions: QuestionnaireOption[];
     learningBlockers: QuestionnaireOption[];
     practiceSignals: QuestionnaireOption[];
@@ -83,6 +88,7 @@ type OnboardingCopy = {
       | "betaIntent",
       string
     >;
+    contactChannelLabel: string;
     notProvided: string;
     title: string;
   };
@@ -148,6 +154,7 @@ const optionValues = {
     "final_report",
   ],
   betaIntent: ["try_this_week", "try_later", "maybe", "not_now"],
+  contactChannels: ["email", "telegram"],
 } as const;
 
 function options(
@@ -160,9 +167,9 @@ function options(
 const english: OnboardingCopy = {
   languageLabel: "Language",
   briefing: {
-    title: "Help us understand how Solana builders learn security.",
+    title: "How do Solana builders learn security?",
     description:
-      "We’re building SolBreach to help Solana developers move from reading about vulnerabilities to practicing them in a guided and verifiable environment. This form helps us understand what you’ve tried, where you got stuck, and whether it makes sense to invite you to the beta.",
+      "Tell us what you tried, where you got stuck, and whether SolBreach should invite you into the beta.",
   },
   steps: [
     "Profile",
@@ -175,6 +182,7 @@ const english: OnboardingCopy = {
     "Hands-on practice",
     "Problem strength",
     "Beta interest",
+    "Contact",
     "Review",
   ],
   progress: { step: "Step", of: "of" },
@@ -192,7 +200,7 @@ const english: OnboardingCopy = {
     eyebrow: "Responses received",
     title: "Thank you for helping us.",
     description:
-      "We’ll use these answers to improve the first Research Lab and invite beta testers who can give real feedback.",
+      "We’ll use these answers to improve the first beta experience and invite testers who can give real feedback.",
     documentation: "Explore the documentation",
   },
   questions: {
@@ -202,23 +210,25 @@ const english: OnboardingCopy = {
       description: "Select every answer that applies.",
     },
     securityLearningAttempt: {
-      title: "Have you ever tried to learn Solana security or auditing?",
+      title:
+        "Have you ever tried to learn about security or how to audit Solana programs?",
     },
     learningActions: {
-      title: "What have you actually done to learn Solana security?",
+      title: "What have you actually done to learn about Solana security?",
       description: "Select every answer that applies.",
     },
     learningBlockers: {
-      title: "Where did you get stuck the most?",
+      title: "Where did you feel the most difficulty?",
       description: "Select every answer that applies.",
     },
     hardestPracticeStep: {
       title: "What was the hardest part when moving from theory to practice?",
-      description: "A concrete example is more useful than a general answer.",
-      placeholder: "Share a concrete experience if you can.",
+      description: "A short answer is enough. Aim for about 100 characters.",
+      placeholder: "Share one concrete blocker.",
     },
     preferredFormats: {
-      title: "What format would help you most to learn Solana security?",
+      title:
+        "What format would help you most to learn about Solana security?",
       description: "Select every answer that applies.",
     },
     practiceSignals: {
@@ -236,9 +246,17 @@ const english: OnboardingCopy = {
     },
     betaIntent: {
       title:
-        "Would you try a first version of SolBreach focused on one complete Research Lab?",
-      contactLabel: "Leave your contact so we can invite you to the beta",
-      contactPlaceholder: "Email, Telegram, or X",
+        "Would you be available to try a first version of SolBreach focused on one specific vulnerability?",
+    },
+    contactDetails: {
+      title: "Contact details",
+      description:
+        "Leave only the contact name and contact info needed for an invite.",
+      contactChannelLabel: "Contact channel",
+      contactNameLabel: "Contact name",
+      contactNamePlaceholder: "Your name or handle",
+      contactLabel: "Contact info",
+      contactPlaceholder: "you@example.com or @telegram",
     },
   },
   options: {
@@ -300,12 +318,12 @@ const english: OnboardingCopy = {
     ),
     preferredFormats: options(
       [
-        "Step-by-step guided modules",
-        "Research Labs with exploration",
+        "Interactive learning environments",
+        "Exploratory vulnerability environments",
         "Real-audit-like environments",
-        "CTFs or scored challenges",
+        "CTFs or point-based challenges",
         "Mentor or reviewer feedback",
-        "Final report or certificate",
+        "Ecosystem-validated certifications",
       ],
       optionValues.preferredFormats
     ),
@@ -329,11 +347,13 @@ const english: OnboardingCopy = {
       ],
       optionValues.betaIntent
     ),
+    contactChannels: options(["Email", "Telegram"], optionValues.contactChannels),
   },
   review: {
     title: "Review your responses",
     description: "Confirm your answers before sending them.",
     contactLabel: "Beta contact",
+    contactChannelLabel: "Contact channel",
     notProvided: "Not provided",
     labels: {
       profile: "Profile",
@@ -359,17 +379,19 @@ const english: OnboardingCopy = {
     practiceSignals: "Choose at least one answer.",
     problemIntensity: "Choose a score from 1 to 5.",
     betaIntent: "Choose your current interest.",
-    contact: "Add an email, Telegram username, or X handle.",
+    contactDetails: "Add contact details or choose not right now.",
+    contactName: "Add a contact name.",
+    preferredContactChannel: "Choose email or Telegram.",
+    contact: "Add an email or Telegram username.",
   },
 };
 
 const spanish: OnboardingCopy = {
   languageLabel: "Idioma",
   briefing: {
-    title:
-      "Ayúdanos a entender cómo aprenden seguridad los builders de Solana.",
+    title: "¿Cómo aprenden seguridad los builders de Solana?",
     description:
-      "Estamos construyendo SolBreach para ayudar a developers de Solana a pasar de leer sobre vulnerabilidades a practicarlas en un entorno guiado y verificable. Este formulario nos ayuda a entender qué intentaste, dónde te trabaste y si tiene sentido invitarte a la beta.",
+      "Cuéntanos qué intentaste, dónde te trabaste y si tiene sentido invitarte a probar SolBreach.",
   },
   steps: [
     "Perfil",
@@ -382,6 +404,7 @@ const spanish: OnboardingCopy = {
     "Práctica real",
     "Intensidad del problema",
     "Interés en la beta",
+    "Contacto",
     "Revisión",
   ],
   progress: { step: "Paso", of: "de" },
@@ -399,7 +422,7 @@ const spanish: OnboardingCopy = {
     eyebrow: "Respuestas recibidas",
     title: "Gracias por ayudarnos.",
     description:
-      "Vamos a usar estas respuestas para ajustar el primer Research Lab y seleccionar beta testers que puedan darnos feedback real.",
+      "Vamos a usar estas respuestas para ajustar la primera experiencia beta y seleccionar testers que puedan darnos feedback real.",
     documentation: "Explorar la documentación",
   },
   questions: {
@@ -409,24 +432,27 @@ const spanish: OnboardingCopy = {
       description: "Seleccioná todas las opciones que correspondan.",
     },
     securityLearningAttempt: {
-      title: "¿Alguna vez intentaste aprender seguridad o auditoría en Solana?",
+      title:
+        "¿Alguna vez intentaste aprender sobre seguridad o a auditar programas en Solana?",
     },
     learningActions: {
-      title: "¿Qué hiciste concretamente para aprender seguridad en Solana?",
+      title:
+        "¿Qué hiciste concretamente para aprender sobre seguridad en Solana?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
     learningBlockers: {
-      title: "¿Dónde te trabaste más?",
+      title: "¿Dónde sientes que tuviste más dificultad?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
     hardestPracticeStep: {
       title: "¿Cuál fue la parte más difícil al pasar de teoría a práctica?",
       description:
-        "Una experiencia concreta es más útil que una respuesta general.",
-      placeholder: "Contanos una experiencia concreta si podés.",
+        "Una respuesta breve alcanza. Apuntá a unos 100 caracteres.",
+      placeholder: "Contanos un bloqueo concreto.",
     },
     preferredFormats: {
-      title: "¿Qué formato te ayudaría más a aprender seguridad en Solana?",
+      title:
+        "¿Qué formato te ayudaría más a aprender sobre seguridad en Solana?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
     practiceSignals: {
@@ -443,9 +469,17 @@ const spanish: OnboardingCopy = {
     },
     betaIntent: {
       title:
-        "¿Probarías una primera versión de SolBreach enfocada en un Research Lab completo?",
-      contactLabel: "Dejanos tu contacto para invitarte a la beta",
-      contactPlaceholder: "Email, Telegram o X",
+        "¿Estarías disponible para probar una primera versión de SolBreach enfocada en una vulnerabilidad particular?",
+    },
+    contactDetails: {
+      title: "Datos de contacto",
+      description:
+        "Dejá solo el nombre y el dato de contacto necesarios para enviarte la invitación.",
+      contactChannelLabel: "Canal de contacto",
+      contactNameLabel: "Nombre de contacto",
+      contactNamePlaceholder: "Tu nombre o handle",
+      contactLabel: "Dato de contacto",
+      contactPlaceholder: "tu@email.com o @telegram",
     },
   },
   options: {
@@ -507,12 +541,12 @@ const spanish: OnboardingCopy = {
     ),
     preferredFormats: options(
       [
-        "Módulos guiados paso a paso",
-        "Research Labs con exploración",
+        "Entornos de aprendizaje interactivos",
+        "Entornos de exploración de vulnerabilidades",
         "Entornos parecidos a una auditoría real",
-        "CTFs o challenges con scoring",
+        "CTFs o desafíos por puntaje",
         "Feedback de mentor o reviewer",
-        "Reporte o certificado final",
+        "Certificaciones validadas por el ecosistema",
       ],
       optionValues.preferredFormats
     ),
@@ -536,11 +570,16 @@ const spanish: OnboardingCopy = {
       ],
       optionValues.betaIntent
     ),
+    contactChannels: options(
+      ["Email", "Telegram"],
+      optionValues.contactChannels
+    ),
   },
   review: {
     title: "Revisá tus respuestas",
     description: "Confirmá tus respuestas antes de enviarlas.",
     contactLabel: "Contacto para la beta",
+    contactChannelLabel: "Canal de contacto",
     notProvided: "No especificado",
     labels: {
       profile: "Perfil",
@@ -566,7 +605,10 @@ const spanish: OnboardingCopy = {
     practiceSignals: "Elegí al menos una respuesta.",
     problemIntensity: "Elegí un puntaje del 1 al 5.",
     betaIntent: "Elegí tu nivel de interés actual.",
-    contact: "Agregá un email, usuario de Telegram o cuenta de X.",
+    contactDetails: "Agregá datos de contacto o elegí no por ahora.",
+    contactName: "Agregá un nombre de contacto.",
+    preferredContactChannel: "Elegí email o Telegram.",
+    contact: "Agregá un email o usuario de Telegram.",
   },
 };
 
