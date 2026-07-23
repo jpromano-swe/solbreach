@@ -627,6 +627,9 @@ export function ResearchLabsSection({
         labs={labs}
         level1BadgeCollected={level1BadgeCollected}
         level2BadgeCollected={level2BadgeCollected}
+        researchLabCertificateMintedByLevel={
+          researchLabCertificateMintedByLevel
+        }
         onLoadCatalog={loadCatalog}
         onGoToLevel1Module={onGoToLevel1Module}
         onGoToLevel2Module={onGoToLevel2Module}

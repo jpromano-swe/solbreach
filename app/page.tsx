@@ -290,6 +290,7 @@ export default function Home() {
 
   const level1Badge = getLevelBadge(badges, 1);
   const level2Badge = getLevelBadge(badges, 2);
+  const level3Badge = getLevelBadge(badges, 3);
   const level1Completed = Boolean(level1Badge?.earned);
   const level2Completed =
     Boolean(level0State?.completedLevels[2]) || level2BackendCompleted;
@@ -888,6 +889,11 @@ export default function Home() {
             />
           ) : activeSection === "vulnerabilities" ? (
             <VulnerabilitiesSection
+              completedLevels={{
+                level1: level1Completed,
+                level2: level2Completed || Boolean(level2Badge?.earned),
+                level3: level3Completed || Boolean(level3Badge?.earned),
+              }}
               onSelectLevel={(level) => {
                 setActiveSection("levels");
                 setActiveLevelsView(level);

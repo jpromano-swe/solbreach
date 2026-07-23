@@ -40,6 +40,8 @@ type VulnerabilityCard = {
   theme: string;
 };
 
+type CatalogCardStatus = "available" | "completed" | "locked";
+
 const VULNERABILITY_CARDS: VulnerabilityCard[] = [
   {
     id: "level-1",
@@ -134,8 +136,10 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
 ];
 
 export function VulnerabilitiesSection({
+  completedLevels = {},
   onSelectLevel,
 }: {
+  completedLevels?: Partial<Record<LevelId, boolean>>;
   onSelectLevel: (level: LevelId) => void;
 }) {
   useEffect(() => {
@@ -207,8 +211,14 @@ export function VulnerabilitiesSection({
             style={{ left: GRID_DIVIDER_TWO }}
           />
           <GridCross className="bottom-0 right-0 translate-x-1/2 translate-y-1/2" />
-          {VULNERABILITY_CARDS.map((card) =>
-            card.status === "available" && card.target ? (
+          {VULNERABILITY_CARDS.map((card) => {
+            const cardStatus = getVulnerabilityCardStatus(
+              card,
+              completedLevels
+            );
+            const isLocked = cardStatus === "locked";
+
+            return !isLocked && card.target ? (
               <button
                 key={card.id}
                 type="button"
@@ -224,14 +234,20 @@ export function VulnerabilitiesSection({
                 {card.compact ? (
                   <CompactVulnerabilityCardContent
                     compact={card.compact}
+                    status={cardStatus}
                   />
                 ) : (
                   <>
-                    <VulnerabilityCardContent card={card} />
+                    <VulnerabilityCardContent
+                      card={card}
+                      status={cardStatus}
+                    />
                     <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
                       <span className="text-zinc-500">Interactive level</span>
                       <span className="inline-flex items-center gap-2 font-medium text-[#b892ff] transition group-hover:text-white">
-                        Open module
+                        {cardStatus === "completed"
+                          ? "Review module"
+                          : "Open module"}
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </span>
                     </div>
@@ -243,30 +259,64 @@ export function VulnerabilitiesSection({
                 key={card.id}
                 className={
                   card.compact?.imageSrc
-                    ? "group relative p-8 text-left opacity-45 grayscale"
-                    : "rounded-[22px] border border-white/10 bg-white/[0.025] p-6 opacity-70"
+                    ? "group relative p-8 text-left opacity-35 grayscale"
+                    : "rounded-[22px] border border-red-400/10 bg-red-500/[0.025] p-6 opacity-55 grayscale"
                 }
               >
                 {card.compact ? (
                   <CompactVulnerabilityCardContent
                     compact={card.compact}
-                    locked
+                    status="locked"
                   />
                 ) : (
                   <>
-                    <VulnerabilityCardContent card={card} locked />
-                    <div className="mt-7 border-t border-white/10 pt-5 text-sm text-zinc-600">
+                    <VulnerabilityCardContent card={card} status="locked" />
+                    <div className="mt-7 border-t border-red-400/10 pt-5 text-sm text-red-200/45">
                       Unlocks in future curriculum tracks
                     </div>
                   </>
                 )}
               </div>
-            )
-          )}
+            );
+          })}
         </div>
       </div>
     </section>
   );
+}
+
+function getVulnerabilityCardStatus(
+  card: VulnerabilityCard,
+  completedLevels: Partial<Record<LevelId, boolean>>
+): CatalogCardStatus {
+  if (card.status === "locked") return "locked";
+  if (card.target && completedLevels[card.target]) return "completed";
+  return "available";
+}
+
+function StatusBadge({
+  className = "",
+  status,
+}: {
+  className?: string;
+  status: CatalogCardStatus;
+}) {
+  if (status === "completed") {
+    return (
+      <span
+        className={`inline-flex items-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff]/12 font-medium text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.12)] ${className}`}
+      >
+        <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+        Completed
+      </span>
+    );
+  }
+
+  if (status === "locked") {
+    return <LockedBadge className={className} />;
+  }
+
+  return <AvailableBadge className={className} />;
 }
 
 function AvailableBadge({ className = "" }: { className?: string }) {
@@ -283,7 +333,7 @@ function AvailableBadge({ className = "" }: { className?: string }) {
 function LockedBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] font-medium text-zinc-500 ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border border-red-400/20 bg-red-500/8 font-medium text-red-200/75 ${className}`}
     >
       <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
       Locked
@@ -312,11 +362,14 @@ function GridCross({
 
 function CompactVulnerabilityCardContent({
   compact,
-  locked = false,
+  status = "available",
 }: {
   compact: NonNullable<VulnerabilityCard["compact"]>;
-  locked?: boolean;
+  status?: CatalogCardStatus;
 }) {
+  const locked = status === "locked";
+  const completed = status === "completed";
+
   if (compact.imageSrc) {
     return (
       <div className={`relative min-h-[300px] ${compact.className ?? ""}`}>
@@ -332,22 +385,22 @@ function CompactVulnerabilityCardContent({
           <div className="flex items-center justify-between gap-4">
             <span
               className={`text-sm font-semibold tracking-[0.16em] ${
-                locked ? "text-zinc-500" : "text-[#b892ff]"
+                locked
+                  ? "text-red-200/45"
+                  : completed
+                    ? "text-[#d7c0ff]"
+                    : "text-[#b892ff]"
               }`}
             >
               {compact.levelLabel}
             </span>
-            {locked ? (
-              <LockedBadge className="px-3 py-1 text-sm" />
-            ) : (
-              <AvailableBadge className="px-3 py-1 text-sm" />
-            )}
+            <StatusBadge className="px-3 py-1 text-sm" status={status} />
           </div>
 
           <div className="mt-10 max-w-[74%] sm:mt-10 sm:max-w-[52%]">
             <h2
               className={`text-2xl font-semibold leading-[1.04] tracking-[-0.06em] ${
-                locked ? "text-zinc-400" : "text-white"
+                locked ? "text-zinc-500" : "text-white"
               }`}
             >
               {compact.title}
@@ -368,7 +421,7 @@ function CompactVulnerabilityCardContent({
               <span
                 className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white ${compact.ctaClassName ?? ""}`}
               >
-                {compact.cta}
+                {completed ? "Review level" : compact.cta}
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />
               </span>
             ) : null}
@@ -384,7 +437,7 @@ function CompactVulnerabilityCardContent({
         <span className="rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#b892ff]">
           {compact.levelLabel}
         </span>
-        <AvailableBadge className="px-2.5 py-0.5 text-[10px]" />
+        <StatusBadge className="px-2.5 py-0.5 text-[10px]" status={status} />
       </div>
 
       <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
@@ -408,11 +461,12 @@ function CompactVulnerabilityCardContent({
 
 function VulnerabilityCardContent({
   card,
-  locked = false,
+  status = "available",
 }: {
   card: VulnerabilityCard;
-  locked?: boolean;
+  status?: CatalogCardStatus;
 }) {
+  const locked = status === "locked";
   return (
     <>
       <div className="flex items-center justify-between gap-4">
@@ -425,14 +479,7 @@ function VulnerabilityCardContent({
         >
           {card.id.toUpperCase()}
         </span>
-        {locked ? (
-          <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-zinc-500">
-            <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
-            Locked
-          </span>
-        ) : (
-          <AvailableBadge className="px-3 py-1 text-xs" />
-        )}
+        <StatusBadge className="px-3 py-1 text-xs" status={status} />
       </div>
       <h2
         className={`mt-5 text-2xl font-semibold tracking-[-0.03em] ${

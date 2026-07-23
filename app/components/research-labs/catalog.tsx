@@ -1,8 +1,8 @@
 "use client";
 
 import { Spinner } from "@solana-commerce/connector";
-import { Clock3, LockKeyhole, ShieldCheck, Wifi } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { trackAnalyticsEvent } from "../../lib/analytics";
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
@@ -12,6 +12,7 @@ import { getResearchLabAdapter } from "./lab-adapters";
 const CATALOG_LOCKED_LABS = [
   {
     id: "rl-011",
+    code: "TBD",
     title: "Oracle Drift",
     difficulty: "Advanced",
     estimatedTime: "3-5 hours",
@@ -21,6 +22,7 @@ const CATALOG_LOCKED_LABS = [
   },
   {
     id: "rl-014",
+    code: "TBD",
     title: "Escrow Shadow",
     difficulty: "Intermediate",
     estimatedTime: "2-3 hours",
@@ -36,6 +38,9 @@ const CATALOG_COPY = {
     "A protocol has reported state transitions that should not satisfy its normal account requirements. Review the source, inspect account relationships, test an exploit hypothesis, and document the cause if you can prove impact.",
 };
 
+type CatalogCardStatus = "available" | "completed" | "locked";
+type ResearchLabCertificateLevel = 1 | 2 | 3;
+
 export function ResearchLabCatalog({
   catalogError,
   isAuthenticated,
@@ -47,6 +52,7 @@ export function ResearchLabCatalog({
   onGoToLevel2Module,
   onLoadCatalog,
   onOpenLab,
+  researchLabCertificateMintedByLevel,
   walletStatus,
 }: {
   catalogError: string | null;
@@ -59,6 +65,9 @@ export function ResearchLabCatalog({
   onGoToLevel2Module: () => void;
   onLoadCatalog: () => void;
   onOpenLab: (lab: ResearchLabManifest) => void;
+  researchLabCertificateMintedByLevel: Partial<
+    Record<ResearchLabCertificateLevel, boolean>
+  >;
   walletStatus: string;
 }) {
   const [walletModalOpen, setWalletModalOpen] = useState(false);
@@ -98,7 +107,7 @@ export function ResearchLabCatalog({
 
         <div className="relative mt-8">
           <div
-            className={`grid gap-5 transition duration-300 lg:grid-cols-3 ${
+            className={`grid gap-x-10 gap-y-12 transition duration-300 lg:grid-cols-3 ${
               shouldGateLabs
                 ? "pointer-events-none select-none blur-sm opacity-45"
                 : ""
@@ -112,6 +121,18 @@ export function ResearchLabCatalog({
                   ? level2BadgeCollected
                   : level1BadgeCollected;
               const labUnlocked = prerequisiteBadgeCollected;
+              const labCompleted =
+                lab.status === "completed" ||
+                Boolean(
+                  researchLabCertificateMintedByLevel[
+                    adapter.certificate.level
+                  ]
+                );
+              const catalogStatus: CatalogCardStatus = labCompleted
+                ? "completed"
+                : labUnlocked
+                  ? "available"
+                  : "locked";
               const goToPrerequisiteModule =
                 adapter.prerequisiteBadgeLevel === 2
                   ? onGoToLevel2Module
@@ -120,79 +141,83 @@ export function ResearchLabCatalog({
               return (
                 <article
                   key={lab.id}
-                  className={`group rounded-[22px] border p-6 text-left shadow-2xl shadow-black/30 transition duration-300 ${
-                    labUnlocked
-                      ? "border-white/10 bg-white/[0.045] hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065]"
-                      : "border-amber-300/15 bg-amber-300/[0.035]"
+                  className={`group relative p-8 text-left transition duration-300 ${
+                    catalogStatus === "locked"
+                      ? "opacity-45 grayscale"
+                      : "hover:-translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
-                    <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-3 py-1 text-xs font-semibold text-[#b892ff]">
-                      {displayLabCode(lab)}
-                    </span>
                     <span
-                      className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
-                        labUnlocked
-                          ? "border-[#14f195]/20 bg-[#14f195]/10 text-[#8fffd0]"
-                          : "border-amber-300/20 bg-amber-300/10 text-amber-200"
+                      className={`text-sm font-semibold tracking-[0.16em] ${
+                        catalogStatus === "locked"
+                          ? "text-red-200/45"
+                          : catalogStatus === "completed"
+                            ? "text-[#d7c0ff]"
+                            : "text-[#b892ff]"
                       }`}
                     >
-                      {labUnlocked ? (
-                        <Wifi className="h-3.5 w-3.5" />
-                      ) : (
-                        <LockKeyhole className="h-3.5 w-3.5" />
-                      )}
-                      {labUnlocked ? "Available" : "Badge required"}
+                      {displayLabCode(lab)}
                     </span>
+                    <StatusBadge
+                      className="px-3 py-1 text-sm"
+                      status={catalogStatus}
+                    />
                   </div>
-                  <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
+                  <h2
+                    className={`mt-10 text-2xl font-semibold leading-[1.04] tracking-[-0.06em] ${
+                      catalogStatus === "locked" ? "text-zinc-500" : "text-white"
+                    }`}
+                  >
                     {lab.title || CATALOG_COPY.titleFallback}
                   </h2>
-                  <p className="mt-3 min-h-20 text-sm leading-6 text-zinc-400">
+                  <p
+                    className={`mt-5 max-w-[90%] text-sm leading-6 ${
+                      catalogStatus === "locked"
+                        ? "text-zinc-600"
+                        : "text-zinc-400"
+                    }`}
+                  >
                     {lab.summary || CATALOG_COPY.scenario}
                   </p>
-                  <div className="mt-6 grid grid-cols-2 gap-3 text-xs text-zinc-400">
-                    <Metric icon={<ShieldCheck />} label={lab.difficulty} />
-                    <Metric icon={<Clock3 />} label={lab.estimatedTime} />
-                  </div>
-
-                  <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                      Prerequisites
+                  <p
+                    className={`mt-5 text-xs font-semibold ${
+                      catalogStatus === "locked"
+                        ? "text-zinc-600"
+                        : "text-zinc-500"
+                    }`}
+                  >
+                    {formatLabMetadata(lab)}
+                  </p>
+                  {catalogStatus === "locked" ? (
+                    <p className="mt-5 text-xs font-medium text-red-200/65">
+                      Requires Level {adapter.prerequisiteBadgeLevel} badge
                     </p>
-                    <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-                      <span className="text-zinc-300">
-                        Level {adapter.prerequisiteBadgeLevel} badge
-                      </span>
-                      <span
-                        className={
-                          prerequisiteBadgeCollected
-                            ? "text-[#8fffd0]"
-                            : "text-amber-200"
-                        }
-                      >
-                        {prerequisiteBadgeCollected ? "Collected" : "Missing"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
-                    <span className="text-zinc-500">Sandbox investigation</span>
-                    {labUnlocked ? (
+                  ) : null}
+                  <div className="mt-8 text-sm">
+                    {catalogStatus === "available" ||
+                    catalogStatus === "completed" ? (
                       <button
                         type="button"
                         onClick={() => onOpenLab(lab)}
                         disabled={isLoading || !isAuthenticated}
-                        className="font-medium text-[#b892ff] transition hover:text-white focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 disabled:cursor-not-allowed disabled:opacity-55"
+                        className="inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition hover:text-white focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 disabled:cursor-not-allowed disabled:opacity-55"
                       >
-                        {isAuthenticated ? "Open lab" : "Auth required"}
+                        {isAuthenticated
+                          ? catalogStatus === "completed"
+                            ? "Review lab"
+                            : "Open lab"
+                          : "Auth required"}
+                        <ArrowRight className="h-5 w-5" aria-hidden="true" />
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={goToPrerequisiteModule}
-                        className="font-medium text-amber-200 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-300/50"
+                        className="inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-red-200/75 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-red-300/40"
                       >
                         Go to Module
+                        <ArrowRight className="h-5 w-5" aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -203,27 +228,24 @@ export function ResearchLabCatalog({
             {CATALOG_LOCKED_LABS.map((lab) => (
               <div
                 key={lab.id}
-                className="rounded-[22px] border border-white/10 bg-white/[0.025] p-6 opacity-70"
+                className="group relative p-8 text-left opacity-35 grayscale"
               >
                 <div className="flex items-center justify-between gap-4">
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-zinc-500">
-                    {lab.id}
+                  <span className="text-sm font-semibold tracking-[0.16em] text-red-200/45">
+                    {lab.code}
                   </span>
-                  <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-500">
-                    Badge locked
-                  </span>
+                  <StatusBadge className="px-3 py-1 text-sm" status="locked" />
                 </div>
-                <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-zinc-300">
+                <h2 className="mt-10 text-2xl font-semibold leading-[1.04] tracking-[-0.06em] text-zinc-500">
                   {lab.title}
                 </h2>
-                <p className="mt-3 min-h-20 text-sm leading-6 text-zinc-500">
+                <p className="mt-5 max-w-[90%] text-sm leading-6 text-zinc-600">
                   {lab.summary}
                 </p>
-                <div className="mt-6 grid grid-cols-2 gap-3 text-xs text-zinc-500">
-                  <Metric icon={<ShieldCheck />} label={lab.difficulty} />
-                  <Metric icon={<Clock3 />} label={lab.estimatedTime} />
-                </div>
-                <div className="mt-7 border-t border-white/10 pt-5 text-sm text-zinc-600">
+                <p className="mt-5 text-xs font-semibold text-zinc-600">
+                  {lab.difficulty} · {lab.estimatedTime} · {lab.xpReward} XP
+                </p>
+                <div className="mt-8 text-sm text-red-200/45">
                   Unlocks through certificate badges
                 </div>
               </div>
@@ -266,6 +288,51 @@ export function ResearchLabCatalog({
 
 function displayLabCode(lab: ResearchLabManifest) {
   return getResearchLabAdapter(lab).code;
+}
+
+function formatLabMetadata(lab: ResearchLabManifest) {
+  return [lab.difficulty, lab.estimatedTime, `${lab.xpReward} XP`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function StatusBadge({
+  className = "",
+  status,
+}: {
+  className?: string;
+  status: CatalogCardStatus;
+}) {
+  if (status === "completed") {
+    return (
+      <span
+        className={`inline-flex items-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff]/12 font-medium text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.12)] ${className}`}
+      >
+        <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+        Completed
+      </span>
+    );
+  }
+
+  if (status === "locked") {
+    return (
+      <span
+        className={`inline-flex items-center gap-2 rounded-full border border-red-400/20 bg-red-500/8 font-medium text-red-200/75 ${className}`}
+      >
+        <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
+        Locked
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 font-medium text-[#8fffd0] shadow-[0_0_0_rgba(20,241,149,0)] motion-safe:animate-[availabilityPillBreath_2.8s_ease-in-out_infinite] ${className}`}
+    >
+      <span className="h-2 w-2 rounded-full bg-[#14f195] motion-safe:animate-[availabilityDotBlink_1.35s_ease-in-out_infinite]" />
+      Available
+    </span>
+  );
 }
 
 function ResearchLabWalletConnectorDialog({
@@ -373,15 +440,6 @@ function ResearchLabWalletConnectorDialog({
           </p>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function Metric({ icon, label }: { icon: ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">
-      <span className="text-[#b892ff] [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
-      <span>{label}</span>
     </div>
   );
 }

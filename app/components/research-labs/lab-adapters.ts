@@ -204,7 +204,7 @@ const rl2Adapter: ResearchLabFrontendAdapter = {
       "Identify an account-isolation failure, demonstrate unauthorized reward capture, and preserve evidence of the resulting state changes.",
   },
   impactVerifiedCopy:
-    "A submitted stake changed ownership of a pre-existing staking position while preserving its accumulated value and enabling a different wallet to claim those rewards.",
+    "Reward hijack verified.",
   inspectChecks: [
     "Protocol source reviewed",
     "Staking position inspected",
