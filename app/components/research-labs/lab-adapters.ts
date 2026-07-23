@@ -45,6 +45,7 @@ export type ResearchLabFrontendAdapter = {
     toastDescription: string;
   };
   certificate: {
+    level: 1 | 2 | 3;
     labLabel: string;
     moduleLabel: string;
     credentialLabel: string;
@@ -167,6 +168,7 @@ const rl1Adapter: ResearchLabFrontendAdapter = {
       "Review the secure pattern that prevents this vulnerability class before minting your certificate.",
   },
   certificate: {
+    level: 1,
     labLabel: "Research Lab 1",
     moduleLabel: "Account Substitution",
     credentialLabel: "Account Substitution — Verified Research Lab",
@@ -297,6 +299,7 @@ const rl2Adapter: ResearchLabFrontendAdapter = {
       "Review the identity-scoped PDA pattern before claiming the Research Lab certificate.",
   },
   certificate: {
+    level: 2,
     labLabel: "Research Lab 2",
     moduleLabel: "Yield Hijack",
     credentialLabel: "Static PDA — Verified Research Lab",

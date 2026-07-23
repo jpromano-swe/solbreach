@@ -37,6 +37,11 @@ type MintRequestBody = {
   rpcUrl?: string;
 };
 
+const RESEARCH_LAB_CERTIFICATE_LEVELS: Record<string, number> = {
+  "rl1-account-substitution": 1,
+  "rl2-yield-hijack": 2,
+};
+
 const CLUSTERS = new Set<MintCertificateCluster>([
   "devnet",
   "localnet",
@@ -133,11 +138,13 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
   };
 }
 
-async function canMintResearchLabLevel1Certificate({
+async function canMintResearchLabCertificate({
   accessToken,
+  level,
   sessionId,
 }: {
   accessToken: unknown;
+  level: number;
   sessionId: unknown;
 }) {
   const backendUrl = getSolbreachBackendUrl();
@@ -189,8 +196,26 @@ async function canMintResearchLabLevel1Certificate({
       : typeof session?.reportStatus === "string"
         ? session.reportStatus
         : null;
+  const labId =
+    typeof session?.lab_id === "string"
+      ? session.lab_id
+      : typeof session?.labId === "string"
+        ? session.labId
+        : null;
   const sessionStatus =
     typeof session?.status === "string" ? session.status : null;
+  const expectedLevel = labId
+    ? RESEARCH_LAB_CERTIFICATE_LEVELS[labId]
+    : undefined;
+  if (expectedLevel !== level) {
+    return {
+      completed: false,
+      reason: labId
+        ? `Research Lab ${labId} cannot mint Level ${level} certification.`
+        : "Research Lab session did not include a lab id.",
+    };
+  }
+
   const completed = Boolean(
     session?.lab_completed ||
     session?.labCompleted ||
@@ -204,7 +229,7 @@ async function canMintResearchLabLevel1Certificate({
     completed,
     reason: completed
       ? null
-      : "Research Lab 1 completion is not ready for certification minting.",
+      : "Research Lab completion is not ready for certification minting.",
   };
 }
 
@@ -216,18 +241,19 @@ export async function POST(request: NextRequest) {
       level === 1
         ? await canMintBackendLevel1Certificate(body.backendAccessToken)
         : { completed: false, reason: null };
-    const researchLabLevel1 =
-      level === 1 && !backendLevel1.completed
-        ? await canMintResearchLabLevel1Certificate({
+    const researchLabCompletion =
+      !backendLevel1.completed &&
+      (body.researchLabAccessToken || body.researchLabSessionId)
+        ? await canMintResearchLabCertificate({
             accessToken: body.researchLabAccessToken,
+            level,
             sessionId: body.researchLabSessionId,
           })
         : { completed: false, reason: null };
     const level1CompletionVerified =
-      backendLevel1.completed || researchLabLevel1.completed;
+      backendLevel1.completed || researchLabCompletion.completed;
 
     if (
-      level === 1 &&
       (body.backendAccessToken ||
         body.researchLabAccessToken ||
         body.researchLabSessionId) &&
@@ -235,20 +261,20 @@ export async function POST(request: NextRequest) {
     ) {
       throw new Error(
         backendLevel1.reason ??
-          researchLabLevel1.reason ??
-          "Level 1 backend completion could not be verified."
+          researchLabCompletion.reason ??
+          "Certification completion could not be verified."
       );
     }
 
     if (level1CompletionVerified) {
       parseSignature(
         body.mintAuthorizationSignature,
-        "Level 1 mint authorization signature"
+        `Level ${level} mint authorization signature`
       );
     }
 
     const result = await mintCertificateAsset({
-      allowMissingCertificate: level === 1 && level1CompletionVerified,
+      allowMissingCertificate: level1CompletionVerified,
       level,
       player: parsePublicKey(body.player, "Player"),
       cluster: parseCluster(body.cluster),

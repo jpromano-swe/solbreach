@@ -953,7 +953,9 @@ function normalizeReport(raw: RawResearchLabReport): ResearchLabReport {
     sessionId: stringValue(raw.session_id) || stringValue(raw.sessionId),
     status: normalizeReportStatus(raw.status),
     fields: normalizeReportFields(raw.fields),
-    allowedValues: normalizeReportAllowedValues(raw.allowed_values),
+    allowedValues: normalizeReportAllowedValues(
+      raw.allowed_values ?? raw.allowedValues
+    ),
     feedback: stringValue(raw.feedback) || null,
     labCompleted: Boolean(raw.lab_completed ?? raw.labCompleted),
     xpAwarded: numberOrUndefined(raw.xp_awarded ?? raw.xpAwarded),
@@ -1025,30 +1027,32 @@ function normalizeReportAllowedValues(
 
   return {
     titleOptionId:
-      nonEmptyStringArray(values.title_option_id ?? values.titleOptionId) ??
+      nonEmptyReportAllowedValueIds(
+        values.title_option_id ?? values.titleOptionId
+      ) ??
       fallback.titleOptionId,
     categoryOptionId:
-      nonEmptyStringArray(
+      nonEmptyReportAllowedValueIds(
         values.category_option_id ?? values.categoryOptionId
       ) ?? fallback.categoryOptionId,
     severityOptionId:
-      nonEmptyStringArray(
+      nonEmptyReportAllowedValueIds(
         values.severity_option_id ?? values.severityOptionId
       ) ?? fallback.severityOptionId,
     likelihoodOptionId:
-      nonEmptyStringArray(
+      nonEmptyReportAllowedValueIds(
         values.likelihood_option_id ?? values.likelihoodOptionId
       ) ?? fallback.likelihoodOptionId,
     rootCauseOptionId:
-      nonEmptyStringArray(
+      nonEmptyReportAllowedValueIds(
         values.root_cause_option_id ?? values.rootCauseOptionId
       ) ?? fallback.rootCauseOptionId,
     proofOfImpactOptionId:
-      nonEmptyStringArray(
+      nonEmptyReportAllowedValueIds(
         values.proof_of_impact_option_id ?? values.proofOfImpactOptionId
       ) ?? fallback.proofOfImpactOptionId,
     recommendedMitigationOptionId:
-      nonEmptyStringArray(
+      nonEmptyReportAllowedValueIds(
         values.recommended_mitigation_option_id ??
           values.recommendedMitigationOptionId
       ) ?? fallback.recommendedMitigationOptionId,
@@ -1227,8 +1231,17 @@ function normalizeStringArray(raw: unknown): string[] {
   return raw.map(stringValue).filter(Boolean);
 }
 
-function nonEmptyStringArray(raw: unknown): string[] | undefined {
-  const values = normalizeStringArray(raw);
+function nonEmptyReportAllowedValueIds(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const values = raw
+    .map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object") {
+        return stringValue((item as Record<string, unknown>).id);
+      }
+      return "";
+    })
+    .filter(Boolean);
   return values.length ? values : undefined;
 }
 

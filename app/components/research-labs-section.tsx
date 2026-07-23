@@ -59,30 +59,33 @@ function getErrorMessage(error: unknown) {
 
 export function ResearchLabsSection({
   isCollectingLevel1Badge,
-  isMintingResearchLabCertificate,
+  mintingResearchLabCertificateLevel,
   level1BadgeCollected,
   level1BadgeEarned,
   level2BadgeCollected,
   powerUserBadgeEarned,
-  researchLabCertificateMinted,
+  researchLabCertificateMintedByLevel,
   onBadgeStateChanged,
   onContinueToLevel2,
+  onContinueToLevel3,
   onGoToLevel1Module,
   onGoToLevel2Module,
   onMintResearchLabCertificate,
 }: {
   isCollectingLevel1Badge: boolean;
-  isMintingResearchLabCertificate: boolean;
+  mintingResearchLabCertificateLevel: 1 | 2 | 3 | null;
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
   level2BadgeCollected: boolean;
   powerUserBadgeEarned: boolean;
-  researchLabCertificateMinted: boolean;
+  researchLabCertificateMintedByLevel: Partial<Record<1 | 2 | 3, boolean>>;
   onBadgeStateChanged?: () => void;
   onContinueToLevel2: () => void;
+  onContinueToLevel3: () => void;
   onGoToLevel1Module: () => void;
   onGoToLevel2Module: () => void;
   onMintResearchLabCertificate: (options: {
+    certificateLevel: 1 | 2 | 3;
     researchLabAccessToken: string;
     researchLabSessionId: string;
   }) => Promise<void>;
@@ -117,6 +120,12 @@ export function ResearchLabsSection({
     activeAdapter.prerequisiteBadgeLevel === 2
       ? level2BadgeCollected
       : level1BadgeCollected;
+  const activeCertificateLevel = activeAdapter.certificate.level;
+  const activeResearchLabCertificateMinted = Boolean(
+    researchLabCertificateMintedByLevel[activeCertificateLevel]
+  );
+  const isMintingActiveResearchLabCertificate =
+    mintingResearchLabCertificateLevel === activeCertificateLevel;
 
   const ensureLabAuth = useCallback(async () => {
     if (walletStatus !== "connected" || !wallet) {
@@ -584,21 +593,29 @@ export function ResearchLabsSection({
       toast.error("Open an active Research Lab session before minting.");
       return;
     }
-    if (activeAdapter.code !== "RL1") {
-      toast.message("RL2 certificate minting is not enabled yet.");
-      return;
-    }
-
     const auth = await getActiveAuth();
     await onMintResearchLabCertificate({
+      certificateLevel: activeCertificateLevel,
       researchLabAccessToken: auth.accessToken,
       researchLabSessionId: session.sessionId,
     });
   }, [
-    activeAdapter.code,
+    activeCertificateLevel,
     getActiveAuth,
     onMintResearchLabCertificate,
     session,
+  ]);
+
+  const openNextModuleFromLab = useCallback(() => {
+    if (activeAdapter.prerequisiteBadgeLevel === 2) {
+      onContinueToLevel3();
+      return;
+    }
+    onContinueToLevel2();
+  }, [
+    activeAdapter.prerequisiteBadgeLevel,
+    onContinueToLevel2,
+    onContinueToLevel3,
   ]);
 
   if (!activeLab || !session) {
@@ -664,11 +681,9 @@ export function ResearchLabsSection({
             report={report}
             reportFields={reportFields}
             level1BadgeCollected={activePrerequisiteBadgeCollected}
-            researchLabCertificateMinted={
-              activeAdapter.code === "RL1" && researchLabCertificateMinted
-            }
+            researchLabCertificateMinted={activeResearchLabCertificateMinted}
             isMintingResearchLabCertificate={
-              activeAdapter.code === "RL1" && isMintingResearchLabCertificate
+              isMintingActiveResearchLabCertificate
             }
             txResults={txResults}
             evidenceAccounts={evidenceAccounts}
@@ -714,7 +729,7 @@ export function ResearchLabsSection({
               activeAdapter.code === "RL1" && isCollectingLevel1Badge
             }
             isMintingResearchLabCertificate={
-              activeAdapter.code === "RL1" && isMintingResearchLabCertificate
+              isMintingActiveResearchLabCertificate
             }
             level1BadgeCollected={activePrerequisiteBadgeCollected}
             level1BadgeEarned={
@@ -723,9 +738,7 @@ export function ResearchLabsSection({
               Boolean(report?.status === "accepted" || session.labCompleted)
             }
             powerUserBadgeEarned={powerUserBadgeEarned}
-            researchLabCertificateMinted={
-              activeAdapter.code === "RL1" && researchLabCertificateMinted
-            }
+            researchLabCertificateMinted={activeResearchLabCertificateMinted}
             reportUnlocked={reportUnlocked}
             questionnaireResult={questionnaireResult}
             report={report}
@@ -748,7 +761,7 @@ export function ResearchLabsSection({
             }
             onRevealHint={revealHint}
             onRetryReview={retryQuestionnaire}
-            onContinueToLevel2={onContinueToLevel2}
+            onContinueToLevel2={openNextModuleFromLab}
             onMintResearchLabCertificate={mintActiveResearchLabCertificate}
           />
         </div>

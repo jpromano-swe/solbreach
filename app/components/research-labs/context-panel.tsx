@@ -845,6 +845,7 @@ function CertificateCheckpointPanel({
 }) {
   const canMintCertificate =
     badgeCollected && !certificateMinted && !isMintingCertificate;
+  const showsPowerUserReward = adapter.code === "RL1";
 
   return (
     <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
@@ -871,16 +872,18 @@ function CertificateCheckpointPanel({
             label="Certificate"
             value={certificateMinted ? "Minted" : "Unlocked"}
           />
-          <CheckpointRuleRow
-            label="Power User"
-            value={
-              certificateMinted
-                ? powerUserBadgeEarned
-                  ? "Unlocked"
-                  : "Syncing"
-                : "After mint"
-            }
-          />
+          {showsPowerUserReward ? (
+            <CheckpointRuleRow
+              label="Power User"
+              value={
+                certificateMinted
+                  ? powerUserBadgeEarned
+                    ? "Unlocked"
+                    : "Syncing"
+                  : "After mint"
+              }
+            />
+          ) : null}
         </div>
       </div>
 
@@ -897,7 +900,7 @@ function CertificateCheckpointPanel({
                 ? "Prerequisite missing"
                 : "Badge syncing"}
           </button>
-        ) : adapter.code === "RL1" ? (
+        ) : (
           <button
             type="button"
             onClick={() => {
@@ -917,14 +920,6 @@ function CertificateCheckpointPanel({
               : isMintingCertificate
                 ? "Minting..."
                 : "Mint NFT Certificate"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="inline-flex min-h-11 w-auto min-w-[190px] cursor-not-allowed items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-600 opacity-70"
-          >
-            Certificate mint pending
           </button>
         )}
 

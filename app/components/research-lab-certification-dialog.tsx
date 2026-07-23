@@ -3,13 +3,17 @@
 import Image from "next/image";
 import { ArrowRight, CheckCircle2, Clock3, X } from "lucide-react";
 import type { UserBadge } from "../lib/badges";
+import type { LevelId } from "../lib/levels/course-status";
 import { MouseEffectCard } from "./mouse-effect-card";
 
 export type ResearchLabCertificationDialogState = {
   assetId?: string | null;
   certificateImage: string;
   certificateTitle: string;
+  description: string;
+  nextLevel: LevelId;
   powerBadge: UserBadge | null;
+  showPowerBadge?: boolean;
 };
 
 export function ResearchLabCertificationDialog({
@@ -57,51 +61,51 @@ export function ResearchLabCertificationDialog({
               Certification unlocked
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">
-              You completed Research Lab 1 and minted the Account Substitution
-              certificate. This credential marks your first certified SolBreach
-              research lab completion.
+              {reward.description}
             </p>
           </div>
 
-          <div className="mx-auto mt-5 flex max-w-sm items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left">
-            {reward.powerBadge ? (
-              <>
-                <Image
-                  src={reward.powerBadge.image}
-                  alt={`${reward.powerBadge.title} badge`}
-                  width={52}
-                  height={52}
-                  className="h-12 w-12 object-contain drop-shadow-[0_18px_34px_rgba(153,69,255,0.18)]"
-                />
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <CheckCircle2
-                      className="h-4 w-4 text-[#14f195]"
-                      aria-hidden="true"
-                    />
-                    Power User unlocked
+          {reward.showPowerBadge ? (
+            <div className="mx-auto mt-5 flex max-w-sm items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left">
+              {reward.powerBadge ? (
+                <>
+                  <Image
+                    src={reward.powerBadge.image}
+                    alt={`${reward.powerBadge.title} badge`}
+                    width={52}
+                    height={52}
+                    className="h-12 w-12 object-contain drop-shadow-[0_18px_34px_rgba(153,69,255,0.18)]"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <CheckCircle2
+                        className="h-4 w-4 text-[#14f195]"
+                        aria-hidden="true"
+                      />
+                      Power User unlocked
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted">
+                      Special reward added to your profile.
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    Special reward added to your profile.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#9945ff]/25 bg-[#9945ff]/10 text-[#c7a6ff]">
-                  <Clock3 className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-foreground">
-                    Power User reward syncing
+                </>
+              ) : (
+                <>
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#9945ff]/25 bg-[#9945ff]/10 text-[#c7a6ff]">
+                    <Clock3 className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-muted">
-                    It will appear here once confirmed for this wallet.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">
+                      Power User reward syncing
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted">
+                      It will appear here once confirmed for this wallet.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2">
             <button

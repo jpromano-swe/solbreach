@@ -35,6 +35,7 @@ type CertificateSigner = Parameters<
   typeof getClaimLevelCertificateInstructionAsync
 >[0]["user"];
 export type Level1ResearchLabMintAuthorization = {
+  certificateLevel?: 1 | 2 | 3;
   researchLabAccessToken?: string;
   researchLabSessionId?: string;
 };
@@ -46,7 +47,7 @@ export function useCertificateMinting({
   ensureLevel1BackendSession,
   getExplorerUrl,
   level1BackendCompleted,
-  onLevel1BackendCertificateMinted,
+  onResearchLabCertificateMinted,
   refreshState,
   send,
   signer,
@@ -63,9 +64,10 @@ export function useCertificateMinting({
   ensureLevel1BackendSession: () => Promise<{ accessToken: string } | null>;
   getExplorerUrl: (path: string) => string;
   level1BackendCompleted: boolean;
-  onLevel1BackendCertificateMinted?: (payload: {
+  onResearchLabCertificateMinted?: (payload: {
     assetId: string;
     certificatePda: string;
+    level: 1 | 2 | 3;
     leafIndex: number | null;
     leafNonce: string | null;
     merkleTree: string | null;
@@ -139,12 +141,15 @@ export function useCertificateMinting({
       setMintingLevel(levelId);
 
       try {
-        const canMintFromBackendCompletion =
+        const canMintFromBackendLevelCompletion =
           level === 1 &&
-          Boolean(
-            backendAccessToken ||
-              (researchLabAccessToken && researchLabSessionId)
-          );
+          Boolean(backendAccessToken);
+        const canMintFromResearchLabCompletion = Boolean(
+          researchLabAccessToken && researchLabSessionId
+        );
+        const canMintFromBackendCompletion =
+          canMintFromBackendLevelCompletion ||
+          canMintFromResearchLabCompletion;
         let mintAuthorizationSignature: string | undefined;
 
         if (!existingCertificate?.exists && !canMintFromBackendCompletion) {
@@ -173,7 +178,7 @@ export function useCertificateMinting({
         } else if (canMintFromBackendCompletion) {
           if (!wallet) {
             throw new Error(
-              "Connect your wallet before minting the Level 1 certification."
+              "Connect your wallet before minting this certification."
             );
           }
 
@@ -229,14 +234,14 @@ export function useCertificateMinting({
           "alreadyMinted" in payload ? payload.alreadyMinted : false;
 
         if (
-          level === 1 &&
           canMintFromBackendCompletion &&
           "assetId" in payload &&
           "certificatePda" in payload
         ) {
-          onLevel1BackendCertificateMinted?.({
+          onResearchLabCertificateMinted?.({
             assetId: payload.assetId,
             certificatePda: payload.certificatePda,
+            level: level as 1 | 2 | 3,
             leafIndex: payload.leafIndex ?? null,
             leafNonce: payload.leafNonce ?? null,
             merkleTree: payload.merkleTree ?? null,
@@ -275,7 +280,7 @@ export function useCertificateMinting({
       address,
       cluster,
       getExplorerUrl,
-      onLevel1BackendCertificateMinted,
+      onResearchLabCertificateMinted,
       refreshState,
       send,
       signer,
@@ -326,6 +331,19 @@ export function useCertificateMinting({
     });
   }, [certificates.level2Certificate, mintLevelCertificate]);
 
+  const mintResearchLabLevel2 = useCallback(async (
+    options?: Level1ResearchLabMintAuthorization
+  ) => {
+    return mintLevelCertificate({
+      level: 2,
+      levelId: "level2",
+      existingCertificate: certificates.level2Certificate,
+      researchLabAccessToken: options?.researchLabAccessToken,
+      researchLabSessionId: options?.researchLabSessionId,
+      title: "Level 2",
+    });
+  }, [certificates.level2Certificate, mintLevelCertificate]);
+
   const mintLevel3 = useCallback(async () => {
     return mintLevelCertificate({
       level: 3,
@@ -335,11 +353,26 @@ export function useCertificateMinting({
     });
   }, [certificates.level3Certificate, mintLevelCertificate]);
 
+  const mintResearchLabLevel3 = useCallback(async (
+    options?: Level1ResearchLabMintAuthorization
+  ) => {
+    return mintLevelCertificate({
+      level: 3,
+      levelId: "level3",
+      existingCertificate: certificates.level3Certificate,
+      researchLabAccessToken: options?.researchLabAccessToken,
+      researchLabSessionId: options?.researchLabSessionId,
+      title: "Level 3",
+    });
+  }, [certificates.level3Certificate, mintLevelCertificate]);
+
   return {
     mintingLevel,
     mintLevel0,
     mintLevel1,
     mintLevel2,
+    mintResearchLabLevel2,
     mintLevel3,
+    mintResearchLabLevel3,
   };
 }

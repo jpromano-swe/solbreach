@@ -1582,8 +1582,6 @@ function CertifyKnowledgeScreen({
   prerequisiteBadgeCollected: boolean;
   onMint: () => Promise<void>;
 }) {
-  const mintSupported = adapter.code === "RL1";
-
   return (
     <section className="w-full">
       <div className="max-w-4xl space-y-7 py-1">
@@ -1636,14 +1634,11 @@ function CertifyKnowledgeScreen({
           onClick={() => {
             void onMint();
           }}
-          disabled={
-            !prerequisiteBadgeCollected || minted || isMinting || !mintSupported
-          }
+          disabled={!prerequisiteBadgeCollected || minted || isMinting}
           className={`group inline-flex min-h-11 w-auto min-w-[220px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
             !prerequisiteBadgeCollected ||
             minted ||
-            isMinting ||
-            !mintSupported
+            isMinting
               ? "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
               : "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
           }`}
@@ -1652,22 +1647,14 @@ function CertifyKnowledgeScreen({
             ? "Certificate minted"
             : isMinting
               ? "Minting..."
-              : mintSupported
-                ? "Mint NFT Certificate"
-                : "Certificate mint pending"}
-          {!minted && !isMinting && mintSupported ? (
+              : "Mint NFT Certificate"}
+          {!minted && !isMinting ? (
             <ArrowRight
               className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
               aria-hidden="true"
             />
           ) : null}
         </button>
-        {!mintSupported ? (
-          <p className="max-w-xl text-sm leading-6 text-zinc-500">
-            Completion is recorded. Certificate minting will become available
-            when the RL2 credential endpoint is enabled.
-          </p>
-        ) : null}
       </div>
     </section>
   );
