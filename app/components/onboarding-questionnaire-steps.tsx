@@ -185,6 +185,8 @@ function LearningBlockersStep({ copy, errors, form, updateField }: StepProps) {
 
 function HardestPracticeStep({ copy, errors, form, updateField }: StepProps) {
   const question = copy.questions.hardestPracticeStep;
+  const remainingCharacters = 100 - form.hardestPracticeStep.length;
+
   return (
     <QuestionFrame title={question.title} description={question.description}>
       <Field
@@ -192,22 +194,27 @@ function HardestPracticeStep({ copy, errors, form, updateField }: StepProps) {
         error={errors.hardestPracticeStep}
         fieldId="hardestPracticeStep"
       >
-        <textarea
-          id="onboarding-hardestPracticeStep"
-          aria-invalid={errors.hardestPracticeStep ? "true" : undefined}
-          aria-describedby={errorDescription(
-            "hardestPracticeStep",
-            errors.hardestPracticeStep
-          )}
-          maxLength={100}
-          onChange={(event) =>
-            updateField("hardestPracticeStep", event.target.value)
-          }
-          placeholder={question.placeholder}
-          rows={4}
-          value={form.hardestPracticeStep}
-          className={`${inputClass(errors.hardestPracticeStep)} min-h-28 resize-y py-3 leading-6`}
-        />
+        <div className="relative pt-2">
+          <textarea
+            id="onboarding-hardestPracticeStep"
+            aria-invalid={errors.hardestPracticeStep ? "true" : undefined}
+            aria-describedby={errorDescription(
+              "hardestPracticeStep",
+              errors.hardestPracticeStep
+            )}
+            maxLength={100}
+            onChange={(event) =>
+              updateField("hardestPracticeStep", event.target.value)
+            }
+            placeholder={question.placeholder}
+            rows={4}
+            value={form.hardestPracticeStep}
+            className={`${inputClass(errors.hardestPracticeStep)} min-h-28 resize-y py-3 pb-8 leading-6`}
+          />
+          <p className="pointer-events-none absolute bottom-3 right-3 text-xs tabular-nums text-muted">
+            {remainingCharacters}/100
+          </p>
+        </div>
       </Field>
     </QuestionFrame>
   );
@@ -291,74 +298,36 @@ function ProblemIntensityStep({ copy, errors, form, updateField }: StepProps) {
 
 function BetaIntentStep({ copy, errors, form, updateField }: StepProps) {
   const question = copy.questions.betaIntent;
-  const needsContactChannel = Boolean(
-    form.betaIntent && form.betaIntent !== "not_now"
-  );
 
   return (
     <QuestionFrame title={question.title} description={question.description}>
-      <div className="space-y-7">
-        <OptionGroup
-          hideLegend
-          id="betaIntent"
-          legend={question.title}
-          error={errors.betaIntent}
-          options={copy.options.betaIntent}
-          value={form.betaIntent}
-          onChange={(value) => {
-            updateField("betaIntent", value as BetaInterest);
-            if (value === "not_now") {
-              updateField("preferredContactChannel", "");
-              updateField("contactName", "");
-              updateField("contact", "");
-            }
-          }}
-        />
-        {needsContactChannel ? (
-          <div className="border-t border-border pt-6">
-            <Field
-              label={copy.questions.contactDetails.contactChannelLabel}
-              error={errors.preferredContactChannel}
-              fieldId="preferredContactChannel"
-            >
-              <select
-                id="onboarding-preferredContactChannel"
-                aria-invalid={
-                  errors.preferredContactChannel ? "true" : undefined
-                }
-                aria-describedby={errorDescription(
-                  "preferredContactChannel",
-                  errors.preferredContactChannel
-                )}
-                onChange={(event) =>
-                  updateField(
-                    "preferredContactChannel",
-                    event.target
-                      .value as OnboardingFormState["preferredContactChannel"]
-                  )
-                }
-                value={form.preferredContactChannel}
-                className={inputClass(errors.preferredContactChannel)}
-              >
-                <option value="" disabled>
-                  {copy.questions.contactDetails.contactChannelLabel}
-                </option>
-                {copy.options.contactChannels.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        ) : null}
-      </div>
+      <OptionGroup
+        hideLegend
+        id="betaIntent"
+        legend={question.title}
+        error={errors.betaIntent}
+        options={copy.options.betaIntent}
+        value={form.betaIntent}
+        onChange={(value) => {
+          updateField("betaIntent", value as BetaInterest);
+          if (value === "not_now") {
+            updateField("preferredContactChannel", "");
+            updateField("contactName", "");
+            updateField("contact", "");
+          }
+        }}
+      />
     </QuestionFrame>
   );
 }
 
 function ContactDetailsStep({ copy, errors, form, updateField }: StepProps) {
   const question = copy.questions.contactDetails;
+  const hasContactChannel = Boolean(form.preferredContactChannel);
+  const contactPlaceholder =
+    form.preferredContactChannel === "telegram"
+      ? question.contactPlaceholders.telegram
+      : question.contactPlaceholders.email;
   const contactType =
     form.preferredContactChannel === "email" ? "email" : "text";
   const autocomplete =
@@ -366,47 +335,104 @@ function ContactDetailsStep({ copy, errors, form, updateField }: StepProps) {
 
   return (
     <QuestionFrame title={question.title} description={question.description}>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="space-y-5">
         <Field
-          label={question.contactNameLabel}
-          error={errors.contactName}
-          fieldId="contactName"
+          label={question.contactChannelLabel}
+          error={errors.preferredContactChannel}
+          fieldId="preferredContactChannel"
         >
-          <input
-            id="onboarding-contactName"
-            autoComplete="name"
-            aria-invalid={errors.contactName ? "true" : undefined}
+          <select
+            id="onboarding-preferredContactChannel"
+            aria-invalid={errors.preferredContactChannel ? "true" : undefined}
             aria-describedby={errorDescription(
-              "contactName",
-              errors.contactName
+              "preferredContactChannel",
+              errors.preferredContactChannel
             )}
-            maxLength={120}
-            onChange={(event) => updateField("contactName", event.target.value)}
-            placeholder={question.contactNamePlaceholder}
-            spellCheck={false}
-            value={form.contactName}
-            className={inputClass(errors.contactName)}
-          />
+            onChange={(event) => {
+              updateField(
+                "preferredContactChannel",
+                event.target
+                  .value as OnboardingFormState["preferredContactChannel"]
+              );
+              updateField("contact", "");
+            }}
+            value={form.preferredContactChannel}
+            className={inputClass(errors.preferredContactChannel)}
+          >
+            <option value="" disabled>
+              {question.contactChannelLabel}
+            </option>
+            {copy.options.contactChannels.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </Field>
-        <Field
-          label={question.contactLabel}
-          error={errors.contact}
-          fieldId="contact"
+
+        <div
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${
+            hasContactChannel
+              ? "grid-rows-[1fr] opacity-100"
+              : "grid-rows-[0fr] opacity-0"
+          }`}
+          aria-hidden={!hasContactChannel}
         >
-          <input
-            id="onboarding-contact"
-            autoComplete={autocomplete}
-            type={contactType}
-            aria-invalid={errors.contact ? "true" : undefined}
-            aria-describedby={errorDescription("contact", errors.contact)}
-            maxLength={320}
-            onChange={(event) => updateField("contact", event.target.value)}
-            placeholder={question.contactPlaceholder}
-            spellCheck={false}
-            value={form.contact}
-            className={inputClass(errors.contact)}
-          />
-        </Field>
+          <div className="overflow-hidden">
+            {hasContactChannel ? (
+              <div className="grid gap-5 pt-1 sm:grid-cols-2">
+                <Field
+                  label={question.contactNameLabel}
+                  error={errors.contactName}
+                  fieldId="contactName"
+                >
+                  <input
+                    id="onboarding-contactName"
+                    autoComplete="name"
+                    aria-invalid={errors.contactName ? "true" : undefined}
+                    aria-describedby={errorDescription(
+                      "contactName",
+                      errors.contactName
+                    )}
+                    maxLength={120}
+                    onChange={(event) =>
+                      updateField("contactName", event.target.value)
+                    }
+                    placeholder={question.contactNamePlaceholder}
+                    spellCheck={false}
+                    value={form.contactName}
+                    className={inputClass(errors.contactName)}
+                  />
+                </Field>
+                <Field
+                  label={question.contactLabel}
+                  error={errors.contact}
+                  fieldId="contact"
+                >
+                  <input
+                    key={form.preferredContactChannel}
+                    id="onboarding-contact"
+                    autoComplete={autocomplete}
+                    type={contactType}
+                    aria-invalid={errors.contact ? "true" : undefined}
+                    aria-describedby={errorDescription(
+                      "contact",
+                      errors.contact
+                    )}
+                    maxLength={320}
+                    onChange={(event) =>
+                      updateField("contact", event.target.value)
+                    }
+                    placeholder={contactPlaceholder}
+                    spellCheck={false}
+                    value={form.contact}
+                    className={`${inputClass(errors.contact)} transition-opacity duration-200 motion-reduce:transition-none`}
+                  />
+                </Field>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
     </QuestionFrame>
   );

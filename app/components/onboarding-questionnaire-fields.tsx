@@ -15,11 +15,14 @@ export function QuestionnaireProgress({
   return (
     <div>
       <div className="flex items-center justify-between gap-4 text-sm">
-        <p data-language-line className="font-medium text-foreground">
+        <p
+          key={`step-count-${currentStep}-${steps.length}`}
+          className="font-medium text-foreground"
+        >
           {copy.progress.step} {currentStep + 1} {copy.progress.of}{" "}
           {steps.length}
         </p>
-        <p data-language-line className="text-muted">
+        <p key={`step-label-${currentStep}`} className="text-muted">
           {steps[currentStep]}
         </p>
       </div>
@@ -211,13 +214,13 @@ export function MultiOptionGroup({
       >
         {legend}
       </legend>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
         {options.map((option) => {
           const checked = values.includes(option.value);
           return (
             <label
               key={option.value}
-              className={`${optionClass(checked)} min-h-10 rounded-full py-2`}
+              className={`${optionClass(checked)} min-h-10 items-start rounded-xl py-2 leading-6 sm:items-center sm:rounded-full`}
             >
               <input
                 type="checkbox"

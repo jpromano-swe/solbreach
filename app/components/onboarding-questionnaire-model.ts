@@ -210,11 +210,6 @@ export function validateOnboardingQuestions(
   if (includes("betaIntent")) {
     if (!form.betaIntent) {
       errors.betaIntent = messages.betaIntent;
-    } else if (
-      form.betaIntent !== "not_now" &&
-      !form.preferredContactChannel
-    ) {
-      errors.preferredContactChannel = messages.preferredContactChannel;
     }
   }
   if (includes("contactDetails") && form.betaIntent !== "not_now") {

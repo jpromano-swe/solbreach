@@ -58,7 +58,10 @@ type OnboardingCopy = {
       contactLabel: string;
       contactNameLabel: string;
       contactNamePlaceholder: string;
-      contactPlaceholder: string;
+      contactPlaceholders: {
+        email: string;
+        telegram: string;
+      };
     };
   };
   options: {
@@ -256,7 +259,10 @@ const english: OnboardingCopy = {
       contactNameLabel: "Contact name",
       contactNamePlaceholder: "Your name or handle",
       contactLabel: "Contact info",
-      contactPlaceholder: "you@example.com or @telegram",
+      contactPlaceholders: {
+        email: "you@example.com",
+        telegram: "@username",
+      },
     },
   },
   options: {
@@ -479,7 +485,10 @@ const spanish: OnboardingCopy = {
       contactNameLabel: "Nombre de contacto",
       contactNamePlaceholder: "Tu nombre o handle",
       contactLabel: "Dato de contacto",
-      contactPlaceholder: "tu@email.com o @telegram",
+      contactPlaceholders: {
+        email: "tu@email.com",
+        telegram: "@usuario",
+      },
     },
   },
   options: {
