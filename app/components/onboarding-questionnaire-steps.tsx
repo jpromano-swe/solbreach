@@ -449,58 +449,6 @@ function ContactDetailsStep({ copy, errors, form, updateField }: StepProps) {
 function ReviewStep({ copy, form }: StepProps) {
   const details = [
     {
-      label: copy.review.labels.profile,
-      value: optionLabel(copy.options.profiles, form.profile),
-    },
-    {
-      label: copy.review.labels.realExperience,
-      value: optionLabels(copy.options.realExperience, form.realExperience),
-    },
-    {
-      label: copy.review.labels.preferredFormats,
-      value: optionLabels(copy.options.preferredFormats, form.preferredFormats),
-    },
-    {
-      label: copy.review.labels.blockchainSecurityProfile,
-      value: optionLabel(
-        copy.options.blockchainSecurityProfile,
-        form.blockchainSecurityProfile
-      ),
-    },
-    {
-      label: copy.review.labels.securityLearningAttempt,
-      value: optionLabel(
-        copy.options.securityLearningAttempt,
-        form.securityLearningAttempt
-      ),
-    },
-    {
-      label: copy.review.labels.studyTechniques,
-      value: optionLabels(copy.options.studyTechniques, form.studyTechniques),
-    },
-    {
-      label: copy.review.labels.difficultAreas,
-      value: optionLabels(copy.options.difficultAreas, form.difficultAreas),
-    },
-    {
-      label: copy.review.labels.hardestPracticeStep,
-      value: form.hardestPracticeStep.trim(),
-    },
-    {
-      label: copy.review.labels.practiceSignals,
-      value: optionLabels(copy.options.practiceSignals, form.practiceSignals),
-    },
-    {
-      label: copy.review.labels.securityRelevance,
-      value: form.securityRelevance
-        ? `${form.securityRelevance}/5`
-        : copy.review.notProvided,
-    },
-    {
-      label: copy.review.labels.betaIntent,
-      value: optionLabel(copy.options.betaIntent, form.betaIntent),
-    },
-    {
       label: copy.questions.contactDetails.contactNameLabel,
       value:
         form.betaIntent === "not_now"
@@ -579,16 +527,6 @@ function optionLabel(
   value: string
 ) {
   return options.find((option) => option.value === value)?.label ?? "";
-}
-
-function optionLabels(
-  options: readonly { label: string; value: string }[],
-  values: string[]
-) {
-  return values
-    .map((value) => optionLabel(options, value))
-    .filter(Boolean)
-    .join(" · ");
 }
 
 function exclusiveToggle<T extends string>(

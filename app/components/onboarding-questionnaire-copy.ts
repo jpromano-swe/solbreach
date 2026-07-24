@@ -187,7 +187,7 @@ const english: OnboardingCopy = {
     "Profile",
     "Experience",
     "Security profile",
-    "Learning format",
+    "Learning strategy",
     "Security learning",
     "Study technique",
     "Difficult area",
@@ -224,7 +224,7 @@ const english: OnboardingCopy = {
     },
     preferredFormats: {
       title:
-        "What format would help you most to learn about Solana security?",
+        "What learning strategy would help you most with Solana security?",
       description: "Select every answer that applies.",
     },
     blockchainSecurityProfile: {
@@ -239,7 +239,8 @@ const english: OnboardingCopy = {
       description: "Select every answer that applies.",
     },
     difficultAreas: {
-      title: "Which topic was hardest for you, or would you like to practice first?",
+      title:
+        "Which topic was hardest to learn, or would you like to practice first?",
       description: "Select every answer that applies.",
     },
     hardestPracticeStep: {
@@ -380,15 +381,15 @@ const english: OnboardingCopy = {
     contactChannels: options(["Email", "Telegram"], optionValues.contactChannels),
   },
   review: {
-    title: "Review your responses",
-    description: "Confirm your answers before sending them.",
+    title: "Review your contact details",
+    description: "Confirm your contact details before sending them.",
     contactLabel: "Beta contact",
     contactChannelLabel: "Contact channel",
     notProvided: "Not provided",
     labels: {
       profile: "Profile",
       realExperience: "Experience",
-      preferredFormats: "Learning format",
+      preferredFormats: "Learning strategy",
       blockchainSecurityProfile: "Blockchain security profile",
       securityLearningAttempt: "Security learning",
       studyTechniques: "Study technique",
@@ -429,7 +430,7 @@ const spanish: OnboardingCopy = {
     "Perfil",
     "Experiencia",
     "Perfil de seguridad",
-    "Formato",
+    "Estrategia",
     "Aprendizaje de seguridad",
     "Técnica de estudio",
     "Área difícil",
@@ -466,7 +467,7 @@ const spanish: OnboardingCopy = {
     },
     preferredFormats: {
       title:
-        "¿Qué formato te ayudaría más a aprender sobre seguridad en Solana?",
+        "¿Qué estrategia te ayudaría más a aprender sobre seguridad en Solana?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
     blockchainSecurityProfile: {
@@ -474,19 +475,19 @@ const spanish: OnboardingCopy = {
     },
     securityLearningAttempt: {
       title:
-        "¿Alguna vez intentaste aprender sobre seguridad o a auditar programas en Solana?",
+        "¿Alguna vez intentaste aprender sobre seguridad o auditar programas en Solana?",
     },
     studyTechniques: {
       title: "¿Qué técnica de estudio utilizás para aprender temas nuevos?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
     difficultAreas: {
-      title: "¿Qué tema te costó más o te gustaría practicar primero?",
+      title: "¿Qué tema te costó más aprender o te gustaría practicar primero?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
     hardestPracticeStep: {
       title:
-        "¿Cuál consideras que fue la parte más difícil al pasar de la teoría a práctica?",
+        "¿Cuál consideras que es la parte más difícil al pasar de la teoría a práctica?",
       description:
         "Una respuesta breve alcanza. Apuntá a unos 100 caracteres.",
       placeholder: "Contanos un bloqueo concreto.",
@@ -625,15 +626,15 @@ const spanish: OnboardingCopy = {
     ),
   },
   review: {
-    title: "Revisá tus respuestas",
-    description: "Confirmá tus respuestas antes de enviarlas.",
+    title: "Revisa tus datos de contacto",
+    description: "Confirmá tus datos de contacto antes de enviarlos.",
     contactLabel: "Contacto para la beta",
     contactChannelLabel: "Canal de contacto",
     notProvided: "No especificado",
     labels: {
       profile: "Perfil",
       realExperience: "Experiencia",
-      preferredFormats: "Formato de aprendizaje",
+      preferredFormats: "Estrategia de aprendizaje",
       blockchainSecurityProfile: "Perfil de seguridad blockchain",
       securityLearningAttempt: "Aprendizaje de seguridad",
       studyTechniques: "Técnica de estudio",
