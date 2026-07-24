@@ -16,12 +16,14 @@ POST /api/v1/onboarding/responses
 {
   "profile": "solana_developer",
   "realExperience": ["built_simple_project", "rust_experience"],
-  "securityLearningAttempt": "active",
-  "learningActions": ["docs_or_audit_reports", "exploit_writeups"],
-  "learningBlockers": ["too_much_theory", "lacked_feedback"],
-  "hardestPracticeStep": "Turning an audit report into a reproducible exploit.",
   "preferredFormats": ["guided_modules", "research_labs"],
+  "blockchainSecurityProfile": "solana_security_beginner",
+  "securityLearningAttempt": "active",
+  "studyTechniques": ["official_docs", "writeups_or_case_studies"],
+  "difficultAreas": ["vulnerability_identification", "exploit_reproduction"],
+  "hardestPracticeStep": "Turning an audit report into a reproducible exploit.",
   "practiceSignals": ["execute_exploit", "see_state_changes"],
+  "securityRelevance": 5,
   "problemIntensity": 4,
   "problemIntensityReason": "I do not have a reliable practice path.",
   "betaIntent": "try_this_week",
@@ -63,29 +65,34 @@ POST /api/v1/onboarding/responses
 - `interested_not_started`
 - `not_priority`
 
-### `learningActions`
+### `blockchainSecurityProfile`
 
-- `docs_or_audit_reports`
-- `exploit_writeups`
+- `no_security_background`
+- `web2_security_basics`
+- `web3_security_basics`
+- `solana_security_beginner`
+- `ctf_or_audit_learning`
+- `professional_auditor_researcher`
+
+### `studyTechniques`
+
+- `official_docs`
+- `small_projects`
 - `videos_or_workshops`
-- `ai_for_code_or_bugs`
+- `ai_assisted`
+- `writeups_or_case_studies`
 - `ctfs_or_challenges`
-- `reviewed_or_exploited_real_code`
-- `nothing_concrete`
+- `mentor_or_peer_feedback`
 
-`nothing_concrete` must be mutually exclusive with every other value.
+### `difficultAreas`
 
-### `learningBlockers`
-
-- `no_clear_path`
-- `too_much_theory`
-- `resources_too_advanced`
-- `hard_to_identify_bugs`
-- `hard_to_reproduce_exploits`
-- `lacked_feedback`
-- `not_stuck`
-
-`not_stuck` must be mutually exclusive with every other value.
+- `solana_account_model`
+- `rust_or_anchor`
+- `svm_runtime`
+- `vulnerability_identification`
+- `exploit_reproduction`
+- `cpi_signers_authority`
+- `impact_or_reporting`
 
 ### `preferredFormats`
 
@@ -117,6 +124,7 @@ POST /api/v1/onboarding/responses
 - All enum fields and arrays are required and must contain supported values.
 - Multi-select arrays must contain at least one unique value.
 - `hardestPracticeStep`: trimmed length 10-600.
+- `securityRelevance`: integer from 1 through 5.
 - `problemIntensity`: integer from 1 through 5.
 - `problemIntensityReason`: nullable, trimmed maximum 240.
 - `contact`: required when `betaIntent` is `try_this_week`, `try_later`, or `maybe`; nullable when it is `not_now`; maximum 320.
@@ -144,9 +152,12 @@ Existing legacy rows must remain readable. A nullable `schema_version` with new 
 Update `GET /api/v1/onboarding/responses` with filters for:
 
 - `profile`
+- `blockchainSecurityProfile`
 - `securityLearningAttempt`
-- `learningBlocker`
+- `difficultArea`
 - `preferredFormat`
+- `securityRelevanceMin`
+- `securityRelevanceMax`
 - `problemIntensityMin`
 - `problemIntensityMax`
 - `betaIntent`
@@ -161,7 +172,9 @@ Keep `onboarding_response_submitted`. Add only non-PII dimensions:
 
 - `schemaVersion: 2`
 - `profile`
+- `blockchainSecurityProfile`
 - `securityLearningAttempt`
+- `securityRelevance`
 - `problemIntensity`
 - `betaIntent`
 - counts for multi-select fields

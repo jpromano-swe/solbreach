@@ -40,12 +40,17 @@ type OnboardingCopy = {
   questions: {
     profile: QuestionCopy;
     realExperience: QuestionCopy;
-    securityLearningAttempt: QuestionCopy;
-    learningActions: QuestionCopy;
-    learningBlockers: QuestionCopy;
-    hardestPracticeStep: QuestionCopy & { placeholder: string };
     preferredFormats: QuestionCopy;
+    blockchainSecurityProfile: QuestionCopy;
+    securityLearningAttempt: QuestionCopy;
+    studyTechniques: QuestionCopy;
+    difficultAreas: QuestionCopy;
+    hardestPracticeStep: QuestionCopy & { placeholder: string };
     practiceSignals: QuestionCopy;
+    securityRelevance: QuestionCopy & {
+      max: string;
+      min: string;
+    };
     problemIntensity: QuestionCopy & {
       max: string;
       min: string;
@@ -66,14 +71,15 @@ type OnboardingCopy = {
   };
   options: {
     betaIntent: QuestionnaireOption[];
+    blockchainSecurityProfile: QuestionnaireOption[];
     contactChannels: QuestionnaireOption[];
-    learningActions: QuestionnaireOption[];
-    learningBlockers: QuestionnaireOption[];
+    difficultAreas: QuestionnaireOption[];
     practiceSignals: QuestionnaireOption[];
     preferredFormats: QuestionnaireOption[];
     profiles: QuestionnaireOption[];
     realExperience: QuestionnaireOption[];
     securityLearningAttempt: QuestionnaireOption[];
+    studyTechniques: QuestionnaireOption[];
   };
   review: {
     contactLabel: string;
@@ -81,12 +87,14 @@ type OnboardingCopy = {
     labels: Record<
       | "profile"
       | "realExperience"
-      | "securityLearningAttempt"
-      | "learningActions"
-      | "learningBlockers"
-      | "hardestPracticeStep"
       | "preferredFormats"
+      | "blockchainSecurityProfile"
+      | "securityLearningAttempt"
+      | "studyTechniques"
+      | "difficultAreas"
+      | "hardestPracticeStep"
       | "practiceSignals"
+      | "securityRelevance"
       | "problemIntensity"
       | "betaIntent",
       string
@@ -122,23 +130,31 @@ const optionValues = {
     "interested_not_started",
     "not_priority",
   ],
-  learningActions: [
-    "docs_or_audit_reports",
-    "exploit_writeups",
-    "videos_or_workshops",
-    "ai_for_code_or_bugs",
-    "ctfs_or_challenges",
-    "reviewed_or_exploited_real_code",
-    "nothing_concrete",
+  blockchainSecurityProfile: [
+    "no_security_background",
+    "web2_security_basics",
+    "web3_security_basics",
+    "solana_security_beginner",
+    "ctf_or_audit_learning",
+    "professional_auditor_researcher",
   ],
-  learningBlockers: [
-    "no_clear_path",
-    "too_much_theory",
-    "resources_too_advanced",
-    "hard_to_identify_bugs",
-    "hard_to_reproduce_exploits",
-    "lacked_feedback",
-    "not_stuck",
+  studyTechniques: [
+    "official_docs",
+    "small_projects",
+    "videos_or_workshops",
+    "ai_assisted",
+    "writeups_or_case_studies",
+    "ctfs_or_challenges",
+    "mentor_or_peer_feedback",
+  ],
+  difficultAreas: [
+    "solana_account_model",
+    "rust_or_anchor",
+    "svm_runtime",
+    "vulnerability_identification",
+    "exploit_reproduction",
+    "cpi_signers_authority",
+    "impact_or_reporting",
   ],
   preferredFormats: [
     "guided_modules",
@@ -177,12 +193,14 @@ const english: OnboardingCopy = {
   steps: [
     "Profile",
     "Experience",
-    "Security learning",
-    "What you tried",
-    "Blockers",
-    "Theory to practice",
     "Learning format",
+    "Security profile",
+    "Security learning",
+    "Study technique",
+    "Difficult area",
+    "Theory to practice",
     "Hands-on practice",
+    "Security relevance",
     "Problem strength",
     "Beta interest",
     "Contact",
@@ -212,35 +230,48 @@ const english: OnboardingCopy = {
       title: "What real experience do you have with Solana or Rust?",
       description: "Select every answer that applies.",
     },
-    securityLearningAttempt: {
-      title:
-        "Have you ever tried to learn about security or how to audit Solana programs?",
-    },
-    learningActions: {
-      title: "What have you actually done to learn about Solana security?",
-      description: "Select every answer that applies.",
-    },
-    learningBlockers: {
-      title: "Where did you feel the most difficulty?",
-      description: "Select every answer that applies.",
-    },
-    hardestPracticeStep: {
-      title: "What was the hardest part when moving from theory to practice?",
-      description: "A short answer is enough. Aim for about 100 characters.",
-      placeholder: "Share one concrete blocker.",
-    },
     preferredFormats: {
       title:
         "What format would help you most to learn about Solana security?",
       description: "Select every answer that applies.",
+    },
+    blockchainSecurityProfile: {
+      title: "What is your current blockchain security profile?",
+    },
+    securityLearningAttempt: {
+      title:
+        "Have you ever tried to learn about security or how to audit Solana programs?",
+    },
+    studyTechniques: {
+      title: "What study technique do you use to learn new topics?",
+      description: "Select every answer that applies.",
+    },
+    difficultAreas: {
+      title:
+        "Which area was hardest for you to learn, or would you most like to learn?",
+      description: "Select every answer that applies.",
+    },
+    hardestPracticeStep: {
+      title:
+        "What do you consider the hardest part when moving from theory to practice?",
+      description: "A short answer is enough. Aim for about 100 characters.",
+      placeholder: "Share one concrete blocker.",
     },
     practiceSignals: {
       title:
         "What would make the experience feel like it is not “just theory”?",
       description: "Select every answer that applies.",
     },
+    securityRelevance: {
+      title:
+        "How relevant do you consider Solana security learning for Web3 developers?",
+      description: "Choose a score from 1 to 5.",
+      min: "Not relevant",
+      max: "Very relevant",
+    },
     problemIntensity: {
-      title: "How strong is this problem for you today?",
+      title:
+        "How strong is the problem of moving from theory to real Solana security practice for you today?",
       description: "Choose a score from 1 to 5.",
       min: "Not a problem right now",
       max: "An important problem",
@@ -288,40 +319,6 @@ const english: OnboardingCopy = {
       ],
       optionValues.realExperience
     ),
-    securityLearningAttempt: options(
-      [
-        "Yes, actively",
-        "Yes, lightly",
-        "I tried and stopped",
-        "Not yet, but I’m interested",
-        "Not a priority right now",
-      ],
-      optionValues.securityLearningAttempt
-    ),
-    learningActions: options(
-      [
-        "Read docs or audit reports",
-        "Read exploit writeups",
-        "Watched videos or workshops",
-        "Used AI to understand code or bugs",
-        "Joined CTFs or challenges",
-        "Tried to review or exploit real code",
-        "I haven’t done anything concrete yet",
-      ],
-      optionValues.learningActions
-    ),
-    learningBlockers: options(
-      [
-        "I didn’t find a clear path",
-        "Too much theory, not enough practice",
-        "Resources were too advanced",
-        "I struggled to identify real bugs",
-        "I struggled to reproduce or exploit vulnerabilities",
-        "I lacked feedback or guidance",
-        "I didn’t get especially stuck",
-      ],
-      optionValues.learningBlockers
-    ),
     preferredFormats: options(
       [
         "Interactive learning environments",
@@ -332,6 +329,51 @@ const english: OnboardingCopy = {
         "Ecosystem-validated certifications",
       ],
       optionValues.preferredFormats
+    ),
+    blockchainSecurityProfile: options(
+      [
+        "No security background yet",
+        "Basic Web2 security knowledge",
+        "Basic Web3 security knowledge",
+        "Beginner Solana security learner",
+        "CTF or audit-report learner",
+        "Professional auditor or researcher",
+      ],
+      optionValues.blockchainSecurityProfile
+    ),
+    securityLearningAttempt: options(
+      [
+        "Yes, actively",
+        "Yes, lightly",
+        "I tried and stopped",
+        "Not yet, but I’m interested",
+        "Not a priority right now",
+      ],
+      optionValues.securityLearningAttempt
+    ),
+    studyTechniques: options(
+      [
+        "Read official documentation",
+        "Build small projects",
+        "Watch videos or workshops",
+        "Use AI as a tutor",
+        "Read writeups or case studies",
+        "Solve CTFs or challenges",
+        "Ask mentors or peers for feedback",
+      ],
+      optionValues.studyTechniques
+    ),
+    difficultAreas: options(
+      [
+        "Solana account model",
+        "Rust or Anchor",
+        "SVM runtime behavior",
+        "Identifying vulnerabilities",
+        "Reproducing exploits",
+        "CPI, signers, or authorities",
+        "Explaining impact or writing reports",
+      ],
+      optionValues.difficultAreas
     ),
     practiceSignals: options(
       [
@@ -364,12 +406,14 @@ const english: OnboardingCopy = {
     labels: {
       profile: "Profile",
       realExperience: "Experience",
-      securityLearningAttempt: "Security learning",
-      learningActions: "What you tried",
-      learningBlockers: "Blockers",
-      hardestPracticeStep: "Hardest step",
       preferredFormats: "Learning format",
+      blockchainSecurityProfile: "Blockchain security profile",
+      securityLearningAttempt: "Security learning",
+      studyTechniques: "Study technique",
+      difficultAreas: "Difficult area",
+      hardestPracticeStep: "Hardest step",
       practiceSignals: "Hands-on signals",
+      securityRelevance: "Security relevance",
       problemIntensity: "Problem strength",
       betaIntent: "Beta interest",
     },
@@ -377,12 +421,14 @@ const english: OnboardingCopy = {
   validation: {
     profile: "Choose the closest profile.",
     realExperience: "Choose at least one experience.",
-    securityLearningAttempt: "Choose one answer.",
-    learningActions: "Choose at least one action.",
-    learningBlockers: "Choose at least one blocker.",
-    hardestPracticeStep: "Share at least a short example.",
     preferredFormats: "Choose at least one format.",
+    blockchainSecurityProfile: "Choose the closest security profile.",
+    securityLearningAttempt: "Choose one answer.",
+    studyTechniques: "Choose at least one study technique.",
+    difficultAreas: "Choose at least one area.",
+    hardestPracticeStep: "Share at least a short example.",
     practiceSignals: "Choose at least one answer.",
+    securityRelevance: "Choose a score from 1 to 5.",
     problemIntensity: "Choose a score from 1 to 5.",
     betaIntent: "Choose your current interest.",
     contactDetails: "Add contact details or choose not right now.",
@@ -402,12 +448,14 @@ const spanish: OnboardingCopy = {
   steps: [
     "Perfil",
     "Experiencia",
+    "Formato",
+    "Perfil de seguridad",
     "Aprendizaje de seguridad",
-    "Qué intentaste",
-    "Bloqueos",
+    "Técnica de estudio",
+    "Área difícil",
     "De teoría a práctica",
-    "Formato de aprendizaje",
     "Práctica real",
+    "Relevancia",
     "Intensidad del problema",
     "Interés en la beta",
     "Contacto",
@@ -437,36 +485,48 @@ const spanish: OnboardingCopy = {
       title: "¿Qué experiencia real tenés con Solana o Rust?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
-    securityLearningAttempt: {
-      title:
-        "¿Alguna vez intentaste aprender sobre seguridad o a auditar programas en Solana?",
-    },
-    learningActions: {
-      title:
-        "¿Qué hiciste concretamente para aprender sobre seguridad en Solana?",
-      description: "Seleccioná todas las opciones que correspondan.",
-    },
-    learningBlockers: {
-      title: "¿Dónde sientes que tuviste más dificultad?",
-      description: "Seleccioná todas las opciones que correspondan.",
-    },
-    hardestPracticeStep: {
-      title: "¿Cuál fue la parte más difícil al pasar de teoría a práctica?",
-      description:
-        "Una respuesta breve alcanza. Apuntá a unos 100 caracteres.",
-      placeholder: "Contanos un bloqueo concreto.",
-    },
     preferredFormats: {
       title:
         "¿Qué formato te ayudaría más a aprender sobre seguridad en Solana?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
+    blockchainSecurityProfile: {
+      title: "¿Cuál es tu perfil actual en seguridad blockchain?",
+    },
+    securityLearningAttempt: {
+      title:
+        "¿Alguna vez intentaste aprender sobre seguridad o a auditar programas en Solana?",
+    },
+    studyTechniques: {
+      title: "¿Qué técnica de estudio utilizás para aprender temas nuevos?",
+      description: "Seleccioná todas las opciones que correspondan.",
+    },
+    difficultAreas: {
+      title:
+        "¿Cuál es el área que más te costó aprender y/o te gustaría aprender?",
+      description: "Seleccioná todas las opciones que correspondan.",
+    },
+    hardestPracticeStep: {
+      title:
+        "¿Cuál consideras que fue la parte más difícil al pasar de la teoría a práctica?",
+      description:
+        "Una respuesta breve alcanza. Apuntá a unos 100 caracteres.",
+      placeholder: "Contanos un bloqueo concreto.",
+    },
     practiceSignals: {
       title: "¿Qué haría que la experiencia no se sienta como “solo teoría”?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
+    securityRelevance: {
+      title:
+        "¿Qué tan relevante considerás aprender seguridad en Solana para desarrolladores Web3?",
+      description: "Elegí un puntaje del 1 al 5.",
+      min: "Poco relevante",
+      max: "Muy relevante",
+    },
     problemIntensity: {
-      title: "¿Qué tan fuerte es este problema para vos hoy?",
+      title:
+        "¿Qué tan fuerte es para vos hoy el problema de pasar de teoría a práctica real en seguridad Solana?",
       description: "Elegí un puntaje del 1 al 5.",
       min: "No es un problema ahora",
       max: "Es un problema importante",
@@ -514,40 +574,6 @@ const spanish: OnboardingCopy = {
       ],
       optionValues.realExperience
     ),
-    securityLearningAttempt: options(
-      [
-        "Sí, activamente",
-        "Sí, pero de forma superficial",
-        "Lo intenté y lo dejé",
-        "Todavía no, pero me interesa",
-        "No es una prioridad ahora",
-      ],
-      optionValues.securityLearningAttempt
-    ),
-    learningActions: options(
-      [
-        "Leí documentación o audit reports",
-        "Leí writeups de exploits",
-        "Vi videos o workshops",
-        "Usé AI para entender código o bugs",
-        "Participé en CTFs o challenges",
-        "Intenté revisar o explotar código real",
-        "Todavía no hice nada concreto",
-      ],
-      optionValues.learningActions
-    ),
-    learningBlockers: options(
-      [
-        "No encontré un camino claro",
-        "Mucha teoría, poca práctica",
-        "Recursos demasiado avanzados",
-        "Me costó identificar bugs reales",
-        "Me costó reproducir o explotar vulnerabilidades",
-        "Me faltó feedback o acompañamiento",
-        "No me trabé especialmente",
-      ],
-      optionValues.learningBlockers
-    ),
     preferredFormats: options(
       [
         "Entornos de aprendizaje interactivos",
@@ -558,6 +584,51 @@ const spanish: OnboardingCopy = {
         "Certificaciones validadas por el ecosistema",
       ],
       optionValues.preferredFormats
+    ),
+    blockchainSecurityProfile: options(
+      [
+        "Sin experiencia en seguridad todavía",
+        "Con bases de seguridad Web2",
+        "Con bases de seguridad Web3",
+        "Aprendiendo seguridad Solana",
+        "Aprendiendo con CTFs o audit reports",
+        "Auditor o researcher profesional",
+      ],
+      optionValues.blockchainSecurityProfile
+    ),
+    securityLearningAttempt: options(
+      [
+        "Sí, activamente",
+        "Sí, pero de forma superficial",
+        "Lo intenté y lo dejé",
+        "Todavía no, pero me interesa",
+        "No es una prioridad ahora",
+      ],
+      optionValues.securityLearningAttempt
+    ),
+    studyTechniques: options(
+      [
+        "Leer documentación oficial",
+        "Construir proyectos pequeños",
+        "Ver videos o workshops",
+        "Usar AI como tutor",
+        "Leer writeups o casos reales",
+        "Resolver CTFs o challenges",
+        "Pedir feedback a mentores o pares",
+      ],
+      optionValues.studyTechniques
+    ),
+    difficultAreas: options(
+      [
+        "Modelo de cuentas de Solana",
+        "Rust o Anchor",
+        "Funcionamiento de la SVM",
+        "Identificar vulnerabilidades",
+        "Reproducir exploits",
+        "CPI, signers o authorities",
+        "Explicar impacto o escribir reportes",
+      ],
+      optionValues.difficultAreas
     ),
     practiceSignals: options(
       [
@@ -593,12 +664,14 @@ const spanish: OnboardingCopy = {
     labels: {
       profile: "Perfil",
       realExperience: "Experiencia",
-      securityLearningAttempt: "Aprendizaje de seguridad",
-      learningActions: "Qué intentaste",
-      learningBlockers: "Bloqueos",
-      hardestPracticeStep: "Parte más difícil",
       preferredFormats: "Formato de aprendizaje",
+      blockchainSecurityProfile: "Perfil de seguridad blockchain",
+      securityLearningAttempt: "Aprendizaje de seguridad",
+      studyTechniques: "Técnica de estudio",
+      difficultAreas: "Área difícil",
+      hardestPracticeStep: "Parte más difícil",
       practiceSignals: "Señales de práctica",
+      securityRelevance: "Relevancia de seguridad",
       problemIntensity: "Intensidad del problema",
       betaIntent: "Interés en la beta",
     },
@@ -606,12 +679,14 @@ const spanish: OnboardingCopy = {
   validation: {
     profile: "Elegí el perfil más cercano.",
     realExperience: "Elegí al menos una experiencia.",
-    securityLearningAttempt: "Elegí una respuesta.",
-    learningActions: "Elegí al menos una acción.",
-    learningBlockers: "Elegí al menos un bloqueo.",
-    hardestPracticeStep: "Compartí al menos un ejemplo breve.",
     preferredFormats: "Elegí al menos un formato.",
+    blockchainSecurityProfile: "Elegí el perfil de seguridad más cercano.",
+    securityLearningAttempt: "Elegí una respuesta.",
+    studyTechniques: "Elegí al menos una técnica de estudio.",
+    difficultAreas: "Elegí al menos un área.",
+    hardestPracticeStep: "Compartí al menos un ejemplo breve.",
     practiceSignals: "Elegí al menos una respuesta.",
+    securityRelevance: "Elegí un puntaje del 1 al 5.",
     problemIntensity: "Elegí un puntaje del 1 al 5.",
     betaIntent: "Elegí tu nivel de interés actual.",
     contactDetails: "Agregá datos de contacto o elegí no por ahora.",

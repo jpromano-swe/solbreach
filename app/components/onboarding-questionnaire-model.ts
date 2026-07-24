@@ -23,23 +23,31 @@ export type SecurityLearningAttempt =
   | "interested_not_started"
   | "not_priority";
 
-export type LearningAction =
-  | "docs_or_audit_reports"
-  | "exploit_writeups"
-  | "videos_or_workshops"
-  | "ai_for_code_or_bugs"
-  | "ctfs_or_challenges"
-  | "reviewed_or_exploited_real_code"
-  | "nothing_concrete";
+export type BlockchainSecurityProfile =
+  | "no_security_background"
+  | "web2_security_basics"
+  | "web3_security_basics"
+  | "solana_security_beginner"
+  | "ctf_or_audit_learning"
+  | "professional_auditor_researcher";
 
-export type LearningBlocker =
-  | "no_clear_path"
-  | "too_much_theory"
-  | "resources_too_advanced"
-  | "hard_to_identify_bugs"
-  | "hard_to_reproduce_exploits"
-  | "lacked_feedback"
-  | "not_stuck";
+export type StudyTechnique =
+  | "official_docs"
+  | "small_projects"
+  | "videos_or_workshops"
+  | "ai_assisted"
+  | "writeups_or_case_studies"
+  | "ctfs_or_challenges"
+  | "mentor_or_peer_feedback";
+
+export type DifficultArea =
+  | "solana_account_model"
+  | "rust_or_anchor"
+  | "svm_runtime"
+  | "vulnerability_identification"
+  | "exploit_reproduction"
+  | "cpi_signers_authority"
+  | "impact_or_reporting";
 
 export type LearningFormat =
   | "guided_modules"
@@ -69,11 +77,11 @@ export type BetaInterest = "try_this_week" | "try_later" | "maybe" | "not_now";
 
 export type OnboardingFormState = {
   betaIntent: BetaInterest | "";
+  blockchainSecurityProfile: BlockchainSecurityProfile | "";
   contact: string;
   contactName: string;
+  difficultAreas: DifficultArea[];
   hardestPracticeStep: string;
-  learningActions: LearningAction[];
-  learningBlockers: LearningBlocker[];
   preferredFormats: LearningFormat[];
   preferredContactChannel: PreferredContactChannel | "";
   practiceSignals: PracticeSignal[];
@@ -82,6 +90,8 @@ export type OnboardingFormState = {
   profile: CustomerProfile | "";
   realExperience: RealExperience[];
   securityLearningAttempt: SecurityLearningAttempt | "";
+  securityRelevance: number | null;
+  studyTechniques: StudyTechnique[];
 };
 
 export type OnboardingFormErrors = Partial<
@@ -101,12 +111,14 @@ export type OnboardingValidationMessages = Record<
 export type OnboardingQuestionId =
   | "profile"
   | "realExperience"
-  | "securityLearningAttempt"
-  | "learningActions"
-  | "learningBlockers"
-  | "hardestPracticeStep"
   | "preferredFormats"
+  | "blockchainSecurityProfile"
+  | "securityLearningAttempt"
+  | "studyTechniques"
+  | "difficultAreas"
+  | "hardestPracticeStep"
   | "practiceSignals"
+  | "securityRelevance"
   | "problemIntensity"
   | "betaIntent"
   | "contactDetails"
@@ -120,18 +132,23 @@ export type OnboardingPage = {
 export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
   { id: "profile", validation: ["profile"] },
   { id: "realExperience", validation: ["realExperience"] },
+  { id: "preferredFormats", validation: ["preferredFormats"] },
+  {
+    id: "blockchainSecurityProfile",
+    validation: ["blockchainSecurityProfile"],
+  },
   {
     id: "securityLearningAttempt",
     validation: ["securityLearningAttempt"],
   },
-  { id: "learningActions", validation: ["learningActions"] },
-  { id: "learningBlockers", validation: ["learningBlockers"] },
+  { id: "studyTechniques", validation: ["studyTechniques"] },
+  { id: "difficultAreas", validation: ["difficultAreas"] },
   {
     id: "hardestPracticeStep",
     validation: ["hardestPracticeStep"],
   },
-  { id: "preferredFormats", validation: ["preferredFormats"] },
   { id: "practiceSignals", validation: ["practiceSignals"] },
+  { id: "securityRelevance", validation: ["securityRelevance"] },
   { id: "problemIntensity", validation: ["problemIntensity"] },
   { id: "betaIntent", validation: ["betaIntent"] },
   { id: "contactDetails", validation: ["contactDetails"] },
@@ -140,12 +157,14 @@ export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
     validation: [
       "profile",
       "realExperience",
-      "securityLearningAttempt",
-      "learningActions",
-      "learningBlockers",
-      "hardestPracticeStep",
       "preferredFormats",
+      "blockchainSecurityProfile",
+      "securityLearningAttempt",
+      "studyTechniques",
+      "difficultAreas",
+      "hardestPracticeStep",
       "practiceSignals",
+      "securityRelevance",
       "problemIntensity",
       "betaIntent",
       "contactDetails",
@@ -155,11 +174,11 @@ export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
 
 export const INITIAL_ONBOARDING_FORM: OnboardingFormState = {
   betaIntent: "",
+  blockchainSecurityProfile: "",
   contact: "",
   contactName: "",
+  difficultAreas: [],
   hardestPracticeStep: "",
-  learningActions: [],
-  learningBlockers: [],
   preferredFormats: [],
   preferredContactChannel: "",
   practiceSignals: [],
@@ -168,6 +187,8 @@ export const INITIAL_ONBOARDING_FORM: OnboardingFormState = {
   profile: "",
   realExperience: [],
   securityLearningAttempt: "",
+  securityRelevance: null,
+  studyTechniques: [],
 };
 
 export function validateOnboardingQuestions(
@@ -186,11 +207,14 @@ export function validateOnboardingQuestions(
   if (includes("securityLearningAttempt") && !form.securityLearningAttempt) {
     errors.securityLearningAttempt = messages.securityLearningAttempt;
   }
-  if (includes("learningActions") && form.learningActions.length === 0) {
-    errors.learningActions = messages.learningActions;
+  if (includes("blockchainSecurityProfile") && !form.blockchainSecurityProfile) {
+    errors.blockchainSecurityProfile = messages.blockchainSecurityProfile;
   }
-  if (includes("learningBlockers") && form.learningBlockers.length === 0) {
-    errors.learningBlockers = messages.learningBlockers;
+  if (includes("studyTechniques") && form.studyTechniques.length === 0) {
+    errors.studyTechniques = messages.studyTechniques;
+  }
+  if (includes("difficultAreas") && form.difficultAreas.length === 0) {
+    errors.difficultAreas = messages.difficultAreas;
   }
   if (
     includes("hardestPracticeStep") &&
@@ -203,6 +227,9 @@ export function validateOnboardingQuestions(
   }
   if (includes("practiceSignals") && form.practiceSignals.length === 0) {
     errors.practiceSignals = messages.practiceSignals;
+  }
+  if (includes("securityRelevance") && form.securityRelevance === null) {
+    errors.securityRelevance = messages.securityRelevance;
   }
   if (includes("problemIntensity") && form.problemIntensity === null) {
     errors.problemIntensity = messages.problemIntensity;
@@ -233,9 +260,11 @@ export function buildOnboardingSubmission(
 ): OnboardingSubmission {
   if (
     !form.betaIntent ||
+    !form.blockchainSecurityProfile ||
     !form.profile ||
     !form.securityLearningAttempt ||
-    form.problemIntensity === null
+    form.problemIntensity === null ||
+    form.securityRelevance === null
   ) {
     throw new Error("The onboarding form is incomplete.");
   }
@@ -247,7 +276,7 @@ export function buildOnboardingSubmission(
       form.betaIntent === "not_now"
         ? "not_provided"
         : form.contact.trim() || "not_provided",
-    currentLearningSources: mapLearningSources(form.learningActions),
+    currentLearningSources: mapLearningSources(form.studyTechniques),
     feedbackWillingness: form.betaIntent === "not_now" ? "not_now" : "form",
     futureLabsInterest: buildDiscoveryMetadata(form),
     guidedLabUsefulness: form.problemIntensity,
@@ -262,7 +291,10 @@ export function buildOnboardingSubmission(
         ? "email"
         : form.preferredContactChannel || "email",
     profile: mapProfile(form.profile),
-    securityExperience: mapSecurityExperience(form.securityLearningAttempt),
+    securityExperience: mapSecurityExperience(
+      form.blockchainSecurityProfile,
+      form.securityLearningAttempt
+    ),
     solanaLevel: mapSolanaLevel(form.realExperience),
     source: "landing_onboarding",
     utmCampaign: cleanOptional(searchParams.get("utm_campaign") ?? ""),
@@ -274,6 +306,9 @@ export function buildOnboardingSubmission(
 function buildAdditionalNotes(form: OnboardingFormState) {
   const parts = [
     `hardest=${form.hardestPracticeStep.trim()}`,
+    form.securityRelevance !== null
+      ? `security_relevance=${form.securityRelevance}/5`
+      : "",
     form.problemIntensityReason.trim()
       ? `score_reason=${form.problemIntensityReason.trim()}`
       : "",
@@ -284,12 +319,14 @@ function buildAdditionalNotes(form: OnboardingFormState) {
 function buildDiscoveryMetadata(form: OnboardingFormState) {
   return [
     `profile=${form.profile}`,
+    `security_profile=${form.blockchainSecurityProfile}`,
     `security_attempt=${form.securityLearningAttempt}`,
     `experience=${form.realExperience.join(",")}`,
-    `actions=${form.learningActions.join(",")}`,
-    `blockers=${form.learningBlockers.join(",")}`,
+    `study=${form.studyTechniques.join(",")}`,
+    `areas=${form.difficultAreas.join(",")}`,
     `formats=${form.preferredFormats.join(",")}`,
     `practice=${form.practiceSignals.join(",")}`,
+    `security_relevance=${form.securityRelevance ?? ""}`,
   ]
     .join(";")
     .slice(0, 1000);
@@ -324,8 +361,19 @@ function mapSolanaLevel(experience: RealExperience[]): SolanaLevel {
 }
 
 function mapSecurityExperience(
+  profile: BlockchainSecurityProfile,
   attempt: SecurityLearningAttempt
 ): SecurityExperience {
+  const profiles: Partial<Record<BlockchainSecurityProfile, SecurityExperience>> =
+    {
+      ctf_or_audit_learning: "joined_ctfs",
+      professional_auditor_researcher: "works_or_wants_auditing",
+      solana_security_beginner: "read_writeups_or_audit_reports",
+      web2_security_basics: "reviewed_code_or_found_bugs",
+      web3_security_basics: "read_writeups_or_audit_reports",
+    };
+  if (profiles[profile]) return profiles[profile];
+
   const attempts: Record<SecurityLearningAttempt, SecurityExperience> = {
     active: "works_or_wants_auditing",
     interested_not_started: "almost_none",
@@ -336,19 +384,18 @@ function mapSecurityExperience(
   return attempts[attempt];
 }
 
-function mapLearningSources(actions: LearningAction[]): LearningSource[] {
-  if (actions.includes("nothing_concrete")) return ["no_clear_path"];
-
-  const mapped = actions.flatMap<LearningSource>((action) => {
-    const sources: Partial<Record<LearningAction, LearningSource[]>> = {
-      ai_for_code_or_bugs: ["ai_tools"],
+function mapLearningSources(techniques: StudyTechnique[]): LearningSource[] {
+  const mapped = techniques.flatMap<LearningSource>((technique) => {
+    const sources: Record<StudyTechnique, LearningSource[]> = {
+      ai_assisted: ["ai_tools"],
       ctfs_or_challenges: ["ctfs"],
-      docs_or_audit_reports: ["docs", "audit_reports"],
-      exploit_writeups: ["audit_reports"],
-      reviewed_or_exploited_real_code: ["docs"],
+      mentor_or_peer_feedback: ["mentorship"],
+      official_docs: ["docs"],
+      small_projects: ["docs"],
       videos_or_workshops: ["youtube"],
+      writeups_or_case_studies: ["audit_reports"],
     };
-    return sources[action] ?? [];
+    return sources[technique];
   });
 
   return [

@@ -65,7 +65,8 @@ const BADGE_FALLBACKS: UserBadge[] = [
     title: "The Trojan Horse",
   },
   {
-    description: "Complete Research Lab 1 and certify your first finding.",
+    description:
+      "Complete Research Lab 1: Account Substitution and receive the RL1 certificate.",
     earned: false,
     earnedAt: null,
     image: "/badges/badge-poweruser.png",

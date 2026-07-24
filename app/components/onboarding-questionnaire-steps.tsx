@@ -9,9 +9,9 @@ import {
 } from "./onboarding-questionnaire-fields";
 import {
   type BetaInterest,
+  type BlockchainSecurityProfile,
   type CustomerProfile,
-  type LearningAction,
-  type LearningBlocker,
+  type DifficultArea,
   type LearningFormat,
   type OnboardingFormErrors,
   type OnboardingFormState,
@@ -19,6 +19,7 @@ import {
   type PracticeSignal,
   type RealExperience,
   type SecurityLearningAttempt,
+  type StudyTechnique,
 } from "./onboarding-questionnaire-model";
 import type { OnboardingCopy } from "./onboarding-questionnaire-copy";
 
@@ -43,18 +44,22 @@ export function QuestionnaireStep({
       return <ProfileStep {...props} />;
     case "realExperience":
       return <RealExperienceStep {...props} />;
-    case "securityLearningAttempt":
-      return <SecurityLearningStep {...props} />;
-    case "learningActions":
-      return <LearningActionsStep {...props} />;
-    case "learningBlockers":
-      return <LearningBlockersStep {...props} />;
-    case "hardestPracticeStep":
-      return <HardestPracticeStep {...props} />;
     case "preferredFormats":
       return <PreferredFormatsStep {...props} />;
+    case "blockchainSecurityProfile":
+      return <BlockchainSecurityProfileStep {...props} />;
+    case "securityLearningAttempt":
+      return <SecurityLearningStep {...props} />;
+    case "studyTechniques":
+      return <StudyTechniquesStep {...props} />;
+    case "difficultAreas":
+      return <DifficultAreasStep {...props} />;
+    case "hardestPracticeStep":
+      return <HardestPracticeStep {...props} />;
     case "practiceSignals":
       return <PracticeSignalsStep {...props} />;
+    case "securityRelevance":
+      return <SecurityRelevanceStep {...props} />;
     case "problemIntensity":
       return <ProblemIntensityStep {...props} />;
     case "betaIntent":
@@ -131,25 +136,26 @@ function SecurityLearningStep({ copy, errors, form, updateField }: StepProps) {
   );
 }
 
-function LearningActionsStep({ copy, errors, form, updateField }: StepProps) {
-  const question = copy.questions.learningActions;
+function BlockchainSecurityProfileStep({
+  copy,
+  errors,
+  form,
+  updateField,
+}: StepProps) {
+  const question = copy.questions.blockchainSecurityProfile;
   return (
     <QuestionFrame title={question.title} description={question.description}>
-      <MultiOptionGroup
+      <OptionGroup
         hideLegend
-        id="learningActions"
+        id="blockchainSecurityProfile"
         legend={question.title}
-        error={errors.learningActions}
-        options={copy.options.learningActions}
-        values={form.learningActions}
-        onToggle={(value) =>
+        error={errors.blockchainSecurityProfile}
+        options={copy.options.blockchainSecurityProfile}
+        value={form.blockchainSecurityProfile}
+        onChange={(value) =>
           updateField(
-            "learningActions",
-            exclusiveToggle(
-              form.learningActions,
-              value as LearningAction,
-              "nothing_concrete"
-            )
+            "blockchainSecurityProfile",
+            value as BlockchainSecurityProfile
           )
         }
       />
@@ -157,25 +163,43 @@ function LearningActionsStep({ copy, errors, form, updateField }: StepProps) {
   );
 }
 
-function LearningBlockersStep({ copy, errors, form, updateField }: StepProps) {
-  const question = copy.questions.learningBlockers;
+function StudyTechniquesStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.studyTechniques;
   return (
     <QuestionFrame title={question.title} description={question.description}>
       <MultiOptionGroup
         hideLegend
-        id="learningBlockers"
+        id="studyTechniques"
         legend={question.title}
-        error={errors.learningBlockers}
-        options={copy.options.learningBlockers}
-        values={form.learningBlockers}
+        error={errors.studyTechniques}
+        options={copy.options.studyTechniques}
+        values={form.studyTechniques}
         onToggle={(value) =>
           updateField(
-            "learningBlockers",
-            exclusiveToggle(
-              form.learningBlockers,
-              value as LearningBlocker,
-              "not_stuck"
-            )
+            "studyTechniques",
+            toggleArrayValue(form.studyTechniques, value as StudyTechnique)
+          )
+        }
+      />
+    </QuestionFrame>
+  );
+}
+
+function DifficultAreasStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.difficultAreas;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <MultiOptionGroup
+        hideLegend
+        id="difficultAreas"
+        legend={question.title}
+        error={errors.difficultAreas}
+        options={copy.options.difficultAreas}
+        values={form.difficultAreas}
+        onToggle={(value) =>
+          updateField(
+            "difficultAreas",
+            toggleArrayValue(form.difficultAreas, value as DifficultArea)
           )
         }
       />
@@ -259,6 +283,24 @@ function PracticeSignalsStep({ copy, errors, form, updateField }: StepProps) {
             toggleArrayValue(form.practiceSignals, value as PracticeSignal)
           )
         }
+      />
+    </QuestionFrame>
+  );
+}
+
+function SecurityRelevanceStep({ copy, errors, form, updateField }: StepProps) {
+  const question = copy.questions.securityRelevance;
+  return (
+    <QuestionFrame title={question.title} description={question.description}>
+      <RatingGroup
+        hideLegend
+        id="securityRelevance"
+        legend={question.title}
+        error={errors.securityRelevance}
+        maxLabel={question.max}
+        minLabel={question.min}
+        value={form.securityRelevance}
+        onChange={(value) => updateField("securityRelevance", value)}
       />
     </QuestionFrame>
   );
@@ -449,6 +491,17 @@ function ReviewStep({ copy, form }: StepProps) {
       value: optionLabels(copy.options.realExperience, form.realExperience),
     },
     {
+      label: copy.review.labels.preferredFormats,
+      value: optionLabels(copy.options.preferredFormats, form.preferredFormats),
+    },
+    {
+      label: copy.review.labels.blockchainSecurityProfile,
+      value: optionLabel(
+        copy.options.blockchainSecurityProfile,
+        form.blockchainSecurityProfile
+      ),
+    },
+    {
       label: copy.review.labels.securityLearningAttempt,
       value: optionLabel(
         copy.options.securityLearningAttempt,
@@ -456,24 +509,26 @@ function ReviewStep({ copy, form }: StepProps) {
       ),
     },
     {
-      label: copy.review.labels.learningActions,
-      value: optionLabels(copy.options.learningActions, form.learningActions),
+      label: copy.review.labels.studyTechniques,
+      value: optionLabels(copy.options.studyTechniques, form.studyTechniques),
     },
     {
-      label: copy.review.labels.learningBlockers,
-      value: optionLabels(copy.options.learningBlockers, form.learningBlockers),
+      label: copy.review.labels.difficultAreas,
+      value: optionLabels(copy.options.difficultAreas, form.difficultAreas),
     },
     {
       label: copy.review.labels.hardestPracticeStep,
       value: form.hardestPracticeStep.trim(),
     },
     {
-      label: copy.review.labels.preferredFormats,
-      value: optionLabels(copy.options.preferredFormats, form.preferredFormats),
-    },
-    {
       label: copy.review.labels.practiceSignals,
       value: optionLabels(copy.options.practiceSignals, form.practiceSignals),
+    },
+    {
+      label: copy.review.labels.securityRelevance,
+      value: form.securityRelevance
+        ? `${form.securityRelevance}/5`
+        : copy.review.notProvided,
     },
     {
       label: copy.review.labels.problemIntensity,

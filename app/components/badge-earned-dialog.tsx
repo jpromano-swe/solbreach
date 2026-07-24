@@ -14,7 +14,7 @@ function getBadgeDescription(badge: UserBadge) {
     case "level-3-trojan-horse":
       return "Congrats, you completed the Delegated CPI module. You mapped how trusted program calls can become unsafe when signer authority is forwarded to the wrong target.";
     case "power-user":
-      return "Congrats, you completed the core SolBreach badge path. You have worked through the main exploit patterns in this training track.";
+      return "Congrats, you completed Research Lab 1: Account Substitution. Your RL1 certificate and Power User badge now mark your first verified SolBreach research workflow.";
     default:
       return (
         badge.description ||
