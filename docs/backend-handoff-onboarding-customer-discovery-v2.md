@@ -20,12 +20,10 @@ POST /api/v1/onboarding/responses
   "blockchainSecurityProfile": "solana_security_beginner",
   "securityLearningAttempt": "active",
   "studyTechniques": ["official_docs", "writeups_or_case_studies"],
-  "difficultAreas": ["vulnerability_identification", "exploit_reproduction"],
+  "difficultAreas": ["security_mindset", "hands_on_practice"],
   "hardestPracticeStep": "Turning an audit report into a reproducible exploit.",
   "practiceSignals": ["execute_exploit", "see_state_changes"],
   "securityRelevance": 5,
-  "problemIntensity": 4,
-  "problemIntensityReason": "I do not have a reliable practice path.",
   "betaIntent": "try_this_week",
   "contact": "builder@example.com",
   "source": "landing_onboarding",
@@ -86,13 +84,13 @@ POST /api/v1/onboarding/responses
 
 ### `difficultAreas`
 
-- `solana_account_model`
-- `rust_or_anchor`
-- `svm_runtime`
-- `vulnerability_identification`
-- `exploit_reproduction`
-- `cpi_signers_authority`
-- `impact_or_reporting`
+- `solana_programs_and_accounts`
+- `rust_anchor_basics`
+- `security_mindset`
+- `real_hack_examples`
+- `hands_on_practice`
+- `transactions_wallets_permissions`
+- `explaining_findings`
 
 ### `preferredFormats`
 
@@ -125,8 +123,6 @@ POST /api/v1/onboarding/responses
 - Multi-select arrays must contain at least one unique value.
 - `hardestPracticeStep`: trimmed length 10-600.
 - `securityRelevance`: integer from 1 through 5.
-- `problemIntensity`: integer from 1 through 5.
-- `problemIntensityReason`: nullable, trimmed maximum 240.
 - `contact`: required when `betaIntent` is `try_this_week`, `try_later`, or `maybe`; nullable when it is `not_now`; maximum 320.
 - Preserve the current public rate limit and string sanitization.
 - Do not infer or require a contact channel. The field may contain email, Telegram, or X.
@@ -158,8 +154,6 @@ Update `GET /api/v1/onboarding/responses` with filters for:
 - `preferredFormat`
 - `securityRelevanceMin`
 - `securityRelevanceMax`
-- `problemIntensityMin`
-- `problemIntensityMax`
 - `betaIntent`
 - `status`
 - date range, limit, and offset
@@ -175,11 +169,10 @@ Keep `onboarding_response_submitted`. Add only non-PII dimensions:
 - `blockchainSecurityProfile`
 - `securityLearningAttempt`
 - `securityRelevance`
-- `problemIntensity`
 - `betaIntent`
 - counts for multi-select fields
 
-Do not include `contact`, `hardestPracticeStep`, or `problemIntensityReason` in analytics properties.
+Do not include `contact` or `hardestPracticeStep` in analytics properties.
 
 ## Compatibility And Cutover
 
@@ -196,7 +189,6 @@ The frontend currently maps the v2 answers into the legacy request contract so t
 - Interested responses without contact return `422`.
 - Unsupported enum values return `422`.
 - Empty arrays and contradictory exclusive options return `422`.
-- Problem intensity outside 1-5 returns `422`.
 - Long-form limits are enforced after trimming.
 - Admin filters return only matching rows.
 - CSV contains one column per v2 field and semicolon-joined arrays.

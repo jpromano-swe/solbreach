@@ -60,8 +60,6 @@ export function QuestionnaireStep({
       return <PracticeSignalsStep {...props} />;
     case "securityRelevance":
       return <SecurityRelevanceStep {...props} />;
-    case "problemIntensity":
-      return <ProblemIntensityStep {...props} />;
     case "betaIntent":
       return <BetaIntentStep {...props} />;
     case "contactDetails":
@@ -306,38 +304,6 @@ function SecurityRelevanceStep({ copy, errors, form, updateField }: StepProps) {
   );
 }
 
-function ProblemIntensityStep({ copy, errors, form, updateField }: StepProps) {
-  const question = copy.questions.problemIntensity;
-  return (
-    <QuestionFrame title={question.title} description={question.description}>
-      <div className="space-y-7">
-        <RatingGroup
-          hideLegend
-          id="problemIntensity"
-          legend={question.title}
-          error={errors.problemIntensity}
-          maxLabel={question.max}
-          minLabel={question.min}
-          value={form.problemIntensity}
-          onChange={(value) => updateField("problemIntensity", value)}
-        />
-        <Field label={question.reasonLabel} fieldId="problemIntensityReason">
-          <input
-            id="onboarding-problemIntensityReason"
-            maxLength={240}
-            onChange={(event) =>
-              updateField("problemIntensityReason", event.target.value)
-            }
-            placeholder={question.reasonPlaceholder}
-            value={form.problemIntensityReason}
-            className={inputClass()}
-          />
-        </Field>
-      </div>
-    </QuestionFrame>
-  );
-}
-
 function BetaIntentStep({ copy, errors, form, updateField }: StepProps) {
   const question = copy.questions.betaIntent;
 
@@ -528,16 +494,6 @@ function ReviewStep({ copy, form }: StepProps) {
       label: copy.review.labels.securityRelevance,
       value: form.securityRelevance
         ? `${form.securityRelevance}/5`
-        : copy.review.notProvided,
-    },
-    {
-      label: copy.review.labels.problemIntensity,
-      value: form.problemIntensity
-        ? `${form.problemIntensity}/5${
-            form.problemIntensityReason.trim()
-              ? ` — ${form.problemIntensityReason.trim()}`
-              : ""
-          }`
         : copy.review.notProvided,
     },
     {

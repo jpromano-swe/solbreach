@@ -41,13 +41,13 @@ export type StudyTechnique =
   | "mentor_or_peer_feedback";
 
 export type DifficultArea =
-  | "solana_account_model"
-  | "rust_or_anchor"
-  | "svm_runtime"
-  | "vulnerability_identification"
-  | "exploit_reproduction"
-  | "cpi_signers_authority"
-  | "impact_or_reporting";
+  | "solana_programs_and_accounts"
+  | "rust_anchor_basics"
+  | "security_mindset"
+  | "real_hack_examples"
+  | "hands_on_practice"
+  | "transactions_wallets_permissions"
+  | "explaining_findings";
 
 export type LearningFormat =
   | "guided_modules"
@@ -85,8 +85,6 @@ export type OnboardingFormState = {
   preferredFormats: LearningFormat[];
   preferredContactChannel: PreferredContactChannel | "";
   practiceSignals: PracticeSignal[];
-  problemIntensity: number | null;
-  problemIntensityReason: string;
   profile: CustomerProfile | "";
   realExperience: RealExperience[];
   securityLearningAttempt: SecurityLearningAttempt | "";
@@ -119,7 +117,6 @@ export type OnboardingQuestionId =
   | "hardestPracticeStep"
   | "practiceSignals"
   | "securityRelevance"
-  | "problemIntensity"
   | "betaIntent"
   | "contactDetails"
   | "review";
@@ -132,11 +129,11 @@ export type OnboardingPage = {
 export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
   { id: "profile", validation: ["profile"] },
   { id: "realExperience", validation: ["realExperience"] },
-  { id: "preferredFormats", validation: ["preferredFormats"] },
   {
     id: "blockchainSecurityProfile",
     validation: ["blockchainSecurityProfile"],
   },
+  { id: "preferredFormats", validation: ["preferredFormats"] },
   {
     id: "securityLearningAttempt",
     validation: ["securityLearningAttempt"],
@@ -149,7 +146,6 @@ export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
   },
   { id: "practiceSignals", validation: ["practiceSignals"] },
   { id: "securityRelevance", validation: ["securityRelevance"] },
-  { id: "problemIntensity", validation: ["problemIntensity"] },
   { id: "betaIntent", validation: ["betaIntent"] },
   { id: "contactDetails", validation: ["contactDetails"] },
   {
@@ -165,7 +161,6 @@ export const ONBOARDING_PAGES: readonly OnboardingPage[] = [
       "hardestPracticeStep",
       "practiceSignals",
       "securityRelevance",
-      "problemIntensity",
       "betaIntent",
       "contactDetails",
     ],
@@ -182,8 +177,6 @@ export const INITIAL_ONBOARDING_FORM: OnboardingFormState = {
   preferredFormats: [],
   preferredContactChannel: "",
   practiceSignals: [],
-  problemIntensity: null,
-  problemIntensityReason: "",
   profile: "",
   realExperience: [],
   securityLearningAttempt: "",
@@ -231,9 +224,6 @@ export function validateOnboardingQuestions(
   if (includes("securityRelevance") && form.securityRelevance === null) {
     errors.securityRelevance = messages.securityRelevance;
   }
-  if (includes("problemIntensity") && form.problemIntensity === null) {
-    errors.problemIntensity = messages.problemIntensity;
-  }
   if (includes("betaIntent")) {
     if (!form.betaIntent) {
       errors.betaIntent = messages.betaIntent;
@@ -263,7 +253,6 @@ export function buildOnboardingSubmission(
     !form.blockchainSecurityProfile ||
     !form.profile ||
     !form.securityLearningAttempt ||
-    form.problemIntensity === null ||
     form.securityRelevance === null
   ) {
     throw new Error("The onboarding form is incomplete.");
@@ -279,7 +268,7 @@ export function buildOnboardingSubmission(
     currentLearningSources: mapLearningSources(form.studyTechniques),
     feedbackWillingness: form.betaIntent === "not_now" ? "not_now" : "form",
     futureLabsInterest: buildDiscoveryMetadata(form),
-    guidedLabUsefulness: form.problemIntensity,
+    guidedLabUsefulness: form.securityRelevance,
     mainGoal: mapLearningFormats(form.preferredFormats),
     name:
       form.betaIntent === "not_now"
@@ -308,9 +297,6 @@ function buildAdditionalNotes(form: OnboardingFormState) {
     `hardest=${form.hardestPracticeStep.trim()}`,
     form.securityRelevance !== null
       ? `security_relevance=${form.securityRelevance}/5`
-      : "",
-    form.problemIntensityReason.trim()
-      ? `score_reason=${form.problemIntensityReason.trim()}`
       : "",
   ].filter(Boolean);
   return parts.join("\n").slice(0, 1000) || null;

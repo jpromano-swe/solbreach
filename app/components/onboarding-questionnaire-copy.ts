@@ -51,12 +51,6 @@ type OnboardingCopy = {
       max: string;
       min: string;
     };
-    problemIntensity: QuestionCopy & {
-      max: string;
-      min: string;
-      reasonLabel: string;
-      reasonPlaceholder: string;
-    };
     betaIntent: QuestionCopy;
     contactDetails: QuestionCopy & {
       contactChannelLabel: string;
@@ -95,7 +89,6 @@ type OnboardingCopy = {
       | "hardestPracticeStep"
       | "practiceSignals"
       | "securityRelevance"
-      | "problemIntensity"
       | "betaIntent",
       string
     >;
@@ -148,13 +141,13 @@ const optionValues = {
     "mentor_or_peer_feedback",
   ],
   difficultAreas: [
-    "solana_account_model",
-    "rust_or_anchor",
-    "svm_runtime",
-    "vulnerability_identification",
-    "exploit_reproduction",
-    "cpi_signers_authority",
-    "impact_or_reporting",
+    "solana_programs_and_accounts",
+    "rust_anchor_basics",
+    "security_mindset",
+    "real_hack_examples",
+    "hands_on_practice",
+    "transactions_wallets_permissions",
+    "explaining_findings",
   ],
   preferredFormats: [
     "guided_modules",
@@ -193,15 +186,14 @@ const english: OnboardingCopy = {
   steps: [
     "Profile",
     "Experience",
-    "Learning format",
     "Security profile",
+    "Learning format",
     "Security learning",
     "Study technique",
     "Difficult area",
     "Theory to practice",
     "Hands-on practice",
     "Security relevance",
-    "Problem strength",
     "Beta interest",
     "Contact",
     "Review",
@@ -247,8 +239,7 @@ const english: OnboardingCopy = {
       description: "Select every answer that applies.",
     },
     difficultAreas: {
-      title:
-        "Which area was hardest for you to learn, or would you most like to learn?",
+      title: "Which topic was hardest for you, or would you like to practice first?",
       description: "Select every answer that applies.",
     },
     hardestPracticeStep: {
@@ -268,15 +259,6 @@ const english: OnboardingCopy = {
       description: "Choose a score from 1 to 5.",
       min: "Not relevant",
       max: "Very relevant",
-    },
-    problemIntensity: {
-      title:
-        "How strong is the problem of moving from theory to real Solana security practice for you today?",
-      description: "Choose a score from 1 to 5.",
-      min: "Not a problem right now",
-      max: "An important problem",
-      reasonLabel: "Why did you choose that number? (optional)",
-      reasonPlaceholder: "Add a short reason",
     },
     betaIntent: {
       title:
@@ -365,13 +347,13 @@ const english: OnboardingCopy = {
     ),
     difficultAreas: options(
       [
-        "Solana account model",
-        "Rust or Anchor",
-        "SVM runtime behavior",
-        "Identifying vulnerabilities",
-        "Reproducing exploits",
-        "CPI, signers, or authorities",
-        "Explaining impact or writing reports",
+        "Understanding Solana programs and accounts",
+        "Rust or Anchor basics",
+        "Thinking like an attacker",
+        "Understanding real hack examples",
+        "Turning examples into hands-on practice",
+        "Transactions, wallets, and permissions",
+        "Explaining what went wrong and why it matters",
       ],
       optionValues.difficultAreas
     ),
@@ -410,11 +392,10 @@ const english: OnboardingCopy = {
       blockchainSecurityProfile: "Blockchain security profile",
       securityLearningAttempt: "Security learning",
       studyTechniques: "Study technique",
-      difficultAreas: "Difficult area",
+      difficultAreas: "Topic to practice",
       hardestPracticeStep: "Hardest step",
       practiceSignals: "Hands-on signals",
       securityRelevance: "Security relevance",
-      problemIntensity: "Problem strength",
       betaIntent: "Beta interest",
     },
   },
@@ -429,7 +410,6 @@ const english: OnboardingCopy = {
     hardestPracticeStep: "Share at least a short example.",
     practiceSignals: "Choose at least one answer.",
     securityRelevance: "Choose a score from 1 to 5.",
-    problemIntensity: "Choose a score from 1 to 5.",
     betaIntent: "Choose your current interest.",
     contactDetails: "Add contact details or choose not right now.",
     contactName: "Add a contact name.",
@@ -448,15 +428,14 @@ const spanish: OnboardingCopy = {
   steps: [
     "Perfil",
     "Experiencia",
-    "Formato",
     "Perfil de seguridad",
+    "Formato",
     "Aprendizaje de seguridad",
     "Técnica de estudio",
     "Área difícil",
     "De teoría a práctica",
     "Práctica real",
     "Relevancia",
-    "Intensidad del problema",
     "Interés en la beta",
     "Contacto",
     "Revisión",
@@ -502,8 +481,7 @@ const spanish: OnboardingCopy = {
       description: "Seleccioná todas las opciones que correspondan.",
     },
     difficultAreas: {
-      title:
-        "¿Cuál es el área que más te costó aprender y/o te gustaría aprender?",
+      title: "¿Qué tema te costó más o te gustaría practicar primero?",
       description: "Seleccioná todas las opciones que correspondan.",
     },
     hardestPracticeStep: {
@@ -523,15 +501,6 @@ const spanish: OnboardingCopy = {
       description: "Elegí un puntaje del 1 al 5.",
       min: "Poco relevante",
       max: "Muy relevante",
-    },
-    problemIntensity: {
-      title:
-        "¿Qué tan fuerte es para vos hoy el problema de pasar de teoría a práctica real en seguridad Solana?",
-      description: "Elegí un puntaje del 1 al 5.",
-      min: "No es un problema ahora",
-      max: "Es un problema importante",
-      reasonLabel: "¿Por qué elegiste ese número? (opcional)",
-      reasonPlaceholder: "Agregá una razón breve",
     },
     betaIntent: {
       title:
@@ -620,13 +589,13 @@ const spanish: OnboardingCopy = {
     ),
     difficultAreas: options(
       [
-        "Modelo de cuentas de Solana",
-        "Rust o Anchor",
-        "Funcionamiento de la SVM",
-        "Identificar vulnerabilidades",
-        "Reproducir exploits",
-        "CPI, signers o authorities",
-        "Explicar impacto o escribir reportes",
+        "Entender programas y cuentas de Solana",
+        "Bases de Rust o Anchor",
+        "Pensar como atacante",
+        "Entender ejemplos de hacks reales",
+        "Pasar ejemplos a práctica guiada",
+        "Transacciones, wallets y permisos",
+        "Explicar qué salió mal y por qué importa",
       ],
       optionValues.difficultAreas
     ),
@@ -668,11 +637,10 @@ const spanish: OnboardingCopy = {
       blockchainSecurityProfile: "Perfil de seguridad blockchain",
       securityLearningAttempt: "Aprendizaje de seguridad",
       studyTechniques: "Técnica de estudio",
-      difficultAreas: "Área difícil",
+      difficultAreas: "Tema a practicar",
       hardestPracticeStep: "Parte más difícil",
       practiceSignals: "Señales de práctica",
       securityRelevance: "Relevancia de seguridad",
-      problemIntensity: "Intensidad del problema",
       betaIntent: "Interés en la beta",
     },
   },
@@ -687,7 +655,6 @@ const spanish: OnboardingCopy = {
     hardestPracticeStep: "Compartí al menos un ejemplo breve.",
     practiceSignals: "Elegí al menos una respuesta.",
     securityRelevance: "Elegí un puntaje del 1 al 5.",
-    problemIntensity: "Elegí un puntaje del 1 al 5.",
     betaIntent: "Elegí tu nivel de interés actual.",
     contactDetails: "Agregá datos de contacto o elegí no por ahora.",
     contactName: "Agregá un nombre de contacto.",
