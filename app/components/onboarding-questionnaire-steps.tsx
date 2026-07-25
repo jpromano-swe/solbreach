@@ -343,40 +343,42 @@ function ContactDetailsStep({ copy, errors, form, updateField }: StepProps) {
 
   return (
     <QuestionFrame title={question.title} description={question.description}>
-      <div className="space-y-5">
-        <Field
-          label={question.contactChannelLabel}
-          error={errors.preferredContactChannel}
-          fieldId="preferredContactChannel"
-        >
-          <select
-            id="onboarding-preferredContactChannel"
-            aria-invalid={errors.preferredContactChannel ? "true" : undefined}
-            aria-describedby={errorDescription(
-              "preferredContactChannel",
-              errors.preferredContactChannel
-            )}
-            onChange={(event) => {
-              updateField(
-                "preferredContactChannel",
-                event.target
-                  .value as OnboardingFormState["preferredContactChannel"]
-              );
-              updateField("contact", "");
-            }}
-            value={form.preferredContactChannel}
-            className={inputClass(errors.preferredContactChannel)}
+      <div className="space-y-8">
+        <div className="w-full max-w-[14rem]">
+          <Field
+            label={question.contactChannelLabel}
+            error={errors.preferredContactChannel}
+            fieldId="preferredContactChannel"
           >
-            <option value="" disabled>
-              {question.contactChannelLabel}
-            </option>
-            {copy.options.contactChannels.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            <select
+              id="onboarding-preferredContactChannel"
+              aria-invalid={errors.preferredContactChannel ? "true" : undefined}
+              aria-describedby={errorDescription(
+                "preferredContactChannel",
+                errors.preferredContactChannel
+              )}
+              onChange={(event) => {
+                updateField(
+                  "preferredContactChannel",
+                  event.target
+                    .value as OnboardingFormState["preferredContactChannel"]
+                );
+                updateField("contact", "");
+              }}
+              value={form.preferredContactChannel}
+              className={inputClass(errors.preferredContactChannel)}
+            >
+              <option value="" disabled>
+                {question.contactChannelLabel}
               </option>
-            ))}
-          </select>
-        </Field>
+              {copy.options.contactChannels.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
 
         <div
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${
@@ -388,7 +390,7 @@ function ContactDetailsStep({ copy, errors, form, updateField }: StepProps) {
         >
           <div className="overflow-hidden">
             {hasContactChannel ? (
-              <div className="grid gap-5 pt-1 sm:grid-cols-2">
+              <div className="grid gap-8 pt-2 sm:grid-cols-2 sm:gap-x-10">
                 <Field
                   label={question.contactNameLabel}
                   error={errors.contactName}
