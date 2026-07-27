@@ -964,6 +964,7 @@ function buildProfileCertificates(certificates?: ProfileCertificate[]) {
 
 function BadgeCard({ badge }: { badge: UserBadge }) {
   const imageSrc = badge.earned ? badge.image : "/badges/badge-locked.png";
+  const imageScale = getBadgeImageScaleClass(badge);
   const imageTone = badge.earned
     ? "drop-shadow-[0_14px_24px_rgba(0,0,0,0.34)]"
     : "opacity-50 grayscale drop-shadow-[0_10px_20px_rgba(0,0,0,0.28)]";
@@ -998,7 +999,7 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
           alt={`${badge.title} badge`}
           width={160}
           height={160}
-          className={`relative h-[92%] w-[92%] object-contain ${imageTone}`}
+          className={`relative h-[92%] w-[92%] object-contain ${imageScale} ${imageTone}`}
           sizes="(min-width: 1280px) 9rem, 7rem"
           priority
         />
@@ -1012,6 +1013,19 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
       </p>
     </article>
   );
+}
+
+function getBadgeImageScaleClass(badge: UserBadge) {
+  if (!badge.earned) return "";
+
+  switch (badge.slug) {
+    case "power-user":
+      return "scale-[1.28]";
+    case "level-3-trojan-horse":
+      return "scale-[1.14]";
+    default:
+      return "";
+  }
 }
 
 function getBadgeShortLabel(badge: UserBadge) {
