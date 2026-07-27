@@ -866,11 +866,7 @@ function ProfileBadgesSection({
           ))}
         </div>
       ) : badges.length > 0 ? (
-        <div
-          className={`mt-5 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 ${
-            isSpecialRewards ? "justify-items-start" : ""
-          }`}
-        >
+        <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {badges.map((badge) => (
             <BadgeCard badge={badge} key={badge.slug} />
           ))}
