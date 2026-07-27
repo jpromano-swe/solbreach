@@ -18,7 +18,6 @@ import {
   Handle,
   Position,
   ReactFlow,
-  ViewportPortal,
   type Edge,
   type Node,
   type NodeProps,
@@ -50,6 +49,7 @@ type GraphAccount = {
   inactive?: boolean;
   relation?: string;
   icon: "commander" | "fingerprint" | "profile" | "shield" | "user";
+  variant?: "authority-message" | "protocol";
 };
 
 type GraphNodeData = GraphAccount;
@@ -935,19 +935,6 @@ function ProtocolTopology({
     Node<GraphNodeData>,
     Edge
   > | null>(null);
-  const showAuthorityMessage =
-    labStage === 2 && commanderCaptured && manipulationTested;
-  const authorityMessageTarget = layoutNodes.find(
-    (node) => node.id === "verifier"
-  );
-  const authorityMessagePosition =
-    showAuthorityMessage && authorityMessageTarget
-      ? {
-          x: authorityMessageTarget.position.x + 276,
-          y: authorityMessageTarget.position.y + 4,
-        }
-      : null;
-
   const graph = useMemo(
     () =>
       buildGraph({
@@ -998,16 +985,37 @@ function ProtocolTopology({
 
       if (cancelled) return;
 
+      const positionedNodes = graph.nodes.map((node) => {
+        const layoutNode = result.children?.find(
+          (child) => child.id === node.id
+        );
+        return {
+          ...node,
+          position: {
+            x: layoutNode?.x ?? node.position.x,
+            y: layoutNode?.y ?? node.position.y,
+          },
+        };
+      });
+      const verifierNode = positionedNodes.find(
+        (node) => node.id === "verifier"
+      );
+      const level2Node = positionedNodes.find((node) => node.id === "level2");
+
       setLayoutNodes(
-        graph.nodes.map((node) => {
-          const layoutNode = result.children?.find(
-            (child) => child.id === node.id
-          );
+        positionedNodes.map((node) => {
+          if (node.id !== "authority-message" || !verifierNode || !level2Node) {
+            return node;
+          }
+
           return {
             ...node,
             position: {
-              x: layoutNode?.x ?? node.position.x,
-              y: layoutNode?.y ?? node.position.y,
+              x:
+                verifierNode.position.x +
+                (verifierNode.width ?? 244) +
+                36,
+              y: Math.max(level2Node.position.y + 132, verifierNode.position.y),
             },
           };
         })
@@ -1051,7 +1059,10 @@ function ProtocolTopology({
           fitView
           maxZoom={1.15}
           minZoom={0.35}
-          nodeTypes={{ protocol: ProtocolNode }}
+          nodeTypes={{
+            "authority-message": AuthorityMessageNode,
+            protocol: ProtocolNode,
+          }}
           nodes={layoutNodes}
           nodesDraggable={false}
           nodesFocusable={false}
@@ -1063,26 +1074,22 @@ function ProtocolTopology({
           zoomOnScroll={false}
         >
           <Background color="rgba(148, 163, 184, 0.07)" gap={22} size={1} />
-          {authorityMessagePosition ? (
-            <ViewportPortal>
-              <div
-                className="level1-activity-entry pointer-events-none absolute w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md"
-                style={{
-                  transform: `translate(${authorityMessagePosition.x}px, ${authorityMessagePosition.y}px)`,
-                }}
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
-                  Protocol vulnerable:
-                </p>
-                <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
-                  Connected Wallet has now program authority
-                </p>
-              </div>
-            </ViewportPortal>
-          ) : null}
         </ReactFlow>
       </div>
     </section>
+  );
+}
+
+function AuthorityMessageNode() {
+  return (
+    <div className="level1-activity-entry pointer-events-none w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
+        Protocol vulnerable:
+      </p>
+      <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
+        Connected Wallet has now program authority
+      </p>
+    </div>
   );
 }
 
@@ -1445,6 +1452,27 @@ function buildGraph({
   const verifierActive =
     stage2ExploitActive ||
     (labStage === 3 && (activeFocus === "verifier" || focusSequenceComplete));
+
+  if (stage2ExploitActive) {
+    nodes.push({
+      data: {
+        active: true,
+        detail: "Connected Wallet has now program authority",
+        icon: "shield",
+        id: "authority-message",
+        label: "Protocol vulnerable:",
+        relation: "WRITE AUTHORITY",
+        tone: "hijacked",
+        value: "",
+        variant: "authority-message",
+      },
+      height: 104,
+      id: "authority-message",
+      position: { x: 0, y: 0 },
+      type: "authority-message",
+      width: 250,
+    });
+  }
 
   const edges = [
     buildEdge("wallet-profile", "wallet", "profile", {
