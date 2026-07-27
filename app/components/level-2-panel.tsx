@@ -1037,7 +1037,7 @@ function ProtocolTopology({
     showAuthorityMessage && verifierNode && level2Node
       ? {
           x: verifierNode.position.x + (verifierNode.width ?? 244) + 36,
-          y: Math.max(level2Node.position.y + 132, verifierNode.position.y),
+          y: verifierNode.position.y + 4,
         }
       : null;
 
@@ -1069,17 +1069,19 @@ function ProtocolTopology({
           {authorityMessagePosition ? (
             <ViewportPortal>
               <div
-                className="level1-activity-entry pointer-events-none absolute w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md"
+                className="pointer-events-none absolute"
                 style={{
                   transform: `translate(${authorityMessagePosition.x}px, ${authorityMessagePosition.y}px)`,
                 }}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
-                  Protocol vulnerable:
-                </p>
-                <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
-                  Connected Wallet has now program authority
-                </p>
+                <div className="level1-activity-entry w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
+                    Protocol vulnerable:
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
+                    Connected Wallet has now program authority
+                  </p>
+                </div>
               </div>
             </ViewportPortal>
           ) : null}
