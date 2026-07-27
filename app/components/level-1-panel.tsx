@@ -67,6 +67,13 @@ type ProtocolActivityEvent = {
 };
 
 type VariableKey = "vault" | "mint" | "source" | "authority";
+type ExploitVariableRow = {
+  key: VariableKey;
+  label: string;
+  line: number;
+  prefix: string;
+  value: string;
+};
 type SequenceMiss = {
   attempted: VariableKey;
   attemptedOrder: number;
@@ -140,6 +147,37 @@ const EXPLOIT_SEQUENCE: VariableKey[] = [
   "authority",
 ];
 
+const EXPLOIT_VARIABLE_ROWS: ExploitVariableRow[] = [
+  {
+    key: "vault",
+    label: "Vault",
+    line: 1,
+    prefix: "const vault = ",
+    value: "fakeVault",
+  },
+  {
+    key: "mint",
+    label: "Mint",
+    line: 2,
+    prefix: "const mint = ",
+    value: "counterfeitMint",
+  },
+  {
+    key: "source",
+    label: "Source",
+    line: 3,
+    prefix: "const userTokenAccount = ",
+    value: "counterfeitUserTokenAccount",
+  },
+  {
+    key: "authority",
+    label: "Authority",
+    line: 4,
+    prefix: "const authority = ",
+    value: "wallet",
+  },
+];
+
 const elk = new ELK();
 
 export function Level1Panel({
@@ -200,6 +238,17 @@ export function Level1Panel({
           vault: "official",
         }
   );
+  const [exploitPuzzleRows, setExploitPuzzleRows] = useState<
+    ExploitVariableRow[]
+  >(EXPLOIT_VARIABLE_ROWS);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setExploitPuzzleRows(getRandomizedExploitVariableRows());
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const isConnected = status === "connected";
   const exploitReady =
@@ -414,6 +463,7 @@ export function Level1Panel({
                 }
               }}
               onVariableFocus={handleExploitVariableSelect}
+              puzzleRows={exploitPuzzleRows}
               sequenceFeedback={sequenceFeedback}
               sequenceMiss={sequenceMiss}
               stage={stage}
@@ -1534,34 +1584,26 @@ function Level1StateFooter({
         </button>
       ) : null}
       {level1BadgeEarned || level1BadgeCollected ? (
-        <div className="rounded-[18px] border border-emerald-400/20 bg-emerald-400/[0.055] p-4">
-          <p className="text-sm font-medium text-foreground">
-            Level 1 badge ready
-          </p>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Collect the badge for the wallet that completed this exploit path.
-          </p>
-          <button
-            type="button"
-            onClick={onCollectLevel1Badge}
-            disabled={
-              level1BadgeCollected ||
-              isCollectingLevel1Badge ||
-              !level1BadgeEarned
-            }
-            className={`mt-4 min-h-10 w-full rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${
-              level1BadgeCollected || !level1BadgeEarned
-                ? "border border-border bg-accent text-muted"
-                : "bg-purple-500 text-white hover:bg-purple-400"
-            }`}
-          >
-            {level1BadgeCollected
-              ? "Badge collected"
-              : isCollectingLevel1Badge
-                ? "Collecting..."
-                : "Collect Badge"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onCollectLevel1Badge}
+          disabled={
+            level1BadgeCollected ||
+            isCollectingLevel1Badge ||
+            !level1BadgeEarned
+          }
+          className={`min-h-10 w-full rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${
+            level1BadgeCollected || !level1BadgeEarned
+              ? "border border-border bg-accent text-muted"
+              : "bg-purple-500 text-white hover:bg-purple-400"
+          }`}
+        >
+          {level1BadgeCollected
+            ? "Badge collected"
+            : isCollectingLevel1Badge
+              ? "Collecting..."
+              : "Collect Badge"}
+        </button>
       ) : null}
     </div>
   );
@@ -1649,6 +1691,7 @@ function ExploitCodeWalkthrough({
   isSending,
   onExecute,
   onVariableFocus,
+  puzzleRows,
   sequenceFeedback,
   sequenceMiss,
   stage,
@@ -1661,42 +1704,13 @@ function ExploitCodeWalkthrough({
   isSending: boolean;
   onExecute: () => Promise<void> | void;
   onVariableFocus: (key: VariableKey) => void;
+  puzzleRows: ExploitVariableRow[];
   sequenceFeedback: string | null;
   sequenceMiss: SequenceMiss | null;
   stage: StageConfig;
 }) {
   const activeSet = new Set(activeCodeLines);
   const activeContext = getExploitVariableContext(activeVariable);
-  const variableRows = [
-    {
-      key: "vault" as const,
-      label: "Vault",
-      line: 1,
-      prefix: "const vault = ",
-      value: "fakeVault",
-    },
-    {
-      key: "mint" as const,
-      label: "Mint",
-      line: 2,
-      prefix: "const mint = ",
-      value: "counterfeitMint",
-    },
-    {
-      key: "source" as const,
-      label: "Source",
-      line: 3,
-      prefix: "const userTokenAccount = ",
-      value: "counterfeitUserTokenAccount",
-    },
-    {
-      key: "authority" as const,
-      label: "Authority",
-      line: 4,
-      prefix: "const authority = ",
-      value: "wallet",
-    },
-  ];
   const remainingLines = EXPLOIT_CODE.slice(4);
 
   return (
@@ -1708,7 +1722,7 @@ function ExploitCodeWalkthrough({
       </div>
       <div className="space-y-4 p-5">
         <div className="grid grid-cols-2 gap-2">
-          {variableRows.map(({ key, label }) => {
+          {puzzleRows.map(({ key, label }) => {
             const mappedIndex = exploitSequence.indexOf(key);
             const rejected = sequenceMiss?.attempted === key;
             const badgeLabel =
@@ -1736,7 +1750,7 @@ function ExploitCodeWalkthrough({
 
         <pre className="overflow-x-auto rounded-[20px] border border-border bg-background/74 p-4 font-mono text-[13px] leading-7">
           <code className="block min-w-max">
-            {variableRows.map(({ key, line, prefix, value }) => {
+            {EXPLOIT_VARIABLE_ROWS.map(({ key, line, prefix, value }) => {
               const isActive = activeVariable === key;
               const mapped = exploitSequence.includes(key);
               return (
@@ -1794,7 +1808,7 @@ function ExploitCodeWalkthrough({
           </code>
         </pre>
 
-        <div className="rounded-[20px] border border-border bg-background/55 p-4">
+        <div className="px-1">
           <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
             Exploit sequence
           </p>
@@ -1835,6 +1849,37 @@ function ExploitCodeWalkthrough({
       </div>
     </section>
   );
+}
+
+function getRandomizedExploitVariableRows() {
+  const rows = [...EXPLOIT_VARIABLE_ROWS];
+
+  for (let index = rows.length - 1; index > 0; index -= 1) {
+    const randomIndex = getRandomIndex(index + 1);
+    [rows[index], rows[randomIndex]] = [rows[randomIndex], rows[index]];
+  }
+
+  if (
+    rows.every((row, index) => row.key === EXPLOIT_VARIABLE_ROWS[index].key)
+  ) {
+    [rows[0], rows[1]] = [rows[1], rows[0]];
+  }
+
+  return rows;
+}
+
+function getRandomIndex(maxExclusive: number) {
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    "getRandomValues" in window.crypto
+  ) {
+    const values = new Uint32Array(1);
+    window.crypto.getRandomValues(values);
+    return values[0] % maxExclusive;
+  }
+
+  return Math.floor(Math.random() * maxExclusive);
 }
 
 function buildProtocolAccounts({
