@@ -943,7 +943,7 @@ function ProtocolTopology({
   const authorityMessagePosition =
     showAuthorityMessage && authorityMessageTarget
       ? {
-          x: authorityMessageTarget.position.x - 270,
+          x: authorityMessageTarget.position.x + 276,
           y: authorityMessageTarget.position.y + 4,
         }
       : null;
