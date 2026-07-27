@@ -74,6 +74,12 @@ const CERTIFICATE_FALLBACKS: ProfileCertificate[] = [
   },
 ];
 
+const PROFILE_CERTIFICATE_DISPLAY_IMAGES: Partial<
+  Record<ProfileCertificate["level"], string>
+> = {
+  1: "/nfts/level-1-nobg.png",
+};
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -237,6 +243,9 @@ export function resolveProfileCertificateImage(
   certificate: ProfileCertificate
 ) {
   if (!certificate.minted) return "/nfts/locked-certification.png";
+
+  const displayImage = PROFILE_CERTIFICATE_DISPLAY_IMAGES[certificate.level];
+  if (displayImage) return displayImage;
 
   const fallback = `/certificates/level-${certificate.level}.png`;
   if (!certificate.imageUri) return fallback;

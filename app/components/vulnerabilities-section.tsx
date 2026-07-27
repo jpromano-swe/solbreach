@@ -379,6 +379,8 @@ function CompactVulnerabilityCardContent({
           width={860}
           height={520}
           className={`pointer-events-none absolute bottom-9 right-[-56px] z-0 w-[58%] max-w-[190px] object-contain opacity-25 transition duration-300 group-hover:scale-[1.02] sm:right-1 sm:bottom-12 sm:w-[152px] sm:opacity-90 xl:right-2 xl:w-[168px] ${locked ? "opacity-45 sm:opacity-45" : ""} ${compact.imageClassName ?? ""}`}
+          sizes="(min-width: 1280px) 168px, (min-width: 640px) 152px, 58vw"
+          priority={!locked}
         />
 
         <div className="relative z-10 flex min-h-[300px] flex-col">

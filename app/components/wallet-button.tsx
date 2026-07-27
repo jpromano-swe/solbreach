@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useWallet } from "../lib/wallet/context";
 import { useBalance } from "../lib/hooks/use-balance";
@@ -91,10 +92,13 @@ export function WalletButton({
                   className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition hover:bg-cream disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {connector.icon && (
-                    <img
+                    <Image
                       src={connector.icon}
                       alt=""
+                      width={20}
+                      height={20}
                       className="h-5 w-5 rounded"
+                      unoptimized
                     />
                   )}
                   <span>{connector.name}</span>

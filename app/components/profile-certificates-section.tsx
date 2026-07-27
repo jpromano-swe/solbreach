@@ -51,7 +51,7 @@ const LEVEL_CERTIFICATE_DETAILS: Record<0 | 1 | 2 | 3, CertificateDetails> = {
     vulnerabilityFamily: "Warmup",
   },
   1: {
-    image: "/nfts/solbreach-level-1-illusionist.png",
+    image: "/nfts/level-1-nobg.png",
     lockedImage: "/nfts/locked-certification.png",
     levelLabel: "Level 1",
     rarity: "Common",
@@ -1000,6 +1000,7 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
           height={160}
           className={`relative h-[92%] w-[92%] object-contain ${imageTone}`}
           sizes="(min-width: 1280px) 9rem, 7rem"
+          priority
         />
       </div>
       <p
@@ -1083,7 +1084,11 @@ function CertificateCard({
           className="block"
           aria-label={`Open ${detail.title} certificate asset`}
         >
-          <CertificateImage imageSrc={imageSrc} title={detail.title} minted={certificate.minted} />
+          <CertificateImage
+            imageSrc={imageSrc}
+            title={detail.title}
+            minted={certificate.minted}
+          />
         </a>
       ) : (
         <button
@@ -1092,7 +1097,11 @@ function CertificateCard({
           className="block w-full text-left"
           aria-label={`Open ${detail.title} level`}
         >
-          <CertificateImage imageSrc={imageSrc} title={detail.title} minted={certificate.minted} />
+          <CertificateImage
+            imageSrc={imageSrc}
+            title={detail.title}
+            minted={certificate.minted}
+          />
         </button>
       )}
 
@@ -1147,6 +1156,7 @@ function CertificateImage({
           minted ? "" : "opacity-55 grayscale"
         }`}
         sizes="(min-width: 1280px) 18vw, (min-width: 768px) 30vw, 86vw"
+        priority={minted}
       />
     </div>
   );

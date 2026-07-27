@@ -83,7 +83,7 @@ const RESEARCH_LAB_CERTIFICATE_DETAILS: Record<
     certificateNumber: 1,
     description:
       "You completed the Account Substitution lab, proved how unbound collateral accounts can create illegitimate credit, and minted the Research Lab certificate.",
-    imageUri: "/nfts/solbreach-level-1-illusionist.png",
+    imageUri: "/nfts/level-1-nobg.png",
     metadataUri: "/certificates/metadata/level-1.json",
     nextLevel: "level2",
     title: "The Illusionist",
