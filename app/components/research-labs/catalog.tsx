@@ -2,7 +2,7 @@
 
 import { Spinner } from "@solana-commerce/connector";
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { trackAnalyticsEvent } from "../../lib/analytics";
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
@@ -17,26 +17,19 @@ const CATALOG_LOCKED_LABS = [
     difficulty: "Advanced",
     estimatedTime: "3-5 hours",
     xpReward: 350,
-    summary:
-      "Investigate stale price confidence and liquidation boundary assumptions.",
-  },
-  {
-    id: "rl-014",
-    code: "TBD",
-    title: "Escrow Shadow",
-    difficulty: "Intermediate",
-    estimatedTime: "2-3 hours",
-    xpReward: 275,
-    summary:
-      "Trace escrow authority constraints through a constrained CPI surface.",
+    summary: "Trace oracle drift before stale prices reach liquidation decisions.",
   },
 ];
 
 const CATALOG_COPY = {
   titleFallback: "Configured Research Lab",
   scenario:
-    "A protocol has reported state transitions that should not satisfy its normal account requirements. Review the source, inspect account relationships, test an exploit hypothesis, and document the cause if you can prove impact.",
+    "Inspect source, test account assumptions, prove impact, and report the protocol risk.",
 };
+
+const GRID_DIVIDER_ONE = "calc((100% - 5rem) / 3 + 1.25rem)";
+const GRID_DIVIDER_TWO = "calc(2 * (100% - 5rem) / 3 + 3.75rem)";
+const MAX_CATALOG_CARDS = 3;
 
 type CatalogCardStatus = "available" | "completed" | "locked";
 type ResearchLabCertificateLevel = 1 | 2 | 3;
@@ -73,6 +66,10 @@ export function ResearchLabCatalog({
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const isWalletConnected = walletStatus === "connected";
   const shouldGateLabs = !isAuthenticated;
+  const visibleLabs = labs.slice(
+    0,
+    Math.max(0, MAX_CATALOG_CARDS - CATALOG_LOCKED_LABS.length)
+  );
 
   const handleCatalogAction = () => {
     if (!isWalletConnected) {
@@ -105,16 +102,45 @@ export function ResearchLabCatalog({
           </div>
         ) : null}
 
-        <div className="relative mt-8">
+        <div className="relative mt-10">
           <div
-            className={`grid gap-x-10 gap-y-12 transition duration-300 lg:grid-cols-3 ${
+            className={`relative grid gap-x-10 gap-y-14 border-y border-white/[0.13] py-5 transition duration-300 lg:grid-cols-3 ${
               shouldGateLabs
                 ? "pointer-events-none select-none blur-sm opacity-45"
                 : ""
             }`}
             aria-hidden={shouldGateLabs}
           >
-            {labs.map((lab) => {
+            <span
+              className="pointer-events-none absolute inset-y-0 hidden w-px -translate-x-1/2 bg-white/[0.13] lg:block"
+              style={{ left: GRID_DIVIDER_ONE }}
+            />
+            <span
+              className="pointer-events-none absolute inset-y-0 hidden w-px -translate-x-1/2 bg-white/[0.13] lg:block"
+              style={{ left: GRID_DIVIDER_TWO }}
+            />
+            <GridCross className="left-0 top-0 -translate-x-1/2 -translate-y-1/2" />
+            <GridCross
+              className="top-0 -translate-x-1/2 -translate-y-1/2"
+              style={{ left: GRID_DIVIDER_ONE }}
+            />
+            <GridCross
+              className="top-0 -translate-x-1/2 -translate-y-1/2"
+              style={{ left: GRID_DIVIDER_TWO }}
+            />
+            <GridCross className="right-0 top-0 translate-x-1/2 -translate-y-1/2" />
+            <GridCross className="bottom-0 left-0 -translate-x-1/2 translate-y-1/2" />
+            <GridCross
+              className="bottom-0 -translate-x-1/2 translate-y-1/2"
+              style={{ left: GRID_DIVIDER_ONE }}
+            />
+            <GridCross
+              className="bottom-0 -translate-x-1/2 translate-y-1/2"
+              style={{ left: GRID_DIVIDER_TWO }}
+            />
+            <GridCross className="bottom-0 right-0 translate-x-1/2 translate-y-1/2" />
+
+            {visibleLabs.map((lab) => {
               const adapter = getResearchLabAdapter(lab);
               const prerequisiteBadgeCollected =
                 adapter.prerequisiteBadgeLevel === 2
@@ -143,7 +169,7 @@ export function ResearchLabCatalog({
                   key={lab.id}
                   className={`group relative p-8 text-left transition duration-300 ${
                     catalogStatus === "locked"
-                      ? "opacity-45 grayscale"
+                      ? "grayscale"
                       : "hover:-translate-y-0.5"
                   }`}
                 >
@@ -178,7 +204,7 @@ export function ResearchLabCatalog({
                         : "text-zinc-400"
                     }`}
                   >
-                    {lab.summary || CATALOG_COPY.scenario}
+                    {getCatalogSummary(lab, adapter.code)}
                   </p>
                   <p
                     className={`mt-5 text-xs font-semibold ${
@@ -190,9 +216,10 @@ export function ResearchLabCatalog({
                     {formatLabMetadata(lab)}
                   </p>
                   {catalogStatus === "locked" ? (
-                    <p className="mt-5 text-xs font-medium text-red-200/65">
-                      Requires Level {adapter.prerequisiteBadgeLevel} badge
-                    </p>
+                    <RequirementCallout
+                      label={`Collect Level ${adapter.prerequisiteBadgeLevel} badge`}
+                      detail="Required before this lab unlocks."
+                    />
                   ) : null}
                   <div className="mt-8 text-sm">
                     {catalogStatus === "available" ||
@@ -228,7 +255,7 @@ export function ResearchLabCatalog({
             {CATALOG_LOCKED_LABS.map((lab) => (
               <div
                 key={lab.id}
-                className="group relative p-8 text-left opacity-35 grayscale"
+                className="group relative p-8 text-left grayscale"
               >
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm font-semibold tracking-[0.16em] text-red-200/45">
@@ -245,9 +272,10 @@ export function ResearchLabCatalog({
                 <p className="mt-5 text-xs font-semibold text-zinc-600">
                   {lab.difficulty} · {lab.estimatedTime} · {lab.xpReward} XP
                 </p>
-                <div className="mt-8 text-sm text-red-200/45">
-                  Unlocks through certificate badges
-                </div>
+                <RequirementCallout
+                  label="Future curriculum release"
+                  detail="Requirement will appear when the lab is scheduled."
+                />
               </div>
             ))}
           </div>
@@ -294,6 +322,65 @@ function formatLabMetadata(lab: ResearchLabManifest) {
   return [lab.difficulty, lab.estimatedTime, `${lab.xpReward} XP`]
     .filter(Boolean)
     .join(" · ");
+}
+
+function getCatalogSummary(lab: ResearchLabManifest, labCode: string) {
+  if (labCode === "RL1") {
+    return "Test counterfeit collateral credit against real pool liquidity.";
+  }
+
+  if (labCode === "RL2") {
+    return "Check whether shared staking state lets rewards move between users.";
+  }
+
+  return shortenWords(lab.summary || CATALOG_COPY.scenario, 18);
+}
+
+function shortenWords(value: string, maxWords: number) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length <= maxWords) {
+    return value;
+  }
+
+  return `${words.slice(0, maxWords).join(" ")}.`;
+}
+
+function RequirementCallout({
+  detail,
+  label,
+}: {
+  detail: string;
+  label: string;
+}) {
+  return (
+    <div className="mt-6 border-l border-red-300/35 pl-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-red-200/50">
+        Requirement
+      </p>
+      <p className="mt-2 text-sm font-semibold text-red-100/80">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-red-100/45">{detail}</p>
+    </div>
+  );
+}
+
+function GridCross({
+  className = "",
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <span
+      className={`pointer-events-none absolute hidden h-4 w-4 lg:block ${className}`}
+      style={style}
+      aria-hidden="true"
+    >
+      <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/35" />
+      <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/35" />
+    </span>
+  );
 }
 
 function StatusBadge({
