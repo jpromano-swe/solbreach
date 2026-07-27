@@ -48,7 +48,9 @@ type GraphAccount = {
   tone: NodeTone;
   active?: boolean;
   inactive?: boolean;
+  revealed?: boolean;
   relation?: string;
+  stageReveal?: boolean;
   icon: "commander" | "fingerprint" | "profile" | "shield" | "user";
 };
 
@@ -101,6 +103,15 @@ const FOCUS_LABELS: Record<FocusKey, string> = {
   profile: "Static Profile PDA",
   signer: "User Signer",
   verifier: "Verifier Check",
+};
+
+const OBSERVE_REVEAL_STEPS: Record<string, number> = {
+  commander: 2,
+  level2: 3,
+  profile: 1,
+  stats: 5,
+  verifier: 4,
+  wallet: 0,
 };
 
 const INSPECT_CODE = [
@@ -428,6 +439,7 @@ export function Level2Panel({
             manipulation={effectiveManipulation}
             manipulationTested={manipulationTested}
             observeStarted={observeStarted}
+            observeStep={observeStep}
           />
         }
         right={
@@ -919,6 +931,7 @@ function ProtocolTopology({
   manipulation,
   manipulationTested,
   observeStarted,
+  observeStep,
 }: {
   accounts: GraphAccount[];
   activeFocus: FocusKey;
@@ -928,6 +941,7 @@ function ProtocolTopology({
   manipulation: ManipulationState;
   manipulationTested: boolean;
   observeStarted: boolean;
+  observeStep: number;
 }) {
   const [layoutNodes, setLayoutNodes] = useState<Node<GraphNodeData>[]>([]);
   const [layoutEdges, setLayoutEdges] = useState<Edge[]>([]);
@@ -1029,6 +1043,70 @@ function ProtocolTopology({
     return () => window.clearTimeout(timer);
   }, [flowInstance, labStage, layoutNodes.length, layoutStage]);
 
+  const isObserveStage = labStage === 1;
+  const visibleNodeIds = useMemo(
+    () =>
+      new Set(
+        layoutNodes
+          .filter((node) => {
+            if (!isObserveStage) return true;
+            const revealStep = OBSERVE_REVEAL_STEPS[node.id] ?? 0;
+            return observeStep >= revealStep;
+          })
+          .map((node) => node.id)
+      ),
+    [isObserveStage, layoutNodes, observeStep]
+  );
+  const renderedNodes = useMemo(
+    () =>
+      layoutNodes.map((node) => {
+        const revealStep = OBSERVE_REVEAL_STEPS[node.id] ?? 0;
+        const revealed = !isObserveStage || visibleNodeIds.has(node.id);
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            revealed,
+            stageReveal:
+              isObserveStage &&
+              observeStarted &&
+              revealed &&
+              revealStep > 0,
+          },
+        };
+      }),
+    [isObserveStage, layoutNodes, observeStarted, visibleNodeIds]
+  );
+  const renderedEdges = useMemo(
+    () =>
+      layoutEdges.map((edge) => {
+        const revealed =
+          !isObserveStage ||
+          (observeStarted &&
+            visibleNodeIds.has(edge.source) &&
+            visibleNodeIds.has(edge.target));
+        const active = revealed && (Boolean(edge.animated) || isObserveStage);
+
+        return {
+          ...edge,
+          animated: active,
+          className: active
+            ? [edge.className, "level1-flow-line"]
+                .filter(Boolean)
+                .join(" ")
+            : undefined,
+          style: {
+            ...edge.style,
+            opacity: revealed ? (edge.style?.opacity ?? 1) : 0,
+            strokeDasharray: isObserveStage && revealed ? "2 10" : undefined,
+            strokeLinecap: isObserveStage ? ("round" as const) : undefined,
+          },
+        };
+      }),
+    [isObserveStage, layoutEdges, observeStarted, visibleNodeIds]
+  );
+
   const showAuthorityMessage =
     labStage === 2 && commanderCaptured && manipulationTested;
   const verifierNode = layoutNodes.find((node) => node.id === "verifier");
@@ -1051,11 +1129,11 @@ function ProtocolTopology({
       <div className="level1-flow h-[720px]">
         <ReactFlow
           colorMode="dark"
-          edges={layoutEdges}
+          edges={renderedEdges}
           maxZoom={1.15}
           minZoom={0.35}
           nodeTypes={{ protocol: ProtocolNode }}
-          nodes={layoutNodes}
+          nodes={renderedNodes}
           nodesDraggable={false}
           nodesFocusable={false}
           onInit={setFlowInstance}
@@ -1098,6 +1176,10 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
       : data.tone === "valid" || data.tone === "shared"
         ? "level1-protocol-node-official"
         : "";
+  const revealClass = data.stageReveal
+    ? "level1-protocol-node-stage-reveal"
+    : "";
+  const hiddenClass = data.revealed === false ? "opacity-0" : "";
   const Icon =
     data.icon === "commander"
       ? KeyRound
@@ -1113,7 +1195,9 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
     <div
       className={`level1-protocol-node ${toneClass} ${
         data.active ? "level1-protocol-node-active" : ""
-      } ${data.inactive ? "level1-protocol-node-inactive" : ""} min-h-[112px] w-[244px] rounded-[20px] border p-4`}
+      } ${
+        data.inactive ? "level1-protocol-node-inactive" : ""
+      } ${revealClass} ${hiddenClass} min-h-[112px] w-[244px] rounded-[20px] border p-4`}
     >
       <Handle type="target" position={Position.Top} />
       <div className="flex items-start gap-3">
