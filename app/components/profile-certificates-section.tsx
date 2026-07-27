@@ -965,6 +965,7 @@ function buildProfileCertificates(certificates?: ProfileCertificate[]) {
 }
 
 function BadgeCard({ badge }: { badge: UserBadge }) {
+  const cardOffset = getBadgeCardOffsetClass(badge);
   const imageSrc = badge.earned ? badge.image : "/badges/badge-locked.png";
   const imageScale = getBadgeImageScaleClass(badge);
   const imageTone = badge.earned
@@ -976,7 +977,7 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
       aria-label={`${getBadgeShortLabel(badge)} badge ${
         badge.earned ? "earned" : "locked"
       }`}
-      className="group flex flex-col items-center text-center"
+      className={`group flex flex-col items-center text-center ${cardOffset}`}
       title={badge.title}
     >
       <div className="relative flex h-28 w-28 items-center justify-center transition-transform duration-150 ease-out motion-safe:group-hover:-translate-y-1 sm:h-32 sm:w-32">
@@ -1015,6 +1016,11 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
       </p>
     </article>
   );
+}
+
+function getBadgeCardOffsetClass(badge: UserBadge) {
+  if (badge.slug === "power-user") return "translate-x-10 sm:translate-x-12";
+  return "";
 }
 
 function getBadgeImageScaleClass(badge: UserBadge) {
