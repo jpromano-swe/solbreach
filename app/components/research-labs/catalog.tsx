@@ -175,7 +175,7 @@ export function ResearchLabCatalog({
                 >
                   <div className="flex items-center justify-between gap-4">
                     <span
-                      className={`text-sm font-semibold tracking-[0.16em] ${
+                      className={`-ml-2 inline-flex rounded-md bg-[#070808] px-2 py-1 text-sm font-semibold tracking-[0.16em] ${
                         catalogStatus === "locked"
                           ? "text-red-200/45"
                           : catalogStatus === "completed"
@@ -258,7 +258,7 @@ export function ResearchLabCatalog({
                 className="group relative p-8 text-left grayscale"
               >
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-semibold tracking-[0.16em] text-red-200/45">
+                  <span className="-ml-2 inline-flex rounded-md bg-[#070808] px-2 py-1 text-sm font-semibold tracking-[0.16em] text-red-200/45">
                     {lab.code}
                   </span>
                   <StatusBadge className="px-3 py-1 text-sm" status="locked" />
@@ -393,7 +393,7 @@ function StatusBadge({
   if (status === "completed") {
     return (
       <span
-        className={`inline-flex items-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff]/12 font-medium text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.12)] ${className}`}
+        className={`inline-flex items-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#070808] font-medium text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.12)] ${className}`}
       >
         <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
         Completed
@@ -404,7 +404,7 @@ function StatusBadge({
   if (status === "locked") {
     return (
       <span
-        className={`inline-flex items-center gap-2 rounded-full border border-red-400/20 bg-red-500/8 font-medium text-red-200/75 ${className}`}
+        className={`inline-flex items-center gap-2 rounded-full border border-red-400/20 bg-[#070808] font-medium text-red-200/75 ${className}`}
       >
         <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
         Locked
@@ -414,7 +414,7 @@ function StatusBadge({
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 font-medium text-[#8fffd0] shadow-[0_0_0_rgba(20,241,149,0)] motion-safe:animate-[availabilityPillBreath_2.8s_ease-in-out_infinite] ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#070808] font-medium text-[#8fffd0] shadow-[0_0_0_rgba(20,241,149,0)] motion-safe:animate-[availabilityPillBreath_2.8s_ease-in-out_infinite] ${className}`}
     >
       <span className="h-2 w-2 rounded-full bg-[#14f195] motion-safe:animate-[availabilityDotBlink_1.35s_ease-in-out_infinite]" />
       Available

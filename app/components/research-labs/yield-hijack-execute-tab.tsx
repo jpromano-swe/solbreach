@@ -723,7 +723,7 @@ function YieldHijackEvidenceReview({
           {impactVerified ? (
             <div className="inline-flex items-center gap-2 rounded-lg border border-[#14f195]/25 bg-[#14f195]/8 px-3 py-2 text-sm font-semibold text-[#8fffd0]">
               <Check className="h-4 w-4" />
-              Impacte Verified
+              Verified Impact
             </div>
           ) : (
             <button

@@ -183,11 +183,13 @@ function CourseMenuContent({
           <div className="space-y-2">
             {section.items.map((item) => {
               const Icon = item.icon;
+              const unavailable = item.target == null;
 
               return (
                 <button
                   key={item.title}
                   type="button"
+                  disabled={unavailable}
                   onClick={() => {
                     if (item.target) {
                       onSelectLevel(item.target);
@@ -195,16 +197,34 @@ function CourseMenuContent({
 
                     onClose();
                   }}
-                  className="flex min-h-14 w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className={`flex min-h-14 w-full items-center gap-3 rounded-xl p-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    unavailable
+                      ? "cursor-not-allowed grayscale opacity-35"
+                      : "hover:bg-accent"
+                  }`}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm">
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm ${
+                      unavailable
+                        ? "border-white/8 bg-white/[0.025] text-zinc-500"
+                        : "border-border bg-card text-foreground"
+                    }`}
+                  >
                     <Icon className="h-4 w-4" aria-hidden={true} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium text-foreground">
+                    <span
+                      className={`block text-sm font-medium ${
+                        unavailable ? "text-zinc-500" : "text-foreground"
+                      }`}
+                    >
                       {item.title}
                     </span>
-                    <span className="mt-0.5 block text-xs leading-5 text-muted">
+                    <span
+                      className={`mt-0.5 block text-xs leading-5 ${
+                        unavailable ? "text-zinc-600" : "text-muted"
+                      }`}
+                    >
                       {item.description}
                     </span>
                   </span>

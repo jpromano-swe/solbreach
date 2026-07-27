@@ -51,6 +51,7 @@ export function useUserBadges({ enabled = true, wallet }: UseUserBadgesInput) {
       if (!wallet) return;
 
       const currentAuth = swr.data?.auth ?? (await ensureBackendWalletAuth(wallet));
+      const seenAt = new Date().toISOString();
       await markUserBadgeSeen(currentAuth.accessToken, slug);
       await swr.mutate(
         (current) =>
@@ -59,7 +60,12 @@ export function useUserBadges({ enabled = true, wallet }: UseUserBadgesInput) {
                 ...current,
                 badges: current.badges.map((badge) =>
                   badge.slug === slug
-                    ? { ...badge, seenAt: new Date().toISOString() }
+                    ? {
+                        ...badge,
+                        earned: true,
+                        earnedAt: badge.earnedAt ?? seenAt,
+                        seenAt,
+                      }
                     : badge
                 ),
               }

@@ -44,6 +44,8 @@ import {
 } from "./report-utils";
 import { getResearchLabAdapter } from "./lab-adapters";
 
+const REPORT_TAB_SCROLL_TARGET_ID = "research-lab-report-top";
+
 export function ReportTab({
   lab,
   questionnaire,
@@ -231,7 +233,7 @@ export function ReportTab({
   }
 
   return (
-    <div className="overflow-auto p-5">
+    <div id={REPORT_TAB_SCROLL_TARGET_ID} className="overflow-auto p-5">
       <div className="w-full">
         <ReportForm
           expanded
@@ -972,6 +974,7 @@ function ReportForm({
 
           if (submitted?.status === "accepted" && submitted.labCompleted) {
             onChangeAuditReportStage("SECURE_PATTERNS");
+            scrollReportTabToTop();
           }
         }}
       />
@@ -1201,6 +1204,7 @@ function ReportForm({
                 buildAuditReportPreview(fields, reportConfig)
               );
               onChangeAuditReportStage("PREVIEW");
+              scrollReportTabToTop();
             }}
             disabled={
               !isEditable || !reportComplete || isSaving || isSubmitting
@@ -1213,6 +1217,14 @@ function ReportForm({
       </div>
     </div>
   );
+}
+
+function scrollReportTabToTop() {
+  requestAnimationFrame(() => {
+    document
+      .getElementById(REPORT_TAB_SCROLL_TARGET_ID)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function ReportSelect({

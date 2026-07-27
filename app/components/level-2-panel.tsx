@@ -35,17 +35,6 @@ type Level2Snapshot = {
   hasLevel2State: boolean;
 };
 
-type LevelCertificateSnapshot = {
-  assetId: Address | null;
-  certificatePda: Address;
-  exists: boolean;
-  leafIndex: number | null;
-  leafNonce: bigint | null;
-  level: 0 | 1 | 2 | 3;
-  merkleTree: Address | null;
-  minted: boolean;
-};
-
 type LabStage = 1 | 2 | 3;
 type NodeTone = "neutral" | "valid" | "shared" | "hijacked" | "muted";
 type ActivityTone = "waiting" | "active" | "done" | "warning" | "corrupt";
@@ -132,30 +121,32 @@ const elk = new ELK();
 export function Level2Panel({
   address,
   backendExecution,
-  certificate,
+  isCollectingLevel2Badge,
   isLoading,
-  isMinting,
   isSending,
+  level2BadgeCollected,
+  level2BadgeEarned,
   level2Completed,
   level2Error,
   level2InitialCommander,
   level2State,
-  onMint,
+  onCollectLevel2Badge,
   status,
 }: {
   address?: string;
   backendExecution: BackendExecutionState;
-  certificate?: LevelCertificateSnapshot;
+  isCollectingLevel2Badge: boolean;
   isLoading: boolean;
-  isMinting: boolean;
   isSending: boolean;
+  level2BadgeCollected: boolean;
+  level2BadgeEarned: boolean;
   level2Completed: boolean;
   level2Error: unknown;
   level2InitialCommander: string;
   level2State?: Level2Snapshot;
+  onCollectLevel2Badge: () => void;
   onInitGlobalProfile: () => Promise<void>;
   onInitLevel2: () => Promise<void>;
-  onMint: () => void;
   onUpdateProfile: () => Promise<void>;
   onVerify: () => Promise<void>;
   status: string;
@@ -445,14 +436,16 @@ export function Level2Panel({
             footer={
               (status === "connected" && Boolean(isLoading || level2Error)) ||
               effectiveLevel2Completed ||
-              Boolean(certificate?.minted) ? (
+              level2BadgeEarned ||
+              level2BadgeCollected ? (
                 <Level2StateFooter
-                  certificate={certificate}
+                  isCollectingLevel2Badge={isCollectingLevel2Badge}
                   isLoading={isLoading}
-                  isMinting={isMinting}
+                  level2BadgeCollected={level2BadgeCollected}
+                  level2BadgeEarned={level2BadgeEarned}
                   level2Completed={effectiveLevel2Completed}
                   level2Error={level2Error}
-                  onMint={onMint}
+                  onCollectLevel2Badge={onCollectLevel2Badge}
                   status={status}
                 />
               ) : null
@@ -950,7 +943,7 @@ function ProtocolTopology({
   const authorityMessagePosition =
     showAuthorityMessage && authorityMessageTarget
       ? {
-          x: authorityMessageTarget.position.x + 270,
+          x: authorityMessageTarget.position.x - 270,
           y: authorityMessageTarget.position.y + 4,
         }
       : null;
@@ -1224,24 +1217,32 @@ function ActivityRow({
 }
 
 function Level2StateFooter({
-  certificate,
+  isCollectingLevel2Badge,
   isLoading,
+  level2BadgeCollected,
+  level2BadgeEarned,
   level2Completed,
   level2Error,
+  onCollectLevel2Badge,
   status,
 }: {
-  certificate?: LevelCertificateSnapshot;
+  isCollectingLevel2Badge: boolean;
   isLoading: boolean;
-  isMinting: boolean;
+  level2BadgeCollected: boolean;
+  level2BadgeEarned: boolean;
   level2Completed: boolean;
   level2Error: unknown;
-  onMint: () => void;
+  onCollectLevel2Badge: () => void;
   status: string;
 }) {
   const hasFooterContent =
     (status === "connected" && Boolean(isLoading || level2Error)) ||
     level2Completed ||
-    Boolean(certificate?.minted);
+    level2BadgeEarned ||
+    level2BadgeCollected;
+  const badgeReady = level2Completed && level2BadgeEarned;
+  const collectDisabled =
+    level2BadgeCollected || isCollectingLevel2Badge || !badgeReady;
 
   if (!hasFooterContent) {
     return null;
@@ -1269,21 +1270,23 @@ function Level2StateFooter({
         </div>
       ) : null}
 
-      {level2Completed || certificate?.minted ? (
-        <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
-            Badge reward
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Level 2 verification is recorded. The backend awards this badge to
-            the wallet that completed the hijack path.
-          </p>
+      {level2Completed || level2BadgeEarned || level2BadgeCollected ? (
+        <div className="space-y-3">
           <button
             type="button"
-            disabled
-            className="mt-4 inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+            onClick={onCollectLevel2Badge}
+            disabled={collectDisabled}
+            className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${
+              level2BadgeCollected || !badgeReady
+                ? "border border-border bg-accent text-muted disabled:opacity-70"
+                : "border border-[#9945ff]/35 bg-[#9945ff] text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] hover:bg-[#8b35f6]"
+            }`}
           >
-            {level2Completed ? "Badge earned" : "Badge syncing"}
+            {level2BadgeCollected
+              ? "Badge collected"
+              : isCollectingLevel2Badge
+                ? "Collecting..."
+                : "Collect Badge"}
           </button>
         </div>
       ) : null}

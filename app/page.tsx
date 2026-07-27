@@ -142,6 +142,7 @@ export default function Home() {
   const [researchLabCertificationDialog, setResearchLabCertificationDialog] =
     useState<ResearchLabCertificationDialogState | null>(null);
   const [isCollectingLevel1Badge, setIsCollectingLevel1Badge] = useState(false);
+  const [isCollectingLevel2Badge, setIsCollectingLevel2Badge] = useState(false);
   const trackedLevelViewsRef = useRef<Set<string>>(new Set());
   const {
     badges,
@@ -307,7 +308,14 @@ export default function Home() {
   const badgesForDisplay = useMemo(
     () =>
       badges.map((badge) => {
-        if (badge.slug !== "power-user" || researchLab1Certified) {
+        const shouldHidePowerUser =
+          badge.slug === "power-user" && !researchLab1Certified;
+        const shouldHideUncollectedLevel2 =
+          badge.slug === "level-2-identity-thief" &&
+          badge.earned &&
+          !badge.seenAt;
+
+        if (!shouldHidePowerUser && !shouldHideUncollectedLevel2) {
           return badge;
         }
 
@@ -522,7 +530,10 @@ export default function Home() {
   const unseenEarnedBadge =
     badgesForDisplay.find(
       (badge) =>
-        badge.earned && !badge.seenAt && badge.slug !== "level-1-illusionist"
+        badge.earned &&
+        !badge.seenAt &&
+        badge.slug !== "level-1-illusionist" &&
+        badge.slug !== "level-2-identity-thief"
     ) ?? null;
   const activeBadgeDialog = researchLabCertificationDialog
     ? null
@@ -565,6 +576,62 @@ export default function Home() {
       setIsCollectingLevel1Badge(false);
     }
   }, [isCollectingLevel1Badge, level1Badge, markBadgeSeen, mutateBadges]);
+
+  const collectLevel2Badge = useCallback(async () => {
+    if (isCollectingLevel2Badge) return;
+
+    const currentBadge =
+      level2Badge
+        ? level2Badge
+        : (await mutateBadges())?.badges.find(
+            (badge) => badge.slug === "level-2-identity-thief"
+          );
+
+    if (currentBadge?.seenAt) {
+      setManualBadgeDialog(currentBadge);
+      return;
+    }
+
+    if (
+      !currentBadge ||
+      !(
+        currentBadge.earned ||
+        (level2BackendCompleted && Boolean(level2TxSignature))
+      )
+    ) {
+      toast.error("Badge is still syncing. Try again in a moment.");
+      return;
+    }
+
+    setIsCollectingLevel2Badge(true);
+
+    try {
+      await markBadgeSeen("level-2-identity-thief");
+      const refreshedBadges = await mutateBadges();
+      const collectedBadge =
+        refreshedBadges?.badges.find(
+          (badge) => badge.slug === "level-2-identity-thief"
+        ) ?? currentBadge;
+
+      setManualBadgeDialog({
+        ...collectedBadge,
+        earned: true,
+        earnedAt: collectedBadge.earnedAt ?? new Date().toISOString(),
+        seenAt: collectedBadge.seenAt ?? new Date().toISOString(),
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsCollectingLevel2Badge(false);
+    }
+  }, [
+    isCollectingLevel2Badge,
+    level2BackendCompleted,
+    level2Badge,
+    level2TxSignature,
+    markBadgeSeen,
+    mutateBadges,
+  ]);
 
   const mintResearchLabCertificate = useCallback(
     async ({
@@ -773,17 +840,21 @@ export default function Home() {
                         onRun: handleRunLevel2BackendExploit,
                         txSignature: level2TxSignature,
                       }}
-                      certificate={level2Certificate}
+                      isCollectingLevel2Badge={isCollectingLevel2Badge}
                       isLoading={isLevel2Loading}
-                      isMinting={mintingLevel === "level2"}
                       isSending={isSending}
+                      level2BadgeCollected={Boolean(level2Badge?.seenAt)}
+                      level2BadgeEarned={
+                        Boolean(level2Badge?.earned) ||
+                        (level2BackendCompleted && Boolean(level2TxSignature))
+                      }
                       level2Completed={level2Completed}
                       level2Error={level2Error}
                       level2InitialCommander={DEFAULT_LEVEL_2_COMMANDER}
                       level2State={level2State}
+                      onCollectLevel2Badge={collectLevel2Badge}
                       onInitGlobalProfile={handleInitGlobalProfile}
                       onInitLevel2={handleInitLevel2}
-                      onMint={activeLevelStatus.onMint}
                       onUpdateProfile={handleUpdateProfile}
                       onVerify={handleVerifyLevel2}
                       status={status}

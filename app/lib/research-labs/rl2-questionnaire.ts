@@ -79,19 +79,22 @@ export const rl2FindingQuestionnaire: QuestionnaireDefinition = {
         {
           id: "existing_rewards_same_pda_stake_overwrite_claim",
           label:
-            "Existing rewards accrue, attacker loads the same PDA, stakes, overwrites ownership, then claims",
+            "Stake through the shared position PDA, become owner, then claim the rewards",
         },
         {
           id: "manipulate_apy_wait_claim",
-          label: "Attacker changes the APY, waits for accrual, then claims",
+          label:
+            "Change the APY settings, wait for new accrual, then claim the rewards",
         },
         {
           id: "replace_reward_vault_claim",
-          label: "Attacker substitutes the reward vault and claims its balance",
+          label:
+            "Swap the reward vault account, redirect custody, then claim the balance",
         },
         {
           id: "unstake_victim_principal",
-          label: "Attacker unstakes the existing principal into their wallet",
+          label:
+            "Unstake the existing principal, redirect stake custody, then claim rewards",
         },
       ],
       correctOptionId: "existing_rewards_same_pda_stake_overwrite_claim",
@@ -213,19 +216,23 @@ export const rl2FindingQuestionnaire: QuestionnaireDefinition = {
       options: [
         {
           id: "scope_pda_by_pool_and_user",
-          label: "Include both pool and user public keys in the position PDA seeds",
+          label:
+            "Derive each position PDA from the pool and user, then validate both",
         },
         {
           id: "raise_minimum_stake",
-          label: "Increase the minimum stake amount",
+          label:
+            "Raise the minimum stake amount and reject small reward claim attempts",
         },
         {
           id: "reduce_apy",
-          label: "Reduce the advertised APY",
+          label:
+            "Reduce the advertised APY so each reward claim has a smaller payout",
         },
         {
           id: "hide_claim_button",
-          label: "Hide the claim action until rewards accrue",
+          label:
+            "Hide the claim action until rewards accrue for the connected wallet",
         },
       ],
       correctOptionId: "scope_pda_by_pool_and_user",
