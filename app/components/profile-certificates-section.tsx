@@ -844,11 +844,13 @@ function ProfileBadgesSection({
   isLoading: boolean;
   title: string;
 }) {
+  const isSpecialRewards = title === "Special Rewards";
+
   return (
     <section>
       <SectionHeading
         description={
-          title === "Special Rewards"
+          isSpecialRewards
             ? "Limited rewards for events, cohorts, and milestone achievements."
             : "Badges mark the modules you complete across SolBreach."
         }
@@ -864,7 +866,11 @@ function ProfileBadgesSection({
           ))}
         </div>
       ) : badges.length > 0 ? (
-        <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div
+          className={`mt-5 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 ${
+            isSpecialRewards ? "justify-items-start" : ""
+          }`}
+        >
           {badges.map((badge) => (
             <BadgeCard badge={badge} key={badge.slug} />
           ))}
