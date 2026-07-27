@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ELK from "elkjs/lib/elk.bundled.js";
 import {
   ArrowRight,
@@ -18,6 +18,7 @@ import {
   Handle,
   Position,
   ReactFlow,
+  ViewportPortal,
   type Edge,
   type Node,
   type NodeProps,
@@ -49,7 +50,6 @@ type GraphAccount = {
   inactive?: boolean;
   relation?: string;
   icon: "commander" | "fingerprint" | "profile" | "shield" | "user";
-  variant?: "authority-message" | "protocol";
 };
 
 type GraphNodeData = GraphAccount;
@@ -935,6 +935,8 @@ function ProtocolTopology({
     Node<GraphNodeData>,
     Edge
   > | null>(null);
+  const fittedStageRef = useRef<LabStage | null>(null);
+  const [layoutStage, setLayoutStage] = useState<LabStage | null>(null);
   const graph = useMemo(
     () =>
       buildGraph({
@@ -997,30 +999,9 @@ function ProtocolTopology({
           },
         };
       });
-      const verifierNode = positionedNodes.find(
-        (node) => node.id === "verifier"
-      );
-      const level2Node = positionedNodes.find((node) => node.id === "level2");
-
-      setLayoutNodes(
-        positionedNodes.map((node) => {
-          if (node.id !== "authority-message" || !verifierNode || !level2Node) {
-            return node;
-          }
-
-          return {
-            ...node,
-            position: {
-              x:
-                verifierNode.position.x +
-                (verifierNode.width ?? 244) +
-                36,
-              y: Math.max(level2Node.position.y + 132, verifierNode.position.y),
-            },
-          };
-        })
-      );
+      setLayoutNodes(positionedNodes);
       setLayoutEdges(graph.edges);
+      setLayoutStage(labStage);
     }
 
     void layoutGraph();
@@ -1028,10 +1009,13 @@ function ProtocolTopology({
     return () => {
       cancelled = true;
     };
-  }, [graph]);
+  }, [graph, labStage]);
 
   useEffect(() => {
     if (!flowInstance || layoutNodes.length === 0) return;
+    if (layoutStage !== labStage || fittedStageRef.current === labStage) return;
+
+    fittedStageRef.current = labStage;
 
     const timer = window.setTimeout(() => {
       void flowInstance.fitView({
@@ -1043,7 +1027,19 @@ function ProtocolTopology({
     }, 40);
 
     return () => window.clearTimeout(timer);
-  }, [flowInstance, labStage, layoutEdges.length, layoutNodes]);
+  }, [flowInstance, labStage, layoutNodes.length, layoutStage]);
+
+  const showAuthorityMessage =
+    labStage === 2 && commanderCaptured && manipulationTested;
+  const verifierNode = layoutNodes.find((node) => node.id === "verifier");
+  const level2Node = layoutNodes.find((node) => node.id === "level2");
+  const authorityMessagePosition =
+    showAuthorityMessage && verifierNode && level2Node
+      ? {
+          x: verifierNode.position.x + (verifierNode.width ?? 244) + 36,
+          y: Math.max(level2Node.position.y + 132, verifierNode.position.y),
+        }
+      : null;
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-border bg-card/72">
@@ -1056,13 +1052,9 @@ function ProtocolTopology({
         <ReactFlow
           colorMode="dark"
           edges={layoutEdges}
-          fitView
           maxZoom={1.15}
           minZoom={0.35}
-          nodeTypes={{
-            "authority-message": AuthorityMessageNode,
-            protocol: ProtocolNode,
-          }}
+          nodeTypes={{ protocol: ProtocolNode }}
           nodes={layoutNodes}
           nodesDraggable={false}
           nodesFocusable={false}
@@ -1074,22 +1066,26 @@ function ProtocolTopology({
           zoomOnScroll={false}
         >
           <Background color="rgba(148, 163, 184, 0.07)" gap={22} size={1} />
+          {authorityMessagePosition ? (
+            <ViewportPortal>
+              <div
+                className="level1-activity-entry pointer-events-none absolute w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md"
+                style={{
+                  transform: `translate(${authorityMessagePosition.x}px, ${authorityMessagePosition.y}px)`,
+                }}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
+                  Protocol vulnerable:
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
+                  Connected Wallet has now program authority
+                </p>
+              </div>
+            </ViewportPortal>
+          ) : null}
         </ReactFlow>
       </div>
     </section>
-  );
-}
-
-function AuthorityMessageNode() {
-  return (
-    <div className="level1-activity-entry pointer-events-none w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
-        Protocol vulnerable:
-      </p>
-      <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
-        Connected Wallet has now program authority
-      </p>
-    </div>
   );
 }
 
@@ -1452,27 +1448,6 @@ function buildGraph({
   const verifierActive =
     stage2ExploitActive ||
     (labStage === 3 && (activeFocus === "verifier" || focusSequenceComplete));
-
-  if (stage2ExploitActive) {
-    nodes.push({
-      data: {
-        active: true,
-        detail: "Connected Wallet has now program authority",
-        icon: "shield",
-        id: "authority-message",
-        label: "Protocol vulnerable:",
-        relation: "WRITE AUTHORITY",
-        tone: "hijacked",
-        value: "",
-        variant: "authority-message",
-      },
-      height: 104,
-      id: "authority-message",
-      position: { x: 0, y: 0 },
-      type: "authority-message",
-      width: 250,
-    });
-  }
 
   const edges = [
     buildEdge("wallet-profile", "wallet", "profile", {
