@@ -1076,7 +1076,7 @@ function ProtocolTopology({
               >
                 <div className="level1-activity-entry w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
-                    Protocol vulnerable:
+                    Vulnerable Protocol:
                   </p>
                   <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
                     Connected Wallet has now program authority

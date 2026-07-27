@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ELK from "elkjs/lib/elk.bundled.js";
 import {
   ArrowRight,
@@ -884,12 +884,17 @@ function ProtocolTopology({
     Node<GraphNodeData>,
     Edge
   > | null>(null);
+  const fittedStageRef = useRef<LabStage | null>(null);
+  const [layoutStage, setLayoutStage] = useState<LabStage | null>(null);
   const showExploitMessage =
     labStage === 2 && exploitReady && manipulationTested;
-  const messageTarget = layoutNodes.find((node) => node.id === "external");
+  const messageTarget = layoutNodes.find((node) => node.id === "reward");
   const messagePosition =
     showExploitMessage && messageTarget
-      ? { x: messageTarget.position.x + 270, y: messageTarget.position.y + 2 }
+      ? {
+          x: messageTarget.position.x + (messageTarget.width ?? 244) + 36,
+          y: messageTarget.position.y + 4,
+        }
       : null;
 
   const graph = useMemo(
@@ -955,6 +960,7 @@ function ProtocolTopology({
         })
       );
       setLayoutEdges(graph.edges);
+      setLayoutStage(labStage);
     }
 
     void layoutGraph();
@@ -962,10 +968,13 @@ function ProtocolTopology({
     return () => {
       cancelled = true;
     };
-  }, [graph]);
+  }, [graph, labStage]);
 
   useEffect(() => {
     if (!flowInstance || layoutNodes.length === 0) return;
+    if (layoutStage !== labStage || fittedStageRef.current === labStage) return;
+
+    fittedStageRef.current = labStage;
 
     const timer = window.setTimeout(() => {
       void flowInstance.fitView({
@@ -977,7 +986,7 @@ function ProtocolTopology({
     }, 40);
 
     return () => window.clearTimeout(timer);
-  }, [flowInstance, labStage, layoutEdges.length, layoutNodes]);
+  }, [flowInstance, labStage, layoutNodes.length, layoutStage]);
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-border bg-card/72">
@@ -990,7 +999,6 @@ function ProtocolTopology({
         <ReactFlow
           colorMode="dark"
           edges={layoutEdges}
-          fitView
           maxZoom={1.15}
           minZoom={0.35}
           nodeTypes={{ protocol: ProtocolNode }}
@@ -1008,17 +1016,19 @@ function ProtocolTopology({
           {messagePosition ? (
             <ViewportPortal>
               <div
-                className="level1-activity-entry pointer-events-none absolute w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md"
+                className="pointer-events-none absolute"
                 style={{
                   transform: `translate(${messagePosition.x}px, ${messagePosition.y}px)`,
                 }}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
-                  Protocol vulnerable:
-                </p>
-                <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
-                  Guild signer forwarded into attacker CPI
-                </p>
+                <div className="level1-activity-entry w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
+                    Vulnerable Protocol:
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
+                    Guild signer forwarded into attacker CPI
+                  </p>
+                </div>
               </div>
             </ViewportPortal>
           ) : null}
