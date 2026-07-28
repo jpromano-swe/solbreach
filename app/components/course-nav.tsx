@@ -1,9 +1,11 @@
 import { useCallback, useState, type ComponentType } from "react";
 import {
   ChevronDown,
+  CopyX,
   Cpu,
   FileCode2,
   LockKeyhole,
+  ScanSearch,
   Send,
   ShieldCheck,
   Zap,
@@ -51,12 +53,12 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
     title: "State and Account Integrity",
     items: [
       {
-        icon: ShieldCheck,
+        icon: ScanSearch,
         title: "The Shapeshifter",
         description: "Data matching failures across mints, owners, vaults, and state",
       },
       {
-        icon: Cpu,
+        icon: CopyX,
         title: "The Mirror Trap",
         description: "Duplicate mutable accounts alias separate protocol roles",
       },
