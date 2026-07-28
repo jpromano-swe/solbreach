@@ -6,7 +6,6 @@ import {
   LockKeyhole,
   Send,
   ShieldCheck,
-  Sparkles,
   Zap,
 } from "lucide-react";
 
@@ -49,22 +48,17 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
     ],
   },
   {
-    title: "Supply Chain",
+    title: "State and Account Integrity",
     items: [
       {
-        icon: Cpu,
-        title: "Dependency Takeover",
-        description: "Malicious packages in build and deploy paths",
-      },
-      {
-        icon: Sparkles,
-        title: "CI Secret Exposure",
-        description: "Leaked keys, tokens, and release credentials",
-      },
-      {
         icon: ShieldCheck,
-        title: "Build Integrity",
-        description: "Reproducible artifacts and trusted signers",
+        title: "The Shapeshifter",
+        description: "Data matching failures across mints, owners, vaults, and state",
+      },
+      {
+        icon: Cpu,
+        title: "The Mirror Trap",
+        description: "Duplicate mutable accounts alias separate protocol roles",
       },
     ],
   },

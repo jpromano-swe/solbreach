@@ -56,7 +56,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     compact: {
       cta: "Start level",
       imageClassName:
-        "!right-[-20px] !w-[48%] !max-w-[150px] sm:!right-4 sm:!w-[132px] xl:!right-5 xl:!w-[142px]",
+        "!right-[-20px] !bottom-12 !w-[48%] !max-w-[150px] sm:!right-4 sm:!bottom-16 sm:!w-[132px] xl:!right-5 xl:!bottom-[4.25rem] xl:!w-[142px]",
       imageSrc: "/vulnerabilities/01-account-substitution.png",
       levelLabel: "LEVEL 1",
       metadata: "Beginner · 15-20 min · Account validation",
@@ -97,6 +97,8 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     status: "available",
     compact: {
       cta: "Start level",
+      imageClassName:
+        "sm:!right-[-10px] xl:!right-[-16px]",
       imageSrc: "/vulnerabilities/03-trojan-horse.png",
       levelLabel: "LEVEL 3",
       metadata: "Intermediate · 35-50 min · Delegated CPI",

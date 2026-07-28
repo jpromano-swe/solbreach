@@ -83,7 +83,7 @@ export function ResearchLabCatalog({
   return (
     <section className="relative min-h-[calc(100vh-88px)] overflow-hidden border-t border-white/10 bg-[#070808] px-6 py-16 text-white">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(153,69,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(20,241,149,0.045)_1px,transparent_1px)] bg-[size:48px_48px] opacity-35" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_26%_20%,rgba(153,69,255,0.14),transparent_32%),radial-gradient(circle_at_72%_30%,rgba(20,241,149,0.1),transparent_35%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[680px] bg-[radial-gradient(circle_at_26%_20%,rgba(153,69,255,0.14),transparent_38%),radial-gradient(circle_at_72%_30%,rgba(20,241,149,0.11),transparent_42%)] [mask-image:linear-gradient(to_bottom,black_0%,black_58%,transparent_100%)]" />
 
       <div className="relative mx-auto max-w-7xl">
         <div className="max-w-3xl">
