@@ -731,14 +731,14 @@ function ManipulationPanel({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/72 p-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold leading-6 text-foreground">
             What just happened?
           </p>
-          <p className="mt-3 text-sm leading-6 text-muted">{response}</p>
+          <p className="text-sm leading-6 text-muted">{response}</p>
         </div>
-        <div className="mt-5 space-y-3">
+        <div className="space-y-3">
           <button
             type="button"
             onClick={onTest}
@@ -1809,7 +1809,7 @@ function ExploitCodeWalkthrough({
         </pre>
 
         <div className="px-1">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+          <p className="text-sm font-semibold leading-6 text-foreground">
             Exploit sequence
           </p>
           <p className="mt-2 text-sm font-medium">

@@ -51,6 +51,7 @@ type GraphAccount = {
   revealed?: boolean;
   relation?: string;
   stageReveal?: boolean;
+  valuePulse?: boolean;
   icon: "commander" | "fingerprint" | "profile" | "shield" | "user";
 };
 
@@ -702,12 +703,14 @@ function ManipulationPanel({
         />
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/72 p-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-          What just happened?
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted">{response}</p>
-        <div className="mt-5 space-y-3">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold leading-6 text-foreground">
+            What just happened?
+          </p>
+          <p className="text-sm leading-6 text-muted">{response}</p>
+        </div>
+        <div className="space-y-3">
           <button
             type="button"
             onClick={onTest}
@@ -885,11 +888,11 @@ function InspectPanel({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/70 p-4">
-        <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
+      <div className="space-y-2 px-1">
+        <p className="text-sm font-semibold leading-6 text-foreground">
           Exploit sequence
         </p>
-        <p className="mt-3 text-sm leading-6 text-muted">
+        <p className="text-sm leading-6 text-muted">
           {feedback ??
             (commanderCaptured
               ? "Select dependencies in causal order to unlock verification."
@@ -1180,6 +1183,9 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
     ? "level1-protocol-node-stage-reveal"
     : "";
   const hiddenClass = data.revealed === false ? "opacity-0" : "";
+  const valueClass = data.valuePulse
+    ? "level2-commander-value-pulse inline-flex w-fit rounded-md border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-amber-100"
+    : "text-foreground";
   const Icon =
     data.icon === "commander"
       ? KeyRound
@@ -1219,7 +1225,7 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
             ) : null}
           </div>
           <p className="mt-1 text-xs text-muted">{data.detail}</p>
-          <p className="mt-2 text-xs font-medium text-foreground">
+          <p className={`mt-2 text-xs font-medium ${valueClass}`}>
             {data.value}
           </p>
           {data.relation ? (
@@ -1415,6 +1421,7 @@ function buildGraphAccounts({
     level2State?.hasLevel2State || simulatedLevel2Ready
   );
   const profileShared = labStage >= 2 || observeStep >= 4;
+  const commanderTargetChanged = manipulation.commanderTarget === "wallet";
   const showHijack = simulatedCommanderCaptured;
   const dimLegitimatePath = labStage >= 3 && showHijack;
 
@@ -1455,6 +1462,7 @@ function buildGraphAccounts({
       relation: showHijack ? "OVERWRITTEN" : "INITIAL AUTHORITY",
       tone: showHijack ? "hijacked" : "neutral",
       value: commander ? compactAddress(commander, 4, 4) : "Unset",
+      valuePulse: commanderTargetChanged,
     },
     {
       active: labStage === 1 || activeFocus === "profile",

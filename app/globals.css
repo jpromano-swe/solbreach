@@ -611,6 +611,26 @@
   }
 }
 
+@keyframes level2CommanderValuePulse {
+  0%,
+  100% {
+    border-color: rgba(252, 211, 77, 0.24);
+    box-shadow: 0 0 0 rgba(252, 211, 77, 0);
+  }
+
+  50% {
+    border-color: rgba(252, 211, 77, 0.62);
+    box-shadow: 0 0 18px -8px rgba(252, 211, 77, 0.75);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .level2-commander-value-pulse {
+    animation: level2CommanderValuePulse 1400ms ease-in-out infinite;
+    will-change: border-color, box-shadow;
+  }
+}
+
 .research-lab-transition-stack {
   position: relative;
   height: 100%;

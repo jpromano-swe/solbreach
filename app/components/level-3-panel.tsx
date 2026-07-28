@@ -647,12 +647,14 @@ function ManipulationPanel({
         />
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/72 p-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-          What just happened?
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted">{response}</p>
-        <div className="mt-5 space-y-3">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold leading-6 text-foreground">
+            What just happened?
+          </p>
+          <p className="text-sm leading-6 text-muted">{response}</p>
+        </div>
+        <div className="space-y-3">
           <button
             type="button"
             onClick={onTest}
@@ -834,11 +836,11 @@ function InspectPanel({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/70 p-4">
-        <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
+      <div className="space-y-2 px-1">
+        <p className="text-sm font-semibold leading-6 text-foreground">
           Exploit sequence
         </p>
-        <p className="mt-3 text-sm leading-6 text-muted">
+        <p className="text-sm leading-6 text-muted">
           {sequenceFeedback ??
             (exploitReady
               ? "Map each dependency before executing the delegated CPI."
