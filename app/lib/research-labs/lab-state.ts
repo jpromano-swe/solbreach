@@ -97,6 +97,39 @@ const RL2_MANIFEST_OVERRIDES = {
   ] satisfies ResearchLabHint[],
 };
 
+const RL3_MANIFEST_OVERRIDES = {
+  title: "Arbitrary CPI",
+  summary:
+    "A bounty platform delegates payout execution after task completion. Inspect whether the payout target is constrained before value moves.",
+  objective:
+    "Determine whether a caller-supplied CPI target can replace the approved payout router and drain escrowed task rewards.",
+  successCriteria:
+    "Verified evidence must show that a session-scoped attacker program was built, deployed, selected as the delegated CPI target, and used to drain task escrow.",
+  objectives: [
+    "Inspect the delegated payout interface and public account surface",
+    "Build and deploy a session-scoped CPI target",
+    "Submit a normal-looking delegation through the bounty platform",
+    "Replace the CPI target, drain escrow, and document the evidence",
+  ],
+  hints: [
+    {
+      id: "build-cpi-target",
+      title: "Hint 1",
+      body: "Build the sandbox attacker program using the task escrow, attacker reward account, and delegated signer strategy.",
+    },
+    {
+      id: "idl-entrypoint",
+      title: "Hint 2",
+      body: "Open SolBreach Explorer and inspect the public IDL to identify which payout instruction moves value.",
+    },
+    {
+      id: "replace-cpi-target",
+      title: "Hint 3",
+      body: "Submit a normal delegation first, then replace the delegated program target with the deployed attacker CPI program.",
+    },
+  ] satisfies ResearchLabHint[],
+};
+
 export type ResearchLabSessionStatus =
   | "provisioning"
   | "active"
@@ -242,6 +275,25 @@ export const FALLBACK_RESEARCH_LABS: ResearchLabManifest[] = [
     templateRef: "research-labs/yield-hijack@v1",
     objectives: RL2_MANIFEST_OVERRIDES.objectives,
     hints: RL2_MANIFEST_OVERRIDES.hints,
+    files: [],
+  },
+  {
+    id: "rl3-arbitrary-cpi",
+    slug: "arbitrary-cpi",
+    title: RL3_MANIFEST_OVERRIDES.title,
+    difficulty: "Advanced",
+    estimatedTime: "3-5 hours",
+    xpReward: 350,
+    status: "active",
+    summary: RL3_MANIFEST_OVERRIDES.summary,
+    objective: RL3_MANIFEST_OVERRIDES.objective,
+    allowedFiles: ["programs/task_bounty/src/lib.rs"],
+    entryFile: "programs/task_bounty/src/lib.rs",
+    testCommand: "anchor test --skip-deploy",
+    successCriteria: RL3_MANIFEST_OVERRIDES.successCriteria,
+    templateRef: "research-labs/arbitrary-cpi@v1",
+    objectives: RL3_MANIFEST_OVERRIDES.objectives,
+    hints: RL3_MANIFEST_OVERRIDES.hints,
     files: [],
   },
 ];
@@ -490,14 +542,16 @@ export type ResearchLabExplorerSnapshot = {
     idl: Record<string, unknown>;
   };
   accounts: ResearchLabExplorerAccount[];
-  participants: ResearchLabExplorerParticipant[];
-  rewardCandidates: ResearchLabExplorerRewardCandidate[];
-  rewardAsset: {
+  participants?: ResearchLabExplorerParticipant[];
+  rewardCandidates?: ResearchLabExplorerRewardCandidate[];
+  rewardAsset?: {
     mintRef: string;
     symbol: string;
     decimals: number;
   };
-  totalRewardsPaid: number;
+  totalRewardsPaid?: number;
+  protocolState?: Record<string, unknown>;
+  protocol_state?: Record<string, unknown>;
 };
 
 export type DepositCollateralPayload = {
@@ -529,11 +583,45 @@ export type ClaimRewardsPayload = {
   target_wallet_address: string;
 };
 
+export type BuildAttackerProgramPayload = {
+  action_type: "BUILD_ATTACKER_PROGRAM";
+  program_template: "cpi_drain_router";
+  entrypoint_name: "execute";
+  transfer_source_ref: "task_escrow";
+  transfer_destination_ref: "attacker_reward_account";
+  authority_strategy: "reuse_delegated_signer";
+};
+
+export type DeployAttackerProgramPayload = {
+  action_type: "DEPLOY_ATTACKER_PROGRAM";
+  artifact_ref: "attacker_program_build";
+};
+
+export type SubmitDelegationPayload = {
+  action_type: "SUBMIT_DELEGATION";
+  task_ref: "task_record";
+  delegate_program_ref: "official_payout_router";
+  reward_amount: number;
+};
+
+export type ExecuteDelegatedCpiPayload = {
+  action_type: "EXECUTE_DELEGATED_CPI";
+  task_ref: "task_record";
+  delegate_program_ref: "official_payout_router" | "attacker_cpi_program";
+  destination_account_ref: "attacker_reward_account";
+  amount: number;
+  instruction_name: string;
+};
+
 export type LabTransactionPayload =
   | DepositCollateralPayload
   | WithdrawAgainstCreditPayload
   | StakePayload
-  | ClaimRewardsPayload;
+  | ClaimRewardsPayload
+  | BuildAttackerProgramPayload
+  | DeployAttackerProgramPayload
+  | SubmitDelegationPayload
+  | ExecuteDelegatedCpiPayload;
 
 export type TransactionResult = {
   transactionRef: string;
@@ -759,14 +847,19 @@ function normalizeLab(raw: RawResearchLab): ResearchLabManifest {
   const isRl1Template =
     id === "rl1-account-substitution" || slug === "account-substitution";
   const isRl2Template = id === "rl2-yield-hijack" || slug === "yield-hijack";
-  const fallbackLab = isRl2Template
-    ? FALLBACK_RESEARCH_LABS[1]
-    : FALLBACK_RESEARCH_LABS[0];
+  const isRl3Template = id === "rl3-arbitrary-cpi" || slug === "arbitrary-cpi";
+  const fallbackLab = isRl3Template
+    ? FALLBACK_RESEARCH_LABS[2]
+    : isRl2Template
+      ? FALLBACK_RESEARCH_LABS[1]
+      : FALLBACK_RESEARCH_LABS[0];
   const manifestOverrides = isRl2Template
     ? RL2_MANIFEST_OVERRIDES
-    : isRl1Template
-      ? RL1_MANIFEST_OVERRIDES
-      : null;
+    : isRl3Template
+      ? RL3_MANIFEST_OVERRIDES
+      : isRl1Template
+        ? RL1_MANIFEST_OVERRIDES
+        : null;
 
   return {
     id,

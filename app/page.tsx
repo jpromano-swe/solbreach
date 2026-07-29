@@ -932,6 +932,7 @@ export default function Home() {
               level1BadgeCollected={Boolean(level1Badge?.seenAt)}
               level1BadgeEarned={Boolean(level1Badge?.earned)}
               level2BadgeCollected={Boolean(level2Badge?.seenAt)}
+              level3BadgeCollected={Boolean(level3Badge?.seenAt)}
               powerUserBadgeEarned={Boolean(
                 badgesForDisplay.find((badge) => badge.slug === "power-user")?.earned
               )}
@@ -955,6 +956,10 @@ export default function Home() {
               onGoToLevel2Module={() => {
                 setActiveSection("levels");
                 setActiveLevelsView("level2");
+              }}
+              onGoToLevel3Module={() => {
+                setActiveSection("levels");
+                setActiveLevelsView("level3");
               }}
               onMintResearchLabCertificate={mintResearchLabCertificate}
             />

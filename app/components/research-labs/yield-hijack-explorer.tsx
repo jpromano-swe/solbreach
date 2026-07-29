@@ -447,6 +447,9 @@ function ExplorerOverview({
   onOpenTransaction: (transactionRef: string) => void;
   onViewChange: (view: ExplorerView) => void;
 }) {
+  const rewardSymbol = snapshot.rewardAsset?.symbol ?? "USDC";
+  const totalRewardsPaid = snapshot.totalRewardsPaid ?? 0;
+
   return (
     <div>
       <ExplorerHeading
@@ -482,7 +485,7 @@ function ExplorerOverview({
           />
           <OverviewMetric
             label="Rewards paid"
-            value={`${formatAmount(snapshot.totalRewardsPaid)} ${snapshot.rewardAsset.symbol}`}
+            value={`${formatAmount(totalRewardsPaid)} ${rewardSymbol}`}
             detail="current session"
           />
         </dl>
@@ -1503,7 +1506,7 @@ function buildSearchResults(
     });
   }
 
-  for (const candidate of snapshot.rewardCandidates) {
+  for (const candidate of snapshot.rewardCandidates ?? []) {
     if (!candidate.walletAddress.toLowerCase().includes(normalized)) continue;
     const account = snapshot.accounts.find(
       (entry) => entry.ref === candidate.positionRef
@@ -1525,14 +1528,15 @@ function candidateWalletForAccount(
   snapshot: ResearchLabExplorerSnapshot,
   account: ResearchLabExplorerAccount
 ) {
-  const directCandidate = snapshot.rewardCandidates.find(
+  const rewardCandidates = snapshot.rewardCandidates ?? [];
+  const directCandidate = rewardCandidates.find(
     (candidate) => candidate.positionRef === account.ref
   );
   if (directCandidate) return directCandidate.walletAddress;
 
   const walletAddress = stringFromUnknown(account.data.walletAddress);
   if (!walletAddress) return null;
-  return snapshot.rewardCandidates.some(
+  return rewardCandidates.some(
     (candidate) => candidate.walletAddress === walletAddress
   )
     ? walletAddress

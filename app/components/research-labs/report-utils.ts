@@ -354,12 +354,148 @@ const rl2ReportConfig: ResearchLabReportConfig = {
   },
 };
 
+const rl3ReportConfig: ResearchLabReportConfig = {
+  titleOptions: [
+    {
+      id: "arbitrary_cpi_target_bounty_drain",
+      label: "Unbound CPI Target Drains Bounty Escrow",
+    },
+    {
+      id: "delegated_payout_calls_attacker_program",
+      label: "Delegated Payout Invokes Attacker Program",
+    },
+  ],
+  categoryOptions: [
+    {
+      id: "arbitrary_cpi",
+      label: "Arbitrary CPI",
+      previewBody:
+        "the payout flow allows a caller-controlled CPI target to replace the approved payout router.",
+    },
+    {
+      id: "untrusted_program_target",
+      label: "Untrusted Program Target",
+      previewBody:
+        "the protocol moves value through a program account supplied at execution time instead of trusted configuration.",
+    },
+  ],
+  severityOptions: [
+    { id: "high", label: "High" },
+    { id: "medium", label: "Medium" },
+    { id: "low", label: "Low" },
+  ],
+  likelihoodOptions: [
+    { id: "high", label: "High" },
+    { id: "medium_high", label: "Medium High" },
+    { id: "medium", label: "Medium" },
+  ],
+  rootCauseOptions: [
+    {
+      id: "unbound_cpi_program_target",
+      label: "Delegated CPI target is not bound to config",
+      previewBody:
+        "The delegated payout instruction accepts the CPI program target from caller-controlled accounts. That lets a compatible attacker program replace the approved payout router when escrowed value is moved.",
+      snippet: {
+        title: "Unbound delegated payout target",
+        language: "rust",
+        filePath: "programs/task_bounty/src/lib.rs",
+        code: [
+          "pub fn execute_delegated_payout(ctx: Context<Payout>) -> Result<()> {",
+          "    invoke(",
+          "        &ctx.accounts.delegate_program.to_instruction(),",
+          "        ctx.remaining_accounts,",
+          "    )",
+          "}",
+        ].join("\n"),
+      },
+    },
+    {
+      id: "caller_supplied_program_account",
+      label: "Caller-supplied program account",
+      previewBody:
+        "The payout flow trusts a runtime-supplied program account for a value-moving CPI instead of deriving or checking the approved router.",
+    },
+  ],
+  proofOfImpactOptions: [
+    {
+      id: "attacker_cpi_drains_task_escrow",
+      label: "Attacker CPI drains task escrow",
+      previewBody:
+        "The verified sandbox evidence shows the attacker program deployed in the session, selected as the delegated CPI target, and the task escrow decrease matching the attacker reward-account increase.",
+    },
+    {
+      id: "cpi_target_replaced_and_balance_delta",
+      label: "CPI target replacement with matching balance delta",
+      previewBody:
+        "The transaction timeline shows the delegated target swap before escrowed bounty value moves to the attacker reward account.",
+    },
+  ],
+  mitigationOptions: [
+    {
+      id: "bind_cpi_target_to_approved_router",
+      label: "Bind CPI target to approved router",
+      previewBody:
+        "Resolve the payout program from trusted bounty configuration and reject any CPI target that does not match the approved payout router before moving escrowed value.",
+      snippet: {
+        title: "Validate CPI target before payout",
+        language: "rust",
+        filePath: "programs/task_bounty/src/lib.rs",
+        code: [
+          "pub fn execute_delegated_payout(ctx: Context<Payout>) -> Result<()> {",
+          "    require_keys_eq!(",
+          "        ctx.accounts.delegate_program.key(),",
+          "        ctx.accounts.config.approved_payout_router,",
+          "    );",
+          "",
+          "    invoke_signed(",
+          "        &router_instruction(ctx)?,",
+          "        ctx.accounts.router_accounts(),",
+          "        ctx.seeds(),",
+          "    )",
+          "}",
+        ].join("\n"),
+      },
+    },
+    {
+      id: "allowlist_value_moving_cpi_targets",
+      label: "Allowlist value-moving CPI targets",
+      previewBody:
+        "Keep payout routing under protocol-owned configuration and validate every invoked program before constructing the CPI.",
+    },
+  ],
+  suggestedDefaults: {
+    titleOptionId: "arbitrary_cpi_target_bounty_drain",
+    categoryOptionId: "arbitrary_cpi",
+    severityOptionId: "high",
+    likelihoodOptionId: "high",
+    rootCauseOptionId: "unbound_cpi_program_target",
+    proofOfImpactOptionId: "attacker_cpi_drains_task_escrow",
+    recommendedMitigationOptionId: "bind_cpi_target_to_approved_router",
+  },
+  labLabel: "Research Lab 3",
+  moduleLabel: "Arbitrary CPI",
+  previewFallback: {
+    title: "Unbound CPI Target Drains Bounty Escrow",
+    severity: "High",
+    likelihood: "High",
+    category: "Arbitrary CPI",
+    categoryBody:
+      "the payout flow allows a caller-controlled CPI target to replace the approved payout router.",
+  },
+};
+
 export function getResearchLabReportConfig(
   lab: Pick<ResearchLabManifest, "id" | "slug"> | null
 ) {
-  return lab?.slug === "yield-hijack" || lab?.id === "rl2-yield-hijack"
-    ? rl2ReportConfig
-    : rl1ReportConfig;
+  if (lab?.slug === "arbitrary-cpi" || lab?.id === "rl3-arbitrary-cpi") {
+    return rl3ReportConfig;
+  }
+
+  if (lab?.slug === "yield-hijack" || lab?.id === "rl2-yield-hijack") {
+    return rl2ReportConfig;
+  }
+
+  return rl1ReportConfig;
 }
 
 export function buildReportDefaultsFromQuestionnaireAnswers(
@@ -379,7 +515,35 @@ export function buildReportDefaultsFromQuestionnaireAnswers(
     }
   }
 
-  if (config.labLabel === "Research Lab 2") {
+  if (config.labLabel === "Research Lab 3") {
+    if (singleAnswers.get("q1_vulnerability_category") === "arbitrary_cpi_target") {
+      defaults.titleOptionId = "arbitrary_cpi_target_bounty_drain";
+      defaults.categoryOptionId = "arbitrary_cpi";
+      defaults.rootCauseOptionId = "unbound_cpi_program_target";
+    }
+
+    if (
+      singleAnswers.get("q3_exploit_sequence") ===
+        "build_deploy_delegate_execute_attacker_cpi" ||
+      singleAnswers.get("q5_impact") ===
+        "task_escrow_drained_to_attacker_reward_account"
+    ) {
+      defaults.proofOfImpactOptionId = "attacker_cpi_drains_task_escrow";
+    }
+
+    if (singleAnswers.get("q7_severity") === "high") {
+      defaults.severityOptionId = "high";
+      defaults.likelihoodOptionId = "high";
+    }
+
+    if (
+      singleAnswers.get("q8_recommended_fix") ===
+      "bind_cpi_target_to_approved_router"
+    ) {
+      defaults.recommendedMitigationOptionId =
+        "bind_cpi_target_to_approved_router";
+    }
+  } else if (config.labLabel === "Research Lab 2") {
     if (
       singleAnswers.get("q1_vulnerability_category") ===
       "static_pda_missing_user_identity"
@@ -442,6 +606,16 @@ export function buildReportDefaultsFromQuestionnaireAnswers(
     rl2Evidence.includes("reward_delta_matches")
   ) {
     defaults.proofOfImpactOptionId = "position_owner_overwrite_reward_claim";
+  }
+
+  const rl3Evidence = multiAnswers.get("q6_evidence") ?? [];
+  if (
+    config.labLabel === "Research Lab 3" &&
+    rl3Evidence.includes("attacker_program_deployed") &&
+    rl3Evidence.includes("cpi_target_replaced") &&
+    rl3Evidence.includes("escrow_delta_matches")
+  ) {
+    defaults.proofOfImpactOptionId = "attacker_cpi_drains_task_escrow";
   }
 
   return pruneUnavailableReportDefaults(defaults, config);
@@ -511,28 +685,44 @@ export function getFeedbackTopics(
   questionIds: string[],
   questionnaire: QuestionnaireDefinition = rl1FindingQuestionnaire
 ) {
-  const topicBySection: Record<string, string> =
-    questionnaire.labId === "rl2-yield-hijack"
-      ? {
-          "Vulnerability Identification":
-            "Recheck which identities the staking position represents and which identities are present in its derivation.",
-          "Exploit Path Understanding":
-            "Rebuild the sequence from the small stake through the ownership change and unauthorized reward claim.",
-          "State and Evidence":
-            "Focus on the position collision, preserved value, ownership transition, and matching reward-token deltas.",
-          "Severity and Report Reasoning":
-            "Tie severity to the unauthorized reward capture proven by the runtime without claiming unverified principal theft.",
-        }
-      : {
-          "Vulnerability Identification":
-            "Recheck which account relationship the protocol trusted and which Solana account-security concept applies.",
-          "Exploit Path Understanding":
-            "Rebuild the exploit chain from counterfeit deposit to illegitimate credit and real treasury withdrawal.",
-          "State and Evidence":
-            "Focus on state evidence, canonical account binding, and why a successful transaction log is not enough.",
-          "Severity and Report Reasoning":
-            "Tie severity and likelihood to the attacker-controlled account relationship and unauthorized treasury movement.",
-        };
+  const topicBySection: Record<string, string> = (() => {
+    if (questionnaire.labId === "rl3-arbitrary-cpi") {
+      return {
+        "Vulnerability Identification":
+          "Recheck which program is invoked through CPI and whether that target is bound to protocol configuration.",
+        "Exploit Path Understanding":
+          "Rebuild the sequence from attacker program build and deployment through delegation and substituted CPI execution.",
+        "State and Evidence":
+          "Focus on attacker program deployment, CPI target replacement, task escrow loss, and attacker reward gain.",
+        "Severity and Report Reasoning":
+          "Tie severity to the escrow drain proven by the runtime without claiming broader platform loss.",
+      };
+    }
+
+    if (questionnaire.labId === "rl2-yield-hijack") {
+      return {
+        "Vulnerability Identification":
+          "Recheck which identities the staking position represents and which identities are present in its derivation.",
+        "Exploit Path Understanding":
+          "Rebuild the sequence from the small stake through the ownership change and unauthorized reward claim.",
+        "State and Evidence":
+          "Focus on the position collision, preserved value, ownership transition, and matching reward-token deltas.",
+        "Severity and Report Reasoning":
+          "Tie severity to the unauthorized reward capture proven by the runtime without claiming unverified principal theft.",
+      };
+    }
+
+    return {
+      "Vulnerability Identification":
+        "Recheck which account relationship the protocol trusted and which Solana account-security concept applies.",
+      "Exploit Path Understanding":
+        "Rebuild the exploit chain from counterfeit deposit to illegitimate credit and real treasury withdrawal.",
+      "State and Evidence":
+        "Focus on state evidence, canonical account binding, and why a successful transaction log is not enough.",
+      "Severity and Report Reasoning":
+        "Tie severity and likelihood to the attacker-controlled account relationship and unauthorized treasury movement.",
+    };
+  })();
 
   const sections = new Set(
     questionIds

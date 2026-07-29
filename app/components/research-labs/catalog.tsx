@@ -41,8 +41,10 @@ export function ResearchLabCatalog({
   labs,
   level1BadgeCollected,
   level2BadgeCollected,
+  level3BadgeCollected,
   onGoToLevel1Module,
   onGoToLevel2Module,
+  onGoToLevel3Module,
   onLoadCatalog,
   onOpenLab,
   researchLabCertificateMintedByLevel,
@@ -54,8 +56,10 @@ export function ResearchLabCatalog({
   labs: ResearchLabManifest[];
   level1BadgeCollected: boolean;
   level2BadgeCollected: boolean;
+  level3BadgeCollected: boolean;
   onGoToLevel1Module: () => void;
   onGoToLevel2Module: () => void;
+  onGoToLevel3Module: () => void;
   onLoadCatalog: () => void;
   onOpenLab: (lab: ResearchLabManifest) => void;
   researchLabCertificateMintedByLevel: Partial<
@@ -66,10 +70,29 @@ export function ResearchLabCatalog({
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const isWalletConnected = walletStatus === "connected";
   const shouldGateLabs = !isAuthenticated;
-  const visibleLabs = labs.slice(
+  const visibleLabs = labs.slice(0, MAX_CATALOG_CARDS);
+  const lockedLabsToShow = CATALOG_LOCKED_LABS.slice(
     0,
-    Math.max(0, MAX_CATALOG_CARDS - CATALOG_LOCKED_LABS.length)
+    Math.max(0, MAX_CATALOG_CARDS - visibleLabs.length)
   );
+
+  const hasPrerequisiteBadge = (level: ResearchLabCertificateLevel) => {
+    if (level === 3) return level3BadgeCollected;
+    if (level === 2) return level2BadgeCollected;
+    return level1BadgeCollected;
+  };
+
+  const goToPrerequisiteModule = (level: ResearchLabCertificateLevel) => {
+    if (level === 3) {
+      onGoToLevel3Module();
+      return;
+    }
+    if (level === 2) {
+      onGoToLevel2Module();
+      return;
+    }
+    onGoToLevel1Module();
+  };
 
   const handleCatalogAction = () => {
     if (!isWalletConnected) {
@@ -142,10 +165,9 @@ export function ResearchLabCatalog({
 
             {visibleLabs.map((lab) => {
               const adapter = getResearchLabAdapter(lab);
-              const prerequisiteBadgeCollected =
-                adapter.prerequisiteBadgeLevel === 2
-                  ? level2BadgeCollected
-                  : level1BadgeCollected;
+              const prerequisiteBadgeCollected = hasPrerequisiteBadge(
+                adapter.prerequisiteBadgeLevel
+              );
               const labUnlocked = prerequisiteBadgeCollected;
               const labCompleted =
                 lab.status === "completed" ||
@@ -159,10 +181,8 @@ export function ResearchLabCatalog({
                 : labUnlocked
                   ? "available"
                   : "locked";
-              const goToPrerequisiteModule =
-                adapter.prerequisiteBadgeLevel === 2
-                  ? onGoToLevel2Module
-                  : onGoToLevel1Module;
+              const openPrerequisiteModule = () =>
+                goToPrerequisiteModule(adapter.prerequisiteBadgeLevel);
 
               return (
                 <article
@@ -240,7 +260,7 @@ export function ResearchLabCatalog({
                     ) : (
                       <button
                         type="button"
-                        onClick={goToPrerequisiteModule}
+                        onClick={openPrerequisiteModule}
                         className="inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-red-200/75 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-red-300/40"
                       >
                         Go to Module
@@ -252,7 +272,7 @@ export function ResearchLabCatalog({
               );
             })}
 
-            {CATALOG_LOCKED_LABS.map((lab) => (
+            {lockedLabsToShow.map((lab) => (
               <div
                 key={lab.id}
                 className="group relative p-8 text-left grayscale"
@@ -331,6 +351,10 @@ function getCatalogSummary(lab: ResearchLabManifest, labCode: string) {
 
   if (labCode === "RL2") {
     return "Check whether shared staking state lets rewards move between users.";
+  }
+
+  if (labCode === "RL3") {
+    return "Replace an unbound CPI target and drain escrowed bounty rewards.";
   }
 
   return shortenWords(lab.summary || CATALOG_COPY.scenario, 18);

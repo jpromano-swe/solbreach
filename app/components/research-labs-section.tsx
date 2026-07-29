@@ -63,6 +63,7 @@ export function ResearchLabsSection({
   level1BadgeCollected,
   level1BadgeEarned,
   level2BadgeCollected,
+  level3BadgeCollected,
   powerUserBadgeEarned,
   researchLabCertificateMintedByLevel,
   onBadgeStateChanged,
@@ -70,6 +71,7 @@ export function ResearchLabsSection({
   onContinueToLevel3,
   onGoToLevel1Module,
   onGoToLevel2Module,
+  onGoToLevel3Module,
   onMintResearchLabCertificate,
 }: {
   isCollectingLevel1Badge: boolean;
@@ -77,6 +79,7 @@ export function ResearchLabsSection({
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
   level2BadgeCollected: boolean;
+  level3BadgeCollected: boolean;
   powerUserBadgeEarned: boolean;
   researchLabCertificateMintedByLevel: Partial<Record<1 | 2 | 3, boolean>>;
   onBadgeStateChanged?: () => void;
@@ -84,6 +87,7 @@ export function ResearchLabsSection({
   onContinueToLevel3: () => void;
   onGoToLevel1Module: () => void;
   onGoToLevel2Module: () => void;
+  onGoToLevel3Module: () => void;
   onMintResearchLabCertificate: (options: {
     certificateLevel: 1 | 2 | 3;
     researchLabAccessToken: string;
@@ -116,10 +120,32 @@ export function ResearchLabsSection({
       : null;
   const isBackendAuthenticated = Boolean(activeBackendAuth?.accessToken);
   const activeAdapter = getResearchLabAdapter(activeLab);
+  const isPrerequisiteBadgeCollected = useCallback(
+    (level: 1 | 2 | 3) => {
+      if (level === 3) return level3BadgeCollected;
+      if (level === 2) return level2BadgeCollected;
+      return level1BadgeCollected;
+    },
+    [level1BadgeCollected, level2BadgeCollected, level3BadgeCollected]
+  );
+  const goToPrerequisiteModule = useCallback(
+    (level: 1 | 2 | 3) => {
+      if (level === 3) {
+        onGoToLevel3Module();
+        return;
+      }
+
+      if (level === 2) {
+        onGoToLevel2Module();
+        return;
+      }
+
+      onGoToLevel1Module();
+    },
+    [onGoToLevel1Module, onGoToLevel2Module, onGoToLevel3Module]
+  );
   const activePrerequisiteBadgeCollected =
-    activeAdapter.prerequisiteBadgeLevel === 2
-      ? level2BadgeCollected
-      : level1BadgeCollected;
+    isPrerequisiteBadgeCollected(activeAdapter.prerequisiteBadgeLevel);
   const activeCertificateLevel = activeAdapter.certificate.level;
   const activeResearchLabCertificateMinted = Boolean(
     researchLabCertificateMintedByLevel[activeCertificateLevel]
@@ -456,19 +482,14 @@ export function ResearchLabsSection({
 
   const openLab = async (lab: ResearchLabManifest) => {
     const adapter = getResearchLabAdapter(lab);
-    const prerequisiteCollected =
-      adapter.prerequisiteBadgeLevel === 2
-        ? level2BadgeCollected
-        : level1BadgeCollected;
+    const prerequisiteCollected = isPrerequisiteBadgeCollected(
+      adapter.prerequisiteBadgeLevel
+    );
     if (!prerequisiteCollected) {
       toast.message(
         `Collect the Level ${adapter.prerequisiteBadgeLevel} badge before opening this Research Lab.`
       );
-      if (adapter.prerequisiteBadgeLevel === 2) {
-        onGoToLevel2Module();
-      } else {
-        onGoToLevel1Module();
-      }
+      goToPrerequisiteModule(adapter.prerequisiteBadgeLevel);
       return;
     }
 
@@ -607,11 +628,12 @@ export function ResearchLabsSection({
   ]);
 
   const openNextModuleFromLab = useCallback(() => {
-    if (activeAdapter.prerequisiteBadgeLevel === 2) {
-      onContinueToLevel3();
+    if (activeAdapter.prerequisiteBadgeLevel === 1) {
+      onContinueToLevel2();
       return;
     }
-    onContinueToLevel2();
+
+    onContinueToLevel3();
   }, [
     activeAdapter.prerequisiteBadgeLevel,
     onContinueToLevel2,
@@ -627,12 +649,14 @@ export function ResearchLabsSection({
         labs={labs}
         level1BadgeCollected={level1BadgeCollected}
         level2BadgeCollected={level2BadgeCollected}
+        level3BadgeCollected={level3BadgeCollected}
         researchLabCertificateMintedByLevel={
           researchLabCertificateMintedByLevel
         }
         onLoadCatalog={loadCatalog}
         onGoToLevel1Module={onGoToLevel1Module}
         onGoToLevel2Module={onGoToLevel2Module}
+        onGoToLevel3Module={onGoToLevel3Module}
         onOpenLab={openLab}
         walletStatus={walletStatus}
       />

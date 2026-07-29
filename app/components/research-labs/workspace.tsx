@@ -15,9 +15,14 @@ import type {
   ResearchLabReportFields,
   SandboxAccountSummary,
 } from "../../lib/research-labs/lab-state";
+import { ArbitraryCpiExecuteTab } from "./arbitrary-cpi-execute-tab";
 import { ExploitTab } from "./execute-exploit-tab";
 import { InspectTab } from "./inspect-tab";
-import { getResearchLabAdapter, isYieldHijackLab } from "./lab-adapters";
+import {
+  getResearchLabAdapter,
+  isArbitraryCpiLab,
+  isYieldHijackLab,
+} from "./lab-adapters";
 import { ReportTab } from "./report-tab";
 import { YieldHijackExecuteTab } from "./yield-hijack-execute-tab";
 import type {
@@ -169,7 +174,23 @@ export function ResearchLabWorkspace({
         onSelectFile={onSelectFile}
       />
     ) : activeTab === "exploit" || activeTab === "verify" ? (
-      isYieldHijackLab(lab) ? (
+      isArbitraryCpiLab(lab) ? (
+        <ArbitraryCpiExecuteTab
+          activeView={executeExploitView}
+          evidenceAccounts={evidenceAccounts}
+          explorerAccessToken={explorerAccessToken}
+          explorerSessionId={explorerSessionId}
+          impactVerified={impactVerified}
+          isRunning={isRunning}
+          txResults={txResults}
+          onChangeView={onChangeExecuteExploitView}
+          onExecuteTransaction={onExecuteTransaction}
+          onOpenEvidenceReview={() =>
+            onChangeExecuteExploitView("EVIDENCE_REVIEW")
+          }
+          onProveImpact={onProveImpact}
+        />
+      ) : isYieldHijackLab(lab) ? (
         <YieldHijackExecuteTab
           activeView={executeExploitView}
           evidenceAccounts={evidenceAccounts}

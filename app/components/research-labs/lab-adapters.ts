@@ -3,12 +3,13 @@ import {
   type QuestionnaireDefinition,
 } from "../../lib/research-labs/rl1-questionnaire";
 import { rl2FindingQuestionnaire } from "../../lib/research-labs/rl2-questionnaire";
+import { rl3FindingQuestionnaire } from "../../lib/research-labs/rl3-questionnaire";
 import type { ResearchLabManifest } from "../../lib/research-labs/lab-state";
 
 export type ResearchLabFrontendAdapter = {
   slug: string;
   code: string;
-  prerequisiteBadgeLevel: 1 | 2;
+  prerequisiteBadgeLevel: 1 | 2 | 3;
   questionnaire: QuestionnaireDefinition;
   inspectHintId: string;
   accountLabels: Record<string, string>;
@@ -308,9 +309,159 @@ const rl2Adapter: ResearchLabFrontendAdapter = {
   },
 };
 
+const rl3Adapter: ResearchLabFrontendAdapter = {
+  slug: "arbitrary-cpi",
+  code: "RL3",
+  prerequisiteBadgeLevel: 3,
+  questionnaire: rl3FindingQuestionnaire,
+  inspectHintId: "build-cpi-target",
+  accountLabels: {
+    bounty_config: "Bounty Configuration",
+    bounty_authority: "Bounty Authority",
+    bounty_vault: "Bounty Vault",
+    task_record: "Task Record",
+    task_escrow: "Task Escrow",
+    official_payout_router: "Official Payout Router",
+    approved_worker_account: "Approved Worker Account",
+    attacker_reward_account: "Attacker Reward Account",
+    attacker_program_buffer: "Attacker Program Buffer",
+    attacker_cpi_program: "Attacker CPI Program",
+  },
+  briefing: {
+    heading: "Investigate a delegated payout flow.",
+    supportingLine:
+      "Inspect a bounty platform, build a session-scoped CPI target, and prove whether payout delegation is safely constrained.",
+    objective:
+      "Determine whether a caller-supplied CPI target can replace the approved payout router and drain escrowed task rewards.",
+  },
+  impactVerifiedCopy: "Delegated payout impact verified.",
+  inspectChecks: [
+    "Protocol source reviewed",
+    "Public interface inspected",
+    "Delegated payout path mapped",
+    "Exploit path ready",
+  ],
+  verifiedEvidenceChecks: [
+    "Attacker program built",
+    "Attacker program deployed",
+    "Delegation submitted",
+    "Escrow drained",
+  ],
+  exploitHints: [
+    "Build the sandbox attacker program using the delegated payout source, destination, and signer strategy.",
+    "Open SolBreach Explorer and inspect the public IDL to find the delegated payout instruction.",
+    "Submit a normal delegation first, then replace the delegated program target with the deployed attacker CPI program.",
+  ],
+  securePattern: {
+    title: "Secure Pattern: Bound CPI Targets",
+    subtitle:
+      "How to prevent delegated payout logic from calling arbitrary programs.",
+    whatFailed:
+      "The payout flow accepted a caller-supplied CPI program without binding it to the approved payout router.",
+    principle:
+      "When value moves through CPI, the target program must be allowlisted, resolved from trusted config, or otherwise proven before invocation.",
+    answerPrompt: "Which validation prevents this Arbitrary CPI path?",
+    correctAnswerId: "bind_cpi_target_to_approved_router",
+    answerOptions: [
+      {
+        id: "increase_task_reward",
+        label: "Increase the task reward amount",
+      },
+      {
+        id: "bind_cpi_target_to_approved_router",
+        label: "Bind delegated payout CPI targets to the approved router",
+      },
+      {
+        id: "hide_delegate_button",
+        label: "Hide delegation controls in the UI",
+      },
+      {
+        id: "require_worker_signature",
+        label: "Require the worker signature after payout",
+      },
+    ],
+    requiredChecksTitle: "Required CPI target checks",
+    requiredChecks: [
+      {
+        id: "target_program_from_config",
+        label: "CPI target comes from trusted config",
+      },
+      {
+        id: "target_matches_approved_router",
+        label: "Target matches approved payout router",
+      },
+      {
+        id: "signer_scope_validated",
+        label: "Delegated signer scope is validated",
+      },
+      {
+        id: "destination_bound_to_task",
+        label: "Destination account is bound to the task",
+      },
+    ],
+    validationChecklist: [
+      "Resolve CPI target from trusted protocol config.",
+      "Compare the invoked program against the approved router.",
+      "Validate delegated signer scope before invoking.",
+      "Bind payout destination to the completed task.",
+      "Reject caller-supplied remaining-account routers for value movement.",
+    ],
+    researcherChecklist: [
+      "Which program is actually invoked?",
+      "Who supplies the CPI target?",
+      "Is the target bound to config or caller input?",
+      "Can value move through a compatible attacker program?",
+      "Is the destination account bound to the task recipient?",
+    ],
+    contrastTitle: "Delegated CPI contrast",
+    contrastCopy:
+      "Delegation is not the issue by itself. The risk appears when the invoked program can be chosen by the caller at the moment value is moved.",
+    badPatternTitle: "Caller-supplied CPI target",
+    badPatternCode: [
+      "pub fn execute_delegated_payout(ctx: Context<Payout>) -> Result<()> {",
+      "    invoke(",
+      "        &ctx.accounts.delegate_program.to_instruction(),",
+      "        ctx.remaining_accounts,",
+      "    )",
+      "}",
+    ].join("\n"),
+    saferPatternTitle: "Config-bound payout router",
+    saferPatternCode: [
+      "pub fn execute_delegated_payout(ctx: Context<Payout>) -> Result<()> {",
+      "    require_keys_eq!(",
+      "        ctx.accounts.delegate_program.key(),",
+      "        ctx.accounts.config.approved_payout_router",
+      "    );",
+      "",
+      "    invoke_signed(",
+      "        &router_instruction(ctx)?,",
+      "        ctx.accounts.router_accounts(),",
+      "        ctx.seeds(),",
+      "    )",
+      "}",
+    ].join("\n"),
+    completionLockedCopy:
+      "Complete the Secure Pattern review to unlock the Arbitrary CPI certificate.",
+    completionReadyCopy:
+      "Secure pattern completed. Continue to the certification checkpoint.",
+    toastId: "rl3-audit-report-submitted",
+    toastDescription:
+      "Review the CPI target-binding pattern before claiming the Research Lab certificate.",
+  },
+  certificate: {
+    level: 3,
+    labLabel: "Research Lab 3",
+    moduleLabel: "Arbitrary CPI",
+    credentialLabel: "Arbitrary CPI — Verified Research Lab",
+    completionCopy:
+      "You verified a delegated payout drain, submitted the finding, and reviewed CPI target binding.",
+  },
+};
+
 const adapters: Record<string, ResearchLabFrontendAdapter> = {
   [rl1Adapter.slug]: rl1Adapter,
   [rl2Adapter.slug]: rl2Adapter,
+  [rl3Adapter.slug]: rl3Adapter,
 };
 
 export function getResearchLabAdapter(
@@ -318,6 +469,7 @@ export function getResearchLabAdapter(
 ) {
   if (!lab) return rl1Adapter;
   if (lab.slug in adapters) return adapters[lab.slug];
+  if (lab.id === "rl3-arbitrary-cpi") return rl3Adapter;
   if (lab.id === "rl2-yield-hijack") return rl2Adapter;
   return rl1Adapter;
 }
@@ -326,4 +478,10 @@ export function isYieldHijackLab(
   lab: Pick<ResearchLabManifest, "id" | "slug"> | null
 ) {
   return getResearchLabAdapter(lab).slug === "yield-hijack";
+}
+
+export function isArbitraryCpiLab(
+  lab: Pick<ResearchLabManifest, "id" | "slug"> | null
+) {
+  return getResearchLabAdapter(lab).slug === "arbitrary-cpi";
 }

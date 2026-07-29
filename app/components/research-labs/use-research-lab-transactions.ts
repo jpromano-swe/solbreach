@@ -16,7 +16,11 @@ import {
   type TransactionResult,
 } from "../../lib/research-labs/lab-state";
 import { NEUTRAL_LABELS } from "./execute-exploit-tab";
-import { getResearchLabAdapter, isYieldHijackLab } from "./lab-adapters";
+import {
+  getResearchLabAdapter,
+  isArbitraryCpiLab,
+  isYieldHijackLab,
+} from "./lab-adapters";
 import type { EnrichedTransactionResult } from "./types";
 
 type UseResearchLabTransactionsOptions = {
@@ -190,22 +194,86 @@ export function useResearchLabTransactions({
               ? labelForRef(payload.reward_vault_ref)
               : undefined,
           destinationAccountRef:
-            payload.action_type === "CLAIM_REWARDS"
+            payload.action_type === "CLAIM_REWARDS" ||
+            payload.action_type === "EXECUTE_DELEGATED_CPI"
               ? payload.destination_account_ref
               : undefined,
           destinationAccountLabel:
-            payload.action_type === "CLAIM_REWARDS"
+            payload.action_type === "CLAIM_REWARDS" ||
+            payload.action_type === "EXECUTE_DELEGATED_CPI"
               ? labelForRef(payload.destination_account_ref)
               : undefined,
           instructionName:
-            payload.action_type === "CLAIM_REWARDS"
+            payload.action_type === "CLAIM_REWARDS" ||
+            payload.action_type === "EXECUTE_DELEGATED_CPI"
               ? payload.instruction_name
               : undefined,
           targetWalletAddress:
             payload.action_type === "CLAIM_REWARDS"
               ? payload.target_wallet_address
               : undefined,
-          amount: "amount" in payload ? payload.amount : 0,
+          programTemplate:
+            payload.action_type === "BUILD_ATTACKER_PROGRAM"
+              ? payload.program_template
+              : undefined,
+          entrypointName:
+            payload.action_type === "BUILD_ATTACKER_PROGRAM"
+              ? payload.entrypoint_name
+              : undefined,
+          transferSourceRef:
+            payload.action_type === "BUILD_ATTACKER_PROGRAM"
+              ? payload.transfer_source_ref
+              : undefined,
+          transferSourceLabel:
+            payload.action_type === "BUILD_ATTACKER_PROGRAM"
+              ? labelForRef(payload.transfer_source_ref)
+              : undefined,
+          transferDestinationRef:
+            payload.action_type === "BUILD_ATTACKER_PROGRAM"
+              ? payload.transfer_destination_ref
+              : undefined,
+          transferDestinationLabel:
+            payload.action_type === "BUILD_ATTACKER_PROGRAM"
+              ? labelForRef(payload.transfer_destination_ref)
+              : undefined,
+          authorityStrategy:
+            payload.action_type === "BUILD_ATTACKER_PROGRAM"
+              ? payload.authority_strategy
+              : undefined,
+          artifactRef:
+            payload.action_type === "DEPLOY_ATTACKER_PROGRAM"
+              ? payload.artifact_ref
+              : undefined,
+          taskRef:
+            payload.action_type === "SUBMIT_DELEGATION" ||
+            payload.action_type === "EXECUTE_DELEGATED_CPI"
+              ? payload.task_ref
+              : undefined,
+          taskLabel:
+            payload.action_type === "SUBMIT_DELEGATION" ||
+            payload.action_type === "EXECUTE_DELEGATED_CPI"
+              ? labelForRef(payload.task_ref)
+              : undefined,
+          delegateProgramRef:
+            payload.action_type === "SUBMIT_DELEGATION" ||
+            payload.action_type === "EXECUTE_DELEGATED_CPI"
+              ? payload.delegate_program_ref
+              : undefined,
+          delegateProgramLabel:
+            payload.action_type === "SUBMIT_DELEGATION" ||
+            payload.action_type === "EXECUTE_DELEGATED_CPI"
+              ? labelForRef(payload.delegate_program_ref)
+              : undefined,
+          rewardAmount:
+            payload.action_type === "SUBMIT_DELEGATION"
+              ? payload.reward_amount
+              : undefined,
+          amount:
+            "amount" in payload
+              ? payload.amount
+              : "reward_amount" in payload
+                ? payload.reward_amount
+                : 0,
         };
 
         const result = await submitResearchLabTransaction(
@@ -249,21 +317,18 @@ export function useResearchLabTransactions({
         );
 
         if (enriched.executionStatus === "success") {
-          const successCopy =
-            payload.action_type === "DEPOSIT_COLLATERAL"
-              ? "Deposit submitted to sandbox"
-              : payload.action_type === "WITHDRAW_AGAINST_CREDIT"
-                ? "Withdrawal submitted to sandbox"
-                : payload.action_type === "STAKE"
-                  ? "Stake completed"
-                  : "Rewards claimed";
+          const successCopy = getSuccessCopy(payload.action_type);
           toast.success(successCopy);
           await fetchAccountEvidence(auth, nextSession);
         } else {
           showTransactionFailureToast(
             enriched.logs.at(-1),
             enriched.errorCode ?? enriched.error_code,
-            isYieldHijackLab(activeLab)
+            isArbitraryCpiLab(activeLab)
+              ? "arbitrary-cpi"
+              : isYieldHijackLab(activeLab)
+                ? "yield-hijack"
+                : "default"
           );
           await fetchAccountEvidence(auth, nextSession);
         }
@@ -381,6 +446,13 @@ function enrichPersistedTransaction(
     parameters,
     "destination_account_ref"
   );
+  const transferSourceRef = parameterString(parameters, "transfer_source_ref");
+  const transferDestinationRef = parameterString(
+    parameters,
+    "transfer_destination_ref"
+  );
+  const taskRef = parameterString(parameters, "task_ref");
+  const delegateProgramRef = parameterString(parameters, "delegate_program_ref");
 
   return {
     ...result,
@@ -409,9 +481,45 @@ function enrichPersistedTransaction(
       instructionName: parameterString(parameters, "instruction_name"),
       targetWalletAddress: parameterString(parameters, "target_wallet_address"),
       claimScope: claimScopeFromParameters(parameters),
-      amount: parameterNumber(parameters, "amount"),
+      programTemplate: parameterString(parameters, "program_template"),
+      entrypointName: parameterString(parameters, "entrypoint_name"),
+      transferSourceRef,
+      transferSourceLabel: labelForRef(transferSourceRef),
+      transferDestinationRef,
+      transferDestinationLabel: labelForRef(transferDestinationRef),
+      authorityStrategy: parameterString(parameters, "authority_strategy"),
+      artifactRef: parameterString(parameters, "artifact_ref"),
+      taskRef,
+      taskLabel: labelForRef(taskRef),
+      delegateProgramRef,
+      delegateProgramLabel: labelForRef(delegateProgramRef),
+      rewardAmount: parameterNumber(parameters, "reward_amount"),
+      amount:
+        parameterNumber(parameters, "amount") ||
+        parameterNumber(parameters, "reward_amount"),
     },
   };
+}
+
+function getSuccessCopy(actionType: LabTransactionPayload["action_type"]) {
+  switch (actionType) {
+    case "DEPOSIT_COLLATERAL":
+      return "Deposit submitted to sandbox";
+    case "WITHDRAW_AGAINST_CREDIT":
+      return "Withdrawal submitted to sandbox";
+    case "STAKE":
+      return "Stake completed";
+    case "CLAIM_REWARDS":
+      return "Rewards claimed";
+    case "BUILD_ATTACKER_PROGRAM":
+      return "Attacker program built";
+    case "DEPLOY_ATTACKER_PROGRAM":
+      return "Attacker program deployed";
+    case "SUBMIT_DELEGATION":
+      return "Delegation submitted";
+    case "EXECUTE_DELEGATED_CPI":
+      return "Delegated CPI executed";
+  }
 }
 
 function getBackendRejectionCode(result: TransactionResult) {
@@ -443,11 +551,14 @@ function parameterNumber(parameters: Record<string, unknown>, key: string) {
 function showTransactionFailureToast(
   lastLog: string | undefined,
   errorCode?: string,
-  yieldHijack = false
+  labKind: "default" | "yield-hijack" | "arbitrary-cpi" = "default"
 ) {
-  const description = yieldHijack
-    ? normalizeYieldHijackFailure(lastLog, errorCode)
-    : normalizeTransactionFailureLog(lastLog);
+  const description =
+    labKind === "yield-hijack"
+      ? normalizeYieldHijackFailure(lastLog, errorCode)
+      : labKind === "arbitrary-cpi"
+        ? normalizeArbitraryCpiFailure(lastLog, errorCode)
+        : normalizeTransactionFailureLog(lastLog);
 
   if (
     lastLog?.toLowerCase().includes("simulation") ||
@@ -464,6 +575,70 @@ function showTransactionFailureToast(
       description,
     });
   }
+}
+
+function normalizeArbitraryCpiFailure(
+  lastLog: string | undefined,
+  errorCode?: string
+) {
+  const normalized = `${errorCode ?? ""} ${lastLog ?? ""}`.toLowerCase();
+
+  if (
+    normalized.includes("instruction_name_required") ||
+    normalized.includes("instruction name is required")
+  ) {
+    return "Inspect the public program interface and provide the delegated payout instruction.";
+  }
+  if (
+    normalized.includes("invalid_instruction_name") ||
+    normalized.includes("instruction does not match")
+  ) {
+    return "The submitted instruction does not match the delegated payout interface.";
+  }
+  if (normalized.includes("official_router_target_rejected")) {
+    return "The approved router rejected this target. Replace the delegated CPI target with the deployed attacker program.";
+  }
+  if (
+    normalized.includes("attacker_program_not_built") ||
+    normalized.includes("program not built")
+  ) {
+    return "Build the session-scoped attacker program before deploying it.";
+  }
+  if (
+    normalized.includes("attacker_program_not_deployed") ||
+    normalized.includes("program not deployed")
+  ) {
+    return "Deploy the session-scoped attacker program before executing the delegated CPI.";
+  }
+  if (
+    normalized.includes("delegation_missing") ||
+    normalized.includes("delegation")
+  ) {
+    return "Submit a normal-looking task delegation before executing the delegated CPI.";
+  }
+  if (
+    normalized.includes("invalid_cpi") ||
+    normalized.includes("invalid target") ||
+    normalized.includes("invalid account") ||
+    normalized.includes("account ref")
+  ) {
+    return "The selected CPI target or account reference does not match this session. Refresh the lab state and retry.";
+  }
+  if (
+    normalized.includes("insufficient") ||
+    normalized.includes("escrow") ||
+    normalized.includes("no funds")
+  ) {
+    return "The task escrow no longer has enough bounty funds for this payout.";
+  }
+  if (normalized.includes("invalid amount") || normalized.includes("amount")) {
+    return "Use the task reward amount from the bounty record.";
+  }
+  if (normalized.includes("unsupported")) {
+    return "This action is not supported by the current lab runtime.";
+  }
+
+  return lastLog ?? "Check transaction logs for details.";
 }
 
 function normalizeYieldHijackFailure(
