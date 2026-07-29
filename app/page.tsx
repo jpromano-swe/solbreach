@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AppHeader } from "./components/app-header";
 import { BadgeEarnedDialog } from "./components/badge-earned-dialog";
 import { BetaAccessSection } from "./components/beta-access-section";
+import { BreachRoomsSection } from "./components/breach-rooms-section";
 import { GridBackground } from "./components/grid-background";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
@@ -773,6 +774,7 @@ export default function Home() {
             setActiveLevelsView("landing");
           }}
           onOpenProfile={() => setActiveSection("profile")}
+          onSelectBreachRooms={() => setActiveSection("breach-rooms")}
           onSelectResearchLabs={() => setActiveSection("research-labs")}
           onSelectVulnerabilities={() => setActiveSection("vulnerabilities")}
           onSelectLevel={(level) => {
@@ -785,7 +787,8 @@ export default function Home() {
         <main
           className={
             activeSection === "research-labs" ||
-            activeSection === "vulnerabilities"
+            activeSection === "vulnerabilities" ||
+            activeSection === "breach-rooms"
               ? "w-full pb-0 pt-0"
               : "mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10"
           }
@@ -975,6 +978,8 @@ export default function Home() {
                 setActiveLevelsView(level);
               }}
             />
+          ) : activeSection === "breach-rooms" ? (
+            <BreachRoomsSection />
           ) : (
             <section className="space-y-8">
               <div className="max-w-3xl space-y-4">

@@ -7,6 +7,7 @@ export type RootSection =
   | "levels"
   | "vulnerabilities"
   | "research-labs"
+  | "breach-rooms"
   | "profile"
   | "beta-access";
 
@@ -34,6 +35,7 @@ function getInitialRouteState(): {
   if (
     section === "profile" ||
     section === "research-labs" ||
+    section === "breach-rooms" ||
     section === "vulnerabilities" ||
     section === "beta-access"
   ) {
