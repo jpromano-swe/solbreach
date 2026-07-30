@@ -11,7 +11,6 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import { OnboardingQuestionnaire } from "./onboarding-questionnaire";
 
 const LANDING_RUST_CODE_KEYWORDS = new Set([
   "Account",
@@ -72,10 +71,7 @@ export function LandingPageSection({
       return;
     }
 
-    window.history.replaceState(null, "", "#onboarding");
-    document
-      .getElementById("onboarding")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.location.assign("/onboarding");
   };
   const heroSlides = [
     {
@@ -188,8 +184,6 @@ Bind collateral mint and vault accounts to protocol config.`,
 
       <FeatureShowcaseSection />
       <PartnerTrustSection />
-      <LandingFooterBlend />
-      {!enableAppEntry ? <OnboardingQuestionnaire /> : null}
       <LandingCtaSection
         onGetStarted={handleRequestBetaAccess}
         documentationUrl={documentationUrl}
@@ -201,18 +195,18 @@ Bind collateral mint and vault accounts to protocol config.`,
 function PartnerTrustSection() {
   return (
     <section
-      className="relative isolate overflow-hidden pb-16 pt-44 sm:pb-20 sm:pt-56"
+      className="relative isolate overflow-hidden pb-16 pt-24 sm:pb-20 sm:pt-32"
       aria-labelledby="partner-trust-title"
     >
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
-        <p
+        <h2
           id="partner-trust-title"
-          className="text-base font-semibold uppercase tracking-[0.28em] text-muted/90 sm:text-lg"
+          className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl"
         >
           Trusted by leading teams worldwide
-        </p>
+        </h2>
 
-        <div className="mt-16 grid gap-12 sm:grid-cols-3 sm:gap-14">
+        <div className="mt-20 grid gap-12 sm:grid-cols-3 sm:gap-14">
           {PARTNER_LOGOS.map((partner, index) => (
             <div
               className="solbreach-partner-float flex flex-col items-center gap-5"
@@ -226,7 +220,7 @@ function PartnerTrustSection() {
                 height={192}
                 className="h-32 w-32 object-contain drop-shadow-[0_22px_54px_rgba(0,0,0,0.45)] sm:h-44 sm:w-44 lg:h-48 lg:w-48"
               />
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-base font-semibold text-foreground">
                 {partner.name}
               </p>
             </div>
@@ -234,20 +228,6 @@ function PartnerTrustSection() {
         </div>
       </div>
     </section>
-  );
-}
-
-function LandingFooterBlend() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none relative z-0 mx-auto -mb-40 -mt-20 h-[34rem] max-w-7xl overflow-hidden [mask-image:linear-gradient(90deg,transparent_0%,#000_10%,#000_90%,transparent_100%)] sm:h-[38rem]"
-    >
-      <div className="absolute inset-x-0 bottom-0 h-[92%] [mask-image:radial-gradient(ellipse_at_center,#000_22%,transparent_78%)]">
-        <div className="absolute left-1/2 bottom-[-13rem] h-[34rem] w-[220%] -translate-x-1/2 rounded-[50%] border-t border-white/12 bg-background shadow-[0_-42px_150px_rgba(153,69,255,0.085),0_-24px_110px_rgba(20,241,149,0.045)]" />
-        <div className="absolute left-1/2 bottom-[1rem] h-72 w-[78%] -translate-x-1/2 blur-3xl [background:radial-gradient(ellipse_at_center,rgba(153,69,255,0.115),rgba(20,241,149,0.04)_44%,transparent_76%)]" />
-      </div>
-    </div>
   );
 }
 
@@ -259,48 +239,53 @@ function LandingCtaSection({
   documentationUrl: string;
 }) {
   return (
-    <section className="grid items-center gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="flex min-h-[360px] items-center justify-center">
-        <Image
-          src="/solana_logo_nobg.png"
-          alt="Solana logo"
-          width={1254}
-          height={1254}
-          className="h-auto w-[min(76%,360px)] drop-shadow-[0_32px_80px_rgba(20,241,149,0.18)]"
-          priority={false}
+    <section className="relative z-20 -mb-36 pb-0 pt-10 sm:-mb-44 sm:pt-14">
+      <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-card px-6 py-10 shadow-[0_38px_130px_-100px_rgba(20,241,149,0.48),0_36px_120px_-104px_rgba(153,69,255,0.55)] sm:px-10 lg:grid lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-10 lg:px-12 lg:py-12">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_46%_60%_at_18%_45%,rgba(20,241,149,0.12),transparent_70%),radial-gradient(ellipse_52%_58%_at_78%_18%,rgba(153,69,255,0.10),transparent_68%)]"
         />
-      </div>
+        <div className="relative flex min-h-[220px] items-center justify-center lg:min-h-[300px]">
+          <Image
+            src="/solana_logo_nobg.png"
+            alt="Solana logo"
+            width={1254}
+            height={1254}
+            className="h-auto w-[min(66%,260px)] drop-shadow-[0_32px_80px_rgba(20,241,149,0.18)] lg:w-[min(72%,310px)]"
+            priority={false}
+          />
+        </div>
 
-      <div className="max-w-xl lg:ml-auto">
-        <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-          Practice the full Solana security workflow.
-        </h2>
-        <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
-          Connect your wallet, complete a guided Vulnerability Module, and
-          investigate RL1 from source inspection to vulnerability impact and
-          create a Finding Report.
-        </p>
+        <div className="relative mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
+          <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+            Practice the full Solana security workflow.
+          </h2>
+          <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
+            Inspect vulnerable code, prove what breaks, and turn your evidence
+            into a clear finding.
+          </p>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={onGetStarted}
-            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,transform,box-shadow] hover:bg-[#8b35f6] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Request Beta Access
-            <ArrowRight
-              className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
-              aria-hidden="true"
-            />
-          </button>
-          <a
-            href={documentationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-card/80 px-6 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Read Documentation
-          </a>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+            <button
+              type="button"
+              onClick={onGetStarted}
+              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,transform,box-shadow] hover:bg-[#8b35f6] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Request Beta Access
+              <ArrowRight
+                className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+                aria-hidden="true"
+              />
+            </button>
+            <a
+              href={documentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background/80 px-6 text-sm font-medium text-foreground transition-[background-color,transform] hover:bg-accent active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Read Documentation
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -656,7 +641,7 @@ function HeroStatusRow({ label, value }: { label: string; value: string }) {
 function FeatureShowcaseSection() {
   return (
     <section
-      className="relative overflow-hidden bg-background/80 shadow-[0_36px_120px_-90px_rgba(20,241,149,0.45),0_28px_100px_-90px_rgba(153,69,255,0.55)]"
+      className="relative overflow-hidden bg-background/80 shadow-[0_36px_120px_-90px_rgba(20,241,149,0.45),0_28px_100px_-90px_rgba(153,69,255,0.55)] [mask-image:linear-gradient(to_bottom,#000_0%,#000_78%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,#000_0%,#000_78%,transparent_100%)]"
       aria-labelledby="feature-showcase-title"
       style={{
         backgroundImage: [
@@ -727,10 +712,6 @@ function FeatureShowcaseSection() {
           body="Record validated module completion against the learner wallet."
         />
       </div>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 bg-gradient-to-b from-transparent via-background/75 to-background"
-      />
     </section>
   );
 }

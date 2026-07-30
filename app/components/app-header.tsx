@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { HeaderCourseNav, type CourseLevelTarget } from "./course-nav";
-import { ThemeToggle } from "./theme-toggle";
 import { WalletButton } from "./wallet-button";
 import type { RootSection } from "../lib/hooks/use-level-route";
 import type { LevelsView } from "../lib/levels/course-status";
@@ -45,7 +44,11 @@ export function AppHeader({
               alt="SolBreach"
               width={1480}
               height={304}
-              className="h-20 w-auto sm:h-20 lg:h-20"
+              className={
+                isLandingView
+                  ? "h-10 w-auto sm:h-11 lg:h-12"
+                  : "h-14 w-auto sm:h-16 lg:h-16"
+              }
               priority
             />
           </button>
@@ -70,7 +73,6 @@ export function AppHeader({
               profileImageSrc={profileImageSrc}
             />
           ) : null}
-          <ThemeToggle />
         </div>
       </div>
     </header>
