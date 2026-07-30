@@ -139,7 +139,7 @@ Bind collateral mint and vault accounts to protocol config.`,
     <section className="space-y-10">
       <div className="mx-auto max-w-4xl space-y-7 text-center">
         <h1 className="mx-auto max-w-5xl text-balance py-6 text-5xl font-medium leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
-          <span className="block text-[#14f195] drop-shadow-[0_0_34px_rgba(20,241,149,0.38)] [text-shadow:0_0_28px_rgba(20,241,149,0.32),0_0_68px_rgba(20,241,149,0.18)]">
+          <span className="block text-[#14f195] drop-shadow-[0_0_18px_rgba(20,241,149,0.18)] [text-shadow:0_0_18px_rgba(20,241,149,0.16),0_0_42px_rgba(20,241,149,0.08)]">
             Security Training Layer
           </span>
           <span className="mt-2 block">for Solana builders</span>
@@ -188,12 +188,12 @@ Bind collateral mint and vault accounts to protocol config.`,
 
       <FeatureShowcaseSection />
       <PartnerTrustSection />
+      <LandingFooterBlend />
       {!enableAppEntry ? <OnboardingQuestionnaire /> : null}
       <LandingCtaSection
         onGetStarted={handleRequestBetaAccess}
         documentationUrl={documentationUrl}
       />
-      <LandingFooterBlend />
     </section>
   );
 }
@@ -201,19 +201,15 @@ Bind collateral mint and vault accounts to protocol config.`,
 function PartnerTrustSection() {
   return (
     <section
-      className="relative isolate -mt-14 min-h-[620px] overflow-hidden py-20 sm:-mt-20 sm:py-24"
+      className="relative isolate -mt-14 overflow-hidden py-20 sm:-mt-20 sm:py-24"
       aria-labelledby="partner-trust-title"
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-72 bg-gradient-to-b from-background via-background/95 to-transparent"
-      />
-      <div
-        aria-hidden="true"
-        className="[--color:rgba(153,69,255,0.76)] pointer-events-none absolute inset-0 z-0 mx-auto overflow-hidden [mask-image:radial-gradient(ellipse_at_center_center,#000,transparent_60%)] before:absolute before:inset-x-0 before:bottom-[-8rem] before:mx-auto before:h-[34rem] before:w-[88%] before:opacity-45 before:blur-2xl before:[background-image:radial-gradient(circle_at_bottom_center,var(--color),transparent_70%),radial-gradient(circle_at_bottom_right,rgba(20,241,149,0.22),transparent_62%)] after:absolute after:-left-1/2 after:bottom-[-14rem] after:aspect-[1/0.28] after:w-[200%] after:rounded-[50%] after:border-t after:border-border after:bg-background"
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-background via-background/90 to-transparent"
       />
 
-      <div className="relative z-20 mx-auto flex min-h-[460px] max-w-5xl flex-col items-center justify-center px-4 text-center sm:px-6">
+      <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
         <p
           id="partner-trust-title"
           className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted"
@@ -250,7 +246,7 @@ function LandingFooterBlend() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none relative z-0 -mt-16 h-64 overflow-hidden bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.58)_58%,rgba(0,0,0,0.94)_100%)] before:absolute before:inset-x-0 before:bottom-[-15rem] before:mx-auto before:h-[28rem] before:w-[150%] before:rounded-[50%] before:border-t before:border-border before:bg-background after:absolute after:inset-x-0 after:bottom-[-3rem] after:mx-auto after:h-44 after:w-[64%] after:blur-3xl after:[background:radial-gradient(ellipse_at_center,rgba(20,241,149,0.14),transparent_68%),radial-gradient(ellipse_at_center,rgba(153,69,255,0.12),transparent_72%)]"
+      className="pointer-events-none relative z-0 -my-16 h-72 overflow-hidden bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.42)_48%,rgba(0,0,0,0.92)_100%)] before:absolute before:inset-x-0 before:bottom-[-15rem] before:mx-auto before:h-[28rem] before:w-[150%] before:rounded-[50%] before:border-t before:border-border before:bg-background after:absolute after:inset-x-0 after:bottom-[-3rem] after:mx-auto after:h-44 after:w-[58%] after:blur-3xl after:[background:radial-gradient(ellipse_at_center,rgba(20,241,149,0.07),transparent_68%),radial-gradient(ellipse_at_center,rgba(153,69,255,0.06),transparent_72%)]"
     />
   );
 }
