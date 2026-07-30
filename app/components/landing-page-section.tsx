@@ -201,12 +201,22 @@ Bind collateral mint and vault accounts to protocol config.`,
 function PartnerTrustSection() {
   return (
     <section
-      className="relative isolate overflow-hidden pb-20 pt-28 sm:pb-24 sm:pt-36"
+      className="relative isolate overflow-hidden pb-20 pt-36 sm:pb-24 sm:pt-44"
       aria-labelledby="partner-trust-title"
+      style={{
+        backgroundImage: [
+          "radial-gradient(ellipse 46% 42% at 50% 58%, rgba(153,69,255,0.10), transparent 72%)",
+          "radial-gradient(ellipse 34% 36% at 50% 68%, rgba(20,241,149,0.045), transparent 74%)",
+        ].join(", "),
+      }}
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-background via-background/90 to-transparent"
+        className="pointer-events-none absolute inset-y-0 left-0 z-0 w-32 bg-gradient-to-r from-background via-background/70 to-transparent blur-xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 z-0 w-32 bg-gradient-to-l from-background via-background/70 to-transparent blur-xl"
       />
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
