@@ -774,7 +774,6 @@ export default function Home() {
             setActiveLevelsView("landing");
           }}
           onOpenProfile={() => setActiveSection("profile")}
-          onSelectBreachRooms={() => setActiveSection("breach-rooms")}
           onSelectResearchLabs={() => setActiveSection("research-labs")}
           onSelectVulnerabilities={() => setActiveSection("vulnerabilities")}
           onSelectLevel={(level) => {

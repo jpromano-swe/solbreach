@@ -13,7 +13,6 @@ export function AppHeader({
   activeSection,
   onOpenLanding,
   onOpenProfile,
-  onSelectBreachRooms,
   onSelectLevel,
   onSelectResearchLabs,
   onSelectVulnerabilities,
@@ -23,7 +22,6 @@ export function AppHeader({
   activeSection: RootSection;
   onOpenLanding: () => void;
   onOpenProfile: () => void;
-  onSelectBreachRooms: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
   onSelectResearchLabs: () => void;
   onSelectVulnerabilities: () => void;
@@ -54,7 +52,6 @@ export function AppHeader({
 
         {activeSection !== "levels" || activeLevelsView !== "landing" ? (
           <HeaderCourseNav
-            onSelectBreachRooms={onSelectBreachRooms}
             onSelectResearchLabs={onSelectResearchLabs}
             onSelectVulnerabilities={onSelectVulnerabilities}
             onSelectLevel={onSelectLevel}

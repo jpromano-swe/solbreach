@@ -87,12 +87,10 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
 ];
 
 export function HeaderCourseNav({
-  onSelectBreachRooms,
   onSelectResearchLabs,
   onSelectVulnerabilities,
   onSelectLevel,
 }: {
-  onSelectBreachRooms: () => void;
   onSelectResearchLabs: () => void;
   onSelectVulnerabilities: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
@@ -122,7 +120,7 @@ export function HeaderCourseNav({
         label="Research Labs"
         onClick={onSelectResearchLabs}
       />
-      <HeaderDirectButton label="Breach Rooms" onClick={onSelectBreachRooms} />
+      <HeaderLockedButton label="Breach Rooms" />
 
       <div
         className={`absolute left-0 right-0 top-full h-4 ${
@@ -283,6 +281,19 @@ function HeaderDirectButton({
       onClick={onClick}
       className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium text-muted transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
+      {label}
+    </button>
+  );
+}
+
+function HeaderLockedButton({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      disabled
+      className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-full border border-border/60 bg-muted/20 px-4 text-sm font-medium text-muted/55 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
       {label}
     </button>
   );
