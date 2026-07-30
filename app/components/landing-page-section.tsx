@@ -139,7 +139,7 @@ Bind collateral mint and vault accounts to protocol config.`,
     <section className="space-y-10">
       <div className="mx-auto max-w-4xl space-y-7 text-center">
         <h1 className="mx-auto max-w-5xl text-balance py-6 text-5xl font-medium leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
-          <span className="block text-[#14f195] drop-shadow-[0_0_18px_rgba(20,241,149,0.18)] [text-shadow:0_0_18px_rgba(20,241,149,0.16),0_0_42px_rgba(20,241,149,0.08)]">
+          <span className="block text-[#14f195] drop-shadow-[0_0_12px_rgba(20,241,149,0.14)] [text-shadow:0_0_12px_rgba(20,241,149,0.12),0_0_28px_rgba(20,241,149,0.05)]">
             Security Training Layer
           </span>
           <span className="mt-2 block">for Solana builders</span>
@@ -157,7 +157,7 @@ Bind collateral mint and vault accounts to protocol config.`,
         <button
           type="button"
           onClick={handleRequestBetaAccess}
-          className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,transform,box-shadow] hover:bg-[#8b35f6] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Request Beta Access
           <ArrowRight
@@ -201,33 +201,27 @@ Bind collateral mint and vault accounts to protocol config.`,
 function PartnerTrustSection() {
   return (
     <section
-      className="relative isolate overflow-hidden pb-20 pt-36 sm:pb-24 sm:pt-44"
+      className="relative isolate overflow-hidden pb-16 pt-40 sm:pb-20 sm:pt-52"
       aria-labelledby="partner-trust-title"
-      style={{
-        backgroundImage: [
-          "radial-gradient(ellipse 46% 42% at 50% 58%, rgba(153,69,255,0.10), transparent 72%)",
-          "radial-gradient(ellipse 34% 36% at 50% 68%, rgba(20,241,149,0.045), transparent 74%)",
-        ].join(", "),
-      }}
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 z-0 w-32 bg-gradient-to-r from-background via-background/70 to-transparent blur-xl"
+        className="pointer-events-none absolute inset-x-[4%] top-0 z-0 h-[82%] [mask-image:linear-gradient(90deg,transparent_0%,#000_16%,#000_84%,transparent_100%)] bg-[radial-gradient(ellipse_62%_36%_at_50%_54%,rgba(153,69,255,0.09),transparent_72%),radial-gradient(ellipse_58%_34%_at_50%_68%,rgba(20,241,149,0.055),transparent_74%)] blur-sm"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 right-0 z-0 w-32 bg-gradient-to-l from-background via-background/70 to-transparent blur-xl"
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent"
       />
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
         <p
           id="partner-trust-title"
-          className="text-sm font-semibold uppercase tracking-[0.24em] text-muted sm:text-base"
+          className="text-base font-semibold uppercase tracking-[0.28em] text-muted/90 sm:text-lg"
         >
           Trusted by leading teams worldwide
         </p>
 
-        <div className="mt-14 grid gap-12 sm:grid-cols-3 sm:gap-14">
+        <div className="mt-16 grid gap-12 sm:grid-cols-3 sm:gap-14">
           {PARTNER_LOGOS.map((partner, index) => (
             <div
               className="solbreach-partner-float flex flex-col items-center gap-5"
@@ -256,8 +250,13 @@ function LandingFooterBlend() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none relative z-0 -my-20 h-80 overflow-hidden [mask-image:linear-gradient(90deg,transparent_0%,#000_14%,#000_86%,transparent_100%)] bg-[radial-gradient(ellipse_at_center,rgba(153,69,255,0.13),transparent_46%),linear-gradient(90deg,rgba(0,0,0,0.95)_0%,transparent_22%,transparent_78%,rgba(0,0,0,0.95)_100%),linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.38)_48%,rgba(0,0,0,0.94)_100%)] before:absolute before:left-1/2 before:bottom-[-15rem] before:h-[28rem] before:w-[170%] before:-translate-x-1/2 before:rounded-[50%] before:border-t before:border-border before:bg-background after:absolute after:left-1/2 after:bottom-[-2.5rem] after:h-48 after:w-[52%] after:-translate-x-1/2 after:blur-3xl after:[background:radial-gradient(ellipse_at_center,rgba(153,69,255,0.10),rgba(20,241,149,0.05)_48%,transparent_72%)]"
-    />
+      className="pointer-events-none relative z-0 mx-auto -mb-36 -mt-14 h-[30rem] max-w-7xl overflow-hidden [mask-image:linear-gradient(90deg,transparent_0%,#000_12%,#000_88%,transparent_100%)] sm:h-[34rem]"
+    >
+      <div className="absolute inset-x-0 bottom-0 h-[82%] [mask-image:radial-gradient(ellipse_at_center,#000_18%,transparent_74%)]">
+        <div className="absolute left-1/2 bottom-[-18rem] h-[30rem] w-[190%] -translate-x-1/2 rounded-[50%] border-t border-white/10 bg-background shadow-[0_-34px_130px_rgba(153,69,255,0.075),0_-18px_90px_rgba(20,241,149,0.05)]" />
+        <div className="absolute left-1/2 bottom-[-4rem] h-64 w-[72%] -translate-x-1/2 blur-3xl [background:radial-gradient(ellipse_at_center,rgba(153,69,255,0.105),rgba(20,241,149,0.045)_46%,transparent_74%)]" />
+      </div>
+    </div>
   );
 }
 
@@ -295,7 +294,7 @@ function LandingCtaSection({
           <button
             type="button"
             onClick={onGetStarted}
-            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,transform,box-shadow] hover:bg-[#8b35f6] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Request Beta Access
             <ArrowRight
