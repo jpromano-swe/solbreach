@@ -7,6 +7,7 @@ import { AppHeader } from "./components/app-header";
 import { BadgeEarnedDialog } from "./components/badge-earned-dialog";
 import { BetaAccessSection } from "./components/beta-access-section";
 import { BreachRoomsSection } from "./components/breach-rooms-section";
+import { CertificateMintLoader } from "./components/certificate-mint-loader";
 import { GridBackground } from "./components/grid-background";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
@@ -66,6 +67,10 @@ const SOLBREACH_DOCUMENTATION_URL =
   "https://solbreach.gitbook.io/documentation";
 const ENABLE_APP_ENTRY = process.env.NEXT_PUBLIC_ENABLE_APP_ENTRY === "true";
 type ResearchLabCertificateLevel = 1 | 2 | 3;
+type ResearchLabCertificateMintDialogState = {
+  description: string;
+  label: string;
+};
 
 const RESEARCH_LAB_CERTIFICATE_DETAILS: Record<
   ResearchLabCertificateLevel,
@@ -140,11 +145,28 @@ export default function Home() {
   const [manualBadgeDialog, setManualBadgeDialog] = useState<UserBadge | null>(
     null
   );
+  const [profileIdentity, setProfileIdentity] = useState<{
+    address?: string;
+    name: string;
+  }>({ name: "" });
   const [researchLabCertificationDialog, setResearchLabCertificationDialog] =
     useState<ResearchLabCertificationDialogState | null>(null);
+  const [
+    researchLabCertificateMintDialog,
+    setResearchLabCertificateMintDialog,
+  ] = useState<ResearchLabCertificateMintDialogState | null>(null);
   const [isCollectingLevel1Badge, setIsCollectingLevel1Badge] = useState(false);
   const [isCollectingLevel2Badge, setIsCollectingLevel2Badge] = useState(false);
   const trackedLevelViewsRef = useRef<Set<string>>(new Set());
+  const profileName =
+    profileIdentity.address === address ? profileIdentity.name : "";
+  const handleProfileNameChange = useCallback(
+    (nextProfileName: string) => {
+      setProfileIdentity({ address, name: nextProfileName });
+    },
+    [address]
+  );
+
   const {
     badges,
     isLoading: isBadgeLoading,
@@ -644,55 +666,65 @@ export default function Home() {
       researchLabAccessToken: string;
       researchLabSessionId: string;
     }) => {
-      const result =
-        certificateLevel === 2
-          ? await mintResearchLabLevel2({
-              researchLabAccessToken,
-              researchLabSessionId,
-            })
-          : certificateLevel === 3
-            ? await mintResearchLabLevel3({
-                researchLabAccessToken,
-                researchLabSessionId,
-              })
-            : await mintLevel1({
-                researchLabAccessToken,
-                researchLabSessionId,
-              });
-
-      if (!result) return;
-
-      handleResearchLabCertificateMinted({
-        assetId: result.assetId,
-        certificatePda: result.certificatePda,
-        level: certificateLevel,
-        leafIndex: result.leafIndex,
-        leafNonce: result.leafNonce,
-        merkleTree: result.merkleTree,
-      });
-
-      const [badgePayload] = await Promise.all([
-        mutateBadges(),
-        mutateProfileCertificates(),
-      ]);
-      const powerBadge =
-        certificateLevel === 1
-          ? (badgePayload?.badges.find((badge) => badge.slug === "power-user") ??
-            badges.find((badge) => badge.slug === "power-user") ??
-            null)
-          : null;
       const certificateDetails =
         RESEARCH_LAB_CERTIFICATE_DETAILS[certificateLevel];
 
-      setResearchLabCertificationDialog({
-        assetId: result.assetId,
-        certificateImage: certificateDetails.imageUri,
-        certificateTitle: certificateDetails.title,
-        description: certificateDetails.description,
-        nextLevel: certificateDetails.nextLevel,
-        powerBadge: powerBadge?.earned ? powerBadge : null,
-        showPowerBadge: certificateLevel === 1,
+      setResearchLabCertificateMintDialog({
+        description: `${certificateDetails.title} is being recorded for your wallet. Please keep this window open.`,
+        label: "NFT certificate is being minted",
       });
+
+      try {
+        const result =
+          certificateLevel === 2
+            ? await mintResearchLabLevel2({
+                researchLabAccessToken,
+                researchLabSessionId,
+              })
+            : certificateLevel === 3
+              ? await mintResearchLabLevel3({
+                  researchLabAccessToken,
+                  researchLabSessionId,
+                })
+              : await mintLevel1({
+                  researchLabAccessToken,
+                  researchLabSessionId,
+                });
+
+        if (!result) return;
+
+        handleResearchLabCertificateMinted({
+          assetId: result.assetId,
+          certificatePda: result.certificatePda,
+          level: certificateLevel,
+          leafIndex: result.leafIndex,
+          leafNonce: result.leafNonce,
+          merkleTree: result.merkleTree,
+        });
+
+        const [badgePayload] = await Promise.all([
+          mutateBadges(),
+          mutateProfileCertificates(),
+        ]);
+        const powerBadge =
+          certificateLevel === 1
+            ? (badgePayload?.badges.find((badge) => badge.slug === "power-user") ??
+              badges.find((badge) => badge.slug === "power-user") ??
+              null)
+            : null;
+
+        setResearchLabCertificationDialog({
+          assetId: result.assetId,
+          certificateImage: certificateDetails.imageUri,
+          certificateTitle: certificateDetails.title,
+          description: certificateDetails.description,
+          nextLevel: certificateDetails.nextLevel,
+          powerBadge: powerBadge?.earned ? powerBadge : null,
+          showPowerBadge: certificateLevel === 1,
+        });
+      } finally {
+        setResearchLabCertificateMintDialog(null);
+      }
     },
     [
       badges,
@@ -780,6 +812,7 @@ export default function Home() {
             setActiveSection("levels");
             setActiveLevelsView(level);
           }}
+          profileDisplayName={profileName.trim() || undefined}
         />
 
         <main
@@ -998,10 +1031,12 @@ export default function Home() {
                 getExplorerUrl={getExplorerUrl}
                 isBadgeLoading={isBadgeLoading}
                 isLoading={isProfileCertificatesLoading}
+                onProfileNameChange={handleProfileNameChange}
                 onSelectLevel={(level) => {
                   setActiveSection("levels");
                   setActiveLevelsView(level);
                 }}
+                profileName={profileName}
               />
             </section>
           )}
@@ -1021,6 +1056,13 @@ export default function Home() {
           setActiveSection("research-labs");
         }}
       />
+      {researchLabCertificateMintDialog ? (
+        <CertificateMintLoader
+          description={researchLabCertificateMintDialog.description}
+          label={researchLabCertificateMintDialog.label}
+          variant="modal"
+        />
+      ) : null}
       <ResearchLabCertificationDialog
         reward={researchLabCertificationDialog}
         onClose={closeResearchLabCertificationDialog}

@@ -15,6 +15,7 @@ export function AppHeader({
   onSelectLevel,
   onSelectResearchLabs,
   onSelectVulnerabilities,
+  profileDisplayName,
 }: {
   activeLevelsView: LevelsView;
   activeSection: RootSection;
@@ -23,6 +24,7 @@ export function AppHeader({
   onSelectLevel: (level: CourseLevelTarget) => void;
   onSelectResearchLabs: () => void;
   onSelectVulnerabilities: () => void;
+  profileDisplayName?: string;
 }) {
   const isLandingView = activeSection === "levels" && activeLevelsView === "landing";
 
@@ -62,6 +64,7 @@ export function AppHeader({
             <WalletButton
               isProfileActive={activeSection === "profile"}
               onOpenProfile={onOpenProfile}
+              profileDisplayName={profileDisplayName}
             />
           ) : null}
           <ThemeToggle />

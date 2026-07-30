@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, ChevronDown, Copy, LogOut, Network, User } from "lucide-react";
+import { Check, ChevronDown, Copy, LogOut, User } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useWallet } from "../lib/wallet/context";
 import { ellipsify } from "../lib/explorer";
 import { CLUSTERS, useCluster } from "./cluster-context";
 import { trackAnalyticsEvent } from "../lib/analytics";
+import type { ClusterMoniker } from "../lib/solana-client";
 
 export function WalletButton({
   buttonClassName = "",
@@ -15,6 +16,7 @@ export function WalletButton({
   disconnectedButtonClassName,
   isProfileActive = false,
   onOpenProfile,
+  profileDisplayName,
 }: {
   buttonClassName?: string;
   className?: string;
@@ -22,6 +24,7 @@ export function WalletButton({
   disconnectedButtonClassName?: string;
   isProfileActive?: boolean;
   onOpenProfile?: () => void;
+  profileDisplayName?: string;
 } = {}) {
   const { connectors, connect, disconnect, wallet, status, error } =
     useWallet();
@@ -34,6 +37,8 @@ export function WalletButton({
   const disconnectedStyles = disconnectedButtonClassName ?? buttonClassName;
 
   const address = wallet?.account.address;
+  const walletLabel = address ? ellipsify(address, 4) : "Wallet";
+  const userLabel = profileDisplayName?.trim() || walletLabel;
 
   const open = () => setIsOpen(true);
   const close = () => setIsOpen(false);
@@ -139,7 +144,9 @@ export function WalletButton({
         }`}
       >
         <span className="h-2 w-2 rounded-full bg-green-500" />
-        <span className="font-mono">{ellipsify(address!, 4)}</span>
+        <span className={profileDisplayName?.trim() ? "" : "font-mono"}>
+          {userLabel}
+        </span>
         <ChevronDown
           className={`h-3.5 w-3.5 text-zinc-400 transition-transform ${
             isOpen ? "rotate-180" : ""
@@ -150,26 +157,6 @@ export function WalletButton({
 
       {isOpen && (
         <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-white/10 bg-[#111212]/95 p-2 shadow-[0_24px_70px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-              Wallet
-            </p>
-            <p className="mt-2 break-all font-mono text-xs leading-5 text-zinc-200">
-              {address}
-            </p>
-            <button
-              onClick={handleCopy}
-              className="mt-3 inline-flex min-h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-[#14f195]" aria-hidden="true" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-              {copied ? "Copied" : "Copy wallet"}
-            </button>
-          </div>
-
           {onOpenProfile ? (
             <button
               type="button"
@@ -184,45 +171,75 @@ export function WalletButton({
               }`}
             >
               <User className="h-4 w-4" aria-hidden="true" />
-              Profile
+              <span className="min-w-0 text-left">
+                <span className="block">Profile</span>
+                <span
+                  className={`block truncate text-xs font-medium ${
+                    isProfileActive ? "text-black/55" : "text-zinc-500"
+                  } ${profileDisplayName?.trim() ? "" : "font-mono"}`}
+                >
+                  {userLabel}
+                </span>
+              </span>
             </button>
           ) : null}
 
-          <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-2">
-            <div className="flex items-center gap-2 px-1 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-              <Network className="h-3.5 w-3.5" aria-hidden="true" />
+          <div className="my-1 h-px bg-white/10" />
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="group flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
+          >
+            <span className="min-w-0">
+              <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+                Wallet
+              </span>
+              <span className="block truncate font-mono text-xs text-zinc-400 group-hover:text-zinc-200">
+                {address}
+              </span>
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-zinc-500 group-hover:text-zinc-200">
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-[#14f195]" aria-hidden="true" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </span>
+          </button>
+
+          <div className="my-1 h-px bg-white/10" />
+
+          <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-200">
+            <span className="inline-flex items-center gap-3">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{
+                  backgroundColor:
+                    cluster === "mainnet"
+                      ? "#22c55e"
+                      : cluster === "devnet"
+                        ? "#3b82f6"
+                        : cluster === "testnet"
+                          ? "#eab308"
+                          : "#a3a3a3",
+                }}
+              />
               Network
-            </div>
-            <div className="grid grid-cols-2 gap-1">
+            </span>
+            <select
+              value={cluster}
+              onChange={(event) => setCluster(event.target.value as ClusterMoniker)}
+              className="max-w-28 cursor-pointer rounded-lg border border-white/10 bg-black/35 px-2 py-1 text-xs font-semibold capitalize text-zinc-200 outline-none transition hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-[#14f195]"
+            >
               {CLUSTERS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCluster(c)}
-                  className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-lg px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] ${
-                    c === cluster
-                      ? "border border-white/10 bg-white/[0.08] text-white"
-                      : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
-                  }`}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      backgroundColor:
-                        c === "mainnet"
-                          ? "#22c55e"
-                          : c === "devnet"
-                            ? "#3b82f6"
-                            : c === "testnet"
-                              ? "#eab308"
-                              : "#a3a3a3",
-                    }}
-                  />
+                <option key={c} value={c} className="bg-[#111212] text-zinc-100">
                   {c}
-                </button>
+                </option>
               ))}
-            </div>
-          </div>
+            </select>
+          </label>
 
           <button
             onClick={() => {

@@ -86,6 +86,8 @@ export function ProfileCertificatesSection({
   isBadgeLoading,
   isLoading,
   onSelectLevel,
+  onProfileNameChange,
+  profileName,
 }: {
   address?: string;
   badges?: UserBadge[];
@@ -96,6 +98,8 @@ export function ProfileCertificatesSection({
   isBadgeLoading?: boolean;
   isLoading: boolean;
   onSelectLevel: (level: ProfileLevelId) => void;
+  onProfileNameChange: (profileName: string) => void;
+  profileName: string;
 }) {
   const coreBadges = (badges ?? []).filter((badge) => !isSpecialBadge(badge));
   const specialBadges = (badges ?? []).filter(isSpecialBadge);
@@ -103,7 +107,6 @@ export function ProfileCertificatesSection({
   const [activeFilter, setActiveFilter] = useState<ProfileFilter>("showcase");
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isShowcaseEditorOpen, setIsShowcaseEditorOpen] = useState(false);
-  const [profileName, setProfileName] = useState("");
   const [profileBio, setProfileBio] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
   const [availableForWork, setAvailableForWork] = useState(false);
@@ -268,7 +271,7 @@ export function ProfileCertificatesSection({
           username={profileName}
           onClose={() => setIsEditProfileOpen(false)}
           onSave={(nextProfile) => {
-            setProfileName(nextProfile.username);
+            onProfileNameChange(nextProfile.username);
             setProfileBio(nextProfile.bio);
             setProfileEmail(nextProfile.email);
             setAvailableForWork(nextProfile.availableForWork);
