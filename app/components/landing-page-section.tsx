@@ -201,7 +201,7 @@ Bind collateral mint and vault accounts to protocol config.`,
 function PartnerTrustSection() {
   return (
     <section
-      className="relative isolate -mt-14 overflow-hidden py-20 sm:-mt-20 sm:py-24"
+      className="relative isolate overflow-hidden pb-20 pt-28 sm:pb-24 sm:pt-36"
       aria-labelledby="partner-trust-title"
     >
       <div
@@ -212,12 +212,12 @@ function PartnerTrustSection() {
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
         <p
           id="partner-trust-title"
-          className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted"
+          className="text-sm font-semibold uppercase tracking-[0.24em] text-muted sm:text-base"
         >
           Trusted by leading teams worldwide
         </p>
 
-        <div className="mt-12 grid gap-12 sm:grid-cols-3 sm:gap-14">
+        <div className="mt-14 grid gap-12 sm:grid-cols-3 sm:gap-14">
           {PARTNER_LOGOS.map((partner, index) => (
             <div
               className="solbreach-partner-float flex flex-col items-center gap-5"
@@ -246,7 +246,7 @@ function LandingFooterBlend() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none relative z-0 -my-16 h-72 overflow-hidden bg-[linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.42)_48%,rgba(0,0,0,0.92)_100%)] before:absolute before:inset-x-0 before:bottom-[-15rem] before:mx-auto before:h-[28rem] before:w-[150%] before:rounded-[50%] before:border-t before:border-border before:bg-background after:absolute after:inset-x-0 after:bottom-[-3rem] after:mx-auto after:h-44 after:w-[58%] after:blur-3xl after:[background:radial-gradient(ellipse_at_center,rgba(20,241,149,0.07),transparent_68%),radial-gradient(ellipse_at_center,rgba(153,69,255,0.06),transparent_72%)]"
+      className="pointer-events-none relative z-0 -my-20 h-80 overflow-hidden [mask-image:linear-gradient(90deg,transparent_0%,#000_14%,#000_86%,transparent_100%)] bg-[radial-gradient(ellipse_at_center,rgba(153,69,255,0.13),transparent_46%),linear-gradient(90deg,rgba(0,0,0,0.95)_0%,transparent_22%,transparent_78%,rgba(0,0,0,0.95)_100%),linear-gradient(180deg,transparent_0%,rgba(0,0,0,0.38)_48%,rgba(0,0,0,0.94)_100%)] before:absolute before:left-1/2 before:bottom-[-15rem] before:h-[28rem] before:w-[170%] before:-translate-x-1/2 before:rounded-[50%] before:border-t before:border-border before:bg-background after:absolute after:left-1/2 after:bottom-[-2.5rem] after:h-48 after:w-[52%] after:-translate-x-1/2 after:blur-3xl after:[background:radial-gradient(ellipse_at_center,rgba(153,69,255,0.10),rgba(20,241,149,0.05)_48%,transparent_72%)]"
     />
   );
 }
@@ -694,7 +694,7 @@ function FeatureShowcaseSection() {
           icon={<Zap className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
           title="Controlled Vulnerable Programs"
-          body="Practice against intentionally vulnerable Solana programs in safe training environments."
+          body="Practice against vulnerable Solana programs in safe labs."
         />
         <FeatureMiniItem
           icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
