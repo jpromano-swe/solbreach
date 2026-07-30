@@ -201,16 +201,16 @@ Bind collateral mint and vault accounts to protocol config.`,
 function PartnerTrustSection() {
   return (
     <section
-      className="relative isolate overflow-hidden pb-16 pt-40 sm:pb-20 sm:pt-52"
+      className="relative isolate overflow-hidden pb-16 pt-44 sm:pb-20 sm:pt-56"
       aria-labelledby="partner-trust-title"
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-[4%] top-0 z-0 h-[82%] [mask-image:linear-gradient(90deg,transparent_0%,#000_16%,#000_84%,transparent_100%)] bg-[radial-gradient(ellipse_62%_36%_at_50%_54%,rgba(153,69,255,0.09),transparent_72%),radial-gradient(ellipse_58%_34%_at_50%_68%,rgba(20,241,149,0.055),transparent_74%)] blur-sm"
+        className="pointer-events-none absolute inset-x-0 top-4 z-0 h-[86%] [mask-image:radial-gradient(ellipse_58%_42%_at_50%_54%,#000_0%,transparent_78%)] bg-[radial-gradient(ellipse_58%_34%_at_50%_58%,rgba(153,69,255,0.08),transparent_74%),radial-gradient(ellipse_52%_30%_at_50%_68%,rgba(20,241,149,0.045),transparent_76%)] blur-md"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-background via-background/80 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-36 bg-gradient-to-b from-background via-background/70 to-transparent"
       />
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
@@ -250,11 +250,11 @@ function LandingFooterBlend() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none relative z-0 mx-auto -mb-36 -mt-14 h-[30rem] max-w-7xl overflow-hidden [mask-image:linear-gradient(90deg,transparent_0%,#000_12%,#000_88%,transparent_100%)] sm:h-[34rem]"
+      className="pointer-events-none relative z-0 mx-auto -mb-40 -mt-20 h-[34rem] max-w-7xl overflow-hidden [mask-image:linear-gradient(90deg,transparent_0%,#000_10%,#000_90%,transparent_100%)] sm:h-[38rem]"
     >
-      <div className="absolute inset-x-0 bottom-0 h-[82%] [mask-image:radial-gradient(ellipse_at_center,#000_18%,transparent_74%)]">
-        <div className="absolute left-1/2 bottom-[-18rem] h-[30rem] w-[190%] -translate-x-1/2 rounded-[50%] border-t border-white/10 bg-background shadow-[0_-34px_130px_rgba(153,69,255,0.075),0_-18px_90px_rgba(20,241,149,0.05)]" />
-        <div className="absolute left-1/2 bottom-[-4rem] h-64 w-[72%] -translate-x-1/2 blur-3xl [background:radial-gradient(ellipse_at_center,rgba(153,69,255,0.105),rgba(20,241,149,0.045)_46%,transparent_74%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-[92%] [mask-image:radial-gradient(ellipse_at_center,#000_22%,transparent_78%)]">
+        <div className="absolute left-1/2 bottom-[-13rem] h-[34rem] w-[220%] -translate-x-1/2 rounded-[50%] border-t border-white/12 bg-background shadow-[0_-42px_150px_rgba(153,69,255,0.085),0_-24px_110px_rgba(20,241,149,0.045)]" />
+        <div className="absolute left-1/2 bottom-[1rem] h-72 w-[78%] -translate-x-1/2 blur-3xl [background:radial-gradient(ellipse_at_center,rgba(153,69,255,0.115),rgba(20,241,149,0.04)_44%,transparent_76%)]" />
       </div>
     </div>
   );
