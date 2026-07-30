@@ -780,7 +780,6 @@ export default function Home() {
             setActiveSection("levels");
             setActiveLevelsView(level);
           }}
-          walletStatus={status}
         />
 
         <main

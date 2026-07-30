@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { driver } from "driver.js";
 
 import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
+import { CertificateMintLoader } from "../certificate-mint-loader";
 import type {
   ResearchLabFile,
   ResearchLabManifest,
@@ -918,7 +919,7 @@ function CertificateCheckpointPanel({
             {certificateMinted
               ? "Certificate minted"
               : isMintingCertificate
-                ? "Minting..."
+                ? <CertificateMintLoader />
                 : "Mint NFT Certificate"}
           </button>
         )}

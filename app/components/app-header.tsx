@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { ClusterSelect } from "./cluster-select";
 import { HeaderCourseNav, type CourseLevelTarget } from "./course-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { WalletButton } from "./wallet-button";
@@ -16,7 +15,6 @@ export function AppHeader({
   onSelectLevel,
   onSelectResearchLabs,
   onSelectVulnerabilities,
-  walletStatus,
 }: {
   activeLevelsView: LevelsView;
   activeSection: RootSection;
@@ -25,7 +23,6 @@ export function AppHeader({
   onSelectLevel: (level: CourseLevelTarget) => void;
   onSelectResearchLabs: () => void;
   onSelectVulnerabilities: () => void;
-  walletStatus: string;
 }) {
   const isLandingView = activeSection === "levels" && activeLevelsView === "landing";
 
@@ -61,20 +58,11 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
-          {!isLandingView ? <ClusterSelect /> : null}
-          {!isLandingView ? <WalletButton /> : null}
-          {!isLandingView && walletStatus === "connected" ? (
-            <button
-              type="button"
-              onClick={onOpenProfile}
-              className={`min-h-11 rounded-full border px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                activeSection === "profile"
-                  ? "border-foreground/20 bg-foreground text-background"
-                  : "border-border bg-card/70 text-foreground hover:bg-accent"
-              }`}
-            >
-              Profile
-            </button>
+          {!isLandingView ? (
+            <WalletButton
+              isProfileActive={activeSection === "profile"}
+              onOpenProfile={onOpenProfile}
+            />
           ) : null}
           <ThemeToggle />
         </div>

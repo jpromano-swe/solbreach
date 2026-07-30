@@ -12,6 +12,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { CertificateMintLoader } from "../certificate-mint-loader";
 import {
   type QuestionnaireAnswer,
   type QuestionnaireDefinition,
@@ -1658,7 +1659,7 @@ function CertifyKnowledgeScreen({
           {minted
             ? "Certificate minted"
             : isMinting
-              ? "Minting..."
+              ? <CertificateMintLoader />
               : "Mint NFT Certificate"}
           {!minted && !isMinting ? (
             <ArrowRight

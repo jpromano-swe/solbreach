@@ -1,13 +1,11 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Copy, LogOut, Network, User } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useWallet } from "../lib/wallet/context";
-import { useBalance } from "../lib/hooks/use-balance";
-import { lamportsToSolString } from "../lib/lamports";
 import { ellipsify } from "../lib/explorer";
-import { useCluster } from "./cluster-context";
+import { CLUSTERS, useCluster } from "./cluster-context";
 import { trackAnalyticsEvent } from "../lib/analytics";
 
 export function WalletButton({
@@ -15,16 +13,20 @@ export function WalletButton({
   className = "",
   connectedButtonClassName,
   disconnectedButtonClassName,
+  isProfileActive = false,
+  onOpenProfile,
 }: {
   buttonClassName?: string;
   className?: string;
   connectedButtonClassName?: string;
   disconnectedButtonClassName?: string;
+  isProfileActive?: boolean;
+  onOpenProfile?: () => void;
 } = {}) {
   const { connectors, connect, disconnect, wallet, status, error } =
     useWallet();
 
-  const { getExplorerUrl } = useCluster();
+  const { cluster, setCluster } = useCluster();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -32,7 +34,6 @@ export function WalletButton({
   const disconnectedStyles = disconnectedButtonClassName ?? buttonClassName;
 
   const address = wallet?.account.address;
-  const balance = useBalance(address);
 
   const open = () => setIsOpen(true);
   const close = () => setIsOpen(false);
@@ -45,6 +46,16 @@ export function WalletButton({
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        close();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleCopy = async () => {
@@ -138,36 +149,79 @@ export function WalletButton({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border-low bg-card p-4 shadow-lg">
-          <div className="mb-3">
-            <p className="text-xs text-muted">Balance</p>
-            <p className="text-lg font-bold tabular-nums">
-              {balance.lamports != null
-                ? lamportsToSolString(balance.lamports)
-                : "\u2014"}{" "}
-              <span className="text-sm font-normal text-muted">SOL</span>
+        <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-white/10 bg-[#111212]/95 p-2 shadow-[0_24px_70px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              Wallet
             </p>
-          </div>
-
-          <div className="mb-3 rounded-lg border border-border-low bg-cream/50 px-3 py-2">
-            <p className="break-all font-mono text-xs">{address}</p>
-          </div>
-
-          <div className="flex gap-2">
+            <p className="mt-2 break-all font-mono text-xs leading-5 text-zinc-200">
+              {address}
+            </p>
             <button
               onClick={handleCopy}
-              className="flex-1 cursor-pointer rounded-lg border border-border-low bg-card px-3 py-2 text-xs font-medium transition hover:bg-cream"
+              className="mt-3 inline-flex min-h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
             >
-              {copied ? "Copied!" : "Copy address"}
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-[#14f195]" aria-hidden="true" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              {copied ? "Copied" : "Copy wallet"}
             </button>
-            <a
-              href={getExplorerUrl(`/address/${address}`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 rounded-lg border border-border-low bg-card px-3 py-2 text-center text-xs font-medium transition hover:bg-cream"
+          </div>
+
+          {onOpenProfile ? (
+            <button
+              type="button"
+              onClick={() => {
+                onOpenProfile();
+                close();
+              }}
+              className={`mt-2 inline-flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] ${
+                isProfileActive
+                  ? "bg-white text-black"
+                  : "text-zinc-100 hover:bg-white/[0.06]"
+              }`}
             >
-              Explorer
-            </a>
+              <User className="h-4 w-4" aria-hidden="true" />
+              Profile
+            </button>
+          ) : null}
+
+          <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-2">
+            <div className="flex items-center gap-2 px-1 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              <Network className="h-3.5 w-3.5" aria-hidden="true" />
+              Network
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              {CLUSTERS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCluster(c)}
+                  className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-lg px-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] ${
+                    c === cluster
+                      ? "border border-white/10 bg-white/[0.08] text-white"
+                      : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
+                  }`}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        c === "mainnet"
+                          ? "#22c55e"
+                          : c === "devnet"
+                            ? "#3b82f6"
+                            : c === "testnet"
+                              ? "#eab308"
+                              : "#a3a3a3",
+                    }}
+                  />
+                  {c}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button
@@ -175,8 +229,9 @@ export function WalletButton({
               disconnect();
               close();
             }}
-            className="mt-2 w-full cursor-pointer rounded-lg border border-border-low bg-card px-3 py-2 text-xs font-medium text-destructive transition hover:bg-destructive/10"
+            className="mt-2 inline-flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-xl px-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
           >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
             Disconnect
           </button>
         </div>
