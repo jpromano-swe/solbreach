@@ -187,6 +187,7 @@ Bind collateral mint and vault accounts to protocol config.`,
       </div>
 
       <FeatureShowcaseSection />
+      <LandingSectionDivider />
       <PartnerTrustSection />
       {!enableAppEntry ? <OnboardingQuestionnaire /> : null}
       <LandingCtaSection
@@ -197,17 +198,21 @@ Bind collateral mint and vault accounts to protocol config.`,
   );
 }
 
+function LandingSectionDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      className="[--color:rgba(153,69,255,0.82)] pointer-events-none relative z-0 mx-auto my-[-18.8rem] h-[50rem] overflow-hidden [mask-image:radial-gradient(ellipse_at_center_center,#000,transparent_50%)] before:absolute before:inset-0 before:h-full before:w-full before:opacity-40 before:[background-image:radial-gradient(circle_at_bottom_center,var(--color),transparent_70%),radial-gradient(circle_at_bottom_right,rgba(20,241,149,0.18),transparent_62%)] after:absolute after:-left-1/2 after:top-1/2 after:aspect-[1/0.7] after:w-[200%] after:rounded-[50%] after:border-t after:border-border after:bg-background"
+    />
+  );
+}
+
 function PartnerTrustSection() {
   return (
     <section
-      className="relative isolate overflow-hidden py-20 sm:py-24"
+      className="relative isolate py-16 sm:py-20"
       aria-labelledby="partner-trust-title"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-1/2 -z-[1] mx-auto my-[-18.8rem] h-[50rem] -translate-y-1/2 overflow-hidden [mask-image:radial-gradient(ellipse_at_center_center,#000,transparent_50%)] before:absolute before:inset-0 before:h-full before:w-full before:opacity-40 before:[background-image:radial-gradient(circle_at_bottom_center,rgba(153,69,255,0.72),transparent_70%),radial-gradient(circle_at_bottom_right,rgba(20,241,149,0.22),transparent_62%)] after:absolute after:-left-1/2 after:top-1/2 after:aspect-[1/0.7] after:w-[200%] after:rounded-[50%] after:border-t after:border-border after:bg-background"
-      />
-
       <div className="relative z-10 mx-auto max-w-4xl px-4 text-center sm:px-6">
         <h2
           id="partner-trust-title"
@@ -216,22 +221,20 @@ function PartnerTrustSection() {
           Trusted by leading teams worldwide
         </h2>
 
-        <div className="mt-12 grid gap-8 sm:grid-cols-3 sm:gap-10">
+        <div className="mt-12 grid gap-12 sm:grid-cols-3 sm:gap-10">
           {PARTNER_LOGOS.map((partner, index) => (
             <div
-              className="solbreach-partner-float flex flex-col items-center gap-4"
+              className="solbreach-partner-float flex flex-col items-center gap-5"
               data-float-index={index}
               key={partner.name}
             >
-              <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/10 bg-black/30 p-4 shadow-[0_22px_70px_-46px_rgba(153,69,255,0.9),0_16px_54px_-44px_rgba(20,241,149,0.6)] backdrop-blur-sm">
-                <Image
-                  src={partner.src}
-                  alt={`${partner.name} logo`}
-                  width={96}
-                  height={96}
-                  className="h-full w-full object-contain"
-                />
-              </div>
+              <Image
+                src={partner.src}
+                alt={`${partner.name} logo`}
+                width={192}
+                height={192}
+                className="h-32 w-32 object-contain drop-shadow-[0_22px_54px_rgba(0,0,0,0.45)] sm:h-44 sm:w-44 lg:h-48 lg:w-48"
+              />
               <p className="text-sm font-medium text-foreground">
                 {partner.name}
               </p>
