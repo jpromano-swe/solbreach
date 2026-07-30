@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { Check, Pencil, Search, X } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import { Check, GitBranch, Pencil, Search, X } from "lucide-react";
 import {
   isSpecialBadge,
   type UserBadge,
@@ -86,7 +86,9 @@ export function ProfileCertificatesSection({
   isBadgeLoading,
   isLoading,
   onSelectLevel,
+  onProfileAvatarChange,
   onProfileNameChange,
+  profileAvatarSrc,
   profileName,
 }: {
   address?: string;
@@ -98,7 +100,9 @@ export function ProfileCertificatesSection({
   isBadgeLoading?: boolean;
   isLoading: boolean;
   onSelectLevel: (level: ProfileLevelId) => void;
+  onProfileAvatarChange: (profileImageSrc: string) => void;
   onProfileNameChange: (profileName: string) => void;
+  profileAvatarSrc?: string;
   profileName: string;
 }) {
   const coreBadges = (badges ?? []).filter((badge) => !isSpecialBadge(badge));
@@ -116,7 +120,11 @@ export function ProfileCertificatesSection({
     displayCertificates.filter((certificate) => certificate.minted).length;
   const displayName =
     profileName.trim() || (address ? compactAddress(address, 4, 4) : "No wallet");
-  const profileImageSrc = useMemo(() => getDefaultProfileImage(address), [address]);
+  const fallbackProfileImageSrc = useMemo(
+    () => getDefaultProfileImage(address),
+    [address]
+  );
+  const profileImageSrc = profileAvatarSrc || fallbackProfileImageSrc;
   const allBadgeItems = useMemo(
     () => [...specialBadges, ...coreBadges].map(badgeToAchievement),
     [coreBadges, specialBadges]
@@ -263,7 +271,6 @@ export function ProfileCertificatesSection({
 
       {isEditProfileOpen ? (
         <EditProfileDialog
-          address={address}
           availableForWork={availableForWork}
           bio={profileBio}
           email={profileEmail}
@@ -272,6 +279,7 @@ export function ProfileCertificatesSection({
           onClose={() => setIsEditProfileOpen(false)}
           onSave={(nextProfile) => {
             onProfileNameChange(nextProfile.username);
+            onProfileAvatarChange(nextProfile.profileImageSrc);
             setProfileBio(nextProfile.bio);
             setProfileEmail(nextProfile.email);
             setAvailableForWork(nextProfile.availableForWork);
@@ -467,7 +475,6 @@ function CertificatesSection({
 }
 
 function EditProfileDialog({
-  address,
   availableForWork,
   bio,
   email,
@@ -476,7 +483,6 @@ function EditProfileDialog({
   profileImageSrc,
   username,
 }: {
-  address?: string;
   availableForWork: boolean;
   bio: string;
   email: string;
@@ -485,6 +491,7 @@ function EditProfileDialog({
     availableForWork: boolean;
     bio: string;
     email: string;
+    profileImageSrc: string;
     username: string;
   }) => void;
   profileImageSrc: string;
@@ -493,8 +500,21 @@ function EditProfileDialog({
   const [draftUsername, setDraftUsername] = useState(username);
   const [draftBio, setDraftBio] = useState(bio);
   const [draftEmail, setDraftEmail] = useState(email);
+  const [draftProfileImageSrc, setDraftProfileImageSrc] =
+    useState(profileImageSrc);
   const [draftAvailableForWork, setDraftAvailableForWork] =
     useState(availableForWork);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave({
+      availableForWork: draftAvailableForWork,
+      bio: draftBio,
+      email: draftEmail,
+      profileImageSrc: draftProfileImageSrc,
+      username: draftUsername,
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/72 px-4 py-8 backdrop-blur-md">
@@ -513,15 +533,17 @@ function EditProfileDialog({
           </button>
         </div>
 
-        <div className="space-y-6 px-6 py-6">
-          <label className="block">
+        <form className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
+          <label className="block max-w-xs">
             <span className="text-sm font-semibold text-foreground">
               Username
             </span>
             <input
+              autoComplete="nickname"
               value={draftUsername}
               onChange={(event) => setDraftUsername(event.target.value)}
               placeholder="Add Username"
+              spellCheck={false}
               className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-500 focus:border-[#9945ff]/70"
             />
             <span className="mt-2 block text-xs text-[#facc15]">
@@ -529,29 +551,15 @@ function EditProfileDialog({
             </span>
           </label>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(220px,0.75fr)]">
             <div>
               <p className="text-sm font-semibold text-foreground">
                 Profile Picture
               </p>
-              <div className="mt-3 flex items-center gap-4">
-                <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-black/35">
-                  <Image
-                    src={profileImageSrc}
-                    alt="Profile avatar preview"
-                    width={76}
-                    height={76}
-                    className="h-20 w-20 rounded-full object-cover"
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-muted"
-                  aria-label="Edit profile picture"
-                >
-                  <Pencil className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
+              <AvatarPicker
+                selectedSrc={draftProfileImageSrc}
+                onSelect={setDraftProfileImageSrc}
+              />
             </div>
 
             <div>
@@ -561,7 +569,7 @@ function EditProfileDialog({
               <div className="mt-3 flex h-24 items-center justify-end rounded-xl border border-white/10 bg-[radial-gradient(circle_at_70%_15%,rgba(20,241,149,0.22),transparent_35%),linear-gradient(135deg,rgba(153,69,255,0.38),rgba(9,7,18,0.94))] p-3">
                 <button
                   type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-300"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-300 transition-colors motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:hover:-translate-y-0.5 hover:border-[#14f195]/45 hover:text-[#14f195] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
                   aria-label="Edit banner"
                 >
                   <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -611,9 +619,10 @@ function EditProfileDialog({
             </button>
           </div>
 
-          <label className="block">
+          <label className="block max-w-sm">
             <span className="text-sm font-semibold text-foreground">Email</span>
             <input
+              autoComplete="email"
               value={draftEmail}
               onChange={(event) => setDraftEmail(event.target.value)}
               placeholder="Add Email"
@@ -635,52 +644,110 @@ function EditProfileDialog({
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm font-semibold text-foreground"
+                className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm font-semibold text-foreground transition-colors hover:border-[#14f195]/35 hover:text-[#14f195] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
               >
                 Link X/Twitter
               </button>
               <button
                 type="button"
-                className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm font-semibold text-foreground"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.07] px-4 text-sm font-semibold text-foreground transition-colors hover:border-[#14f195]/35 hover:text-[#14f195] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
               >
-                Link Discord
+                <GitBranch className="h-4 w-4" aria-hidden="true" />
+                Link Github
               </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
-            <div>
-              <p className="text-sm font-semibold text-foreground">User ID</p>
-              <p className="mt-1 text-xs text-muted">
-                {address ? compactAddress(address, 6, 6) : "No wallet attached"}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-5 text-sm font-semibold text-foreground"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  onSave({
-                    availableForWork: draftAvailableForWork,
-                    bio: draftBio,
-                    email: draftEmail,
-                    username: draftUsername,
-                  })
-                }
-                className="min-h-10 rounded-xl bg-[#9945ff] px-5 text-sm font-semibold text-white shadow-[0_14px_36px_-20px_rgba(153,69,255,0.95)]"
-              >
-                Save
-              </button>
-            </div>
+          <div className="flex justify-end gap-2 border-t border-white/10 pt-5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-10 rounded-xl border border-white/10 bg-white/[0.07] px-5 text-sm font-semibold text-foreground transition-colors hover:text-[#14f195] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="min-h-10 rounded-xl bg-[#9945ff] px-5 text-sm font-semibold text-white shadow-[0_14px_36px_-20px_rgba(153,69,255,0.95)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function AvatarPicker({
+  onSelect,
+  selectedSrc,
+}: {
+  onSelect: (src: string) => void;
+  selectedSrc: string;
+}) {
+  return (
+    <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+      <div className="flex items-center gap-4">
+        <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-[#9945ff]/25 bg-black/40 shadow-[0_18px_46px_-30px_rgba(153,69,255,0.95)]">
+          <div
+            key={selectedSrc}
+            className="relative h-20 w-20 overflow-hidden rounded-full transition-all duration-200 ease-out motion-safe:animate-[avatarPickerIn_180ms_ease-out]"
+          >
+            <Image
+              src={selectedSrc}
+              alt="Selected profile avatar"
+              fill
+              sizes="80px"
+              className="object-cover"
+            />
           </div>
         </div>
-      </section>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground">Choose avatar</p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            This image appears on your profile and wallet menu.
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="mt-4 grid grid-cols-5 gap-2"
+        role="listbox"
+        aria-label="Profile avatars"
+      >
+        {DEFAULT_PROFILE_IMAGES.map((src, index) => {
+          const selected = src === selectedSrc;
+          return (
+            <button
+              key={src}
+              type="button"
+              onClick={() => onSelect(src)}
+              className={`group relative flex h-12 w-12 items-center justify-center rounded-full border bg-black/35 p-0.5 transition-colors motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] ${
+                selected
+                  ? "border-[#14f195]/70 shadow-[0_12px_28px_-18px_rgba(20,241,149,0.95)]"
+                  : "border-white/10 hover:border-[#9945ff]/55"
+              }`}
+              role="option"
+              aria-label={`Choose avatar ${index + 1}`}
+              aria-selected={selected}
+            >
+              <Image
+                src={src}
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-full object-cover"
+              />
+              {selected ? (
+                <span className="absolute -right-1 -top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#14f195] text-black">
+                  <Check className="h-3 w-3" aria-hidden="true" />
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

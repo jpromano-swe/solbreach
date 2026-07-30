@@ -71,6 +71,13 @@ type ResearchLabCertificateMintDialogState = {
   description: string;
   label: string;
 };
+type ProfileIdentity = {
+  address?: string;
+  avatarSrc?: string;
+  name: string;
+};
+
+const PROFILE_IDENTITY_STORAGE_PREFIX = "solbreach-profile";
 
 const RESEARCH_LAB_CERTIFICATE_DETAILS: Record<
   ResearchLabCertificateLevel,
@@ -127,6 +134,39 @@ function getErrorMessage(error: unknown) {
   }
 }
 
+function getStoredProfileIdentity(address?: string): ProfileIdentity | null {
+  if (!address || typeof window === "undefined") return null;
+
+  try {
+    const stored = window.localStorage.getItem(
+      `${PROFILE_IDENTITY_STORAGE_PREFIX}:${address}`
+    );
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored) as Partial<ProfileIdentity>;
+    return {
+      address,
+      avatarSrc:
+        typeof parsed.avatarSrc === "string" ? parsed.avatarSrc : undefined,
+      name: typeof parsed.name === "string" ? parsed.name : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storeProfileIdentity(identity: ProfileIdentity) {
+  if (!identity.address || typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    `${PROFILE_IDENTITY_STORAGE_PREFIX}:${identity.address}`,
+    JSON.stringify({
+      avatarSrc: identity.avatarSrc,
+      name: identity.name,
+    })
+  );
+}
+
 export default function Home() {
   const { wallet, signer, status } = useWallet();
   const { cluster, getExplorerUrl } = useCluster();
@@ -145,10 +185,9 @@ export default function Home() {
   const [manualBadgeDialog, setManualBadgeDialog] = useState<UserBadge | null>(
     null
   );
-  const [profileIdentity, setProfileIdentity] = useState<{
-    address?: string;
-    name: string;
-  }>({ name: "" });
+  const [profileIdentity, setProfileIdentity] = useState<ProfileIdentity>({
+    name: "",
+  });
   const [researchLabCertificationDialog, setResearchLabCertificationDialog] =
     useState<ResearchLabCertificationDialogState | null>(null);
   const [
@@ -158,11 +197,50 @@ export default function Home() {
   const [isCollectingLevel1Badge, setIsCollectingLevel1Badge] = useState(false);
   const [isCollectingLevel2Badge, setIsCollectingLevel2Badge] = useState(false);
   const trackedLevelViewsRef = useRef<Set<string>>(new Set());
-  const profileName =
-    profileIdentity.address === address ? profileIdentity.name : "";
+  const storedProfileIdentity = useMemo(
+    () => (address ? getStoredProfileIdentity(address) : null),
+    [address]
+  );
+  const activeProfileIdentity =
+    profileIdentity.address === address
+      ? profileIdentity
+      : (storedProfileIdentity ?? {
+          address,
+          name: "",
+        });
+  const profileName = activeProfileIdentity.name;
+  const profileAvatarSrc = activeProfileIdentity.avatarSrc;
   const handleProfileNameChange = useCallback(
     (nextProfileName: string) => {
-      setProfileIdentity({ address, name: nextProfileName });
+      if (!address) return;
+
+      setProfileIdentity((current) => {
+        const nextProfile = {
+          address,
+          avatarSrc: current.address === address ? current.avatarSrc : undefined,
+          name: nextProfileName,
+        };
+        storeProfileIdentity(nextProfile);
+        return nextProfile;
+      });
+    },
+    [address]
+  );
+  const handleProfileAvatarChange = useCallback(
+    (nextProfileAvatarSrc: string) => {
+      if (!address) return;
+
+      setProfileIdentity((current) => {
+        const currentProfile =
+          current.address === address ? current : getStoredProfileIdentity(address);
+        const nextProfile = {
+          address,
+          avatarSrc: nextProfileAvatarSrc,
+          name: currentProfile?.name ?? "",
+        };
+        storeProfileIdentity(nextProfile);
+        return nextProfile;
+      });
     },
     [address]
   );
@@ -813,6 +891,7 @@ export default function Home() {
             setActiveLevelsView(level);
           }}
           profileDisplayName={profileName.trim() || undefined}
+          profileImageSrc={profileAvatarSrc}
         />
 
         <main
@@ -1031,11 +1110,13 @@ export default function Home() {
                 getExplorerUrl={getExplorerUrl}
                 isBadgeLoading={isBadgeLoading}
                 isLoading={isProfileCertificatesLoading}
+                onProfileAvatarChange={handleProfileAvatarChange}
                 onProfileNameChange={handleProfileNameChange}
                 onSelectLevel={(level) => {
                   setActiveSection("levels");
                   setActiveLevelsView(level);
                 }}
+                profileAvatarSrc={profileAvatarSrc}
                 profileName={profileName}
               />
             </section>

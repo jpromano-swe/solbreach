@@ -16,6 +16,7 @@ export function AppHeader({
   onSelectResearchLabs,
   onSelectVulnerabilities,
   profileDisplayName,
+  profileImageSrc,
 }: {
   activeLevelsView: LevelsView;
   activeSection: RootSection;
@@ -25,6 +26,7 @@ export function AppHeader({
   onSelectResearchLabs: () => void;
   onSelectVulnerabilities: () => void;
   profileDisplayName?: string;
+  profileImageSrc?: string;
 }) {
   const isLandingView = activeSection === "levels" && activeLevelsView === "landing";
 
@@ -65,6 +67,7 @@ export function AppHeader({
               isProfileActive={activeSection === "profile"}
               onOpenProfile={onOpenProfile}
               profileDisplayName={profileDisplayName}
+              profileImageSrc={profileImageSrc}
             />
           ) : null}
           <ThemeToggle />

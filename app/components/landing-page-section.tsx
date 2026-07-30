@@ -41,6 +41,21 @@ const LANDING_RUST_CODE_KEYWORDS = new Set([
   "vec",
 ]);
 
+const PARTNER_LOGOS = [
+  {
+    name: "SuperteamAR",
+    src: "/partners_logos/lZw-I2Cb_400x400.jpg",
+  },
+  {
+    name: "Waylearn",
+    src: "/partners_logos/image-removebg-preview (4).png",
+  },
+  {
+    name: "Dev3Pack",
+    src: "/partners_logos/icon_transparent.png",
+  },
+];
+
 export function LandingPageSection({
   enableAppEntry,
   onPlayNow,
@@ -123,7 +138,7 @@ Bind collateral mint and vault accounts to protocol config.`,
   return (
     <section className="space-y-10">
       <div className="mx-auto max-w-4xl space-y-7 text-center">
-        <h1 className="mx-auto max-w-4xl text-5xl font-semibold leading-[0.94] tracking-[-0.08em] sm:text-6xl lg:text-7xl">
+        <h1 className="mx-auto max-w-5xl text-balance py-6 text-5xl font-medium leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
           <span className="block text-[#14f195] drop-shadow-[0_0_28px_rgba(20,241,149,0.2)]">
             Security Training Layer
           </span>
@@ -172,11 +187,58 @@ Bind collateral mint and vault accounts to protocol config.`,
       </div>
 
       <FeatureShowcaseSection />
+      <PartnerTrustSection />
       {!enableAppEntry ? <OnboardingQuestionnaire /> : null}
       <LandingCtaSection
         onGetStarted={handleRequestBetaAccess}
         documentationUrl={documentationUrl}
       />
+    </section>
+  );
+}
+
+function PartnerTrustSection() {
+  return (
+    <section
+      className="relative isolate overflow-hidden py-20 sm:py-24"
+      aria-labelledby="partner-trust-title"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-1/2 -z-[1] mx-auto my-[-18.8rem] h-[50rem] -translate-y-1/2 overflow-hidden [mask-image:radial-gradient(ellipse_at_center_center,#000,transparent_50%)] before:absolute before:inset-0 before:h-full before:w-full before:opacity-40 before:[background-image:radial-gradient(circle_at_bottom_center,rgba(153,69,255,0.72),transparent_70%),radial-gradient(circle_at_bottom_right,rgba(20,241,149,0.22),transparent_62%)] after:absolute after:-left-1/2 after:top-1/2 after:aspect-[1/0.7] after:w-[200%] after:rounded-[50%] after:border-t after:border-border after:bg-background"
+      />
+
+      <div className="relative z-10 mx-auto max-w-4xl px-4 text-center sm:px-6">
+        <h2
+          id="partner-trust-title"
+          className="text-2xl font-semibold tracking-[-0.04em] sm:text-3xl"
+        >
+          Trusted by leading teams worldwide
+        </h2>
+
+        <div className="mt-12 grid gap-8 sm:grid-cols-3 sm:gap-10">
+          {PARTNER_LOGOS.map((partner, index) => (
+            <div
+              className="solbreach-partner-float flex flex-col items-center gap-4"
+              data-float-index={index}
+              key={partner.name}
+            >
+              <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/10 bg-black/30 p-4 shadow-[0_22px_70px_-46px_rgba(153,69,255,0.9),0_16px_54px_-44px_rgba(20,241,149,0.6)] backdrop-blur-sm">
+                <Image
+                  src={partner.src}
+                  alt={`${partner.name} logo`}
+                  width={96}
+                  height={96}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {partner.name}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

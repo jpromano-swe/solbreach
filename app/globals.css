@@ -226,6 +226,33 @@
   }
 }
 
+@keyframes solbreachPartnerFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  35% {
+    transform: translate3d(5px, -8px, 0);
+  }
+
+  70% {
+    transform: translate3d(-4px, 4px, 0);
+  }
+}
+
+@keyframes avatarPickerIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94) rotate(-3deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+
 .driver-active-element {
   border-radius: 14px !important;
   outline: 1px solid rgba(153, 69, 255, 0.72) !important;
@@ -440,6 +467,20 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .solbreach-partner-float {
+    animation: solbreachPartnerFloat 6.8s ease-in-out infinite;
+  }
+
+  .solbreach-partner-float[data-float-index="1"] {
+    animation-delay: 180ms;
+    animation-duration: 7.4s;
+  }
+
+  .solbreach-partner-float[data-float-index="2"] {
+    animation-delay: 360ms;
+    animation-duration: 7s;
+  }
+
   .protocol-activity-entry {
     animation: protocolActivityEntryIn 180ms ease-out both;
   }

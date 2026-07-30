@@ -38,6 +38,7 @@ export function WalletButton({
   isProfileActive = false,
   onOpenProfile,
   profileDisplayName,
+  profileImageSrc: preferredProfileImageSrc,
 }: {
   buttonClassName?: string;
   className?: string;
@@ -46,6 +47,7 @@ export function WalletButton({
   isProfileActive?: boolean;
   onOpenProfile?: () => void;
   profileDisplayName?: string;
+  profileImageSrc?: string;
 } = {}) {
   const { connectors, connect, disconnect, wallet, status, error } =
     useWallet();
@@ -61,8 +63,9 @@ export function WalletButton({
   const walletLabel = address ? ellipsify(address, 4) : "Wallet";
   const userLabel = profileDisplayName?.trim() || walletLabel;
   const hasProfileName = Boolean(profileDisplayName?.trim());
-  const secondaryLabel = hasProfileName ? walletLabel : `${cluster} network`;
-  const profileImageSrc = resolveDefaultProfileImage(address);
+  const secondaryLabel = hasProfileName ? walletLabel : cluster;
+  const profileImageSrc =
+    preferredProfileImageSrc || resolveDefaultProfileImage(address);
 
   const open = () => setIsOpen(true);
   const close = () => setIsOpen(false);
@@ -115,16 +118,16 @@ export function WalletButton({
             <div className="space-y-1">
               {connectors.map((connector) => (
                 <button
-                key={connector.id}
-                onClick={async () => {
-                  try {
-                    trackAnalyticsEvent({
-                      eventName: "wallet_connect_started",
-                      properties: { connectorId: connector.id },
-                    });
-                    await connect(connector.id);
-                    close();
-                  } catch {
+                  key={connector.id}
+                  onClick={async () => {
+                    try {
+                      trackAnalyticsEvent({
+                        eventName: "wallet_connect_started",
+                        properties: { connectorId: connector.id },
+                      });
+                      await connect(connector.id);
+                      close();
+                    } catch {
                       // connection errors are surfaced through context state
                     }
                   }}
@@ -164,7 +167,7 @@ export function WalletButton({
       <button
         onClick={() => (isOpen ? close() : open())}
         aria-expanded={isOpen}
-        className={`group flex min-h-[56px] cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-left shadow-[0_18px_55px_-40px_rgba(0,0,0,0.9)] transition hover:border-white/16 hover:bg-white/[0.065] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        className={`group flex min-h-[56px] cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[#9945ff]/25 bg-[#9945ff]/10 px-3 py-2 text-left shadow-[0_18px_55px_-38px_rgba(153,69,255,0.85)] transition hover:border-[#14f195]/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
           connectedStyles || ""
         }`}
       >
@@ -196,7 +199,7 @@ export function WalletButton({
           </span>
         </span>
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition-transform group-hover:text-zinc-300 ${
+          className={`h-3.5 w-3.5 shrink-0 text-zinc-500 transition group-hover:text-[#14f195] ${
             isOpen ? "rotate-180" : ""
           }`}
           aria-hidden="true"
@@ -204,8 +207,8 @@ export function WalletButton({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[304px] overflow-hidden rounded-2xl border border-white/10 bg-[#151617]/95 p-2 shadow-[0_24px_70px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-          <div className="mb-2 flex min-h-[64px] items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-3.5 py-3">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[304px] overflow-hidden rounded-2xl border border-white/10 bg-[rgba(15,16,18,0.98)] p-2 shadow-[0_24px_70px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+          <div className="mb-2 flex min-h-[64px] items-center justify-between gap-3 rounded-2xl border border-[#9945ff]/25 bg-[#9945ff]/10 px-3.5 py-3">
             <span className="min-w-0">
               <span
                 className={`block truncate text-sm font-semibold leading-5 text-zinc-100 ${
@@ -244,8 +247,8 @@ export function WalletButton({
               }}
               className={`inline-flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] ${
                 isProfileActive
-                  ? "bg-white text-black"
-                  : "text-zinc-100 hover:bg-white/[0.06]"
+                  ? "text-[#14f195]"
+                  : "text-zinc-100 hover:text-[#14f195]"
               }`}
             >
               <User className="h-4 w-4" aria-hidden="true" />
@@ -254,7 +257,10 @@ export function WalletButton({
           ) : null}
 
           <div className="flex min-h-11 items-center gap-3 px-3 py-2">
-            <WalletIcon className="h-4 w-4 shrink-0 text-zinc-300" aria-hidden="true" />
+              <WalletIcon
+                className="h-4 w-4 shrink-0 text-zinc-300"
+                aria-hidden="true"
+              />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-zinc-100">Wallet</p>
               <p className="truncate font-mono text-xs text-zinc-500">{address}</p>
@@ -262,7 +268,7 @@ export function WalletButton({
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-zinc-500 transition hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
+              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-zinc-500 transition hover:text-[#14f195] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195]"
               aria-label="Copy wallet address"
             >
               {copied ? (
@@ -274,7 +280,7 @@ export function WalletButton({
             </button>
           </div>
 
-          <label className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-zinc-200">
+          <label className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:text-[#14f195]">
             <span className="inline-flex items-center gap-3">
               <NetworkIcon className="h-4 w-4 text-zinc-300" aria-hidden="true" />
               Network
@@ -282,7 +288,7 @@ export function WalletButton({
             <select
               value={cluster}
               onChange={(event) => setCluster(event.target.value as ClusterMoniker)}
-              className="max-w-28 cursor-pointer bg-transparent py-1 text-right text-xs font-semibold capitalize text-zinc-400 outline-none transition hover:text-zinc-100 focus-visible:ring-2 focus-visible:ring-[#14f195]"
+              className="max-w-28 cursor-pointer bg-transparent py-1 text-right text-xs font-semibold capitalize text-zinc-400 outline-none transition hover:text-[#14f195] focus-visible:ring-2 focus-visible:ring-[#14f195]"
             >
               {CLUSTERS.map((c) => (
                 <option key={c} value={c} className="bg-[#111212] text-zinc-100">
@@ -299,7 +305,7 @@ export function WalletButton({
               disconnect();
               close();
             }}
-            className="inline-flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl bg-red-500/10 px-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/16 hover:text-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+            className="inline-flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl bg-red-500/10 px-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/[0.16] hover:text-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
             Disconnect
