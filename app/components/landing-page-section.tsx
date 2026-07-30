@@ -204,15 +204,6 @@ function PartnerTrustSection() {
       className="relative isolate overflow-hidden pb-16 pt-44 sm:pb-20 sm:pt-56"
       aria-labelledby="partner-trust-title"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-4 z-0 h-[86%] [mask-image:radial-gradient(ellipse_58%_42%_at_50%_54%,#000_0%,transparent_78%)] bg-[radial-gradient(ellipse_58%_34%_at_50%_58%,rgba(153,69,255,0.08),transparent_74%),radial-gradient(ellipse_52%_30%_at_50%_68%,rgba(20,241,149,0.045),transparent_76%)] blur-md"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-36 bg-gradient-to-b from-background via-background/70 to-transparent"
-      />
-
       <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
         <p
           id="partner-trust-title"
