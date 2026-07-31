@@ -8,7 +8,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  CircleDot,
   Code2,
   Copy,
   Database,
@@ -53,7 +52,7 @@ type SearchResult =
 type ExplorerLabContext = {
   accountsDescription: string;
   emptyTransactionDescription: string;
-  eyebrow: string;
+  eyebrow?: string;
   metric: {
     detail: string;
     label: string;
@@ -238,9 +237,12 @@ export function YieldHijackExplorer({
                   Explorer
                 </span>
               </button>
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-[#9945ff]/30 bg-[#9945ff]/12 px-2 py-1 text-[10px] font-semibold text-[#d7c0ff] lg:hidden">
-                <CircleDot className="h-3 w-3" aria-hidden="true" />
-                SVM
+              <span
+                aria-label="SolBreach SVM"
+                className="inline-flex items-center rounded-md bg-[#9945ff] px-2.5 py-1.5 text-[10px] font-semibold text-white lg:hidden"
+                title="SolBreach SVM"
+              >
+                SBR SVM
               </span>
             </div>
 
@@ -276,9 +278,12 @@ export function YieldHijackExplorer({
             </div>
 
             <div className="flex items-center justify-end gap-2">
-              <span className="hidden items-center gap-1.5 rounded-md border border-[#9945ff]/30 bg-[#9945ff]/12 px-2.5 py-1.5 text-[10px] font-semibold text-[#d7c0ff] lg:inline-flex">
-                <CircleDot className="h-3 w-3" aria-hidden="true" />
-                SolBreach SVM
+              <span
+                aria-label="SolBreach SVM"
+                className="hidden items-center rounded-md bg-[#9945ff] px-2.5 py-1.5 text-[10px] font-semibold text-white lg:inline-flex"
+                title="SolBreach SVM"
+              >
+                SBR SVM
               </span>
               <button
                 type="button"
@@ -347,10 +352,6 @@ export function YieldHijackExplorer({
               selectedAccount ? (
                 <AccountDetail
                   account={selectedAccount}
-                  candidateWallet={candidateWalletForAccount(
-                    snapshot,
-                    selectedAccount
-                  )}
                   onBack={() => setSelectedAccountRef(null)}
                 />
               ) : selectedTransaction ? (
@@ -515,7 +516,7 @@ function ExplorerOverview({
                 key={participant.ref}
                 type="button"
                 onClick={() => onOpenAccount(participant.ref)}
-                className="min-h-24 rounded-lg border border-white/10 bg-[#202121] px-3 py-3 text-left transition hover:border-[#14f195]/25 hover:bg-white/[0.035] focus-visible:ring-2 focus-visible:ring-[#14f195]"
+                className="min-h-24 rounded-lg border border-white/10 bg-[#202121] px-3 py-3 text-left transition hover:border-white/20 hover:bg-white/[0.035] focus-visible:ring-2 focus-visible:ring-[#14f195]"
               >
                 <span className="block text-xs font-semibold text-zinc-300">
                   {participant.label}
@@ -703,11 +704,9 @@ function AccountsTableRows({
 
 function AccountDetail({
   account,
-  candidateWallet,
   onBack,
 }: {
   account: ResearchLabExplorerAccount;
-  candidateWallet: string | null;
   onBack: () => void;
 }) {
   return (
@@ -751,16 +750,7 @@ function AccountDetail({
         </div>
         <dl className="divide-y divide-white/8">
           {Object.entries(account.data).map(([key, value]) => (
-            <DecodedField
-              key={key}
-              field={key}
-              value={value}
-              emphasize={
-                candidateWallet !== null &&
-                typeof value === "string" &&
-                value === candidateWallet
-              }
-            />
+            <DecodedField key={key} field={key} value={value} />
           ))}
         </dl>
       </section>
@@ -768,28 +758,16 @@ function AccountDetail({
   );
 }
 
-function DecodedField({
-  field,
-  value,
-  emphasize,
-}: {
-  field: string;
-  value: unknown;
-  emphasize: boolean;
-}) {
+function DecodedField({ field, value }: { field: string; value: unknown }) {
   const isAddress = typeof value === "string" && value.length >= 32;
   const isStructured = value !== null && typeof value === "object";
 
   return (
-    <div
-      className={`grid gap-2 px-4 py-3 sm:grid-cols-[220px_minmax(0,1fr)] ${
-        emphasize ? "bg-[#14f195]/6" : ""
-      }`}
-    >
+    <div className="grid gap-2 px-4 py-3 sm:grid-cols-[220px_minmax(0,1fr)]">
       <dt className="font-mono text-xs text-zinc-500">{field}</dt>
       <dd className="min-w-0 font-mono text-xs text-zinc-200">
         {isAddress ? (
-          <CopyableAddress address={value} full emphasize={emphasize} />
+          <CopyableAddress address={value} full />
         ) : isStructured ? (
           <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-black/20 p-3 text-[11px] leading-5 text-zinc-400">
             {JSON.stringify(value, null, 2)}
@@ -1217,16 +1195,22 @@ function ExplorerHeading({
   title,
   description,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description: string;
 }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7a6ff]">
-        {eyebrow}
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-zinc-100 sm:text-3xl">
+      {eyebrow ? (
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c7a6ff]">
+          {eyebrow}
+        </p>
+      ) : null}
+      <h1
+        className={`text-2xl font-semibold tracking-[-0.03em] text-zinc-100 sm:text-3xl ${
+          eyebrow ? "mt-2" : ""
+        }`}
+      >
         {title}
       </h1>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
@@ -1298,11 +1282,9 @@ function DetailRow({
 function CopyableAddress({
   address,
   full = false,
-  emphasize = false,
 }: {
   address: string;
   full?: boolean;
-  emphasize?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -1321,9 +1303,7 @@ function CopyableAddress({
     <button
       type="button"
       onClick={() => void copyAddress()}
-      className={`mt-1 inline-flex min-h-10 max-w-full items-center gap-2 rounded-md font-mono text-xs focus-visible:ring-2 focus-visible:ring-[#14f195] ${
-        emphasize ? "text-[#8fffd0]" : "text-[#9bdbff]"
-      }`}
+      className="mt-1 inline-flex min-h-10 max-w-full items-center gap-2 rounded-md font-mono text-xs text-[#9bdbff] focus-visible:ring-2 focus-visible:ring-[#14f195]"
       title={address}
     >
       <span className={full ? "break-all text-left" : "truncate"}>
@@ -1559,25 +1539,6 @@ function buildSearchResults(
   return results.slice(0, 8);
 }
 
-function candidateWalletForAccount(
-  snapshot: ResearchLabExplorerSnapshot,
-  account: ResearchLabExplorerAccount
-) {
-  const rewardCandidates = snapshot.rewardCandidates ?? [];
-  const directCandidate = rewardCandidates.find(
-    (candidate) => candidate.positionRef === account.ref
-  );
-  if (directCandidate) return directCandidate.walletAddress;
-
-  const walletAddress = stringFromUnknown(account.data.walletAddress);
-  if (!walletAddress) return null;
-  return rewardCandidates.some(
-    (candidate) => candidate.walletAddress === walletAddress
-  )
-    ? walletAddress
-    : null;
-}
-
 function getExplorerLabContext(
   snapshot: ResearchLabExplorerSnapshot
 ): ExplorerLabContext {
@@ -1610,7 +1571,6 @@ function getExplorerLabContext(
       "Browse the public accounts exposed by the RL2 staking program and inspect their decoded state.",
     emptyTransactionDescription:
       "Stake and reward-claim activity will appear here.",
-    eyebrow: "RL2 / Yield Hijack",
     metric: {
       detail: "current session",
       label: "Rewards paid",
