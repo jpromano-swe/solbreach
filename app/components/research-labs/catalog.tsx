@@ -17,7 +17,8 @@ const CATALOG_LOCKED_LABS = [
     difficulty: "Advanced",
     estimatedTime: "3-5 hours",
     xpReward: 350,
-    summary: "Trace oracle drift before stale prices reach liquidation decisions.",
+    summary:
+      "Trace oracle drift before stale prices reach liquidation decisions.",
   },
 ];
 
@@ -172,9 +173,7 @@ export function ResearchLabCatalog({
               const labCompleted =
                 lab.status === "completed" ||
                 Boolean(
-                  researchLabCertificateMintedByLevel[
-                    adapter.certificate.level
-                  ]
+                  researchLabCertificateMintedByLevel[adapter.certificate.level]
                 );
               const catalogStatus: CatalogCardStatus = labCompleted
                 ? "completed"
@@ -183,8 +182,8 @@ export function ResearchLabCatalog({
                   : "locked";
               const ctaToneClass =
                 isAuthenticated && catalogStatus === "available"
-                  ? "text-[#8fffd0] hover:text-[#14f195] focus:ring-[#14f195]/40"
-                  : "text-[#b892ff] hover:text-white focus:ring-[#9945ff]/50";
+                  ? "border-[#14f195]/45 bg-[#14f195] text-[#04130d] shadow-[0_16px_42px_-24px_rgba(20,241,149,0.9)] hover:bg-[#45f4ad] focus:ring-[#14f195]/40"
+                  : "border-[#9945ff]/40 bg-[#9945ff]/12 text-[#d7c0ff] hover:bg-[#9945ff]/20 hover:text-white focus:ring-[#9945ff]/50";
               const openPrerequisiteModule = () =>
                 goToPrerequisiteModule(adapter.prerequisiteBadgeLevel);
 
@@ -192,9 +191,7 @@ export function ResearchLabCatalog({
                 <article
                   key={lab.id}
                   className={`group relative p-8 text-left transition duration-300 ${
-                    catalogStatus === "locked"
-                      ? "grayscale"
-                      : "hover:-translate-y-0.5"
+                    catalogStatus === "locked" ? "" : "hover:-translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
@@ -216,7 +213,9 @@ export function ResearchLabCatalog({
                   </div>
                   <h2
                     className={`mt-10 text-2xl font-semibold leading-[1.04] tracking-[-0.06em] ${
-                      catalogStatus === "locked" ? "text-zinc-500" : "text-white"
+                      catalogStatus === "locked"
+                        ? "text-zinc-500"
+                        : "text-white"
                     }`}
                   >
                     {lab.title || CATALOG_COPY.titleFallback}
@@ -252,7 +251,7 @@ export function ResearchLabCatalog({
                         type="button"
                         onClick={() => onOpenLab(lab)}
                         disabled={isLoading || !isAuthenticated}
-                        className={`inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-55 ${ctaToneClass}`}
+                        className={`inline-flex min-h-12 items-center gap-3 rounded-full border px-5 text-base font-semibold tracking-[-0.03em] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#070808] disabled:cursor-not-allowed disabled:opacity-55 ${ctaToneClass}`}
                       >
                         {isAuthenticated
                           ? catalogStatus === "completed"
@@ -265,7 +264,7 @@ export function ResearchLabCatalog({
                       <button
                         type="button"
                         onClick={openPrerequisiteModule}
-                        className="inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-red-200/75 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-red-300/40"
+                        className="inline-flex min-h-12 items-center gap-3 rounded-full border border-[#9945ff]/45 bg-[#9945ff]/16 px-5 text-base font-semibold tracking-[-0.03em] text-[#d7c0ff] shadow-[0_16px_42px_-26px_rgba(153,69,255,0.85)] transition-colors hover:bg-[#9945ff]/25 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#9945ff]/55 focus:ring-offset-2 focus:ring-offset-[#070808]"
                       >
                         Go to Module
                         <ArrowRight className="h-5 w-5" aria-hidden="true" />
@@ -277,10 +276,7 @@ export function ResearchLabCatalog({
             })}
 
             {lockedLabsToShow.map((lab) => (
-              <div
-                key={lab.id}
-                className="group relative p-8 text-left grayscale"
-              >
+              <div key={lab.id} className="group relative p-8 text-left">
                 <div className="flex items-center justify-between gap-4">
                   <span className="-ml-2 inline-flex rounded-md bg-[#070808] px-2 py-1 text-sm font-semibold tracking-[0.16em] text-red-200/45">
                     {lab.code}
@@ -382,12 +378,12 @@ function RequirementCallout({
   label: string;
 }) {
   return (
-    <div className="mt-6 border-l border-red-300/35 pl-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-red-200/50">
+    <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-500/[0.085] px-4 py-4 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.04)]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-red-200/80">
         Requirement
       </p>
-      <p className="mt-2 text-sm font-semibold text-red-100/80">{label}</p>
-      <p className="mt-1 text-xs leading-5 text-red-100/45">{detail}</p>
+      <p className="mt-2 text-sm font-semibold text-red-100">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-red-200/70">{detail}</p>
     </div>
   );
 }

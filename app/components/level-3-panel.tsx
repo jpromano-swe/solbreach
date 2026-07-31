@@ -26,7 +26,14 @@ import {
   type ReactFlowInstance,
 } from "@xyflow/react";
 import { type Address } from "@solana/kit";
-import { SkeletonLine, compactAddress } from "./level-ui";
+import {
+  AnimatedInstructionLine,
+  ProtocolVisualizationHeader,
+  SkeletonLine,
+  compactAddress,
+  useRejectedFlowPulse,
+} from "./level-ui";
+import { CertificateMintLoader } from "./certificate-mint-loader";
 
 type Level3Snapshot = {
   guildAuthorityPda: Address;
@@ -174,6 +181,7 @@ export function Level3Panel({
   const [observeRunId, setObserveRunId] = useState(0);
   const [observeStep, setObserveStep] = useState(0);
   const [manipulationTested, setManipulationTested] = useState(false);
+  const [flowRejectionTrigger, setFlowRejectionTrigger] = useState(0);
   const [activeFocus, setActiveFocus] = useState<FocusKey>("target");
   const [focusSequence, setFocusSequence] = useState<FocusKey[]>(
     startsComplete ? FOCUS_SEQUENCE : []
@@ -187,11 +195,13 @@ export function Level3Panel({
   });
 
   const isConnected = status === "connected";
-  const exploitReady =
-    manipulationTested &&
+  const manipulationPathReady =
     manipulation.cpiTarget === "attacker" &&
     manipulation.forwardedSigner === "with-guild-signer" &&
     manipulation.rewardDestination === "player-reward";
+  const exploitReady = manipulationTested && manipulationPathReady;
+  const manipulationRejected =
+    labStage === 2 && manipulationTested && !manipulationPathReady;
   const effectiveCompleted =
     level3Completed || delegated || backendExecution.completed;
   const focusSequenceComplete = focusSequence.length === FOCUS_SEQUENCE.length;
@@ -358,6 +368,7 @@ export function Level3Panel({
               onContinue={() => handleStageChange(3)}
               onTest={() => {
                 setManipulationTested(true);
+                setFlowRejectionTrigger((current) => current + 1);
               }}
             />
           ) : (
@@ -381,6 +392,8 @@ export function Level3Panel({
             activeFocus={activeFocus}
             effectiveCompleted={effectiveCompleted}
             exploitReady={exploitReady}
+            flowRejected={manipulationRejected}
+            flowRejectionTrigger={flowRejectionTrigger}
             focusSequenceComplete={focusSequenceComplete}
             labStage={labStage}
             manipulationTested={manipulationTested}
@@ -746,6 +759,9 @@ function InspectPanel({
   sequenceFeedback: string | null;
   sequenceMiss: SequenceMiss | null;
 }) {
+  const [backendRequestMode, setBackendRequestMode] = useState<
+    "prepare" | "execute" | null
+  >(null);
   const canRun = exploitReady && focusSequenceComplete && !effectiveCompleted;
   const actionDisabled =
     isSending ||
@@ -840,12 +856,14 @@ function InspectPanel({
         <p className="text-sm font-semibold leading-6 text-foreground">
           Exploit sequence
         </p>
-        <p className="text-sm leading-6 text-muted">
-          {sequenceFeedback ??
+        <AnimatedInstructionLine
+          text={
+            sequenceFeedback ??
             (exploitReady
               ? "Map each dependency before executing the delegated CPI."
-              : "Test the attacker CPI path before mapping execution.")}
-        </p>
+              : "Test the attacker CPI path before mapping execution.")
+          }
+        />
         {backendExecution.error ? (
           <p className="mt-3 text-sm leading-6 text-red-200">
             {backendExecution.error}
@@ -860,15 +878,36 @@ function InspectPanel({
       <button
         type="button"
         onClick={() => {
-          void (backendExecution.challengeReady
-            ? backendExecution.onRun()
-            : backendExecution.onPrepare());
+          const requestMode = backendExecution.challengeReady
+            ? "execute"
+            : "prepare";
+          setBackendRequestMode(requestMode);
+          void (
+            requestMode === "execute"
+              ? backendExecution.onRun()
+              : backendExecution.onPrepare()
+          ).finally(() => setBackendRequestMode(null));
         }}
         disabled={actionDisabled}
         className="min-h-12 w-full rounded-full bg-foreground px-5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45"
       >
         {actionLabel}
       </button>
+      {backendRequestMode ? (
+        <CertificateMintLoader
+          description={
+            backendRequestMode === "prepare"
+              ? "Waiting for the backend to unlock dependency mapping."
+              : "Waiting for the backend to verify the delegated CPI flow."
+          }
+          label={
+            backendRequestMode === "prepare"
+              ? "Preparing exploit challenge..."
+              : "Executing exploit..."
+          }
+          variant="modal"
+        />
+      ) : null}
     </section>
   );
 }
@@ -878,6 +917,8 @@ function ProtocolTopology({
   activeFocus,
   effectiveCompleted,
   exploitReady,
+  flowRejected,
+  flowRejectionTrigger,
   focusSequenceComplete,
   labStage,
   manipulationTested,
@@ -888,6 +929,8 @@ function ProtocolTopology({
   activeFocus: FocusKey;
   effectiveCompleted: boolean;
   exploitReady: boolean;
+  flowRejected: boolean;
+  flowRejectionTrigger: number;
   focusSequenceComplete: boolean;
   labStage: LabStage;
   manipulationTested: boolean;
@@ -902,6 +945,10 @@ function ProtocolTopology({
   > | null>(null);
   const fittedStageRef = useRef<LabStage | null>(null);
   const [layoutStage, setLayoutStage] = useState<LabStage | null>(null);
+  const rejectionPulseActive = useRejectedFlowPulse({
+    rejected: flowRejected,
+    trigger: flowRejectionTrigger,
+  });
   const showExploitMessage =
     labStage === 2 && exploitReady && manipulationTested;
   const messageTarget = layoutNodes.find((node) => node.id === "reward");
@@ -1030,10 +1077,7 @@ function ProtocolTopology({
             ...node.data,
             revealed,
             stageReveal:
-              isObserveStage &&
-              observeStarted &&
-              revealed &&
-              revealStep > 0,
+              isObserveStage && observeStarted && revealed && revealStep > 0,
           },
         };
       }),
@@ -1053,9 +1097,7 @@ function ProtocolTopology({
           ...edge,
           animated: active,
           className: active
-            ? [edge.className, "level1-flow-line"]
-                .filter(Boolean)
-                .join(" ")
+            ? [edge.className, "level1-flow-line"].filter(Boolean).join(" ")
             : undefined,
           style: {
             ...edge.style,
@@ -1069,12 +1111,15 @@ function ProtocolTopology({
   );
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/72">
-      <div className="border-b border-border px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Interactive protocol topology
-        </p>
-      </div>
+    <section
+      className={`overflow-hidden rounded-[28px] border border-border bg-card/72 ${
+        rejectionPulseActive ? "protocol-visualization-rejected" : ""
+      }`}
+    >
+      <ProtocolVisualizationHeader
+        label="Interactive protocol topology"
+        rejected={flowRejected}
+      />
       <div className="level1-flow h-[720px]">
         <ReactFlow
           colorMode="dark"

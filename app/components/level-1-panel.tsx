@@ -22,7 +22,15 @@ import {
   type ReactFlowInstance,
   Position,
 } from "@xyflow/react";
-import { SkeletonLine, StatusTextRow, compactAddress } from "./level-ui";
+import {
+  AnimatedInstructionLine,
+  ProtocolVisualizationHeader,
+  SkeletonLine,
+  StatusTextRow,
+  compactAddress,
+  useRejectedFlowPulse,
+} from "./level-ui";
+import { CertificateMintLoader } from "./certificate-mint-loader";
 
 type Level1Snapshot = {
   bankPda: string;
@@ -214,11 +222,10 @@ export function Level1Panel({
   status: string;
 }) {
   const startsComplete = stage.level1Mode === "complete";
-  const [labStage, setLabStage] = useState<LabStage>(
-    startsComplete ? 3 : 1
-  );
+  const [labStage, setLabStage] = useState<LabStage>(startsComplete ? 3 : 1);
   const [normalDepositObserved, setNormalDepositObserved] = useState(false);
   const [manipulationTested, setManipulationTested] = useState(false);
+  const [flowRejectionTrigger, setFlowRejectionTrigger] = useState(0);
   const [exploitPreviewed, setExploitPreviewed] = useState(startsComplete);
   const [stageOneRevealRun, setStageOneRevealRun] = useState(0);
   const [stageOneRevealStep, setStageOneRevealStep] = useState(0);
@@ -257,6 +264,8 @@ export function Level1Panel({
     manipulation.source === "counterfeit" &&
     manipulation.authority === "valid";
   const authorityRejected = manipulation.authority === "fake";
+  const manipulationRejected =
+    labStage === 2 && manipulationTested && !exploitReady;
   const effectiveManipulation =
     labStage === 3 ? EXPLOIT_MANIPULATION : manipulation;
   const effectiveCounterfeitPath =
@@ -370,7 +379,9 @@ export function Level1Panel({
 
   const handleExploitVariableSelect = (key: VariableKey) => {
     if (!exploitPrepared) {
-      setSequenceFeedback("Prepare the exploit challenge before mapping dependencies.");
+      setSequenceFeedback(
+        "Prepare the exploit challenge before mapping dependencies."
+      );
       return;
     }
 
@@ -406,9 +417,7 @@ export function Level1Panel({
     setActiveVariable(key);
     setExploitSequence((current) => [...current, key]);
     setSequenceMiss(null);
-    setSequenceFeedback(
-      `${getVariableLabel(key)} dependency mapped.`
-    );
+    setSequenceFeedback(`${getVariableLabel(key)} dependency mapped.`);
   };
 
   return (
@@ -439,7 +448,10 @@ export function Level1Panel({
                 setManipulationTested(false);
               }}
               onContinue={() => handleStageChange(3)}
-              onTest={() => setManipulationTested(true)}
+              onTest={() => {
+                setManipulationTested(true);
+                setFlowRejectionTrigger((current) => current + 1);
+              }}
             />
           ) : (
             <ExploitCodeWalkthrough
@@ -474,6 +486,8 @@ export function Level1Panel({
           <ProtocolVisualization
             activeVariable={labStage === 3 ? activeVariable : undefined}
             accounts={accounts}
+            flowRejected={manipulationRejected}
+            flowRejectionTrigger={flowRejectionTrigger}
             isCorrupted={
               labStage === 3 ||
               (labStage === 2 && manipulationTested && exploitReady)
@@ -841,6 +855,8 @@ function ProtocolSelect({
 function ProtocolVisualization({
   activeVariable,
   accounts,
+  flowRejected,
+  flowRejectionTrigger,
   isCorrupted,
   manipulation,
   mode,
@@ -849,6 +865,8 @@ function ProtocolVisualization({
 }: {
   activeVariable?: VariableKey;
   accounts: ProtocolAccount[];
+  flowRejected: boolean;
+  flowRejectionTrigger: number;
   isCorrupted: boolean;
   manipulation: ManipulationState;
   mode: LabStage;
@@ -863,6 +881,10 @@ function ProtocolVisualization({
     Node<ProtocolGraphNodeData>,
     Edge
   > | null>(null);
+  const rejectionPulseActive = useRejectedFlowPulse({
+    rejected: flowRejected,
+    trigger: flowRejectionTrigger,
+  });
   const graphElements = useMemo(
     () =>
       buildProtocolGraph({
@@ -964,12 +986,15 @@ function ProtocolVisualization({
   ]);
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/72">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-          Interactive Protocol Visualization
-        </p>
-      </div>
+    <section
+      className={`overflow-hidden rounded-[28px] border border-border bg-card/72 ${
+        rejectionPulseActive ? "protocol-visualization-rejected" : ""
+      }`}
+    >
+      <ProtocolVisualizationHeader
+        label="Interactive Protocol Visualization"
+        rejected={flowRejected}
+      />
       <div className={`relative ${canvasHeightClass}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_35%,rgba(20,241,149,0.08),transparent_32%),radial-gradient(circle_at_70%_62%,rgba(153,69,255,0.08),transparent_30%)]" />
         <ReactFlow
@@ -1709,6 +1734,9 @@ function ExploitCodeWalkthrough({
   sequenceMiss: SequenceMiss | null;
   stage: StageConfig;
 }) {
+  const [backendRequestMode, setBackendRequestMode] = useState<
+    "prepare" | "execute" | null
+  >(null);
   const activeSet = new Set(activeCodeLines);
   const activeContext = getExploitVariableContext(activeVariable);
   const remainingLines = EXPLOIT_CODE.slice(4);
@@ -1775,8 +1803,8 @@ function ExploitCodeWalkthrough({
                         mapped
                           ? "bg-emerald-400/10 text-emerald-100 ring-1 ring-emerald-300/18"
                           : isActive
-                          ? "bg-emerald-400/12 text-emerald-100"
-                          : "text-foreground hover:bg-accent"
+                            ? "bg-emerald-400/12 text-emerald-100"
+                            : "text-foreground hover:bg-accent"
                       } disabled:cursor-not-allowed disabled:opacity-45`}
                     >
                       {value}
@@ -1812,14 +1840,16 @@ function ExploitCodeWalkthrough({
           <p className="text-sm font-semibold leading-6 text-foreground">
             Exploit sequence
           </p>
-          <p className="mt-2 text-sm font-medium">
-            {exploitPrepared
-              ? activeContext.title
-              : "Prepare the challenge to unlock dependency mapping."}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            {sequenceFeedback ?? activeContext.detail}
-          </p>
+          <div className="mt-2">
+            <AnimatedInstructionLine
+              text={
+                sequenceFeedback ??
+                (exploitPrepared
+                  ? activeContext.detail
+                  : "Prepare the challenge to unlock dependency mapping.")
+              }
+            />
+          </div>
         </div>
 
         {stage.description || stage.actionLabel ? (
@@ -1840,13 +1870,37 @@ function ExploitCodeWalkthrough({
                   label={
                     isSending ? "Submitting instruction" : stage.actionLabel
                   }
-                  onClick={onExecute}
+                  onClick={async () => {
+                    setBackendRequestMode(
+                      stage.level1Mode === "prepare" ? "prepare" : "execute"
+                    );
+                    try {
+                      await onExecute();
+                    } finally {
+                      setBackendRequestMode(null);
+                    }
+                  }}
                 />
               </div>
             ) : null}
           </div>
         ) : null}
       </div>
+      {backendRequestMode ? (
+        <CertificateMintLoader
+          description={
+            backendRequestMode === "prepare"
+              ? "Waiting for the backend to unlock dependency mapping."
+              : "Waiting for the backend to verify the mapped exploit flow."
+          }
+          label={
+            backendRequestMode === "prepare"
+              ? "Preparing exploit challenge..."
+              : "Executing exploit..."
+          }
+          variant="modal"
+        />
+      ) : null}
     </section>
   );
 }
@@ -2134,7 +2188,8 @@ function buildProtocolActivity({
   if (!exploitPrepared) {
     return [
       {
-        detail: "Start the backend session and receive deterministic challenge accounts.",
+        detail:
+          "Start the backend session and receive deterministic challenge accounts.",
         title: "Prepare For Exploit required",
         tone: "active",
       },
@@ -2241,10 +2296,7 @@ function getVariableLabel(activeVariable: VariableKey) {
   return "Authority";
 }
 
-function getSequenceMissReason({
-  attempted,
-  expected,
-}: SequenceMiss): string {
+function getSequenceMissReason({ attempted, expected }: SequenceMiss): string {
   if (attempted === "authority") {
     return "Authority validation cannot occur before source substitution.";
   }

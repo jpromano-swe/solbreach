@@ -685,10 +685,14 @@ function ArbitraryCpiEvidenceReview({
           </EvidenceSection>
 
           {impactVerified ? (
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[#14f195]/25 bg-[#14f195]/8 px-3 py-2 text-sm font-semibold text-[#8fffd0]">
-              <Check className="h-4 w-4" />
+            <button
+              type="button"
+              disabled
+              className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-500"
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
               Verified Impact
-            </div>
+            </button>
           ) : (
             <button
               type="button"

@@ -437,6 +437,60 @@
   }
 }
 
+@keyframes protocolVisualizationRejected {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    border-color: rgba(248, 113, 113, 0.42);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
+  }
+
+  14% {
+    transform: translate3d(-4px, 0, 0);
+    border-color: rgba(248, 113, 113, 0.82);
+    box-shadow: 0 0 28px -10px rgba(248, 113, 113, 0.72);
+  }
+
+  30% {
+    transform: translate3d(4px, 0, 0);
+  }
+
+  46% {
+    transform: translate3d(-3px, 0, 0);
+    border-color: rgba(248, 113, 113, 0.68);
+    box-shadow: 0 0 20px -10px rgba(248, 113, 113, 0.58);
+  }
+
+  62% {
+    transform: translate3d(3px, 0, 0);
+  }
+
+  78% {
+    transform: translate3d(-1px, 0, 0);
+  }
+}
+
+@keyframes protocolInstructionLineIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.protocol-instruction-line {
+  animation: protocolInstructionLineIn 180ms ease-out both;
+}
+
+.protocol-visualization-rejected {
+  border-color: rgba(248, 113, 113, 0.62);
+  box-shadow: 0 0 24px -12px rgba(248, 113, 113, 0.62);
+}
+
 .level1-flow .react-flow__pane {
   cursor: default;
 }
@@ -565,6 +619,11 @@
     animation:
       level1ConnectionDraw 260ms ease-out both,
       level1CausalFlow 1800ms ease-in-out infinite;
+  }
+
+  .protocol-visualization-rejected {
+    animation: protocolVisualizationRejected 400ms ease-in-out both;
+    will-change: transform, border-color, box-shadow;
   }
 
   .level1-sequence-mapped {
@@ -777,6 +836,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .protocol-instruction-line {
+    animation: none;
+  }
+
   .level1-flow .react-flow__node {
     transition: none;
   }

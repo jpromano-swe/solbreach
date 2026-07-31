@@ -1,8 +1,79 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { CircleAlert } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 type StepState = "idle" | "active" | "done";
+
+export function useRejectedFlowPulse({
+  rejected,
+  trigger,
+}: {
+  rejected: boolean;
+  trigger: number;
+}) {
+  const [pulseActive, setPulseActive] = useState(false);
+
+  useEffect(() => {
+    let startFrame = 0;
+    let timer = 0;
+    const resetFrame = window.requestAnimationFrame(() => {
+      setPulseActive(false);
+      if (!rejected || trigger === 0) return;
+
+      startFrame = window.requestAnimationFrame(() => setPulseActive(true));
+      timer = window.setTimeout(() => setPulseActive(false), 500);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(resetFrame);
+      window.cancelAnimationFrame(startFrame);
+      window.clearTimeout(timer);
+    };
+  }, [rejected, trigger]);
+
+  return pulseActive;
+}
+
+export function ProtocolVisualizationHeader({
+  label,
+  rejected,
+}: {
+  label: string;
+  rejected: boolean;
+}) {
+  return (
+    <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+      <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
+        {label}
+      </p>
+      {rejected ? (
+        <span
+          role="status"
+          aria-live="polite"
+          className="inline-flex min-h-8 items-center gap-2 rounded-full border border-red-400/35 bg-red-500/10 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-200"
+        >
+          <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
+          Flow rejected
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export function AnimatedInstructionLine({ text }: { text: string }) {
+  return (
+    <p
+      key={text}
+      aria-atomic="true"
+      aria-live="polite"
+      className="protocol-instruction-line min-h-6 text-sm leading-6 text-muted"
+      role="status"
+    >
+      {text}
+    </p>
+  );
+}
 
 export function MiniBlock({
   detail,
@@ -237,7 +308,13 @@ export function AddressRow({
   );
 }
 
-export function StatusTextRow({ label, value }: { label: string; value: string }) {
+export function StatusTextRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="grid gap-2 sm:grid-cols-[96px_minmax(0,1fr)] sm:items-center">
       <span className="text-[11px] uppercase tracking-[0.26em] text-muted">

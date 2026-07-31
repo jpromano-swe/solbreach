@@ -66,7 +66,7 @@ export function ResearchLabCertificationDialog({
           </div>
 
           {reward.showPowerBadge ? (
-            <div className="mx-auto mt-5 flex max-w-sm items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left">
+            <div className="mx-auto mt-5 flex max-w-sm flex-col items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-5 py-4 text-center">
               {reward.powerBadge ? (
                 <>
                   <Image
@@ -74,10 +74,10 @@ export function ResearchLabCertificationDialog({
                     alt={`${reward.powerBadge.title} badge`}
                     width={52}
                     height={52}
-                    className="h-12 w-12 object-contain drop-shadow-[0_18px_34px_rgba(153,69,255,0.18)]"
+                    className="mx-auto h-12 w-12 object-contain drop-shadow-[0_18px_34px_rgba(153,69,255,0.18)]"
                   />
-                  <div>
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 text-sm font-semibold text-foreground">
                       <CheckCircle2
                         className="h-4 w-4 text-[#14f195]"
                         aria-hidden="true"
@@ -94,7 +94,7 @@ export function ResearchLabCertificationDialog({
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#9945ff]/25 bg-[#9945ff]/10 text-[#c7a6ff]">
                     <Clock3 className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <div>
+                  <div className="text-center">
                     <div className="text-sm font-semibold text-foreground">
                       Power User reward syncing
                     </div>
