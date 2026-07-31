@@ -240,10 +240,10 @@ function LandingCtaSection({
 }) {
   return (
     <section className="relative z-20 -mb-36 pb-0 pt-10 sm:-mb-44 sm:pt-14">
-      <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-card px-6 py-10 shadow-[0_38px_130px_-100px_rgba(20,241,149,0.48),0_36px_120px_-104px_rgba(153,69,255,0.55)] sm:px-10 lg:grid lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-10 lg:px-12 lg:py-12">
+      <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-black px-6 py-10 shadow-[0_38px_130px_-100px_rgba(20,241,149,0.42),0_36px_120px_-104px_rgba(153,69,255,0.48)] sm:px-10 lg:grid lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-10 lg:px-12 lg:py-12">
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-[radial-gradient(ellipse_46%_60%_at_18%_45%,rgba(20,241,149,0.12),transparent_70%),radial-gradient(ellipse_52%_58%_at_78%_18%,rgba(153,69,255,0.10),transparent_68%)]"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_46%_60%_at_18%_45%,rgba(20,241,149,0.07),transparent_70%),radial-gradient(ellipse_52%_58%_at_78%_18%,rgba(153,69,255,0.06),transparent_68%)]"
         />
         <div className="relative flex min-h-[220px] items-center justify-center lg:min-h-[300px]">
           <Image
@@ -251,7 +251,7 @@ function LandingCtaSection({
             alt="Solana logo"
             width={1254}
             height={1254}
-            className="h-auto w-[min(66%,260px)] drop-shadow-[0_32px_80px_rgba(20,241,149,0.18)] lg:w-[min(72%,310px)]"
+            className="h-auto w-[min(66%,260px)] drop-shadow-[0_24px_56px_rgba(20,241,149,0.1)] lg:w-[min(72%,310px)]"
             priority={false}
           />
         </div>
