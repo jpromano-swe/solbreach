@@ -40,6 +40,7 @@ type MintRequestBody = {
 const RESEARCH_LAB_CERTIFICATE_LEVELS: Record<string, number> = {
   "rl1-account-substitution": 1,
   "rl2-yield-hijack": 2,
+  "rl3-arbitrary-cpi": 3,
 };
 
 const CLUSTERS = new Set<MintCertificateCluster>([

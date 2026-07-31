@@ -103,32 +103,34 @@ export const rl3FindingQuestionnaire: QuestionnaireDefinition = {
         "The runtime requires a built and deployed attacker program, a normal-looking delegation, and a canonical payout instruction that targets the attacker program.",
     },
     {
-      id: "q4_deployment_scope",
+      id: "q4_attacker_vector",
       section: "Exploit Path Understanding",
       type: "single_choice",
-      prompt: "What deployment scope is represented by the attacker program?",
+      prompt:
+        "Which attacker-controlled vector makes the delegated payout exploitable?",
       points: 10,
       options: [
         {
-          id: "session_scoped_sandbox_program",
-          label: "The attacker program is deployed only inside this sandbox session",
+          id: "substitute_unbound_cpi_target",
+          label:
+            "Substitute the approved payout router with an attacker-controlled CPI program",
         },
         {
-          id: "devnet_program_upgrade",
-          label: "The attacker upgrades a public devnet program",
+          id: "reuse_expired_delegation",
+          label: "Reuse an expired payout delegation without a new signature",
         },
         {
-          id: "mainnet_program_clone",
-          label: "The attacker clones an existing mainnet program",
+          id: "overflow_reward_amount",
+          label: "Overflow the reward amount stored in the task record",
         },
         {
-          id: "browser_only_mock",
-          label: "The attacker edits a browser-only mock contract",
+          id: "close_escrow_early",
+          label: "Close the task escrow before the payout instruction runs",
         },
       ],
-      correctOptionId: "session_scoped_sandbox_program",
+      correctOptionId: "substitute_unbound_cpi_target",
       explanation:
-        "RL3 models deployment inside the isolated SVM session. It does not deploy arbitrary user code to devnet or mainnet.",
+        "The vulnerability is the unbound CPI target. A caller can replace the approved payout router with an attacker-controlled program regardless of whether the protocol runs in a sandbox, on devnet, or on mainnet.",
     },
     {
       id: "q5_impact",
@@ -235,15 +237,6 @@ export const rl3FindingQuestionnaire: QuestionnaireDefinition = {
       correctOptionId: "bind_cpi_target_to_approved_router",
       explanation:
         "The fix is to bind the invoked program to trusted protocol configuration before value moves through CPI.",
-    },
-    {
-      id: "q9_optional_notes",
-      section: "Severity and Report Reasoning",
-      type: "free_text_optional",
-      prompt: "Optional notes for your final report.",
-      points: 0,
-      explanation:
-        "Optional notes are not scored, but they can help clarify assumptions in the final report.",
     },
   ],
 };
