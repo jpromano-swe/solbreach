@@ -50,6 +50,17 @@ type SearchResult =
       accountRef: string;
     };
 
+type ExplorerLabContext = {
+  accountsDescription: string;
+  emptyTransactionDescription: string;
+  eyebrow: string;
+  metric: {
+    detail: string;
+    label: string;
+    value: string;
+  };
+};
+
 const EXPLORER_VIEWS: Array<{
   id: ExplorerView;
   label: string;
@@ -238,11 +249,11 @@ export function YieldHijackExplorer({
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
                 aria-hidden="true"
               />
-              <label htmlFor="rl2-explorer-search" className="sr-only">
+              <label htmlFor="research-lab-explorer-search" className="sr-only">
                 Search program, accounts, or wallet addresses
               </label>
               <input
-                id="rl2-explorer-search"
+                id="research-lab-explorer-search"
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -357,11 +368,12 @@ export function YieldHijackExplorer({
                 />
               ) : activeView === "accounts" ? (
                 <AccountsTable
-                  accounts={snapshot.accounts}
+                  snapshot={snapshot}
                   onOpenAccount={openAccount}
                 />
               ) : activeView === "transactions" ? (
                 <TransactionsTable
+                  snapshot={snapshot}
                   txResults={txResults}
                   onOpenTransaction={openTransaction}
                 />
@@ -447,13 +459,12 @@ function ExplorerOverview({
   onOpenTransaction: (transactionRef: string) => void;
   onViewChange: (view: ExplorerView) => void;
 }) {
-  const rewardSymbol = snapshot.rewardAsset?.symbol ?? "USDC";
-  const totalRewardsPaid = snapshot.totalRewardsPaid ?? 0;
+  const context = getExplorerLabContext(snapshot);
 
   return (
     <div>
       <ExplorerHeading
-        eyebrow="RL2 / Yield Hijack"
+        eyebrow={context.eyebrow}
         title="Program Overview"
         description="Inspect the session program, decoded accounts, and transaction history inside the SolBreach SVM."
       />
@@ -484,9 +495,9 @@ function ExplorerOverview({
             detail="learner-safe projection"
           />
           <OverviewMetric
-            label="Rewards paid"
-            value={`${formatAmount(totalRewardsPaid)} ${rewardSymbol}`}
-            detail="current session"
+            label={context.metric.label}
+            value={context.metric.value}
+            detail={context.metric.detail}
           />
         </dl>
       </section>
@@ -577,7 +588,7 @@ function ExplorerOverview({
               <EmptyState
                 icon={History}
                 title="No transactions yet"
-                description="Stake or claim activity will appear here."
+                description={context.emptyTransactionDescription}
               />
             )}
           </div>
@@ -588,21 +599,26 @@ function ExplorerOverview({
 }
 
 function AccountsTable({
-  accounts,
+  snapshot,
   onOpenAccount,
 }: {
-  accounts: ResearchLabExplorerAccount[];
+  snapshot: ResearchLabExplorerSnapshot;
   onOpenAccount: (accountRef: string) => void;
 }) {
+  const context = getExplorerLabContext(snapshot);
+
   return (
     <div>
       <ExplorerHeading
         eyebrow="Session accounts"
         title="Accounts"
-        description="Browse the public accounts exposed by the RL2 program and inspect their decoded state."
+        description={context.accountsDescription}
       />
       <div className="mt-5 overflow-x-auto rounded-lg border border-white/10 bg-[#202121]">
-        <AccountsTableRows accounts={accounts} onOpenAccount={onOpenAccount} />
+        <AccountsTableRows
+          accounts={snapshot.accounts}
+          onOpenAccount={onOpenAccount}
+        />
       </div>
     </div>
   );
@@ -787,12 +803,16 @@ function DecodedField({
 }
 
 function TransactionsTable({
+  snapshot,
   txResults,
   onOpenTransaction,
 }: {
+  snapshot: ResearchLabExplorerSnapshot;
   txResults: EnrichedTransactionResult[];
   onOpenTransaction: (transactionRef: string) => void;
 }) {
+  const context = getExplorerLabContext(snapshot);
+
   return (
     <div>
       <ExplorerHeading
@@ -838,12 +858,7 @@ function TransactionsTable({
                       {humanize(transaction.instructionType)}
                     </td>
                     <td className="px-3 py-3 font-mono text-xs text-zinc-500">
-                      {transaction.inputs.targetWalletAddress
-                        ? shortAddress(
-                            transaction.inputs.targetWalletAddress,
-                            6
-                          )
-                        : "—"}
+                      {transactionTargetLabel(transaction)}
                     </td>
                     <td className="px-3 py-3 text-xs text-zinc-500">
                       {formatTimestamp(
@@ -869,7 +884,7 @@ function TransactionsTable({
           <EmptyState
             icon={History}
             title="No transactions yet"
-            description="Return to the lab and submit a stake or reward claim."
+            description={context.emptyTransactionDescription}
           />
         )}
       </div>
@@ -928,19 +943,39 @@ function TransactionDetail({
               )
             }
           />
-          <DetailRow
-            label="Target wallet"
-            value={
-              transaction.inputs.targetWalletAddress ? (
+          {transaction.inputs.targetWalletAddress ? (
+            <DetailRow
+              label="Target wallet"
+              value={
                 <CopyableAddress
                   address={transaction.inputs.targetWalletAddress}
                   full
                 />
-              ) : (
-                "—"
-              )
-            }
-          />
+              }
+            />
+          ) : null}
+          {transaction.inputs.delegateProgramRef ? (
+            <DetailRow
+              label="CPI target"
+              value={
+                <code className="font-mono text-xs text-[#c7a6ff]">
+                  {humanize(
+                    transaction.inputs.delegateProgramLabel ??
+                      transaction.inputs.delegateProgramRef
+                  )}
+                </code>
+              }
+            />
+          ) : null}
+          {transaction.inputs.destinationAccountRef ? (
+            <DetailRow
+              label="Destination account"
+              value={humanize(
+                transaction.inputs.destinationAccountLabel ??
+                  transaction.inputs.destinationAccountRef
+              )}
+            />
+          ) : null}
         </dl>
       </section>
 
@@ -1543,6 +1578,78 @@ function candidateWalletForAccount(
     : null;
 }
 
+function getExplorerLabContext(
+  snapshot: ResearchLabExplorerSnapshot
+): ExplorerLabContext {
+  const isArbitraryCpi =
+    snapshot.program.ref === "task_bounty" ||
+    snapshot.accounts.some((account) => account.ref === "task_escrow");
+
+  if (isArbitraryCpi) {
+    const protocolState =
+      snapshot.protocolState ?? snapshot.protocol_state ?? {};
+    const bountyPool = recordFromUnknown(protocolState.bountyPool);
+    const paidOut = numberFromUnknown(bountyPool?.paidOut);
+
+    return {
+      accountsDescription:
+        "Browse the public accounts exposed by the RL3 bounty program and inspect their decoded state.",
+      emptyTransactionDescription:
+        "Build, deployment, delegation, and CPI activity will appear here.",
+      eyebrow: "RL3 / Arbitrary CPI",
+      metric: {
+        detail: "current session",
+        label: "Bounty paid out",
+        value: `${formatAmount(paidOut)} USDC`,
+      },
+    };
+  }
+
+  return {
+    accountsDescription:
+      "Browse the public accounts exposed by the RL2 staking program and inspect their decoded state.",
+    emptyTransactionDescription:
+      "Stake and reward-claim activity will appear here.",
+    eyebrow: "RL2 / Yield Hijack",
+    metric: {
+      detail: "current session",
+      label: "Rewards paid",
+      value: `${formatAmount(snapshot.totalRewardsPaid ?? 0)} ${
+        snapshot.rewardAsset?.symbol ?? "USDC"
+      }`,
+    },
+  };
+}
+
+function transactionTargetLabel(transaction: EnrichedTransactionResult) {
+  if (transaction.inputs.targetWalletAddress) {
+    return shortAddress(transaction.inputs.targetWalletAddress, 6);
+  }
+
+  const target =
+    transaction.inputs.delegateProgramLabel ??
+    transaction.inputs.delegateProgramRef ??
+    transaction.inputs.destinationAccountLabel ??
+    transaction.inputs.destinationAccountRef;
+
+  return target ? humanize(target) : "—";
+}
+
+function recordFromUnknown(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function numberFromUnknown(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
 function idlItems(
   idl: Record<string, unknown>,
   key: string
@@ -1603,6 +1710,9 @@ function normalizeExplorerTransaction(
       : typeof amountValue === "string" && Number.isFinite(Number(amountValue))
         ? Number(amountValue)
         : 0;
+  const destinationAccountRef = parameter("destination_account_ref");
+  const delegateProgramRef = parameter("delegate_program_ref");
+  const taskRef = parameter("task_ref");
 
   return {
     ...result,
@@ -1620,9 +1730,25 @@ function normalizeExplorerTransaction(
       stakeVaultRef: parameter("stake_vault_ref"),
       positionAccountRef: parameter("position_account_ref"),
       rewardVaultRef: parameter("reward_vault_ref"),
-      destinationAccountRef: parameter("destination_account_ref"),
+      destinationAccountRef,
+      destinationAccountLabel: destinationAccountRef
+        ? humanize(destinationAccountRef)
+        : undefined,
       instructionName: parameter("instruction_name"),
       targetWalletAddress: parameter("target_wallet_address"),
+      programTemplate: parameter("program_template"),
+      entrypointName: parameter("entrypoint_name"),
+      transferSourceRef: parameter("transfer_source_ref"),
+      transferDestinationRef: parameter("transfer_destination_ref"),
+      authorityStrategy: parameter("authority_strategy"),
+      artifactRef: parameter("artifact_ref"),
+      taskRef,
+      taskLabel: taskRef ? humanize(taskRef) : undefined,
+      delegateProgramRef,
+      delegateProgramLabel: delegateProgramRef
+        ? humanize(delegateProgramRef)
+        : undefined,
+      rewardAmount: numberFromUnknown(parameters.reward_amount),
       amount,
     },
   };

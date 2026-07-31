@@ -248,7 +248,13 @@ export function VulnerabilitiesSection({
                     />
                     <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
                       <span className="text-zinc-500">Interactive level</span>
-                      <span className="inline-flex items-center gap-2 font-medium text-[#b892ff] transition group-hover:text-white">
+                      <span
+                        className={`inline-flex items-center gap-2 font-medium transition ${
+                          cardStatus === "available"
+                            ? "text-[#8fffd0] group-hover:text-[#14f195]"
+                            : "text-[#b892ff] group-hover:text-white"
+                        }`}
+                      >
                         {cardStatus === "completed"
                           ? "Review module"
                           : "Open module"}
@@ -373,6 +379,16 @@ function CompactVulnerabilityCardContent({
 }) {
   const locked = status === "locked";
   const completed = status === "completed";
+  const ctaToneClass = locked
+    ? "text-red-200/55 group-hover:text-red-200/75"
+    : completed
+      ? "text-[#b892ff] group-hover:text-white"
+      : "text-[#8fffd0] group-hover:text-[#14f195]";
+  const pillCtaClass = locked
+    ? "border-red-400/15 bg-red-500/5 text-red-200/55 group-hover:border-red-300/25 group-hover:bg-red-500/10 group-hover:text-red-200/75"
+    : completed
+      ? "border-[#9945ff]/20 bg-[#9945ff]/5 text-[#c7a6ff] group-hover:border-[#9945ff]/40 group-hover:bg-[#9945ff]/10 group-hover:text-white"
+      : "border-[#14f195]/20 bg-[#14f195]/5 text-[#8fffd0] group-hover:border-[#14f195]/35 group-hover:bg-[#14f195]/10 group-hover:text-[#14f195]";
 
   if (compact.imageSrc) {
     return (
@@ -425,7 +441,7 @@ function CompactVulnerabilityCardContent({
             ) : null}
             {compact.cta ? (
               <span
-                className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition group-hover:text-white ${compact.ctaClassName ?? ""}`}
+                className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] transition ${ctaToneClass} ${compact.ctaClassName ?? ""}`}
               >
                 {completed ? "Review level" : compact.cta}
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />
@@ -457,8 +473,10 @@ function CompactVulnerabilityCardContent({
         {compact.metadata}
       </p>
 
-      <span className="mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-3 py-1.5 text-sm font-semibold text-[#c7a6ff] transition group-hover:border-[#9945ff]/40 group-hover:bg-[#9945ff]/10 group-hover:text-white">
-        {compact.cta}
+      <span
+        className={`mt-8 inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${pillCtaClass}`}
+      >
+        {completed ? "Review level" : compact.cta}
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </span>
     </div>

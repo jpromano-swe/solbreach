@@ -59,6 +59,7 @@ function getErrorMessage(error: unknown) {
 
 export function ResearchLabsSection({
   isCollectingLevel1Badge,
+  menuResetKey = 0,
   mintingResearchLabCertificateLevel,
   level1BadgeCollected,
   level1BadgeEarned,
@@ -75,6 +76,7 @@ export function ResearchLabsSection({
   onMintResearchLabCertificate,
 }: {
   isCollectingLevel1Badge: boolean;
+  menuResetKey?: number;
   mintingResearchLabCertificateLevel: 1 | 2 | 3 | null;
   level1BadgeCollected: boolean;
   level1BadgeEarned: boolean;
@@ -110,6 +112,7 @@ export function ResearchLabsSection({
   const [executeExploitView, setExecuteExploitView] =
     useState<ExecuteExploitView>("HYPOTHESIS");
   const [revealedHints, setRevealedHints] = useState<string[]>([]);
+  const menuResetKeyRef = useRef(menuResetKey);
   const trackedViewEventsRef = useRef<Set<string>>(new Set());
 
   const activeBackendAuth =
@@ -469,6 +472,15 @@ export function ResearchLabsSection({
     resetTransactions();
     resetFindingReview();
   }, [resetFindingReview, resetReport, resetTransactions]);
+
+  useEffect(() => {
+    if (menuResetKey === menuResetKeyRef.current) return;
+
+    menuResetKeyRef.current = menuResetKey;
+    resetLocalState();
+    setActiveLab(null);
+    setSession(null);
+  }, [menuResetKey, resetLocalState]);
 
   const sandboxStatus = deriveSandboxStatus(session, isRunning);
   const phase = deriveLabPhase({

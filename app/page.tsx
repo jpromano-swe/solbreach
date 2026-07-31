@@ -39,6 +39,7 @@ import { useLevelStageConfigs } from "./lib/hooks/use-level-stage-configs";
 import { useProfileCertificates } from "./lib/hooks/use-profile-certificates";
 import { useSendTransaction } from "./lib/hooks/use-send-transaction";
 import { useUserBadges } from "./lib/hooks/use-user-badges";
+import { readStoredBackendWalletAuth } from "./lib/levels/level1-backend";
 import { useSolanaClient } from "./lib/solana-client-context";
 import { useWallet } from "./lib/wallet/context";
 import { trackAnalyticsEvent } from "./lib/analytics";
@@ -196,6 +197,7 @@ export default function Home() {
   ] = useState<ResearchLabCertificateMintDialogState | null>(null);
   const [isCollectingLevel1Badge, setIsCollectingLevel1Badge] = useState(false);
   const [isCollectingLevel2Badge, setIsCollectingLevel2Badge] = useState(false);
+  const [researchLabsMenuResetKey, setResearchLabsMenuResetKey] = useState(0);
   const trackedLevelViewsRef = useRef<Set<string>>(new Set());
   const storedProfileIdentity = useMemo(
     () => (address ? getStoredProfileIdentity(address) : null),
@@ -829,6 +831,52 @@ export default function Home() {
     setActiveLevelsView("level1");
   }, [setActiveLevelsView, setActiveSection]);
 
+  const openBetaAccess = useCallback(() => {
+    setActiveSection("beta-access");
+    setActiveLevelsView("landing");
+  }, [setActiveLevelsView, setActiveSection]);
+
+  const hasRegisteredWalletSession = useCallback(() => {
+    if (status !== "connected" || !address) return false;
+
+    const storedAuth = readStoredBackendWalletAuth();
+
+    return (
+      storedAuth?.walletAddress === address && Boolean(storedAuth.accessToken)
+    );
+  }, [address, status]);
+
+  const requireRegisteredWallet = useCallback(
+    (navigate: () => void) => {
+      if (!hasRegisteredWalletSession()) {
+        openBetaAccess();
+        return;
+      }
+
+      navigate();
+    },
+    [hasRegisteredWalletSession, openBetaAccess]
+  );
+
+  useEffect(() => {
+    const protectedSection =
+      activeSection === "profile" ||
+      activeSection === "vulnerabilities" ||
+      activeSection === "research-labs" ||
+      activeSection === "breach-rooms" ||
+      (activeSection === "levels" && activeLevelsView !== "landing");
+
+    if (!protectedSection) return;
+    if (!hasRegisteredWalletSession()) {
+      openBetaAccess();
+    }
+  }, [
+    activeLevelsView,
+    activeSection,
+    hasRegisteredWalletSession,
+    openBetaAccess,
+  ]);
+
   useEffect(() => {
     if (activeSection !== "levels" || !activeLevel) return;
 
@@ -883,13 +931,24 @@ export default function Home() {
             setActiveSection("levels");
             setActiveLevelsView("landing");
           }}
-          onOpenProfile={() => setActiveSection("profile")}
-          onSelectResearchLabs={() => setActiveSection("research-labs")}
-          onSelectVulnerabilities={() => setActiveSection("vulnerabilities")}
-          onSelectLevel={(level) => {
-            setActiveSection("levels");
-            setActiveLevelsView(level);
-          }}
+          onOpenProfile={() =>
+            requireRegisteredWallet(() => setActiveSection("profile"))
+          }
+          onSelectResearchLabs={() =>
+            requireRegisteredWallet(() => {
+              setActiveSection("research-labs");
+              setResearchLabsMenuResetKey((key) => key + 1);
+            })
+          }
+          onSelectVulnerabilities={() =>
+            requireRegisteredWallet(() => setActiveSection("vulnerabilities"))
+          }
+          onSelectLevel={(level) =>
+            requireRegisteredWallet(() => {
+              setActiveSection("levels");
+              setActiveLevelsView(level);
+            })
+          }
           profileDisplayName={profileName.trim() || undefined}
           profileImageSrc={profileAvatarSrc}
         />
@@ -1015,7 +1074,9 @@ export default function Home() {
                               mintDisabled: activeLevelStatus.mintDisabled,
                               mintLabel: activeLevelStatus.mintLabel,
                               onContinueToLevel1: () => {
-                                setActiveLevelsView("level1");
+                                requireRegisteredWallet(() => {
+                                  setActiveLevelsView("level1");
+                                });
                               },
                               onMint: activeLevelStatus.onMint,
                               stage,
@@ -1033,6 +1094,7 @@ export default function Home() {
           ) : activeSection === "research-labs" ? (
             <ResearchLabsSection
               isCollectingLevel1Badge={isCollectingLevel1Badge}
+              menuResetKey={researchLabsMenuResetKey}
               mintingResearchLabCertificateLevel={
                 mintingLevel === "level1"
                   ? 1
@@ -1058,21 +1120,31 @@ export default function Home() {
                 void mutateBadges();
               }}
               onContinueToLevel2={() => {
-                setActiveSection("levels");
-                setActiveLevelsView("level2");
+                requireRegisteredWallet(() => {
+                  setActiveSection("levels");
+                  setActiveLevelsView("level2");
+                });
               }}
               onContinueToLevel3={() => {
-                setActiveSection("levels");
-                setActiveLevelsView("level3");
+                requireRegisteredWallet(() => {
+                  setActiveSection("levels");
+                  setActiveLevelsView("level3");
+                });
               }}
-              onGoToLevel1Module={enterLevel1FromBeta}
+              onGoToLevel1Module={() =>
+                requireRegisteredWallet(enterLevel1FromBeta)
+              }
               onGoToLevel2Module={() => {
-                setActiveSection("levels");
-                setActiveLevelsView("level2");
+                requireRegisteredWallet(() => {
+                  setActiveSection("levels");
+                  setActiveLevelsView("level2");
+                });
               }}
               onGoToLevel3Module={() => {
-                setActiveSection("levels");
-                setActiveLevelsView("level3");
+                requireRegisteredWallet(() => {
+                  setActiveSection("levels");
+                  setActiveLevelsView("level3");
+                });
               }}
               onMintResearchLabCertificate={mintResearchLabCertificate}
             />
@@ -1083,10 +1155,12 @@ export default function Home() {
                 level2: level2Completed || Boolean(level2Badge?.earned),
                 level3: level3Completed || Boolean(level3Badge?.earned),
               }}
-              onSelectLevel={(level) => {
-                setActiveSection("levels");
-                setActiveLevelsView(level);
-              }}
+              onSelectLevel={(level) =>
+                requireRegisteredWallet(() => {
+                  setActiveSection("levels");
+                  setActiveLevelsView(level);
+                })
+              }
             />
           ) : activeSection === "breach-rooms" ? (
             <BreachRoomsSection />
@@ -1112,10 +1186,12 @@ export default function Home() {
                 isLoading={isProfileCertificatesLoading}
                 onProfileAvatarChange={handleProfileAvatarChange}
                 onProfileNameChange={handleProfileNameChange}
-                onSelectLevel={(level) => {
-                  setActiveSection("levels");
-                  setActiveLevelsView(level);
-                }}
+                onSelectLevel={(level) =>
+                  requireRegisteredWallet(() => {
+                    setActiveSection("levels");
+                    setActiveLevelsView(level);
+                  })
+                }
                 profileAvatarSrc={profileAvatarSrc}
                 profileName={profileName}
               />
@@ -1130,11 +1206,14 @@ export default function Home() {
         onClose={closeBadgeDialog}
         onOpenProfile={() => {
           closeBadgeDialog();
-          setActiveSection("profile");
+          requireRegisteredWallet(() => setActiveSection("profile"));
         }}
         onOpenResearchLab={() => {
           closeBadgeDialog();
-          setActiveSection("research-labs");
+          requireRegisteredWallet(() => {
+            setActiveSection("research-labs");
+            setResearchLabsMenuResetKey((key) => key + 1);
+          });
         }}
       />
       {researchLabCertificateMintDialog ? (
@@ -1150,12 +1229,14 @@ export default function Home() {
         onOpenNextModule={() => {
           const nextLevel = researchLabCertificationDialog?.nextLevel ?? "level2";
           closeResearchLabCertificationDialog();
-          setActiveSection("levels");
-          setActiveLevelsView(nextLevel);
+          requireRegisteredWallet(() => {
+            setActiveSection("levels");
+            setActiveLevelsView(nextLevel);
+          });
         }}
         onOpenProfile={() => {
           closeResearchLabCertificationDialog();
-          setActiveSection("profile");
+          requireRegisteredWallet(() => setActiveSection("profile"));
         }}
       />
     </div>

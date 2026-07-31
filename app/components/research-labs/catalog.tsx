@@ -181,6 +181,10 @@ export function ResearchLabCatalog({
                 : labUnlocked
                   ? "available"
                   : "locked";
+              const ctaToneClass =
+                isAuthenticated && catalogStatus === "available"
+                  ? "text-[#8fffd0] hover:text-[#14f195] focus:ring-[#14f195]/40"
+                  : "text-[#b892ff] hover:text-white focus:ring-[#9945ff]/50";
               const openPrerequisiteModule = () =>
                 goToPrerequisiteModule(adapter.prerequisiteBadgeLevel);
 
@@ -248,7 +252,7 @@ export function ResearchLabCatalog({
                         type="button"
                         onClick={() => onOpenLab(lab)}
                         disabled={isLoading || !isAuthenticated}
-                        className="inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] text-[#b892ff] transition hover:text-white focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 disabled:cursor-not-allowed disabled:opacity-55"
+                        className={`inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-55 ${ctaToneClass}`}
                       >
                         {isAuthenticated
                           ? catalogStatus === "completed"
