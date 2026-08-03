@@ -2,9 +2,10 @@
   <img src="https://raw.githubusercontent.com/jpromano-swe/solbreach/research-labs-frontend/public/logo_crop.png" alt="SolBreach" width="420" />
 </p>
 
-**Interactive security training for Solana builders.**
+**Security Training Layer for Solana builders.**
 
-SolBreach turns real Solana vulnerability patterns into guided, verifiable labs. Builders inspect vulnerable programs, reproduce exploits on devnet, explain their impact, and learn how to fix them before shipping production code.
+Practice finding real security issues, prove they matter,
+and learn how to fix vulnerable Solana programs before shipping to production.
 
 [Website](https://solbreach.com) | [Beta](https://beta.solbreach.com) | [Documentation](https://solbreach.gitbook.io/documentation) | [Backend](https://github.com/jpromano-swe/solbreach-backend)
 
