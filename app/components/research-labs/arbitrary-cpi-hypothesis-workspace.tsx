@@ -19,10 +19,8 @@ import {
   Smile,
   WalletCards,
 } from "lucide-react";
-import type { Address } from "@solana/kit";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { useBalance } from "../../lib/hooks/use-balance";
 import { useWallet } from "../../lib/wallet/context";
 
 type DelegateProgramRef = "official_payout_router" | "attacker_cpi_program";
@@ -200,9 +198,12 @@ const BUILDER_OPTIONS: Record<
   destination: {
     label: "Destination",
     placeholder: "Select destination",
-    correct: "attacker_reward_account",
+    correct: "primary_user_payout_account",
     options: [
-      { value: "attacker_reward_account", label: "attacker_reward_account" },
+      {
+        value: "primary_user_payout_account",
+        label: "primary_user_payout_account",
+      },
       { value: "approved_worker_account", label: "approved_worker_account" },
       { value: "fee_vault", label: "fee_vault" },
     ],
@@ -220,7 +221,7 @@ const EMPTY_SELECTIONS: BuilderSelection = {
 };
 const CORRECT_SELECTIONS: BuilderSelection = {
   authorityStrategy: "reuse_delegated_signer",
-  destination: "attacker_reward_account",
+  destination: "primary_user_payout_account",
   entrypoint: "execute",
   programTemplate: "cpi_drain_router",
   transferFunction: "transfer_checked",
@@ -271,17 +272,14 @@ export function ArbitraryCpiHypothesisWorkspace({
   onSubmitDelegation: () => Promise<void>;
 }) {
   const [activeCategory, setActiveCategory] = useState<TaskCategory>("all");
-  const [selectedTaskId, setSelectedTaskId] = useState("design-ops-console");
   const [builderOpen, setBuilderOpen] = useState(false);
   const [builderSelection, setBuilderSelection] =
     useState<BuilderSelection>(EMPTY_SELECTIONS);
   const [builderError, setBuilderError] = useState<string | null>(null);
-  const flowStarted = hasBuild || hasDeploy || hasDelegation || hasCpiExecution;
   const builderVisible = builderOpen || hasBuild || hasDeploy;
   const effectiveBuilderSelection =
     hasBuild || hasDeploy ? CORRECT_SELECTIONS : builderSelection;
-  const selectedTask =
-    TASKS.find((task) => task.id === selectedTaskId) ?? TASKS[0]!;
+  const activeTask = TASKS[0]!;
   const filteredTasks = useMemo(
     () =>
       activeCategory === "all"
@@ -289,19 +287,15 @@ export function ArbitraryCpiHypothesisWorkspace({
         : TASKS.filter((task) => task.category === activeCategory),
     [activeCategory]
   );
-  const selectedCount = BUILDER_KEYS.filter(
+  const selectionsComplete = BUILDER_KEYS.every(
     (key) => effectiveBuilderSelection[key]
-  ).length;
-  const selectionsComplete = selectedCount === BUILDER_KEYS.length;
+  );
   const selectionsCorrect = BUILDER_KEYS.every(
     (key) => effectiveBuilderSelection[key] === BUILDER_OPTIONS[key].correct
   );
   const canDeploy = selectionsComplete && !hasDeploy && !busy;
   const amountValue = Math.max(0, Number.parseInt(rewardAmount, 10) || 0);
-
-  useEffect(() => {
-    onRewardAmountChange(String(selectedTask.reward));
-  }, [onRewardAmountChange, selectedTask.reward]);
+  const earnedBountyAmount = hasCpiExecution ? activeTask.reward : 0;
 
   const updateSelection = (key: BuilderKey, value: string) => {
     setBuilderError(null);
@@ -316,14 +310,8 @@ export function ArbitraryCpiHypothesisWorkspace({
       );
       setBuilderError(
         mismatched
-          ? `${BUILDER_OPTIONS[mismatched].label} does not match the vulnerable CPI path. Adjust the selection and build again.`
+          ? `${BUILDER_OPTIONS[mismatched].label} does not match the payout route. Adjust the selection and build again.`
           : "The attacker program specification is incomplete."
-      );
-      return;
-    }
-    if (selectedTask.safety !== "vulnerable") {
-      setBuilderError(
-        "Deployment rejected for this task scope. Inspect SolBreach Explorer for the payout configuration, then select the task whose CPI target is not bound."
       );
       return;
     }
@@ -339,14 +327,9 @@ export function ArbitraryCpiHypothesisWorkspace({
             Trace the category-scoped payout path.
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-            Browse task categories, identify which payout configuration still
-            delegates through the legacy router, then build a session-scoped CPI
-            target for that path.
+            Browse opportunities, compare payout versions in Explorer, then
+            build and deploy the program that tests the outdated route.
           </p>
-        </div>
-        <div className="inline-flex h-9 w-fit items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 font-mono text-[11px] font-semibold text-zinc-300">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#14f195]" />
-          SBR SVM
         </div>
       </div>
 
@@ -366,7 +349,7 @@ export function ArbitraryCpiHypothesisWorkspace({
               latestAction={latestAction}
               pendingAction={pendingAction}
               rewardAmount={rewardAmount}
-              selectedTask={selectedTask}
+              selectedTask={activeTask}
               onDelegateProgramChange={onDelegateProgramChange}
               onExecuteDelegatedCpi={onExecuteDelegatedCpi}
               onInstructionNameChange={onInstructionNameChange}
@@ -382,7 +365,6 @@ export function ArbitraryCpiHypothesisWorkspace({
               canDeploy={canDeploy}
               hasDeploy={hasDeploy}
               pendingAction={pendingAction}
-              selectedCount={selectedCount}
               selections={effectiveBuilderSelection}
               selectionsComplete={selectionsComplete}
               explorerAvailable={explorerAvailable}
@@ -399,16 +381,10 @@ export function ArbitraryCpiHypothesisWorkspace({
 
         <BountyTaskBrowser
           activeCategory={activeCategory}
+          earnedBountyAmount={earnedBountyAmount}
           filteredTasks={filteredTasks}
-          flowStarted={flowStarted}
-          selectedTask={selectedTask}
           userWalletAddress={userWalletAddress}
           onCategoryChange={setActiveCategory}
-          onTaskSelect={(task) => {
-            if (flowStarted) return;
-            setSelectedTaskId(task.id);
-            setBuilderError(null);
-          }}
         />
       </div>
     </div>
@@ -417,20 +393,16 @@ export function ArbitraryCpiHypothesisWorkspace({
 
 function BountyTaskBrowser({
   activeCategory,
+  earnedBountyAmount,
   filteredTasks,
-  flowStarted,
-  selectedTask,
   userWalletAddress,
   onCategoryChange,
-  onTaskSelect,
 }: {
   activeCategory: TaskCategory;
+  earnedBountyAmount: number;
   filteredTasks: BountyTask[];
-  flowStarted: boolean;
-  selectedTask: BountyTask;
   userWalletAddress: string;
   onCategoryChange: (category: TaskCategory) => void;
-  onTaskSelect: (task: BountyTask) => void;
 }) {
   return (
     <section className="min-w-0 rounded-lg border border-white/10 bg-[#08090b] p-5">
@@ -443,10 +415,14 @@ function BountyTaskBrowser({
             Browse bounty tasks
           </p>
           <p className="mt-1 text-xs leading-5 text-zinc-500">
-            Category scope determines which payout configuration is active.
+            Choose an opportunity that fits your profile and start earning
+            rewards.
           </p>
         </div>
-        <WalletSummary userWalletAddress={userWalletAddress} />
+        <WalletSummary
+          earnedBountyAmount={earnedBountyAmount}
+          userWalletAddress={userWalletAddress}
+        />
       </div>
 
       <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
@@ -472,15 +448,7 @@ function BountyTaskBrowser({
 
       <div className="mt-3 space-y-2">
         {filteredTasks.length ? (
-          filteredTasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              locked={flowStarted && task.id !== selectedTask.id}
-              selected={selectedTask.id === task.id}
-              task={task}
-              onSelect={() => onTaskSelect(task)}
-            />
-          ))
+          filteredTasks.map((task) => <TaskRow key={task.id} task={task} />)
         ) : (
           <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5 text-sm text-zinc-500">
             No tasks match this category.
@@ -491,13 +459,15 @@ function BountyTaskBrowser({
   );
 }
 
-function WalletSummary({ userWalletAddress }: { userWalletAddress: string }) {
+function WalletSummary({
+  earnedBountyAmount,
+  userWalletAddress,
+}: {
+  earnedBountyAmount: number;
+  userWalletAddress: string;
+}) {
   const { status, wallet } = useWallet();
   const connectedAddress = wallet?.account.address ?? userWalletAddress;
-  const balanceAddress = connectedAddress
-    ? (connectedAddress as Address)
-    : undefined;
-  const balance = useBalance(balanceAddress);
   const displayName =
     wallet?.account.label ||
     wallet?.connector.name ||
@@ -509,7 +479,7 @@ function WalletSummary({ userWalletAddress }: { userWalletAddress: string }) {
       <div className="relative flex h-7 w-8 items-center justify-center rounded-md border border-[#9945ff]/25 bg-[#9945ff]/12 text-[#d7c0ff]">
         <WalletCards className="h-4 w-4" aria-hidden="true" />
         <span className="absolute -right-1.5 -top-2 rounded-md bg-[#6f6cff] px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-white">
-          {formatWalletBalance(balance.lamports, balance.isLoading)}
+          {formatWalletBalance(earnedBountyAmount)}
         </span>
       </div>
       <div className="h-8 w-8 shrink-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_30%_30%,#14f195_0%,#9945ff_48%,#232323_100%)]" />
@@ -531,31 +501,11 @@ function WalletSummary({ userWalletAddress }: { userWalletAddress: string }) {
   );
 }
 
-function TaskRow({
-  locked,
-  selected,
-  task,
-  onSelect,
-}: {
-  locked: boolean;
-  selected: boolean;
-  task: BountyTask;
-  onSelect: () => void;
-}) {
+function TaskRow({ task }: { task: BountyTask }) {
   const CategoryIcon = CATEGORY_META[task.category].icon;
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={locked}
-      aria-pressed={selected}
-      className={`group grid min-h-24 w-full grid-cols-[52px_minmax(0,1fr)] gap-4 rounded-lg border p-3 text-left motion-safe:transition-colors motion-safe:duration-100 motion-safe:active:scale-[0.96] sm:grid-cols-[64px_minmax(0,1fr)_auto] ${
-        selected
-          ? "border-[#9945ff]/45 bg-[#9945ff]/10"
-          : "border-transparent bg-transparent hover:border-white/10 hover:bg-white/[0.025]"
-      } disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]`}
-    >
+    <article className="grid min-h-24 w-full grid-cols-[52px_minmax(0,1fr)] gap-4 rounded-lg border border-transparent p-3 text-left sm:grid-cols-[64px_minmax(0,1fr)_auto]">
       <div
         className="flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 sm:h-16 sm:w-16"
         aria-hidden="true"
@@ -590,7 +540,7 @@ function TaskRow({
         </p>
         <p className="text-xs text-zinc-500">USDC</p>
       </div>
-    </button>
+    </article>
   );
 }
 
@@ -602,18 +552,11 @@ function UsdcMark() {
   );
 }
 
-function formatWalletBalance(
-  lamports: bigint | number | null,
-  isLoading: boolean
-) {
-  if (isLoading && lamports === null) return "$--";
-  if (lamports === null) return "$0";
-  const sol = Number(lamports) / 1_000_000_000;
-  if (!Number.isFinite(sol) || sol <= 0) return "$0";
-  if (sol < 0.01) return "<0.01";
-  return sol.toLocaleString("en-US", {
-    maximumFractionDigits: sol >= 100 ? 0 : 2,
-  });
+function formatWalletBalance(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "$0";
+  return `$${value.toLocaleString("en-US", {
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 function shortAddress(address?: string) {
@@ -631,7 +574,6 @@ function ProgramBuilder({
   explorerUrl,
   hasDeploy,
   pendingAction,
-  selectedCount,
   selections,
   selectionsComplete,
   onDeployConfiguredProgram,
@@ -646,7 +588,6 @@ function ProgramBuilder({
   explorerUrl: string;
   hasDeploy: boolean;
   pendingAction: PendingAction;
-  selectedCount: number;
   selections: BuilderSelection;
   selectionsComplete: boolean;
   onDeployConfiguredProgram: () => Promise<void>;
@@ -661,13 +602,9 @@ function ProgramBuilder({
             Exploiter interface
           </p>
           <p className="mt-1 text-xs leading-5 text-zinc-500">
-            Configure the attacker program before deploying it into this SBR SVM
-            session.
+            Configure the attacker program before deploying it.
           </p>
         </div>
-        <span className="rounded-md border border-white/10 bg-white/[0.035] px-2 py-1 font-mono text-[10px] text-zinc-500">
-          {selectedCount}/6
-        </span>
       </div>
 
       {!builderOpen ? (
@@ -730,9 +667,9 @@ function ProgramBuilder({
             {pendingAction === "build"
               ? "Building program..."
               : pendingAction === "deploy"
-                ? "Deploying to SBR SVM..."
+                ? "Deploying program..."
                 : hasDeploy
-                  ? "Program deployed in SBR SVM"
+                  ? "Program deployed"
                   : selectionsComplete
                     ? "Deploy program in SVM"
                     : "Deploy program in SVM"}
@@ -843,8 +780,8 @@ function PayoutExecutionPanel({
         <div>
           <p className="text-sm font-semibold text-zinc-100">Execute exploit</p>
           <p className="mt-1 text-xs leading-5 text-zinc-500">
-            Authorize the selected task payout, inspect the public interface,
-            then choose the CPI target to test.
+            Authorize the payout route, inspect the public interface, then
+            choose the CPI target to test.
           </p>
         </div>
         <Layers3
