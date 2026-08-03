@@ -58,7 +58,7 @@ const TASKS: BountyTask[] = [
     category: "design",
     sponsor: "Interface guild",
     due: "Due in 3d",
-    reward: 75_000,
+    reward: 750,
     configVersion: "V1 legacy",
     safety: "vulnerable",
     initials: "DG",
@@ -71,7 +71,7 @@ const TASKS: BountyTask[] = [
     category: "development",
     sponsor: "Protocol ops",
     due: "Due in 5d",
-    reward: 32_000,
+    reward: 1_200,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "DV",
@@ -84,7 +84,7 @@ const TASKS: BountyTask[] = [
     category: "content",
     sponsor: "Docs council",
     due: "Due in 2d",
-    reward: 12_000,
+    reward: 450,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "CT",
@@ -97,7 +97,7 @@ const TASKS: BountyTask[] = [
     category: "memes",
     sponsor: "Community ops",
     due: "Due in 1d",
-    reward: 8_500,
+    reward: 275,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "MM",
@@ -110,12 +110,12 @@ const TASKS: BountyTask[] = [
     category: "development",
     sponsor: "Security lab",
     due: "Due in 7d",
-    reward: 21_000,
+    reward: 2_200,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "PL",
     summary:
-      "This task shows the intended post-migration behavior: a delegated payout cannot swap in an attacker program.",
+      "This task shows the intended post-migration behavior: a delegated payout stays bound to the approved route.",
   },
 ];
 
@@ -151,7 +151,7 @@ const BUILDER_OPTIONS: Record<
     placeholder: "Select template",
     correct: "cpi_drain_router",
     options: [
-      { value: "cpi_drain_router", label: "cpi_drain_router" },
+      { value: "cpi_drain_router", label: "delegated_payout_router" },
       { value: "read_only_observer", label: "read_only_observer" },
       { value: "event_mirror", label: "event_mirror" },
     ],
@@ -384,7 +384,7 @@ export function ArbitraryCpiHypothesisWorkspace({
       setBuilderError(
         mismatched
           ? `${BUILDER_OPTIONS[mismatched].label} does not match the payout route. Adjust the selection and build again.`
-          : "The attacker program specification is incomplete."
+          : "The payout program specification is incomplete."
       );
       setLastChangedBuilderKey(mismatched ?? null);
       setBuilderRejectionPulse((current) => current + 1);
@@ -683,10 +683,10 @@ function ProgramBuilder({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-zinc-100">
-            Exploiter interface
+            Program interface
           </p>
           <p className="mt-1 text-xs leading-5 text-zinc-500">
-            Configure the attacker program before deploying it.
+            Configure the payout program before deploying it.
           </p>
         </div>
       </div>
@@ -701,7 +701,7 @@ function ProgramBuilder({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#9945ff]/35 bg-[#9945ff]/16 px-5 text-sm font-semibold text-[#d7c0ff] motion-safe:transition-colors motion-safe:duration-100 motion-safe:active:scale-[0.96] hover:bg-[#9945ff]/22 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
             >
               <Rocket className="h-4 w-4" aria-hidden="true" />
-              Build attacker program
+              Build payout program
             </button>
           </div>
         </div>
@@ -840,7 +840,10 @@ function CodePreview({
           builderKey="programTemplate"
           lastChangedKey={lastChangedKey}
           placeholder="<template>"
-          value={selections.programTemplate}
+          value={labelForBuilderValue(
+            "programTemplate",
+            selections.programTemplate
+          )}
         />
         <span className={tokenClass}> {"{"}</span>
         {"\n  "}
@@ -850,7 +853,7 @@ function CodePreview({
           builderKey="entrypoint"
           lastChangedKey={lastChangedKey}
           placeholder="<entrypoint>"
-          value={selections.entrypoint}
+          value={labelForBuilderValue("entrypoint", selections.entrypoint)}
         />
         <span className={tokenClass}>(ctx) {"{"}</span>
         {"\n    "}
@@ -859,7 +862,10 @@ function CodePreview({
           builderKey="transferFunction"
           lastChangedKey={lastChangedKey}
           placeholder="<transfer_fn>"
-          value={selections.transferFunction}
+          value={labelForBuilderValue(
+            "transferFunction",
+            selections.transferFunction
+          )}
         />
         <span className={tokenClass}>(</span>
         {"\n      "}
@@ -869,7 +875,10 @@ function CodePreview({
           builderKey="transferSource"
           lastChangedKey={lastChangedKey}
           placeholder="<source>"
-          value={selections.transferSource}
+          value={labelForBuilderValue(
+            "transferSource",
+            selections.transferSource
+          )}
         />
         <span className={tokenClass}>,</span>
         {"\n      "}
@@ -879,7 +888,7 @@ function CodePreview({
           builderKey="destination"
           lastChangedKey={lastChangedKey}
           placeholder="<destination>"
-          value={selections.destination}
+          value={labelForBuilderValue("destination", selections.destination)}
         />
         <span className={tokenClass}>,</span>
         {"\n      "}
@@ -889,7 +898,10 @@ function CodePreview({
           builderKey="authorityStrategy"
           lastChangedKey={lastChangedKey}
           placeholder="<authority>"
-          value={selections.authorityStrategy}
+          value={labelForBuilderValue(
+            "authorityStrategy",
+            selections.authorityStrategy
+          )}
         />
         {"\n    "}
         <span className={tokenClass}>)</span>
@@ -899,6 +911,14 @@ function CodePreview({
         <span className={tokenClass}>{"}"}</span>
       </code>
     </pre>
+  );
+}
+
+function labelForBuilderValue(key: BuilderKey, value: string) {
+  if (!value) return "";
+  return (
+    BUILDER_OPTIONS[key].options.find((option) => option.value === value)
+      ?.label ?? value
   );
 }
 
@@ -920,7 +940,7 @@ function CodeValue({
   return (
     <span
       key={`${builderKey}-${value}`}
-      className={`rounded-md border border-[#14f195]/20 bg-[#14f195]/10 px-1 text-[#8fffd0] shadow-[0_0_18px_-12px_rgba(20,241,149,0.9)] ${
+      className={`text-[#8fffd0] ${
         lastChangedKey === builderKey ? "rl3-code-token-selected" : ""
       }`}
     >
@@ -974,7 +994,7 @@ function PayoutExecutionPanel({
     <section className="rounded-lg border border-white/10 bg-[#08090b] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-zinc-100">Execute exploit</p>
+          <p className="text-sm font-semibold text-zinc-100">Execute payout</p>
           <p className="mt-1 text-xs leading-5 text-zinc-500">
             Authorize the payout route, inspect the public interface, then
             choose the CPI target to test.
@@ -1058,7 +1078,7 @@ function PayoutExecutionPanel({
             <option value="official_payout_router">
               Official Payout Router
             </option>
-            <option value="attacker_cpi_program">Attacker CPI Program</option>
+            <option value="attacker_cpi_program">Session Payout Program</option>
           </select>
         </div>
         <div>

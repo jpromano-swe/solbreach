@@ -204,8 +204,7 @@ const rl2Adapter: ResearchLabFrontendAdapter = {
     objective:
       "Identify an account-isolation failure, demonstrate unauthorized reward capture, and preserve evidence of the resulting state changes.",
   },
-  impactVerifiedCopy:
-    "Reward hijack verified.",
+  impactVerifiedCopy: "Reward hijack verified.",
   inspectChecks: [
     "Protocol source reviewed",
     "Staking position inspected",
@@ -323,34 +322,34 @@ const rl3Adapter: ResearchLabFrontendAdapter = {
     task_escrow: "Task Escrow",
     official_payout_router: "Official Payout Router",
     approved_worker_account: "Approved Worker Account",
-    attacker_reward_account: "Attacker Reward Account",
-    attacker_program_buffer: "Attacker Program Buffer",
-    attacker_cpi_program: "Attacker CPI Program",
+    attacker_reward_account: "User Reward Account",
+    attacker_program_buffer: "Program Buffer",
+    attacker_cpi_program: "Session Payout Program",
   },
   briefing: {
     heading: "Investigate a delegated payout flow.",
     supportingLine:
       "Inspect a bounty platform, build a session-scoped CPI target, and prove whether payout delegation is safely constrained.",
     objective:
-      "Determine whether a caller-supplied CPI target can replace the approved payout router and drain escrowed task rewards.",
+      "Determine whether a caller-supplied CPI target can replace the approved payout router and release escrowed task rewards.",
   },
   impactVerifiedCopy: "Delegated payout impact verified.",
   inspectChecks: [
     "Protocol source reviewed",
     "Public interface inspected",
     "Delegated payout path mapped",
-    "Exploit path ready",
+    "Payout path ready",
   ],
   verifiedEvidenceChecks: [
-    "Attacker program built",
-    "Attacker program deployed",
+    "Payout program built",
+    "Payout program deployed",
     "Delegation submitted",
-    "Escrow drained",
+    "Task payout completed",
   ],
   exploitHints: [
-    "Build the sandbox attacker program using the delegated payout source, destination, and signer strategy.",
+    "Build the session payout program using the delegated payout source, destination, and signer strategy.",
     "Open SolBreach Explorer and inspect the public IDL to find the delegated payout instruction.",
-    "Submit a normal delegation first, then replace the delegated program target with the deployed attacker CPI program.",
+    "Submit a normal delegation first, then route execution through the deployed session payout program.",
   ],
   securePattern: {
     title: "Secure Pattern: Bound CPI Targets",
@@ -410,7 +409,7 @@ const rl3Adapter: ResearchLabFrontendAdapter = {
       "Which program is actually invoked?",
       "Who supplies the CPI target?",
       "Is the target bound to config or caller input?",
-      "Can value move through a compatible attacker program?",
+      "Can value move through a compatible session program?",
       "Is the destination account bound to the task recipient?",
     ],
     contrastTitle: "Delegated CPI contrast",
@@ -454,7 +453,7 @@ const rl3Adapter: ResearchLabFrontendAdapter = {
     moduleLabel: "Arbitrary CPI",
     credentialLabel: "Arbitrary CPI — Verified Research Lab",
     completionCopy:
-      "You verified a delegated payout drain, submitted the finding, and reviewed CPI target binding.",
+      "You verified a delegated payout route, submitted the finding, and reviewed CPI target binding.",
   },
 };
 

@@ -354,7 +354,7 @@ function getCatalogSummary(lab: ResearchLabManifest, labCode: string) {
   }
 
   if (labCode === "RL3") {
-    return "Replace an unbound CPI target and drain escrowed bounty rewards.";
+    return "Inspect an unbound CPI target and release escrowed bounty rewards.";
   }
 
   return shortenWords(lab.summary || CATALOG_COPY.scenario, 18);

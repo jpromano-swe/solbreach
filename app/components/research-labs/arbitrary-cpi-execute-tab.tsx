@@ -16,9 +16,9 @@ import {
 } from "./workspace-tabs";
 
 const BASELINE = {
-  bountyEscrow: 75_000,
-  bountyPoolTotal: 100_000,
-  bountyPoolAvailable: 100_000,
+  bountyEscrow: 750,
+  bountyPoolTotal: 3_000,
+  bountyPoolAvailable: 3_000,
   bountyPoolPaidOut: 0,
   attackerRewardBalance: 0,
 };
@@ -55,7 +55,7 @@ export function ArbitraryCpiExecuteTab({
   const [delegateProgramRef, setDelegateProgramRef] =
     useState<DelegateProgramRef>("official_payout_router");
   const [instructionName, setInstructionName] = useState("");
-  const [rewardAmount, setRewardAmount] = useState("75000");
+  const [rewardAmount, setRewardAmount] = useState("750");
   const [pendingAction, setPendingAction] = useState<
     "build" | "deploy" | "delegate" | "execute" | null
   >(null);
@@ -323,8 +323,8 @@ function ArbitraryCpiEvidenceReview({
             </div>
           ) : (
             <p className="mt-4 text-sm leading-6 text-zinc-500">
-              Submit a build, deploy, delegation, or CPI execution. Successful
-              and rejected attempts will appear here.
+              Submit a build, deploy, authorization, or CPI execution.
+              Successful and rejected attempts will appear here.
             </p>
           )}
         </section>
@@ -332,9 +332,9 @@ function ArbitraryCpiEvidenceReview({
         <div className="space-y-5">
           <EvidenceSection title="CPI Target">
             <StateRow label="Approved router" value="Official Payout Router" />
-            <StateRow label="Executed target" value={state.cpiTargetLabel} />
+            <StateRow label="Selected route" value={state.cpiTargetLabel} />
             <StateRow
-              label="Target replaced"
+              label="Route updated"
               value={state.targetReplaced ? "Yes" : "No"}
             />
           </EvidenceSection>
@@ -351,7 +351,7 @@ function ArbitraryCpiEvidenceReview({
               currentValue={state.attackerRewardBalance}
             />
             <BalanceDeltaCard
-              label="Bounty Paid Out"
+              label="Bounty Paid"
               initialValue={BASELINE.bountyPoolPaidOut}
               currentValue={state.bountyPoolPaidOut}
             />
@@ -568,7 +568,7 @@ function deriveArbitraryCpiState(
     ),
     cpiTargetLabel:
       delegateProgram === "attacker_cpi_program"
-        ? "Attacker CPI Program"
+        ? "Session Payout Program"
         : "Official Payout Router",
     targetReplaced:
       Boolean(cpi?.targetReplaced ?? cpi?.target_replaced) ||
@@ -593,10 +593,10 @@ function arbitraryCpiTransactionTitle(result: EnrichedTransactionResult) {
   const failed = result.executionStatus !== "success";
 
   if (action.includes("BUILD_ATTACKER_PROGRAM")) {
-    return failed ? "Build rejected" : "Attacker program built";
+    return failed ? "Build rejected" : "Payout program built";
   }
   if (action.includes("DEPLOY_ATTACKER_PROGRAM")) {
-    return failed ? "Deployment rejected" : "Attacker program deployed";
+    return failed ? "Deployment rejected" : "Payout program deployed";
   }
   if (action.includes("SUBMIT_DELEGATION")) {
     return failed ? "Delegation rejected" : "Delegation submitted";
@@ -613,7 +613,7 @@ function arbitraryCpiTransactionDescription(result: EnrichedTransactionResult) {
       return "A session-scoped CPI target artifact was assembled.";
     }
     if (result.instructionType.includes("DEPLOY_ATTACKER_PROGRAM")) {
-      return "The attacker CPI program became available in this SVM session.";
+      return "The session payout program became available in this SVM session.";
     }
     if (result.instructionType.includes("SUBMIT_DELEGATION")) {
       return "A normal-looking bounty delegation was recorded.";

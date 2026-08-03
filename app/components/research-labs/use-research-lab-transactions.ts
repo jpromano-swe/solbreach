@@ -452,7 +452,10 @@ function enrichPersistedTransaction(
     "transfer_destination_ref"
   );
   const taskRef = parameterString(parameters, "task_ref");
-  const delegateProgramRef = parameterString(parameters, "delegate_program_ref");
+  const delegateProgramRef = parameterString(
+    parameters,
+    "delegate_program_ref"
+  );
 
   return {
     ...result,
@@ -512,9 +515,9 @@ function getSuccessCopy(actionType: LabTransactionPayload["action_type"]) {
     case "CLAIM_REWARDS":
       return "Rewards claimed";
     case "BUILD_ATTACKER_PROGRAM":
-      return "Attacker program built";
+      return "Payout program built";
     case "DEPLOY_ATTACKER_PROGRAM":
-      return "Attacker program deployed";
+      return "Payout program deployed";
     case "SUBMIT_DELEGATION":
       return "Delegation submitted";
     case "EXECUTE_DELEGATED_CPI":
@@ -596,19 +599,19 @@ function normalizeArbitraryCpiFailure(
     return "The submitted instruction does not match the delegated payout interface.";
   }
   if (normalized.includes("official_router_target_rejected")) {
-    return "The approved router rejected this target. Replace the delegated CPI target with the deployed attacker program.";
+    return "The approved router rejected this target. Route the delegated CPI through the deployed session payout program.";
   }
   if (
     normalized.includes("attacker_program_not_built") ||
     normalized.includes("program not built")
   ) {
-    return "Build the session-scoped attacker program before deploying it.";
+    return "Build the session-scoped payout program before deploying it.";
   }
   if (
     normalized.includes("attacker_program_not_deployed") ||
     normalized.includes("program not deployed")
   ) {
-    return "Deploy the session-scoped attacker program before executing the delegated CPI.";
+    return "Deploy the session-scoped payout program before executing the delegated CPI.";
   }
   if (
     normalized.includes("delegation_missing") ||

@@ -102,20 +102,20 @@ const RL3_MANIFEST_OVERRIDES = {
   summary:
     "A bounty platform delegates payout execution after task completion. Inspect whether the payout target is constrained before value moves.",
   objective:
-    "Determine whether a caller-supplied CPI target can replace the approved payout router and drain escrowed task rewards.",
+    "Determine whether a caller-supplied CPI target can replace the approved payout router and release escrowed task rewards.",
   successCriteria:
-    "Verified evidence must show that a session-scoped attacker program was built, deployed, selected as the delegated CPI target, and used to drain task escrow.",
+    "Verified evidence must show that a session-scoped payout program was built, deployed, selected as the delegated CPI target, and used to release the task payout.",
   objectives: [
     "Inspect the delegated payout interface and public account surface",
     "Build and deploy a session-scoped CPI target",
     "Submit a normal-looking delegation through the bounty platform",
-    "Replace the CPI target, drain escrow, and document the evidence",
+    "Route the CPI target, complete payout, and document the evidence",
   ],
   hints: [
     {
       id: "build-cpi-target",
       title: "Hint 1",
-      body: "Build the sandbox attacker program using the task escrow, attacker reward account, and delegated signer strategy.",
+      body: "Build the session payout program using the task escrow, user reward account, and delegated signer strategy.",
     },
     {
       id: "idl-entrypoint",
@@ -125,7 +125,7 @@ const RL3_MANIFEST_OVERRIDES = {
     {
       id: "replace-cpi-target",
       title: "Hint 3",
-      body: "Submit a normal delegation first, then replace the delegated program target with the deployed attacker CPI program.",
+      body: "Submit a normal delegation first, then route execution through the deployed session payout program.",
     },
   ] satisfies ResearchLabHint[],
 };
@@ -1122,8 +1122,7 @@ function normalizeReportAllowedValues(
     titleOptionId:
       nonEmptyReportAllowedValueIds(
         values.title_option_id ?? values.titleOptionId
-      ) ??
-      fallback.titleOptionId,
+      ) ?? fallback.titleOptionId,
     categoryOptionId:
       nonEmptyReportAllowedValueIds(
         values.category_option_id ?? values.categoryOptionId
