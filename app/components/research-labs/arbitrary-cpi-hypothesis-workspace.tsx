@@ -19,7 +19,7 @@ import {
   Smile,
   WalletCards,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { useWallet } from "../../lib/wallet/context";
 
@@ -36,6 +36,7 @@ type BuilderKey =
   | "destination";
 
 type BuilderSelection = Record<BuilderKey, string>;
+type BuilderOption = { value: string; label: string };
 
 type BountyTask = {
   id: string;
@@ -142,7 +143,7 @@ const BUILDER_OPTIONS: Record<
     label: string;
     placeholder: string;
     correct: string;
-    options: Array<{ value: string; label: string }>;
+    options: BuilderOption[];
   }
 > = {
   programTemplate: {
@@ -228,6 +229,69 @@ const CORRECT_SELECTIONS: BuilderSelection = {
   transferSource: "task_escrow",
 };
 
+function orderBuilderOptions(): Record<BuilderKey, BuilderOption[]> {
+  return arrangeBuilderOptions((key, option, index) =>
+    stableOptionSort(`${key}:${option.value}:${index}`)
+  );
+}
+
+function randomBuilderOptions(): Record<BuilderKey, BuilderOption[]> {
+  return arrangeBuilderOptions(() => Math.random());
+}
+
+function arrangeBuilderOptions(
+  sortValue: (key: BuilderKey, option: BuilderOption, index: number) => number
+): Record<BuilderKey, BuilderOption[]> {
+  return BUILDER_KEYS.reduce(
+    (optionsByKey, key) => {
+      const config = BUILDER_OPTIONS[key];
+      const shuffled = [...config.options]
+        .map((option, index) => ({
+          option,
+          sort: sortValue(key, option, index),
+        }))
+        .sort((left, right) => left.sort - right.sort)
+        .map(({ option }) => option);
+      const correctIndex = shuffled.findIndex(
+        (option) => option.value === config.correct
+      );
+
+      if (correctIndex === 0 && shuffled.length > 1) {
+        const [correctOption] = shuffled.splice(correctIndex, 1);
+        const nextIndex =
+          1 + (stableOptionSort(`${key}:correct-offset`) % shuffled.length);
+        shuffled.splice(nextIndex, 0, correctOption);
+      }
+
+      optionsByKey[key] = shuffled;
+      return optionsByKey;
+    },
+    {} as Record<BuilderKey, BuilderOption[]>
+  );
+}
+
+function stableOptionSort(input: string) {
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) % 997;
+  }
+  return hash;
+}
+
+const SERVER_BUILDER_OPTIONS = orderBuilderOptions();
+let clientBuilderOptions: Record<BuilderKey, BuilderOption[]> | null = null;
+const subscribeBuilderOptions = () => () => undefined;
+
+function getServerBuilderOptions() {
+  return SERVER_BUILDER_OPTIONS;
+}
+
+function getClientBuilderOptions() {
+  if (typeof window === "undefined") return SERVER_BUILDER_OPTIONS;
+  clientBuilderOptions ??= randomBuilderOptions();
+  return clientBuilderOptions;
+}
+
 export function ArbitraryCpiHypothesisWorkspace({
   busy,
   delegateProgramRef,
@@ -276,6 +340,14 @@ export function ArbitraryCpiHypothesisWorkspace({
   const [builderSelection, setBuilderSelection] =
     useState<BuilderSelection>(EMPTY_SELECTIONS);
   const [builderError, setBuilderError] = useState<string | null>(null);
+  const [lastChangedBuilderKey, setLastChangedBuilderKey] =
+    useState<BuilderKey | null>(null);
+  const [builderRejectionPulse, setBuilderRejectionPulse] = useState(0);
+  const builderOptions = useSyncExternalStore(
+    subscribeBuilderOptions,
+    getClientBuilderOptions,
+    getServerBuilderOptions
+  );
   const builderVisible = builderOpen || hasBuild || hasDeploy;
   const effectiveBuilderSelection =
     hasBuild || hasDeploy ? CORRECT_SELECTIONS : builderSelection;
@@ -299,6 +371,7 @@ export function ArbitraryCpiHypothesisWorkspace({
 
   const updateSelection = (key: BuilderKey, value: string) => {
     setBuilderError(null);
+    setLastChangedBuilderKey(value ? key : null);
     setBuilderSelection((current) => ({ ...current, [key]: value }));
   };
 
@@ -313,6 +386,8 @@ export function ArbitraryCpiHypothesisWorkspace({
           ? `${BUILDER_OPTIONS[mismatched].label} does not match the payout route. Adjust the selection and build again.`
           : "The attacker program specification is incomplete."
       );
+      setLastChangedBuilderKey(mismatched ?? null);
+      setBuilderRejectionPulse((current) => current + 1);
       return;
     }
     setBuilderError(null);
@@ -365,8 +440,11 @@ export function ArbitraryCpiHypothesisWorkspace({
               canDeploy={canDeploy}
               hasDeploy={hasDeploy}
               pendingAction={pendingAction}
+              randomizedOptions={builderOptions}
+              rejectionPulse={builderRejectionPulse}
               selections={effectiveBuilderSelection}
               selectionsComplete={selectionsComplete}
+              lastChangedKey={lastChangedBuilderKey}
               explorerAvailable={explorerAvailable}
               explorerUrl={explorerUrl}
               onDeployConfiguredProgram={deployConfiguredProgram}
@@ -505,9 +583,9 @@ function TaskRow({ task }: { task: BountyTask }) {
   const CategoryIcon = CATEGORY_META[task.category].icon;
 
   return (
-    <article className="grid min-h-24 w-full grid-cols-[52px_minmax(0,1fr)] gap-4 rounded-lg border border-transparent p-3 text-left sm:grid-cols-[64px_minmax(0,1fr)_auto]">
+    <article className="group grid min-h-24 w-full grid-cols-[52px_minmax(0,1fr)] gap-4 rounded-lg border border-transparent p-3 text-left motion-safe:transition-[transform,border-color,background-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out hover:border-white/10 hover:bg-white/[0.025] hover:shadow-[0_18px_44px_-34px_rgba(153,69,255,0.75)] motion-safe:hover:-translate-y-0.5 sm:grid-cols-[64px_minmax(0,1fr)_auto]">
       <div
-        className="flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 sm:h-16 sm:w-16"
+        className="flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 motion-safe:transition-[transform,border-color,background-color] motion-safe:duration-150 motion-safe:ease-out group-hover:border-[#9945ff]/25 group-hover:bg-[#9945ff]/10 group-hover:text-zinc-100 motion-safe:group-hover:scale-[1.025] sm:h-16 sm:w-16"
         aria-hidden="true"
       >
         <CategoryIcon className="h-4 w-4" />
@@ -516,7 +594,7 @@ function TaskRow({ task }: { task: BountyTask }) {
         </span>
       </div>
       <div className="min-w-0 self-center">
-        <p className="min-w-0 truncate text-sm font-semibold text-zinc-200">
+        <p className="min-w-0 truncate text-sm font-semibold text-zinc-200 motion-safe:transition-colors motion-safe:duration-100 group-hover:text-white">
           {task.title}
         </p>
         <p className="mt-1 text-xs text-zinc-500">{task.sponsor}</p>
@@ -534,7 +612,7 @@ function TaskRow({ task }: { task: BountyTask }) {
         </div>
       </div>
       <div className="col-span-2 flex items-baseline justify-between gap-2 self-center sm:col-span-1 sm:block sm:text-right">
-        <p className="flex items-center gap-1.5 font-mono text-base font-semibold tabular-nums text-zinc-200 sm:justify-end">
+        <p className="flex items-center gap-1.5 font-mono text-base font-semibold tabular-nums text-zinc-200 motion-safe:transition-colors motion-safe:duration-100 group-hover:text-white sm:justify-end">
           <UsdcMark />
           {task.reward.toLocaleString("en-US")}
         </p>
@@ -573,7 +651,10 @@ function ProgramBuilder({
   explorerAvailable,
   explorerUrl,
   hasDeploy,
+  lastChangedKey,
   pendingAction,
+  randomizedOptions,
+  rejectionPulse,
   selections,
   selectionsComplete,
   onDeployConfiguredProgram,
@@ -587,7 +668,10 @@ function ProgramBuilder({
   explorerAvailable: boolean;
   explorerUrl: string;
   hasDeploy: boolean;
+  lastChangedKey: BuilderKey | null;
   pendingAction: PendingAction;
+  randomizedOptions: Record<BuilderKey, BuilderOption[]> | null;
+  rejectionPulse: number;
   selections: BuilderSelection;
   selectionsComplete: boolean;
   onDeployConfiguredProgram: () => Promise<void>;
@@ -629,13 +713,21 @@ function ProgramBuilder({
                 key={key}
                 config={BUILDER_OPTIONS[key]}
                 id={`rl3-builder-${key}`}
+                options={
+                  randomizedOptions?.[key] ?? BUILDER_OPTIONS[key].options
+                }
                 value={selections[key]}
                 onChange={(value) => onSelectionChange(key, value)}
               />
             ))}
           </div>
 
-          <CodePreview selections={selections} />
+          <CodePreview
+            lastChangedKey={lastChangedKey}
+            rejected={Boolean(builderError)}
+            rejectionPulse={rejectionPulse}
+            selections={selections}
+          />
 
           {builderError ? (
             <p
@@ -684,11 +776,13 @@ function ProgramBuilder({
 function BuilderSelect({
   config,
   id,
+  options,
   value,
   onChange,
 }: {
   config: (typeof BUILDER_OPTIONS)[BuilderKey];
   id: string;
+  options: BuilderOption[];
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -707,7 +801,7 @@ function BuilderSelect({
         className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none motion-safe:transition-colors motion-safe:duration-100 focus:border-[#9945ff]/50 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]"
       >
         <option value="">{config.placeholder}</option>
-        {config.options.map((option) => (
+        {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
@@ -717,19 +811,121 @@ function BuilderSelect({
   );
 }
 
-function CodePreview({ selections }: { selections: BuilderSelection }) {
+function CodePreview({
+  lastChangedKey,
+  rejected,
+  rejectionPulse,
+  selections,
+}: {
+  lastChangedKey: BuilderKey | null;
+  rejected: boolean;
+  rejectionPulse: number;
+  selections: BuilderSelection;
+}) {
+  const tokenClass = "text-zinc-300";
+
   return (
-    <pre className="overflow-auto rounded-lg border border-white/10 bg-black/35 p-3 font-mono text-[11px] leading-5 text-zinc-500">
-      {`program ${selections.programTemplate || "<template>"} {
-  pub fn ${selections.entrypoint || "<entrypoint>"}(ctx) {
-    ${selections.transferFunction || "<transfer_fn>"}(
-      from: ${selections.transferSource || "<source>"},
-      to: ${selections.destination || "<destination>"},
-      authority: ${selections.authorityStrategy || "<authority>"}
-    )
-  }
-}`}
+    <pre
+      key={rejectionPulse}
+      className={`overflow-auto rounded-lg border bg-black/35 p-3 font-mono text-[11px] leading-5 text-zinc-500 motion-safe:transition-[border-color,box-shadow] motion-safe:duration-100 ${
+        rejected
+          ? "rl3-code-preview-rejected border-amber-300/45 shadow-[0_0_24px_-14px_rgba(252,211,77,0.85)]"
+          : "border-white/10"
+      }`}
+    >
+      <code>
+        <span className={tokenClass}>program </span>
+        <CodeValue
+          key={`programTemplate-${selections.programTemplate}`}
+          builderKey="programTemplate"
+          lastChangedKey={lastChangedKey}
+          placeholder="<template>"
+          value={selections.programTemplate}
+        />
+        <span className={tokenClass}> {"{"}</span>
+        {"\n  "}
+        <span className={tokenClass}>pub fn </span>
+        <CodeValue
+          key={`entrypoint-${selections.entrypoint}`}
+          builderKey="entrypoint"
+          lastChangedKey={lastChangedKey}
+          placeholder="<entrypoint>"
+          value={selections.entrypoint}
+        />
+        <span className={tokenClass}>(ctx) {"{"}</span>
+        {"\n    "}
+        <CodeValue
+          key={`transferFunction-${selections.transferFunction}`}
+          builderKey="transferFunction"
+          lastChangedKey={lastChangedKey}
+          placeholder="<transfer_fn>"
+          value={selections.transferFunction}
+        />
+        <span className={tokenClass}>(</span>
+        {"\n      "}
+        <span className={tokenClass}>from: </span>
+        <CodeValue
+          key={`transferSource-${selections.transferSource}`}
+          builderKey="transferSource"
+          lastChangedKey={lastChangedKey}
+          placeholder="<source>"
+          value={selections.transferSource}
+        />
+        <span className={tokenClass}>,</span>
+        {"\n      "}
+        <span className={tokenClass}>to: </span>
+        <CodeValue
+          key={`destination-${selections.destination}`}
+          builderKey="destination"
+          lastChangedKey={lastChangedKey}
+          placeholder="<destination>"
+          value={selections.destination}
+        />
+        <span className={tokenClass}>,</span>
+        {"\n      "}
+        <span className={tokenClass}>authority: </span>
+        <CodeValue
+          key={`authorityStrategy-${selections.authorityStrategy}`}
+          builderKey="authorityStrategy"
+          lastChangedKey={lastChangedKey}
+          placeholder="<authority>"
+          value={selections.authorityStrategy}
+        />
+        {"\n    "}
+        <span className={tokenClass}>)</span>
+        {"\n  "}
+        <span className={tokenClass}>{"}"}</span>
+        {"\n"}
+        <span className={tokenClass}>{"}"}</span>
+      </code>
     </pre>
+  );
+}
+
+function CodeValue({
+  builderKey,
+  lastChangedKey,
+  placeholder,
+  value,
+}: {
+  builderKey: BuilderKey;
+  lastChangedKey: BuilderKey | null;
+  placeholder: string;
+  value: string;
+}) {
+  if (!value) {
+    return <span className="text-zinc-700">{placeholder}</span>;
+  }
+
+  return (
+    <span
+      key={`${builderKey}-${value}`}
+      className={`rounded-md border border-[#14f195]/20 bg-[#14f195]/10 px-1 text-[#8fffd0] shadow-[0_0_18px_-12px_rgba(20,241,149,0.9)] ${
+        lastChangedKey === builderKey ? "rl3-code-token-selected" : ""
+      }`}
+    >
+      {value}
+    </span>
   );
 }
 
