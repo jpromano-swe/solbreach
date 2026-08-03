@@ -910,7 +910,7 @@ function BreachRoomsPreview() {
         </span>
       </div>
       <div className="flex flex-1 flex-col justify-center gap-4 p-6">
-        <div className="min-h-[128px] rounded-lg border border-border bg-background p-5">
+        <div className="landing-breach-room-shell min-h-[128px] rounded-lg border border-border bg-background p-5">
           <div className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
             <LockKeyhole className="h-4 w-4" aria-hidden="true" />
             Mini-audit environment
@@ -920,13 +920,13 @@ function BreachRoomsPreview() {
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-medium text-muted">
-          <span className="rounded-md border border-border bg-background px-2 py-2">
+          <span className="landing-breach-step landing-breach-step-1 landing-breach-step-interim rounded-md border border-border bg-background px-2 py-2">
+            Clone Repo
+          </span>
+          <span className="landing-breach-step landing-breach-step-2 landing-breach-step-interim rounded-md border border-border bg-background px-2 py-2">
             Inspect
           </span>
-          <span className="rounded-md border border-border bg-background px-2 py-2">
-            Verify
-          </span>
-          <span className="rounded-md border border-border bg-background px-2 py-2">
+          <span className="landing-breach-step landing-breach-step-3 landing-breach-step-report rounded-md border border-border bg-background px-2 py-2">
             Report
           </span>
         </div>

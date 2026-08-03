@@ -342,6 +342,133 @@
   }
 }
 
+@keyframes landingBreachChipRipple {
+  0% {
+    opacity: 0.62;
+    transform: translate(-50%, -50%) scale(0);
+  }
+
+  72% {
+    opacity: 0.18;
+    transform: translate(-50%, -50%) scale(3.6);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(4.4);
+  }
+}
+
+@keyframes landingBreachChipYellow {
+  0% {
+    color: var(--muted);
+    transform: scale(1);
+    border-color: var(--border);
+    background-color: var(--background);
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+  }
+
+  46% {
+    color: rgb(254, 240, 138);
+    transform: scale(1.045);
+    border-color: rgba(250, 204, 21, 0.78);
+    background-color: rgba(250, 204, 21, 0.12);
+    box-shadow:
+      inset 0 0 0 1px rgba(250, 204, 21, 0.22),
+      0 0 0 4px rgba(250, 204, 21, 0.13);
+  }
+
+  100% {
+    color: rgb(254, 240, 138);
+    transform: scale(1);
+    border-color: rgba(250, 204, 21, 0.5);
+    background-color: rgba(250, 204, 21, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.12);
+  }
+}
+
+@keyframes landingBreachInterimGreen {
+  0% {
+    color: rgb(254, 240, 138);
+    transform: scale(1);
+    border-color: rgba(250, 204, 21, 0.5);
+    background-color: rgba(250, 204, 21, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.12);
+  }
+
+  46% {
+    color: rgb(167, 243, 208);
+    transform: scale(1.045);
+    border-color: rgba(20, 241, 149, 0.82);
+    background-color: rgba(20, 241, 149, 0.14);
+    box-shadow:
+      inset 0 0 0 1px rgba(20, 241, 149, 0.28),
+      0 0 0 4px rgba(20, 241, 149, 0.14);
+  }
+
+  100% {
+    color: rgb(167, 243, 208);
+    transform: scale(1);
+    border-color: rgba(20, 241, 149, 0.54);
+    background-color: rgba(20, 241, 149, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(20, 241, 149, 0.16);
+  }
+}
+
+@keyframes landingBreachReportGreen {
+  0% {
+    color: var(--muted);
+    transform: scale(1);
+    border-color: var(--border);
+    background-color: var(--background);
+    box-shadow: 0 0 0 0 rgba(20, 241, 149, 0);
+  }
+
+  46% {
+    color: rgb(167, 243, 208);
+    transform: scale(1.045);
+    border-color: rgba(20, 241, 149, 0.82);
+    background-color: rgba(20, 241, 149, 0.14);
+    box-shadow:
+      inset 0 0 0 1px rgba(20, 241, 149, 0.28),
+      0 0 0 4px rgba(20, 241, 149, 0.14);
+  }
+
+  100% {
+    color: rgb(167, 243, 208);
+    transform: scale(1);
+    border-color: rgba(20, 241, 149, 0.54);
+    background-color: rgba(20, 241, 149, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(20, 241, 149, 0.16);
+  }
+}
+
+@keyframes landingBreachRoomVerified {
+  0%,
+  100% {
+    transform: scale(1);
+    border-color: var(--border);
+    box-shadow: 0 0 0 0 rgba(20, 241, 149, 0);
+  }
+
+  42% {
+    transform: scale(1.026);
+    border-color: rgba(20, 241, 149, 0.92);
+    box-shadow:
+      inset 0 0 0 1px rgba(20, 241, 149, 0.34),
+      0 0 0 5px rgba(20, 241, 149, 0.14),
+      0 0 32px -6px rgba(20, 241, 149, 0.74);
+  }
+
+  72% {
+    transform: scale(1.01);
+    border-color: rgba(20, 241, 149, 0.56);
+    box-shadow:
+      inset 0 0 0 1px rgba(20, 241, 149, 0.16),
+      0 0 0 11px rgba(20, 241, 149, 0);
+  }
+}
+
 .landing-rl1-sequence-panel-1 {
   --landing-rl1-panel-delay: 0ms;
   --landing-rl1-pulse-delay: 900ms;
@@ -368,6 +495,38 @@
   opacity: 0;
   transform: scale(0.55);
   transform-origin: center;
+}
+
+.landing-breach-step {
+  position: relative;
+  overflow: hidden;
+  transform-origin: center;
+}
+
+.landing-breach-step::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.15rem;
+  height: 1.15rem;
+  pointer-events: none;
+  content: "";
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+}
+
+.landing-breach-step-1 {
+  --landing-breach-step-delay: 0ms;
+}
+
+.landing-breach-step-2 {
+  --landing-breach-step-delay: 560ms;
+}
+
+.landing-breach-step-3 {
+  --landing-breach-step-delay: 1120ms;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -434,6 +593,29 @@
   .landing-feature-hover:hover .landing-rl1-sequence-panel {
     animation: landingRl1PanelVerified 400ms ease-out
       var(--landing-rl1-pulse-delay) both;
+    will-change: transform, border-color, box-shadow;
+  }
+
+  .landing-feature-hover:hover .landing-breach-step::after {
+    animation: landingBreachChipRipple 430ms ease-out
+      var(--landing-breach-step-delay) both;
+  }
+
+  .landing-feature-hover:hover .landing-breach-step-interim {
+    animation:
+      landingBreachChipYellow 360ms ease-out var(--landing-breach-step-delay)
+        both,
+      landingBreachInterimGreen 420ms ease-out 1360ms forwards;
+    will-change: transform, border-color, background-color, box-shadow;
+  }
+
+  .landing-feature-hover:hover .landing-breach-step-report {
+    animation: landingBreachReportGreen 420ms ease-out 1360ms forwards;
+    will-change: transform, border-color, background-color, box-shadow;
+  }
+
+  .landing-feature-hover:hover .landing-breach-room-shell {
+    animation: landingBreachRoomVerified 720ms ease-out 1780ms both;
     will-change: transform, border-color, box-shadow;
   }
 }
