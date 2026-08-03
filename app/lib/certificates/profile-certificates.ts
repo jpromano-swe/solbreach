@@ -78,6 +78,8 @@ const PROFILE_CERTIFICATE_DISPLAY_IMAGES: Partial<
   Record<ProfileCertificate["level"], string>
 > = {
   1: "/nfts/level-1-nobg.png",
+  2: "/nfts/level-2-nobg.png",
+  3: "/nfts/level-3-nobg.png",
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -99,9 +101,7 @@ function nullableString(value: unknown) {
 }
 
 function numberValue(value: unknown, fallback: number) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : fallback;
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function normalizeLevel(value: unknown, fallback: 1 | 2 | 3): 1 | 2 | 3 {
@@ -137,7 +137,10 @@ function normalizeCertificate(raw: unknown): ProfileCertificate | null {
     certificatePda: nullableString(
       value.certificatePda ?? value.certificate_pda
     ),
-    imageUri: stringValue(value.imageUri ?? value.image_uri, fallback?.imageUri),
+    imageUri: stringValue(
+      value.imageUri ?? value.image_uri,
+      fallback?.imageUri
+    ),
     level,
     metadataUri: stringValue(
       value.metadataUri ?? value.metadata_uri,
@@ -226,9 +229,8 @@ export async function listProfileCertificates(accessToken: string) {
   const certificates = mergeCertificateFallbacks(
     rawCertificates
       .map(normalizeCertificate)
-      .filter(
-        (certificate): certificate is ProfileCertificate =>
-          Boolean(certificate)
+      .filter((certificate): certificate is ProfileCertificate =>
+        Boolean(certificate)
       )
   );
 

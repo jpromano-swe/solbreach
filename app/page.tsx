@@ -107,7 +107,7 @@ const RESEARCH_LAB_CERTIFICATE_DETAILS: Record<
     certificateNumber: 2,
     description:
       "You completed the Yield Hijack lab, proved how static PDA derivation can expose a staking position, and minted the Research Lab certificate.",
-    imageUri: "/nfts/solbreach-level-2-identity-thief.png",
+    imageUri: "/nfts/level-2-nobg.png",
     metadataUri: "/certificates/metadata/level-2.json",
     nextLevel: "level3",
     title: "The Identity Thief",
@@ -117,7 +117,7 @@ const RESEARCH_LAB_CERTIFICATE_DETAILS: Record<
     certificateNumber: 3,
     description:
       "You completed the Delegated CPI lab, proved the exploit path, and minted the Research Lab certificate.",
-    imageUri: "/nfts/solbreach-level-3-trojan-horse.png",
+    imageUri: "/nfts/level-3-nobg.png",
     metadataUri: "/certificates/metadata/level-3.json",
     nextLevel: "level3",
     title: "The Trojan Horse",
@@ -219,7 +219,8 @@ export default function Home() {
       setProfileIdentity((current) => {
         const nextProfile = {
           address,
-          avatarSrc: current.address === address ? current.avatarSrc : undefined,
+          avatarSrc:
+            current.address === address ? current.avatarSrc : undefined,
           name: nextProfileName,
         };
         storeProfileIdentity(nextProfile);
@@ -234,7 +235,9 @@ export default function Home() {
 
       setProfileIdentity((current) => {
         const currentProfile =
-          current.address === address ? current : getStoredProfileIdentity(address);
+          current.address === address
+            ? current
+            : getStoredProfileIdentity(address);
         const nextProfile = {
           address,
           avatarSrc: nextProfileAvatarSrc,
@@ -444,10 +447,7 @@ export default function Home() {
   }, [badgeSummary, badgesForDisplay]);
   const profileCertificatesForDisplay = useMemo(() => {
     const byLevel = new Map(
-      profileCertificates.map((certificate) => [
-        certificate.level,
-        certificate,
-      ])
+      profileCertificates.map((certificate) => [certificate.level, certificate])
     );
     const certificatesByLevel = {
       1: level1Certificate,
@@ -476,8 +476,7 @@ export default function Home() {
         level,
         metadataUri: current?.metadataUri ?? details.metadataUri,
         minted: true,
-        mintedAt:
-          current?.mintedAt ?? backendCertificateMintedAtByLevel[level],
+        mintedAt: current?.mintedAt ?? backendCertificateMintedAtByLevel[level],
         status: "minted",
         title: current?.title ?? details.title,
       };
@@ -497,7 +496,10 @@ export default function Home() {
   ]);
   const profileCertificateSummaryForDisplay =
     useMemo<ProfileCertificatesSummary | null>(() => {
-      if (!profileCertificateSummary && profileCertificatesForDisplay.length === 0) {
+      if (
+        !profileCertificateSummary &&
+        profileCertificatesForDisplay.length === 0
+      ) {
         return null;
       }
 
@@ -505,7 +507,8 @@ export default function Home() {
         (certificate) => certificate.minted
       ).length;
       const total =
-        profileCertificateSummary?.total || profileCertificatesForDisplay.length;
+        profileCertificateSummary?.total ||
+        profileCertificatesForDisplay.length;
 
       return {
         minted: Math.max(profileCertificateSummary?.minted ?? 0, minted),
@@ -537,25 +540,24 @@ export default function Home() {
     mintLevel1,
     mintResearchLabLevel2,
     mintResearchLabLevel3,
-  } =
-    useCertificateMinting({
-      address,
-      certificates: {
-        level0Certificate,
-        level1Certificate,
-        level2Certificate,
-        level3Certificate,
-      },
-      cluster,
-      ensureLevel1BackendSession,
-      getExplorerUrl,
-      level1BackendCompleted,
-      onResearchLabCertificateMinted: handleResearchLabCertificateMinted,
-      refreshState,
-      send,
-      signer,
-      wallet,
-    });
+  } = useCertificateMinting({
+    address,
+    certificates: {
+      level0Certificate,
+      level1Certificate,
+      level2Certificate,
+      level3Certificate,
+    },
+    cluster,
+    ensureLevel1BackendSession,
+    getExplorerUrl,
+    level1BackendCompleted,
+    onResearchLabCertificateMinted: handleResearchLabCertificateMinted,
+    refreshState,
+    send,
+    signer,
+    wallet,
+  });
 
   const { level1Stage, level2Stage, level3Stage, levelTiles, stage } =
     useLevelStageConfigs({
@@ -640,7 +642,7 @@ export default function Home() {
     ) ?? null;
   const activeBadgeDialog = researchLabCertificationDialog
     ? null
-    : manualBadgeDialog ?? unseenEarnedBadge;
+    : (manualBadgeDialog ?? unseenEarnedBadge);
 
   const closeBadgeDialog = useCallback(() => {
     if (manualBadgeDialog) {
@@ -655,12 +657,11 @@ export default function Home() {
   const collectLevel1Badge = useCallback(async () => {
     if (isCollectingLevel1Badge) return;
 
-    const currentBadge =
-      level1Badge?.earned
-        ? level1Badge
-        : (await mutateBadges())?.badges.find(
-            (badge) => badge.slug === "level-1-illusionist"
-          );
+    const currentBadge = level1Badge?.earned
+      ? level1Badge
+      : (await mutateBadges())?.badges.find(
+          (badge) => badge.slug === "level-1-illusionist"
+        );
 
     if (!currentBadge?.earned) {
       toast.error("Badge is still syncing. Try again in a moment.");
@@ -683,12 +684,11 @@ export default function Home() {
   const collectLevel2Badge = useCallback(async () => {
     if (isCollectingLevel2Badge) return;
 
-    const currentBadge =
-      level2Badge
-        ? level2Badge
-        : (await mutateBadges())?.badges.find(
-            (badge) => badge.slug === "level-2-identity-thief"
-          );
+    const currentBadge = level2Badge
+      ? level2Badge
+      : (await mutateBadges())?.badges.find(
+          (badge) => badge.slug === "level-2-identity-thief"
+        );
 
     if (currentBadge?.seenAt) {
       setManualBadgeDialog(currentBadge);
@@ -788,7 +788,9 @@ export default function Home() {
         ]);
         const powerBadge =
           certificateLevel === 1
-            ? (badgePayload?.badges.find((badge) => badge.slug === "power-user") ??
+            ? (badgePayload?.badges.find(
+                (badge) => badge.slug === "power-user"
+              ) ??
               badges.find((badge) => badge.slug === "power-user") ??
               null)
             : null;
@@ -1109,7 +1111,8 @@ export default function Home() {
               level2BadgeCollected={Boolean(level2Badge?.seenAt)}
               level3BadgeCollected={Boolean(level3Badge?.seenAt)}
               powerUserBadgeEarned={Boolean(
-                badgesForDisplay.find((badge) => badge.slug === "power-user")?.earned
+                badgesForDisplay.find((badge) => badge.slug === "power-user")
+                  ?.earned
               )}
               researchLabCertificateMintedByLevel={{
                 1: researchLab1Certified,
@@ -1171,7 +1174,8 @@ export default function Home() {
                   Profile.
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                  User&apos;s badges, certificates and Special Rewards for level completion.
+                  User&apos;s badges, certificates and Special Rewards for level
+                  completion.
                 </p>
               </div>
 
@@ -1227,7 +1231,8 @@ export default function Home() {
         reward={researchLabCertificationDialog}
         onClose={closeResearchLabCertificationDialog}
         onOpenNextModule={() => {
-          const nextLevel = researchLabCertificationDialog?.nextLevel ?? "level2";
+          const nextLevel =
+            researchLabCertificationDialog?.nextLevel ?? "level2";
           closeResearchLabCertificationDialog();
           requireRegisteredWallet(() => {
             setActiveSection("levels");
