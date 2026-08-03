@@ -32,6 +32,7 @@ export function ArbitraryCpiExecuteTab({
   isRunning,
   explorerAccessToken,
   explorerSessionId,
+  userWalletAddress,
   txResults,
   onChangeView,
   onExecuteTransaction,
@@ -44,6 +45,7 @@ export function ArbitraryCpiExecuteTab({
   isRunning: boolean;
   explorerAccessToken: string | null;
   explorerSessionId: string;
+  userWalletAddress: string;
   txResults: EnrichedTransactionResult[];
   onChangeView: (view: ExecuteExploitView) => void;
   onExecuteTransaction: (payload: LabTransactionPayload) => Promise<void>;
@@ -150,6 +152,7 @@ export function ArbitraryCpiExecuteTab({
       }
       pendingAction={pendingAction}
       rewardAmount={rewardAmount}
+      userWalletAddress={userWalletAddress}
       onBuildAndDeploy={buildAndDeployProgram}
       onDelegateProgramChange={setDelegateProgramRef}
       onExecuteDelegatedCpi={executeDelegatedCpi}

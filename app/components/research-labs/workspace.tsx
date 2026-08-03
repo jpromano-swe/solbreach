@@ -180,6 +180,7 @@ export function ResearchLabWorkspace({
           evidenceAccounts={evidenceAccounts}
           explorerAccessToken={explorerAccessToken}
           explorerSessionId={explorerSessionId}
+          userWalletAddress={userWalletAddress}
           impactVerified={impactVerified}
           isRunning={isRunning}
           txResults={txResults}

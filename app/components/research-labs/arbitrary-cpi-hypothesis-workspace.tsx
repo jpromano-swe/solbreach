@@ -2,16 +2,28 @@
 
 import {
   ArrowRight,
+  Briefcase,
+  CalendarDays,
   Check,
+  ChevronDown,
+  CircleDollarSign,
+  Code2,
   ExternalLink,
+  FileText,
   Layers3,
+  Palette,
   Play,
   Rocket,
   Search,
   ShieldCheck,
-  SlidersHorizontal,
+  Smile,
+  WalletCards,
 } from "lucide-react";
+import type { Address } from "@solana/kit";
 import { useEffect, useMemo, useState } from "react";
+
+import { useBalance } from "../../lib/hooks/use-balance";
+import { useWallet } from "../../lib/wallet/context";
 
 type DelegateProgramRef = "official_payout_router" | "attacker_cpi_program";
 type PendingAction = "build" | "deploy" | "delegate" | "execute" | null;
@@ -34,7 +46,6 @@ type BountyTask = {
   sponsor: string;
   due: string;
   reward: number;
-  comments: number;
   configVersion: "V1 legacy" | "V2 bound";
   safety: TaskSafety;
   initials: string;
@@ -49,7 +60,6 @@ const TASKS: BountyTask[] = [
     sponsor: "Interface guild",
     due: "Due in 3d",
     reward: 75_000,
-    comments: 42,
     configVersion: "V1 legacy",
     safety: "vulnerable",
     initials: "DG",
@@ -63,7 +73,6 @@ const TASKS: BountyTask[] = [
     sponsor: "Protocol ops",
     due: "Due in 5d",
     reward: 32_000,
-    comments: 18,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "DV",
@@ -77,7 +86,6 @@ const TASKS: BountyTask[] = [
     sponsor: "Docs council",
     due: "Due in 2d",
     reward: 12_000,
-    comments: 27,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "CT",
@@ -91,7 +99,6 @@ const TASKS: BountyTask[] = [
     sponsor: "Community ops",
     due: "Due in 1d",
     reward: 8_500,
-    comments: 11,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "MM",
@@ -105,7 +112,6 @@ const TASKS: BountyTask[] = [
     sponsor: "Security lab",
     due: "Due in 7d",
     reward: 21_000,
-    comments: 9,
     configVersion: "V2 bound",
     safety: "safe",
     initials: "PL",
@@ -121,6 +127,16 @@ const CATEGORIES: Array<{ id: TaskCategory; label: string }> = [
   { id: "content", label: "Content" },
   { id: "design", label: "Design" },
 ];
+
+const CATEGORY_META: Record<
+  Exclude<TaskCategory, "all">,
+  { icon: typeof Palette; label: string }
+> = {
+  content: { icon: FileText, label: "Content" },
+  design: { icon: Palette, label: "Design" },
+  development: { icon: Code2, label: "Development" },
+  memes: { icon: Smile, label: "Memes Creation" },
+};
 
 const BUILDER_OPTIONS: Record<
   BuilderKey,
@@ -224,6 +240,7 @@ export function ArbitraryCpiHypothesisWorkspace({
   latestAction,
   pendingAction,
   rewardAmount,
+  userWalletAddress,
   onBuildAndDeploy,
   onDelegateProgramChange,
   onExecuteDelegatedCpi,
@@ -244,6 +261,7 @@ export function ArbitraryCpiHypothesisWorkspace({
   latestAction: string;
   pendingAction: PendingAction;
   rewardAmount: string;
+  userWalletAddress: string;
   onBuildAndDeploy: () => Promise<void>;
   onDelegateProgramChange: (value: DelegateProgramRef) => void;
   onExecuteDelegatedCpi: () => Promise<void>;
@@ -278,11 +296,7 @@ export function ArbitraryCpiHypothesisWorkspace({
   const selectionsCorrect = BUILDER_KEYS.every(
     (key) => effectiveBuilderSelection[key] === BUILDER_OPTIONS[key].correct
   );
-  const canDeploy =
-    selectedTask.safety === "vulnerable" &&
-    selectionsComplete &&
-    !hasDeploy &&
-    !busy;
+  const canDeploy = selectionsComplete && !hasDeploy && !busy;
   const amountValue = Math.max(0, Number.parseInt(rewardAmount, 10) || 0);
 
   useEffect(() => {
@@ -304,6 +318,12 @@ export function ArbitraryCpiHypothesisWorkspace({
         mismatched
           ? `${BUILDER_OPTIONS[mismatched].label} does not match the vulnerable CPI path. Adjust the selection and build again.`
           : "The attacker program specification is incomplete."
+      );
+      return;
+    }
+    if (selectedTask.safety !== "vulnerable") {
+      setBuilderError(
+        "Deployment rejected for this task scope. Inspect SolBreach Explorer for the payout configuration, then select the task whose CPI target is not bound."
       );
       return;
     }
@@ -363,9 +383,10 @@ export function ArbitraryCpiHypothesisWorkspace({
               hasDeploy={hasDeploy}
               pendingAction={pendingAction}
               selectedCount={selectedCount}
-              selectedTask={selectedTask}
               selections={effectiveBuilderSelection}
               selectionsComplete={selectionsComplete}
+              explorerAvailable={explorerAvailable}
+              explorerUrl={explorerUrl}
               onDeployConfiguredProgram={deployConfiguredProgram}
               onOpenBuilder={() => {
                 setBuilderOpen(true);
@@ -381,6 +402,7 @@ export function ArbitraryCpiHypothesisWorkspace({
           filteredTasks={filteredTasks}
           flowStarted={flowStarted}
           selectedTask={selectedTask}
+          userWalletAddress={userWalletAddress}
           onCategoryChange={setActiveCategory}
           onTaskSelect={(task) => {
             if (flowStarted) return;
@@ -398,6 +420,7 @@ function BountyTaskBrowser({
   filteredTasks,
   flowStarted,
   selectedTask,
+  userWalletAddress,
   onCategoryChange,
   onTaskSelect,
 }: {
@@ -405,6 +428,7 @@ function BountyTaskBrowser({
   filteredTasks: BountyTask[];
   flowStarted: boolean;
   selectedTask: BountyTask;
+  userWalletAddress: string;
   onCategoryChange: (category: TaskCategory) => void;
   onTaskSelect: (task: BountyTask) => void;
 }) {
@@ -412,6 +436,9 @@ function BountyTaskBrowser({
     <section className="min-w-0 rounded-lg border border-white/10 bg-[#08090b] p-5">
       <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-600">
+            BreachBounty
+          </p>
           <p className="text-sm font-semibold text-zinc-100">
             Browse bounty tasks
           </p>
@@ -419,10 +446,7 @@ function BountyTaskBrowser({
             Category scope determines which payout configuration is active.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
-          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-          Filter
-        </div>
+        <WalletSummary userWalletAddress={userWalletAddress} />
       </div>
 
       <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
@@ -467,6 +491,46 @@ function BountyTaskBrowser({
   );
 }
 
+function WalletSummary({ userWalletAddress }: { userWalletAddress: string }) {
+  const { status, wallet } = useWallet();
+  const connectedAddress = wallet?.account.address ?? userWalletAddress;
+  const balanceAddress = connectedAddress
+    ? (connectedAddress as Address)
+    : undefined;
+  const balance = useBalance(balanceAddress);
+  const displayName =
+    wallet?.account.label ||
+    wallet?.connector.name ||
+    shortAddress(connectedAddress) ||
+    "Research wallet";
+
+  return (
+    <div className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5">
+      <div className="relative flex h-7 w-8 items-center justify-center rounded-md border border-[#9945ff]/25 bg-[#9945ff]/12 text-[#d7c0ff]">
+        <WalletCards className="h-4 w-4" aria-hidden="true" />
+        <span className="absolute -right-1.5 -top-2 rounded-md bg-[#6f6cff] px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-white">
+          {formatWalletBalance(balance.lamports, balance.isLoading)}
+        </span>
+      </div>
+      <div className="h-8 w-8 shrink-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_30%_30%,#14f195_0%,#9945ff_48%,#232323_100%)]" />
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium text-zinc-200">
+          {displayName}
+        </p>
+        <p className="flex items-center gap-1 text-[10px] text-zinc-500">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              status === "connected" ? "bg-[#14f195]" : "bg-zinc-600"
+            }`}
+          />
+          {status === "connected" ? "Connected" : "Wallet"}
+        </p>
+      </div>
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+    </div>
+  );
+}
+
 function TaskRow({
   locked,
   selected,
@@ -478,6 +542,8 @@ function TaskRow({
   task: BountyTask;
   onSelect: () => void;
 }) {
+  const CategoryIcon = CATEGORY_META[task.category].icon;
+
   return (
     <button
       type="button"
@@ -491,47 +557,35 @@ function TaskRow({
       } disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]`}
     >
       <div
-        className={`flex h-12 w-12 items-center justify-center rounded-lg border font-mono text-sm font-semibold sm:h-16 sm:w-16 ${
-          task.safety === "vulnerable"
-            ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
-            : "border-white/10 bg-white/[0.04] text-zinc-300"
-        }`}
+        className="flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 sm:h-16 sm:w-16"
         aria-hidden="true"
       >
-        {task.initials}
+        <CategoryIcon className="h-4 w-4" />
+        <span className="font-mono text-[10px] font-semibold">
+          {task.initials}
+        </span>
       </div>
       <div className="min-w-0 self-center">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="min-w-0 truncate text-sm font-semibold text-zinc-200">
-            {task.title}
-          </p>
-          {task.safety === "vulnerable" ? (
-            <span className="rounded-md border border-amber-300/25 bg-amber-300/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-100">
-              Legacy config
-            </span>
-          ) : null}
-        </div>
+        <p className="min-w-0 truncate text-sm font-semibold text-zinc-200">
+          {task.title}
+        </p>
         <p className="mt-1 text-xs text-zinc-500">{task.sponsor}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500">
-          <span className="capitalize">{task.category}</span>
+          <span className="inline-flex items-center gap-1">
+            <Briefcase className="h-3 w-3" aria-hidden="true" />
+            {CATEGORY_META[task.category].label}
+          </span>
           <span aria-hidden="true">|</span>
-          <span>{task.due}</span>
-          <span aria-hidden="true">|</span>
-          <span>{task.comments} comments</span>
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              task.safety === "vulnerable" ? "bg-amber-300" : "bg-[#14f195]"
-            }`}
-            aria-label={
-              task.safety === "vulnerable"
-                ? "Vulnerable configuration"
-                : "Bound configuration"
-            }
-          />
+          <span className="inline-flex items-center gap-1">
+            <CalendarDays className="h-3 w-3" aria-hidden="true" />
+            {task.due}
+          </span>
+          <span className="h-1.5 w-1.5 rounded-full bg-[#14f195]" />
         </div>
       </div>
       <div className="col-span-2 flex items-baseline justify-between gap-2 self-center sm:col-span-1 sm:block sm:text-right">
-        <p className="font-mono text-base font-semibold tabular-nums text-zinc-200">
+        <p className="flex items-center gap-1.5 font-mono text-base font-semibold tabular-nums text-zinc-200 sm:justify-end">
+          <UsdcMark />
           {task.reward.toLocaleString("en-US")}
         </p>
         <p className="text-xs text-zinc-500">USDC</p>
@@ -540,15 +594,44 @@ function TaskRow({
   );
 }
 
+function UsdcMark() {
+  return (
+    <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#4f8cff]/40 bg-[#2563eb]/20 text-[#8bb7ff]">
+      <CircleDollarSign className="h-3 w-3" aria-hidden="true" />
+    </span>
+  );
+}
+
+function formatWalletBalance(
+  lamports: bigint | number | null,
+  isLoading: boolean
+) {
+  if (isLoading && lamports === null) return "$--";
+  if (lamports === null) return "$0";
+  const sol = Number(lamports) / 1_000_000_000;
+  if (!Number.isFinite(sol) || sol <= 0) return "$0";
+  if (sol < 0.01) return "<0.01";
+  return sol.toLocaleString("en-US", {
+    maximumFractionDigits: sol >= 100 ? 0 : 2,
+  });
+}
+
+function shortAddress(address?: string) {
+  if (!address) return "";
+  if (address.length <= 10) return address;
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
 function ProgramBuilder({
   builderError,
   builderOpen,
   busy,
   canDeploy,
+  explorerAvailable,
+  explorerUrl,
   hasDeploy,
   pendingAction,
   selectedCount,
-  selectedTask,
   selections,
   selectionsComplete,
   onDeployConfiguredProgram,
@@ -559,10 +642,11 @@ function ProgramBuilder({
   builderOpen: boolean;
   busy: boolean;
   canDeploy: boolean;
+  explorerAvailable: boolean;
+  explorerUrl: string;
   hasDeploy: boolean;
   pendingAction: PendingAction;
   selectedCount: number;
-  selectedTask: BountyTask;
   selections: BuilderSelection;
   selectionsComplete: boolean;
   onDeployConfiguredProgram: () => Promise<void>;
@@ -592,19 +676,13 @@ function ProgramBuilder({
             <button
               type="button"
               onClick={onOpenBuilder}
-              disabled={busy || selectedTask.safety !== "vulnerable"}
+              disabled={busy}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#9945ff]/35 bg-[#9945ff]/16 px-5 text-sm font-semibold text-[#d7c0ff] motion-safe:transition-colors motion-safe:duration-100 motion-safe:active:scale-[0.96] hover:bg-[#9945ff]/22 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
             >
               <Rocket className="h-4 w-4" aria-hidden="true" />
               Build attacker program
             </button>
           </div>
-          {selectedTask.safety !== "vulnerable" ? (
-            <p className="max-w-sm text-xs leading-5 text-zinc-500">
-              Config V2 binds this category to the approved payout router.
-              Select the legacy Design task to build the vulnerable path.
-            </p>
-          ) : null}
         </div>
       ) : (
         <div className="mt-5 space-y-4">
@@ -628,13 +706,6 @@ function ProgramBuilder({
               className="rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100"
             >
               {builderError}
-            </p>
-          ) : null}
-
-          {selectedTask.safety !== "vulnerable" ? (
-            <p className="rounded-lg border border-white/10 bg-white/[0.025] px-3 py-2 text-xs leading-5 text-zinc-500">
-              This task resolves payouts through Config V2. Select the legacy
-              Design task to model the vulnerable path.
             </p>
           ) : null}
 
@@ -666,6 +737,7 @@ function ProgramBuilder({
                     ? "Deploy program in SVM"
                     : "Deploy program in SVM"}
           </button>
+          <ExplorerRouteLink available={explorerAvailable} href={explorerUrl} />
         </div>
       )}
     </section>
@@ -797,7 +869,8 @@ function PayoutExecutionPanel({
               {selectedTask.title}
             </p>
           </div>
-          <p className="shrink-0 font-mono text-xs font-semibold text-zinc-300">
+          <p className="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs font-semibold text-zinc-300">
+            <UsdcMark />
             {selectedTask.reward.toLocaleString("en-US")} USDC
           </p>
         </div>
