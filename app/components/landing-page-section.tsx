@@ -768,8 +768,8 @@ function FeatureMiniItem({
 }) {
   const tintClass =
     tint === "purple"
-      ? "text-[#b184ff] bg-[linear-gradient(180deg,rgba(153,69,255,0.045),transparent)]"
-      : "text-[#14f195] bg-[linear-gradient(180deg,rgba(20,241,149,0.04),transparent)]";
+      ? "landing-feature-mini-purple text-[#b184ff] bg-[linear-gradient(180deg,rgba(153,69,255,0.045),transparent)]"
+      : "landing-feature-mini-green text-[#14f195] bg-[linear-gradient(180deg,rgba(20,241,149,0.04),transparent)]";
 
   return (
     <article
