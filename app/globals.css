@@ -241,6 +241,203 @@
   }
 }
 
+@keyframes landingStatusDotPulse {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.2);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.05);
+  }
+}
+
+@keyframes landingStatusDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scaleY(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes landingCertificateSuccessPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    border-color: var(--border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  32% {
+    transform: scale(1.045);
+    border-color: rgba(20, 241, 149, 0.94);
+    box-shadow:
+      inset 0 0 0 1px rgba(20, 241, 149, 0.42),
+      0 0 0 4px rgba(20, 241, 149, 0.18),
+      0 0 30px -4px rgba(20, 241, 149, 0.82);
+  }
+
+  68% {
+    transform: scale(1.015);
+    border-color: rgba(20, 241, 149, 0.58);
+    box-shadow:
+      inset 0 0 0 1px rgba(20, 241, 149, 0.18),
+      0 0 0 9px rgba(20, 241, 149, 0),
+      0 0 22px -6px rgba(20, 241, 149, 0.48);
+  }
+}
+
+@keyframes landingRl1DotOut {
+  to {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+}
+
+@keyframes landingRl1CheckIn {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes landingRl1LabelVerified {
+  from {
+    color: var(--muted);
+  }
+
+  to {
+    color: #14f195;
+  }
+}
+
+@keyframes landingRl1PanelVerified {
+  0%,
+  100% {
+    transform: scale(1);
+    border-color: var(--border);
+    box-shadow: 0 0 0 0 rgba(20, 241, 149, 0);
+  }
+
+  42% {
+    transform: scale(1.025);
+    border-color: rgba(20, 241, 149, 0.94);
+    box-shadow:
+      inset 0 0 0 1px rgba(20, 241, 149, 0.38),
+      0 0 0 4px rgba(20, 241, 149, 0.14),
+      0 0 28px -5px rgba(20, 241, 149, 0.76);
+  }
+}
+
+.landing-rl1-sequence-panel-1 {
+  --landing-rl1-panel-delay: 0ms;
+  --landing-rl1-pulse-delay: 900ms;
+}
+
+.landing-rl1-sequence-panel-2 {
+  --landing-rl1-panel-delay: 1350ms;
+  --landing-rl1-pulse-delay: 2250ms;
+}
+
+.landing-rl1-sequence-line-1 {
+  --landing-rl1-line-delay: 0ms;
+}
+
+.landing-rl1-sequence-line-2 {
+  --landing-rl1-line-delay: 300ms;
+}
+
+.landing-rl1-sequence-line-3 {
+  --landing-rl1-line-delay: 600ms;
+}
+
+.landing-rl1-sequence-check {
+  opacity: 0;
+  transform: scale(0.55);
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-status-dot-pulse {
+    animation: landingStatusDotPulse 1600ms ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .landing-feature-hover {
+    transition:
+      transform 150ms ease-out,
+      filter 150ms ease-out;
+    will-change: transform;
+  }
+
+  .landing-feature-hover:hover {
+    z-index: 1;
+    filter: brightness(1.04);
+    transform: translateY(-4px);
+  }
+
+  .landing-feature-hover .landing-status-cascade-row:nth-child(n + 2) {
+    opacity: 0;
+    transform: translateY(-12px) scaleY(0.94);
+    transform-origin: top;
+  }
+
+  .landing-feature-hover:hover .landing-status-cascade-row:nth-child(n + 2) {
+    animation: landingStatusDropdownIn 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .landing-feature-hover:hover .landing-status-cascade-row:nth-child(2) {
+    animation-delay: 300ms;
+  }
+
+  .landing-feature-hover:hover .landing-status-cascade-row:nth-child(3) {
+    animation-delay: 600ms;
+  }
+
+  .landing-feature-hover:hover .landing-certificate-success {
+    animation: landingCertificateSuccessPulse 800ms ease-out 900ms both;
+    will-change: transform, border-color, box-shadow;
+  }
+
+  .landing-feature-hover:hover .landing-rl1-sequence-dot {
+    animation: landingRl1DotOut 100ms ease-out
+      calc(var(--landing-rl1-panel-delay) + var(--landing-rl1-line-delay)) both;
+  }
+
+  .landing-feature-hover:hover .landing-rl1-sequence-check {
+    animation: landingRl1CheckIn 150ms ease-out
+      calc(var(--landing-rl1-panel-delay) + var(--landing-rl1-line-delay)) both;
+  }
+
+  .landing-feature-hover:hover .landing-rl1-sequence-label {
+    animation: landingRl1LabelVerified 100ms ease-out
+      calc(
+        var(--landing-rl1-panel-delay) + var(--landing-rl1-line-delay) + 150ms
+      )
+      both;
+  }
+
+  .landing-feature-hover:hover .landing-rl1-sequence-panel {
+    animation: landingRl1PanelVerified 400ms ease-out
+      var(--landing-rl1-pulse-delay) both;
+    will-change: transform, border-color, box-shadow;
+  }
+}
+
 @keyframes avatarPickerIn {
   from {
     opacity: 0;

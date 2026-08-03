@@ -436,9 +436,6 @@ function Level3Header({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-end">
       <div className="max-w-3xl space-y-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Arbitrary CPI and delegated signer abuse
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           Level 3: The Trojan Horse
         </h1>

@@ -542,9 +542,6 @@ function Level1Header({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-end">
       <div className="max-w-3xl space-y-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Account substitution and forged ledger credit
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           Level 1: The Illusionist
         </h1>

@@ -1,16 +1,7 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
-import {
-  ArrowRight,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Play,
-  Rocket,
-  Search,
-} from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronUp, Play } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -18,6 +9,7 @@ import type {
   LabTransactionPayload,
   SandboxAccountSummary,
 } from "../../lib/research-labs/lab-state";
+import { ArbitraryCpiHypothesisWorkspace } from "./arbitrary-cpi-hypothesis-workspace";
 import type { EnrichedTransactionResult, ExecuteExploitView } from "./types";
 import {
   AnimatedContentSwitch,
@@ -77,30 +69,27 @@ export function ArbitraryCpiExecuteTab({
   const hasBuild = hasSuccessfulAction(txResults, "BUILD_ATTACKER_PROGRAM");
   const hasDeploy = hasSuccessfulAction(txResults, "DEPLOY_ATTACKER_PROGRAM");
   const hasDelegation = hasSuccessfulAction(txResults, "SUBMIT_DELEGATION");
-  const hasCpiExecution = hasSuccessfulAction(txResults, "EXECUTE_DELEGATED_CPI");
+  const hasCpiExecution = hasSuccessfulAction(
+    txResults,
+    "EXECUTE_DELEGATED_CPI"
+  );
   const busy = isRunning || pendingAction !== null;
 
-  const buildProgram = async () => {
-    if (busy) return;
-    setPendingAction("build");
+  const buildAndDeployProgram = async () => {
+    if (busy || hasDeploy) return;
     try {
-      await onExecuteTransaction({
-        action_type: "BUILD_ATTACKER_PROGRAM",
-        program_template: "cpi_drain_router",
-        entrypoint_name: "execute",
-        transfer_source_ref: "task_escrow",
-        transfer_destination_ref: "attacker_reward_account",
-        authority_strategy: "reuse_delegated_signer",
-      });
-    } finally {
-      setPendingAction(null);
-    }
-  };
-
-  const deployProgram = async () => {
-    if (busy || !hasBuild) return;
-    setPendingAction("deploy");
-    try {
+      if (!hasBuild) {
+        setPendingAction("build");
+        await onExecuteTransaction({
+          action_type: "BUILD_ATTACKER_PROGRAM",
+          program_template: "cpi_drain_router",
+          entrypoint_name: "execute",
+          transfer_source_ref: "task_escrow",
+          transfer_destination_ref: "attacker_reward_account",
+          authority_strategy: "reuse_delegated_signer",
+        });
+      }
+      setPendingAction("deploy");
       await onExecuteTransaction({
         action_type: "DEPLOY_ATTACKER_PROGRAM",
         artifact_ref: "attacker_program_build",
@@ -126,12 +115,7 @@ export function ArbitraryCpiExecuteTab({
   };
 
   const executeDelegatedCpi = async () => {
-    if (
-      busy ||
-      !hasDelegation ||
-      !instructionName.trim() ||
-      amountValue <= 0
-    ) {
+    if (busy || !hasDelegation || !instructionName.trim() || amountValue <= 0) {
       return;
     }
     setPendingAction("execute");
@@ -150,173 +134,32 @@ export function ArbitraryCpiExecuteTab({
   };
 
   const hypothesis = (
-    <div>
-      <h2 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-white">
-        Replace the delegated CPI target.
-      </h2>
-      <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-        Build a session-scoped program, submit a normal delegation, inspect the
-        public interface, then test whether the payout target is bound.
-      </p>
-
-      <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(300px,0.55fr)_minmax(0,1.45fr)]">
-        <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-          <div>
-            <p className="text-sm font-semibold text-zinc-100">
-              Exploiter Interface
-            </p>
-            <p className="mt-1.5 text-xs leading-5 text-zinc-500">
-              Prepare the CPI target, then execute the delegated payout path.
-            </p>
-          </div>
-
-          <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
-            <ActionButton
-              busyLabel="Building..."
-              disabled={busy || hasBuild}
-              done={hasBuild}
-              icon={Rocket}
-              label="Build attacker program"
-              loading={pendingAction === "build"}
-              onClick={buildProgram}
-            />
-            <ActionButton
-              busyLabel="Deploying..."
-              disabled={busy || !hasBuild || hasDeploy}
-              done={hasDeploy}
-              icon={Rocket}
-              label="Deploy program in SVM"
-              loading={pendingAction === "deploy"}
-              onClick={deployProgram}
-            />
-            <ActionButton
-              busyLabel="Submitting..."
-              disabled={busy || !hasDeploy || hasDelegation}
-              done={hasDelegation}
-              icon={Play}
-              label="Submit delegation"
-              loading={pendingAction === "delegate"}
-              onClick={submitDelegation}
-            />
-          </div>
-
-          <div className="mt-4 border-t border-white/10 pt-4">
-            <ExplorerRouteLink
-              available={Boolean(explorerAccessToken)}
-              href={explorerUrl}
-            />
-          </div>
-
-          <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
-            <div>
-              <label
-                htmlFor="rl3-cpi-target"
-                className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600"
-              >
-                CPI target
-              </label>
-              <select
-                id="rl3-cpi-target"
-                value={delegateProgramRef}
-                disabled={busy || !hasDelegation}
-                onChange={(event) =>
-                  setDelegateProgramRef(event.target.value as DelegateProgramRef)
-                }
-                className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-zinc-100 outline-none transition focus:border-[#9945ff]/50 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55"
-              >
-                <option value="official_payout_router">
-                  Official Payout Router
-                </option>
-                <option value="attacker_cpi_program">
-                  Attacker CPI Program
-                </option>
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="rl3-instruction-name"
-                className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600"
-              >
-                Program instruction
-              </label>
-              <input
-                id="rl3-instruction-name"
-                type="text"
-                value={instructionName}
-                disabled={busy || !hasDelegation}
-                onChange={(event) => setInstructionName(event.target.value)}
-                placeholder="Paste instruction name"
-                autoComplete="off"
-                spellCheck={false}
-                className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-[#9945ff]/50 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="rl3-reward-amount"
-                className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600"
-              >
-                Reward amount
-              </label>
-              <input
-                id="rl3-reward-amount"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={rewardAmount}
-                disabled={busy || !hasDelegation}
-                onChange={(event) =>
-                  setRewardAmount(event.target.value.replace(/\D/g, ""))
-                }
-                className="mt-1.5 h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-[11px] text-zinc-100 outline-none transition focus:border-[#9945ff]/50 focus-visible:ring-2 focus-visible:ring-[#14f195]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:opacity-55"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => void executeDelegatedCpi()}
-              disabled={
-                busy ||
-                !hasDelegation ||
-                !instructionName.trim() ||
-                amountValue <= 0 ||
-                hasCpiExecution
-              }
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-[#9945ff]/30 bg-[#9945ff]/12 px-3 text-xs font-semibold text-[#d7c0ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-zinc-600"
-            >
-              {pendingAction === "execute"
-                ? "Executing..."
-                : hasCpiExecution
-                  ? "CPI executed"
-                  : "Execute delegated CPI"}
-            </button>
-          </div>
-
-          <div className="mt-4 flex items-end justify-between gap-3 border-t border-white/10 pt-4">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
-                Latest Action
-              </p>
-              <p className="mt-1 truncate text-[11px] text-zinc-400">
-                {txResults[0]
-                  ? arbitraryCpiTransactionTitle(txResults[0])
-                  : "No transactions submitted yet."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenEvidenceReview}
-              disabled={txResults.length === 0}
-              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#9945ff]/25 bg-[#9945ff]/10 px-3 text-[11px] font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/16 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Evidence
-              <ArrowRight className="h-3 w-3" aria-hidden="true" />
-            </button>
-          </div>
-        </section>
-
-        <ArbitraryCpiProtocolState state={state} />
-      </div>
-    </div>
+    <ArbitraryCpiHypothesisWorkspace
+      busy={busy}
+      delegateProgramRef={delegateProgramRef}
+      explorerAvailable={Boolean(explorerAccessToken)}
+      explorerUrl={explorerUrl}
+      hasBuild={hasBuild}
+      hasCpiExecution={hasCpiExecution}
+      hasDelegation={hasDelegation}
+      hasDeploy={hasDeploy}
+      instructionName={instructionName}
+      latestAction={
+        txResults[0]
+          ? arbitraryCpiTransactionTitle(txResults[0])
+          : "No transactions submitted yet."
+      }
+      pendingAction={pendingAction}
+      protocolState={<ArbitraryCpiProtocolState state={state} />}
+      rewardAmount={rewardAmount}
+      onBuildAndDeploy={buildAndDeployProgram}
+      onDelegateProgramChange={setDelegateProgramRef}
+      onExecuteDelegatedCpi={executeDelegatedCpi}
+      onInstructionNameChange={setInstructionName}
+      onOpenEvidenceReview={onOpenEvidenceReview}
+      onRewardAmountChange={setRewardAmount}
+      onSubmitDelegation={submitDelegation}
+    />
   );
 
   return (
@@ -364,81 +207,6 @@ export function ArbitraryCpiExecuteTab({
   );
 }
 
-function ActionButton({
-  busyLabel,
-  disabled,
-  done,
-  icon: Icon,
-  label,
-  loading,
-  onClick,
-}: {
-  busyLabel: string;
-  disabled: boolean;
-  done: boolean;
-  icon: typeof Rocket;
-  label: string;
-  loading: boolean;
-  onClick: () => Promise<void>;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => void onClick()}
-      disabled={disabled}
-      className={`inline-flex h-10 w-full items-center justify-between rounded-lg border px-3 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b] disabled:cursor-not-allowed ${
-        done
-          ? "border-[#14f195]/25 bg-[#14f195]/8 text-[#8fffd0]"
-          : "border-white/10 bg-white/[0.035] text-zinc-300 hover:bg-white/[0.055] disabled:bg-white/[0.025] disabled:text-zinc-600"
-      }`}
-    >
-      <span className="inline-flex items-center gap-2">
-        {done ? (
-          <Check className="h-4 w-4" aria-hidden="true" />
-        ) : (
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        )}
-        {loading ? busyLabel : done ? `${label} complete` : label}
-      </span>
-      {done ? null : <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />}
-    </button>
-  );
-}
-
-function ExplorerRouteLink({
-  available,
-  href,
-}: {
-  available: boolean;
-  href: string;
-}) {
-  if (!available) {
-    return (
-      <button
-        type="button"
-        disabled
-        className="inline-flex h-10 w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-xs font-semibold text-zinc-600"
-      >
-        <Search className="h-4 w-4" aria-hidden="true" />
-        Open SolBreach Explorer
-      </button>
-    );
-  }
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#9945ff]/30 bg-[#9945ff]/12 px-3 text-xs font-semibold text-[#d7c0ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]"
-    >
-      <Search className="h-4 w-4" aria-hidden="true" />
-      Open SolBreach Explorer
-      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-    </a>
-  );
-}
-
 function ArbitraryCpiProtocolState({ state }: { state: ArbitraryCpiState }) {
   return (
     <aside className="h-fit overflow-hidden rounded-2xl border border-white/10 bg-[#08090b]">
@@ -448,9 +216,7 @@ function ArbitraryCpiProtocolState({ state }: { state: ArbitraryCpiState }) {
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
               BreachBounty
             </p>
-            <p className="mt-1 text-sm font-semibold text-white">
-              Task Bounty
-            </p>
+            <p className="mt-1 text-sm font-semibold text-white">Task Bounty</p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 px-2.5 py-1 text-[10px] font-medium text-[#8fffd0]">
             <span className="h-1.5 w-1.5 rounded-full bg-[#14f195]" />
@@ -834,10 +600,7 @@ function deriveArbitraryCpiState(
     recordFromRecord(latestProtocolState, ["bountyPool", "bounty_pool"]) ??
     recordFromRecord(latestProtocolState, ["pool"]);
   const task = recordFromRecord(latestProtocolState, ["task", "taskRecord"]);
-  const attacker = recordFromRecord(latestProtocolState, [
-    "attacker",
-    "user",
-  ]);
+  const attacker = recordFromRecord(latestProtocolState, ["attacker", "user"]);
   const cpi = recordFromRecord(latestProtocolState, ["cpi"]);
   const bountyVault = findAccount(accounts, "bounty_vault");
   const taskEscrow = findAccount(accounts, "task_escrow");

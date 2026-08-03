@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import {
   ArrowRight,
+  Check,
   Cpu,
   FileCode2,
   LockKeyhole,
@@ -500,7 +501,7 @@ function HeroMissionStatusCard() {
           <div className="h-full w-full rounded-full bg-[linear-gradient(90deg,rgba(153,69,255,0.95),rgba(20,241,149,0.95))]" />
         </div>
         <p className="text-sm leading-6 text-muted">
-          Complete the module flow to unlock its wallet-bound certificate.
+          Complete the module flow to unlock its wallet-bound badge.
         </p>
       </div>
 
@@ -508,7 +509,7 @@ function HeroMissionStatusCard() {
         type="button"
         className="mt-6 min-h-12 w-full rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        Claim certificate
+        Claim Badge
       </button>
     </div>
   );
@@ -733,10 +734,11 @@ function FeaturePreview({
       : tint === "green"
         ? "bg-[radial-gradient(ellipse_70%_42%_at_50%_0%,rgba(20,241,149,0.08),transparent_72%)]"
         : "bg-[radial-gradient(ellipse_70%_42%_at_30%_0%,rgba(153,69,255,0.08),transparent_70%),radial-gradient(ellipse_70%_42%_at_70%_0%,rgba(20,241,149,0.07),transparent_70%)]";
+  const paddingClass = tint === "green" ? "px-4 sm:px-5" : "px-6 sm:px-8";
 
   return (
     <article
-      className={`flex min-h-[520px] flex-col items-center justify-between px-6 py-12 text-center sm:px-8 ${tintClass}`}
+      className={`landing-feature-hover relative flex min-h-[520px] flex-col items-center justify-between py-12 text-center ${paddingClass} ${tintClass}`}
     >
       <div className="flex min-h-[300px] w-full items-start justify-center">
         {children}
@@ -770,7 +772,9 @@ function FeatureMiniItem({
       : "text-[#14f195] bg-[linear-gradient(180deg,rgba(20,241,149,0.04),transparent)]";
 
   return (
-    <article className={`px-5 py-7 text-left ${tintClass}`}>
+    <article
+      className={`landing-feature-hover relative px-5 py-7 text-left ${tintClass}`}
+    >
       <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
         {icon}
         <h3>{title}</h3>
@@ -787,7 +791,10 @@ function ExploitFoundationsPreview() {
         <div className="flex items-start justify-between gap-6">
           <div>
             <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background">
-              <Zap className="h-4 w-4 text-foreground" aria-hidden="true" />
+              <FileCode2
+                className="h-4 w-4 text-foreground"
+                aria-hidden="true"
+              />
             </div>
             <p className="mt-7 text-xs font-medium text-muted">
               THE ILLUSIONIST
@@ -797,9 +804,12 @@ function ExploitFoundationsPreview() {
             </p>
             <p className="mt-1 text-xs text-muted">Wallet-bound progress</p>
           </div>
-          <div className="rounded-md border border-border bg-background p-3 shadow-sm">
+          <div className="landing-certificate-success rounded-md border border-border bg-background p-3 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/60" />
+              <span
+                className="landing-status-dot-pulse h-2.5 w-2.5 rounded-full bg-emerald-400/60"
+                aria-hidden="true"
+              />
               <span className="h-1.5 w-14 rounded-full bg-muted/20" />
             </div>
             <div className="space-y-2">
@@ -813,13 +823,19 @@ function ExploitFoundationsPreview() {
             />
           </div>
         </div>
-        <div className="mt-7 grid grid-cols-[72px_1fr] gap-y-3 text-sm text-muted">
-          <span>Status</span>
-          <span className="text-xs text-foreground">In progress</span>
-          <span>Result</span>
-          <span className="text-xs text-foreground">Impact verified</span>
-          <span>Reward</span>
-          <span className="text-xs text-foreground">Claim certificate</span>
+        <div className="mt-7 space-y-3 text-sm text-muted">
+          <div className="landing-status-cascade-row grid grid-cols-[72px_1fr]">
+            <span>Status</span>
+            <span className="text-xs text-foreground">In progress</span>
+          </div>
+          <div className="landing-status-cascade-row grid grid-cols-[72px_1fr]">
+            <span>Result</span>
+            <span className="text-xs text-foreground">Impact verified</span>
+          </div>
+          <div className="landing-status-cascade-row grid grid-cols-[72px_1fr]">
+            <span>Reward</span>
+            <span className="text-xs text-foreground">Claim badge</span>
+          </div>
         </div>
       </div>
     </div>
@@ -828,19 +844,21 @@ function ExploitFoundationsPreview() {
 
 function SecurityResearchLabPreview() {
   return (
-    <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
-      <div className="flex items-center gap-2 bg-accent px-6 py-4 text-left text-sm font-medium text-foreground">
+    <div className="flex h-auto min-h-[320px] w-full max-w-[420px] flex-col overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)] sm:h-[320px]">
+      <div className="flex items-center gap-2 bg-accent px-5 py-4 text-left text-sm font-medium text-foreground">
         <FileCode2 className="h-3.5 w-3.5" aria-hidden="true" />
         RL1: Account Substitution
       </div>
-      <div className="grid flex-1 gap-3 p-6 sm:grid-cols-2">
+      <div className="grid flex-1 gap-4 px-4 pb-7 pt-5 sm:grid-cols-2">
         <CodeComparisonPanel
-          title="Inspect"
-          lines={["approved mint", "canonical vault", "credited collateral"]}
+          sequenceOrder={1}
+          title="Inspect Code"
+          lines={["Approved mint", "Canonical Vault", "Credited collateral"]}
         />
         <CodeComparisonPanel
-          title="Exploit"
-          lines={["credit increase", "treasury decrease", "finding report"]}
+          sequenceOrder={2}
+          title="Exploit interface"
+          lines={["Credit increase", "Treasury decrease", "Finding report"]}
         />
       </div>
     </div>
@@ -849,19 +867,29 @@ function SecurityResearchLabPreview() {
 
 function CodeComparisonPanel({
   lines,
+  sequenceOrder,
   title,
 }: {
   lines: string[];
+  sequenceOrder: 1 | 2;
   title: string;
 }) {
   return (
-    <div className="flex min-h-[170px] flex-col justify-center rounded-lg border border-border bg-background p-5 text-left">
-      <p className="text-xs font-medium text-foreground">{title}</p>
-      <div className="mt-5 space-y-2.5 font-mono text-[11px] leading-5 text-muted">
-        {lines.map((line) => (
-          <div key={line} className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-muted/30" />
-            <span>{line}</span>
+    <div
+      className={`landing-rl1-sequence-panel landing-rl1-sequence-panel-${sequenceOrder} flex min-h-[160px] flex-col justify-start rounded-xl border border-border bg-background px-4 py-5 text-left sm:min-h-[210px]`}
+    >
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <div className="mt-6 space-y-3 font-mono text-xs leading-5 text-muted">
+        {lines.map((line, index) => (
+          <div
+            key={line}
+            className={`landing-rl1-sequence-line landing-rl1-sequence-line-${index + 1} flex items-center gap-2`}
+          >
+            <span className="relative h-3 w-3 shrink-0" aria-hidden="true">
+              <span className="landing-rl1-sequence-dot absolute inset-0 m-auto h-1.5 w-1.5 rounded-full bg-muted/30" />
+              <Check className="landing-rl1-sequence-check absolute inset-0 h-3 w-3 text-[#14f195]" />
+            </span>
+            <span className="landing-rl1-sequence-label">{line}</span>
           </div>
         ))}
       </div>

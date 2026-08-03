@@ -496,9 +496,6 @@ function Level2Header({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-end">
       <div className="max-w-3xl space-y-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Static PDA identity hijack
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           Level 2: Identity Thief
         </h1>

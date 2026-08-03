@@ -103,9 +103,6 @@ export function LevelWorkspacePage({
   return (
     <section className="space-y-6">
       <div className="space-y-3">
-        <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-          {guide.subtitle}
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           {guide.missionTitle}
         </h1>
@@ -174,9 +171,6 @@ function Level0WorkspacePage({
   return (
     <section className="grid gap-y-7 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start xl:gap-x-8">
       <div className="max-w-3xl space-y-4 xl:col-start-1 xl:row-start-1">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          {guide.subtitle}
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           {guide.missionTitle}
         </h1>
