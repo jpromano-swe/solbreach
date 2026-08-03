@@ -119,7 +119,8 @@ export function ProfileCertificatesSection({
     certificateSummary?.minted ??
     displayCertificates.filter((certificate) => certificate.minted).length;
   const displayName =
-    profileName.trim() || (address ? compactAddress(address, 4, 4) : "No wallet");
+    profileName.trim() ||
+    (address ? compactAddress(address, 4, 4) : "No wallet");
   const fallbackProfileImageSrc = useMemo(
     () => getDefaultProfileImage(address),
     [address]
@@ -202,13 +203,13 @@ export function ProfileCertificatesSection({
       <div className="space-y-7 p-5 sm:p-7">
         {!address ? (
           <div className="rounded-[24px] border border-dashed border-border bg-background/60 px-6 py-10 text-center">
-          <p className="text-base font-medium tracking-[-0.03em] text-foreground">
-            Connect a wallet to inspect your SolBreach profile.
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Your profile will show completed modules, badges, and certificates
-            for the connected wallet.
-          </p>
+            <p className="text-base font-medium tracking-[-0.03em] text-foreground">
+              Connect a wallet to inspect your SolBreach profile.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Your profile will show completed modules, badges, and certificates
+              for the connected wallet.
+            </p>
           </div>
         ) : (
           <>
@@ -387,9 +388,9 @@ function ShowcaseSection({
       {items.length > 0 ? (
         <div className="mt-5 rounded-[30px] border border-border bg-background/70 p-4">
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          {items.map((item) => (
-            <AchievementShowcaseCard item={item} key={item.id} />
-          ))}
+            {items.map((item) => (
+              <AchievementShowcaseCard item={item} key={item.id} />
+            ))}
           </div>
         </div>
       ) : (
@@ -425,7 +426,9 @@ function AchievementShowcaseCard({ item }: { item: AchievementItem }) {
             {item.title}
           </h4>
           <p className="mt-1 text-sm leading-5 text-muted">{item.label}</p>
-          <p className="mt-3 text-xs font-semibold text-zinc-500">{item.meta}</p>
+          <p className="mt-3 text-xs font-semibold text-zinc-500">
+            {item.meta}
+          </p>
         </div>
       </div>
     </article>
@@ -600,9 +603,7 @@ function EditProfileDialog({
             <button
               type="button"
               aria-pressed={draftAvailableForWork}
-              onClick={() =>
-                setDraftAvailableForWork((current) => !current)
-              }
+              onClick={() => setDraftAvailableForWork((current) => !current)}
               className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors ${
                 draftAvailableForWork
                   ? "border-[#14f195]/50 bg-[#14f195]/25"
@@ -611,9 +612,7 @@ function EditProfileDialog({
             >
               <span
                 className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white transition-transform ${
-                  draftAvailableForWork
-                    ? "translate-x-5"
-                    : "translate-x-0"
+                  draftAvailableForWork ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
@@ -765,7 +764,8 @@ function ShowcaseEditorDialog({
   onSave: (ids: string[]) => void;
   selectedIds: string[];
 }) {
-  const [draftSelectedIds, setDraftSelectedIds] = useState<string[]>(selectedIds);
+  const [draftSelectedIds, setDraftSelectedIds] =
+    useState<string[]>(selectedIds);
   const selectedItems = draftSelectedIds
     .map((id) => items.find((item) => item.id === id))
     .filter((item): item is AchievementItem => Boolean(item));
@@ -806,7 +806,9 @@ function ShowcaseEditorDialog({
           <div className="border-b border-white/10 p-5 lg:border-b-0 lg:border-r">
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2 text-sm text-muted">
               <Search className="h-4 w-4" aria-hidden="true" />
-              <span>{address ? compactAddress(address) : "No wallet"} achievements</span>
+              <span>
+                {address ? compactAddress(address) : "No wallet"} achievements
+              </span>
             </div>
 
             {items.length > 0 ? (
@@ -840,7 +842,10 @@ function ShowcaseEditorDialog({
                         </span>
                       </span>
                       {selected ? (
-                        <Check className="h-4 w-4 text-[#14f195]" aria-hidden="true" />
+                        <Check
+                          className="h-4 w-4 text-[#14f195]"
+                          aria-hidden="true"
+                        />
                       ) : null}
                     </button>
                   );
@@ -1035,7 +1040,6 @@ function buildProfileCertificates(certificates?: ProfileCertificate[]) {
 }
 
 function BadgeCard({ badge }: { badge: UserBadge }) {
-  const cardOffset = getBadgeCardOffsetClass(badge);
   const imageSrc = badge.earned ? badge.image : "/badges/badge-locked.png";
   const imageScale = getBadgeImageScaleClass(badge);
   const imageTone = badge.earned
@@ -1047,7 +1051,7 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
       aria-label={`${getBadgeShortLabel(badge)} badge ${
         badge.earned ? "earned" : "locked"
       }`}
-      className={`group flex flex-col items-center text-center ${cardOffset}`}
+      className="group flex flex-col items-center text-center"
       title={badge.title}
     >
       <div className="relative flex h-28 w-28 items-center justify-center transition-transform duration-150 ease-out motion-safe:group-hover:-translate-y-1 sm:h-32 sm:w-32">
@@ -1062,9 +1066,7 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
         <span
           aria-hidden="true"
           className={`absolute inset-5 rounded-full blur-xl ${
-            badge.earned
-              ? "bg-black/25"
-              : "bg-black/15"
+            badge.earned ? "bg-black/25" : "bg-black/15"
           }`}
         />
         <Image
@@ -1086,11 +1088,6 @@ function BadgeCard({ badge }: { badge: UserBadge }) {
       </p>
     </article>
   );
-}
-
-function getBadgeCardOffsetClass(badge: UserBadge) {
-  if (badge.slug === "power-user") return "translate-x-10 sm:translate-x-12";
-  return "";
 }
 
 function getBadgeImageScaleClass(badge: UserBadge) {
@@ -1117,10 +1114,7 @@ function getBadgeShortLabel(badge: UserBadge) {
     case "power-user":
       return "Power User";
     default:
-      return badge.title
-        .split(/\s+/)
-        .slice(0, 4)
-        .join(" ");
+      return badge.title.split(/\s+/).slice(0, 4).join(" ");
   }
 }
 
@@ -1162,9 +1156,10 @@ function CertificateCard({
         year: "numeric",
       })
     : null;
-  const href = certificate.minted && certificate.assetId
-    ? getExplorerUrl(`/address/${certificate.assetId}`)
-    : undefined;
+  const href =
+    certificate.minted && certificate.assetId
+      ? getExplorerUrl(`/address/${certificate.assetId}`)
+      : undefined;
 
   return (
     <article className="group overflow-hidden rounded-[18px] border border-white/10 bg-[#111019] p-2.5 shadow-[0_22px_70px_-50px_rgba(0,0,0,0.85)] transition-colors hover:border-[#9945ff]/40">
