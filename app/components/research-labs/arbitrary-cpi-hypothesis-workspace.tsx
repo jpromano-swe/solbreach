@@ -1,5 +1,6 @@
 "use client";
 
+import NumberFlow from "@number-flow/react";
 import {
   ArrowRight,
   Briefcase,
@@ -557,7 +558,7 @@ function WalletSummary({
       <div className="relative flex h-7 w-8 items-center justify-center rounded-md border border-[#9945ff]/25 bg-[#9945ff]/12 text-[#d7c0ff]">
         <WalletCards className="h-4 w-4" aria-hidden="true" />
         <span className="absolute -right-1.5 -top-2 rounded-md bg-[#6f6cff] px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-white">
-          {formatWalletBalance(earnedBountyAmount)}
+          <AnimatedWalletBalance value={earnedBountyAmount} />
         </span>
       </div>
       <div className="h-8 w-8 shrink-0 rounded-full border border-white/10 bg-[radial-gradient(circle_at_30%_30%,#14f195_0%,#9945ff_48%,#232323_100%)]" />
@@ -630,11 +631,19 @@ function UsdcMark() {
   );
 }
 
-function formatWalletBalance(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return "$0";
-  return `$${value.toLocaleString("en-US", {
-    maximumFractionDigits: 0,
-  })}`;
+function AnimatedWalletBalance({ value }: { value: number }) {
+  return (
+    <span className="inline-flex items-baseline">
+      <span>$</span>
+      <NumberFlow
+        value={Math.max(0, Number.isFinite(value) ? value : 0)}
+        format={{
+          maximumFractionDigits: 0,
+          minimumFractionDigits: 0,
+        }}
+      />
+    </span>
+  );
 }
 
 function shortAddress(address?: string) {
