@@ -570,7 +570,7 @@
 }
 
 .landing-feature-mini:hover .landing-feature-mini-body {
-  color: color-mix(in oklab, var(--foreground) 78%, var(--muted));
+  color: color-mix(in oklab, var(--foreground) 90%, var(--muted));
 }
 
 @media (prefers-reduced-motion: no-preference) {
