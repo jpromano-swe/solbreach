@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 type DelegateProgramRef = "official_payout_router" | "attacker_cpi_program";
@@ -224,7 +223,6 @@ export function ArbitraryCpiHypothesisWorkspace({
   instructionName,
   latestAction,
   pendingAction,
-  protocolState,
   rewardAmount,
   onBuildAndDeploy,
   onDelegateProgramChange,
@@ -245,7 +243,6 @@ export function ArbitraryCpiHypothesisWorkspace({
   instructionName: string;
   latestAction: string;
   pendingAction: PendingAction;
-  protocolState: ReactNode;
   rewardAmount: string;
   onBuildAndDeploy: () => Promise<void>;
   onDelegateProgramChange: (value: DelegateProgramRef) => void;
@@ -333,115 +330,140 @@ export function ArbitraryCpiHypothesisWorkspace({
         </div>
       </div>
 
-      <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)]">
-        <section className="min-w-0">
-          <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-zinc-100">
-                Browse bounty tasks
-              </p>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
-                Category scope determines which payout configuration is active.
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
-              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-              Filter
-            </div>
-          </div>
+      <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(340px,0.86fr)_minmax(0,1.14fr)]">
+        <div>
+          {hasDeploy ? (
+            <PayoutExecutionPanel
+              amountValue={amountValue}
+              busy={busy}
+              delegateProgramRef={delegateProgramRef}
+              explorerAvailable={explorerAvailable}
+              explorerUrl={explorerUrl}
+              hasCpiExecution={hasCpiExecution}
+              hasDelegation={hasDelegation}
+              hasDeploy={hasDeploy}
+              instructionName={instructionName}
+              latestAction={latestAction}
+              pendingAction={pendingAction}
+              rewardAmount={rewardAmount}
+              selectedTask={selectedTask}
+              onDelegateProgramChange={onDelegateProgramChange}
+              onExecuteDelegatedCpi={onExecuteDelegatedCpi}
+              onInstructionNameChange={onInstructionNameChange}
+              onOpenEvidenceReview={onOpenEvidenceReview}
+              onRewardAmountChange={onRewardAmountChange}
+              onSubmitDelegation={onSubmitDelegation}
+            />
+          ) : (
+            <ProgramBuilder
+              builderError={builderError}
+              builderOpen={builderVisible}
+              busy={busy}
+              canDeploy={canDeploy}
+              hasDeploy={hasDeploy}
+              pendingAction={pendingAction}
+              selectedCount={selectedCount}
+              selectedTask={selectedTask}
+              selections={effectiveBuilderSelection}
+              selectionsComplete={selectionsComplete}
+              onDeployConfiguredProgram={deployConfiguredProgram}
+              onOpenBuilder={() => {
+                setBuilderOpen(true);
+                setBuilderError(null);
+              }}
+              onSelectionChange={updateSelection}
+            />
+          )}
+        </div>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            {CATEGORIES.map((category) => {
-              const selected = activeCategory === category.id;
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setActiveCategory(category.id)}
-                  aria-pressed={selected}
-                  className={`min-h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold motion-safe:transition-colors motion-safe:duration-100 ${
-                    selected
-                      ? "border-[#9945ff]/45 bg-[#9945ff]/16 text-[#d7c0ff]"
-                      : "border-white/10 bg-white/[0.025] text-zinc-500 hover:border-white/20 hover:text-zinc-200"
-                  } focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]`}
-                >
-                  {category.label}
-                </button>
-              );
-            })}
-          </div>
+        <BountyTaskBrowser
+          activeCategory={activeCategory}
+          filteredTasks={filteredTasks}
+          flowStarted={flowStarted}
+          selectedTask={selectedTask}
+          onCategoryChange={setActiveCategory}
+          onTaskSelect={(task) => {
+            if (flowStarted) return;
+            setSelectedTaskId(task.id);
+            setBuilderError(null);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
-          <div className="mt-3 space-y-2">
-            {filteredTasks.length ? (
-              filteredTasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  locked={flowStarted && task.id !== selectedTask.id}
-                  selected={selectedTask.id === task.id}
-                  task={task}
-                  onSelect={() => {
-                    if (flowStarted) return;
-                    setSelectedTaskId(task.id);
-                    setBuilderError(null);
-                  }}
-                />
-              ))
-            ) : (
-              <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5 text-sm text-zinc-500">
-                No tasks match this category.
-              </div>
-            )}
-          </div>
-        </section>
-
-        <div className="space-y-5">
-          <SelectedTaskPanel task={selectedTask} />
-          <ProgramBuilder
-            builderError={builderError}
-            builderOpen={builderVisible}
-            busy={busy}
-            canDeploy={canDeploy}
-            hasDeploy={hasDeploy}
-            pendingAction={pendingAction}
-            selectedCount={selectedCount}
-            selectedTask={selectedTask}
-            selections={effectiveBuilderSelection}
-            selectionsComplete={selectionsComplete}
-            onDeployConfiguredProgram={deployConfiguredProgram}
-            onOpenBuilder={() => {
-              setBuilderOpen(true);
-              setBuilderError(null);
-            }}
-            onSelectionChange={updateSelection}
-          />
+function BountyTaskBrowser({
+  activeCategory,
+  filteredTasks,
+  flowStarted,
+  selectedTask,
+  onCategoryChange,
+  onTaskSelect,
+}: {
+  activeCategory: TaskCategory;
+  filteredTasks: BountyTask[];
+  flowStarted: boolean;
+  selectedTask: BountyTask;
+  onCategoryChange: (category: TaskCategory) => void;
+  onTaskSelect: (task: BountyTask) => void;
+}) {
+  return (
+    <section className="min-w-0 rounded-lg border border-white/10 bg-[#08090b] p-5">
+      <div className="flex flex-col gap-4 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-zinc-100">
+            Browse bounty tasks
+          </p>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            Category scope determines which payout configuration is active.
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          Filter
         </div>
       </div>
 
-      <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(340px,0.88fr)_minmax(0,1.12fr)]">
-        <PayoutExecutionPanel
-          amountValue={amountValue}
-          busy={busy}
-          delegateProgramRef={delegateProgramRef}
-          explorerAvailable={explorerAvailable}
-          explorerUrl={explorerUrl}
-          hasCpiExecution={hasCpiExecution}
-          hasDelegation={hasDelegation}
-          hasDeploy={hasDeploy}
-          instructionName={instructionName}
-          latestAction={latestAction}
-          pendingAction={pendingAction}
-          rewardAmount={rewardAmount}
-          selectedTask={selectedTask}
-          onDelegateProgramChange={onDelegateProgramChange}
-          onExecuteDelegatedCpi={onExecuteDelegatedCpi}
-          onInstructionNameChange={onInstructionNameChange}
-          onOpenEvidenceReview={onOpenEvidenceReview}
-          onRewardAmountChange={onRewardAmountChange}
-          onSubmitDelegation={onSubmitDelegation}
-        />
-        {protocolState}
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+        {CATEGORIES.map((category) => {
+          const selected = activeCategory === category.id;
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onCategoryChange(category.id)}
+              aria-pressed={selected}
+              className={`min-h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold motion-safe:transition-colors motion-safe:duration-100 ${
+                selected
+                  ? "border-[#9945ff]/45 bg-[#9945ff]/16 text-[#d7c0ff]"
+                  : "border-white/10 bg-white/[0.025] text-zinc-500 hover:border-white/20 hover:text-zinc-200"
+              } focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08090b]`}
+            >
+              {category.label}
+            </button>
+          );
+        })}
       </div>
-    </div>
+
+      <div className="mt-3 space-y-2">
+        {filteredTasks.length ? (
+          filteredTasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              locked={flowStarted && task.id !== selectedTask.id}
+              selected={selectedTask.id === task.id}
+              task={task}
+              onSelect={() => onTaskSelect(task)}
+            />
+          ))
+        ) : (
+          <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5 text-sm text-zinc-500">
+            No tasks match this category.
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -515,34 +537,6 @@ function TaskRow({
         <p className="text-xs text-zinc-500">USDC</p>
       </div>
     </button>
-  );
-}
-
-function SelectedTaskPanel({ task }: { task: BountyTask }) {
-  return (
-    <section className="rounded-lg border border-white/10 bg-[#08090b] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-zinc-100">Selected scope</p>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
-            {task.category === "design"
-              ? "Design tasks were not migrated to the bound payout router."
-              : "This category represents the migrated payout path."}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-md border px-2 py-1 text-[10px] font-semibold ${
-            task.safety === "vulnerable"
-              ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
-              : "border-[#14f195]/25 bg-[#14f195]/8 text-[#8fffd0]"
-          }`}
-        >
-          {task.configVersion}
-        </span>
-      </div>
-      <p className="mt-4 text-sm font-medium text-zinc-200">{task.title}</p>
-      <p className="mt-2 text-xs leading-5 text-zinc-500">{task.summary}</p>
-    </section>
   );
 }
 

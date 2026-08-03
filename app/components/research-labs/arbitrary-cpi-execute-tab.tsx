@@ -1,6 +1,5 @@
 "use client";
 
-import NumberFlow from "@number-flow/react";
 import { ArrowRight, Check, ChevronDown, ChevronUp, Play } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -150,7 +149,6 @@ export function ArbitraryCpiExecuteTab({
           : "No transactions submitted yet."
       }
       pendingAction={pendingAction}
-      protocolState={<ArbitraryCpiProtocolState state={state} />}
       rewardAmount={rewardAmount}
       onBuildAndDeploy={buildAndDeployProgram}
       onDelegateProgramChange={setDelegateProgramRef}
@@ -203,100 +201,6 @@ export function ArbitraryCpiExecuteTab({
           />
         )}
       </AnimatedContentSwitch>
-    </div>
-  );
-}
-
-function ArbitraryCpiProtocolState({ state }: { state: ArbitraryCpiState }) {
-  return (
-    <aside className="h-fit overflow-hidden rounded-2xl border border-white/10 bg-[#08090b]">
-      <div className="border-b border-white/10 bg-white/[0.025] px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-              BreachBounty
-            </p>
-            <p className="mt-1 text-sm font-semibold text-white">Task Bounty</p>
-          </div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 px-2.5 py-1 text-[10px] font-medium text-[#8fffd0]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#14f195]" />
-            Live
-          </span>
-        </div>
-      </div>
-
-      <div className="p-5">
-        <section className="rounded-xl border border-white/10 bg-white/[0.025] px-5 py-5 text-center">
-          <p className="text-xs font-medium text-zinc-500">
-            Bounty pool paid out
-          </p>
-          <AnimatedProtocolNumber
-            className="mt-2 justify-center font-mono text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl"
-            prefix="$"
-            value={state.bountyPoolPaidOut}
-          />
-          <p className="mt-2 text-[10px] font-semibold tracking-[0.18em] text-[#8fffd0]">
-            USDC in payouts
-          </p>
-        </section>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <MetricCard
-            label="Task escrow"
-            value={`${formatAmount(state.taskEscrowBalance)} USDC`}
-            highlighted={state.taskEscrowBalance < BASELINE.bountyEscrow}
-          />
-          <MetricCard
-            label="Your reward account"
-            value={`${formatAmount(state.attackerRewardBalance)} USDC`}
-            highlighted={state.attackerRewardBalance > 0}
-          />
-          <MetricCard
-            label="Pool liquidity"
-            value={`${formatAmount(state.bountyPoolAvailable)} USDC`}
-          />
-          <MetricCard
-            label="CPI target"
-            value={state.cpiTargetLabel}
-            highlighted={state.targetReplaced}
-          />
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function MetricCard({
-  highlighted = false,
-  label,
-  value,
-}: {
-  highlighted?: boolean;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div
-      className={`rounded-xl border px-4 py-3 ${
-        highlighted
-          ? "border-[#14f195]/30 bg-[#14f195]/8 shadow-[inset_0_0_20px_rgba(20,241,149,0.035)]"
-          : "border-white/10 bg-white/[0.02]"
-      }`}
-    >
-      <p
-        className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${
-          highlighted ? "text-[#79d9b2]" : "text-zinc-600"
-        }`}
-      >
-        {label}
-      </p>
-      <p
-        className={`mt-2 truncate font-mono text-sm ${
-          highlighted ? "text-[#b5f7d8]" : "text-zinc-300"
-        }`}
-      >
-        {value}
-      </p>
     </div>
   );
 }
@@ -819,34 +723,6 @@ function valueFromRecord(record: Record<string, unknown>, keys: string[]) {
     if (key in record) return record[key];
   }
   return undefined;
-}
-
-function AnimatedProtocolNumber({
-  className = "font-mono",
-  decimals = 0,
-  prefix,
-  suffix,
-  value,
-}: {
-  className?: string;
-  decimals?: number;
-  prefix?: string;
-  suffix?: string;
-  value: number;
-}) {
-  return (
-    <span className={`inline-flex items-baseline gap-1 ${className}`}>
-      {prefix ? <span>{prefix}</span> : null}
-      <NumberFlow
-        value={value}
-        format={{
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals,
-        }}
-      />
-      {suffix ? <span>{suffix}</span> : null}
-    </span>
-  );
 }
 
 function formatAmount(value: number) {
