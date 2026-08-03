@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/favicon.png" alt="SolBreach" width="144" />
+  <img src="https://raw.githubusercontent.com/jpromano-swe/solbreach/research-labs-frontend/public/favicon.png" alt="SolBreach" width="144" />
 </p>
 
 **Interactive security training for Solana builders.**
