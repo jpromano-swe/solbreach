@@ -529,6 +529,39 @@
   --landing-breach-step-delay: 1120ms;
 }
 
+.landing-feature-mini {
+  isolation: isolate;
+}
+
+.landing-feature-mini::before {
+  position: absolute;
+  inset: 0.5rem;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  opacity: 0;
+  background:
+    radial-gradient(
+      ellipse 85% 85% at 50% 0%,
+      rgba(153, 69, 255, 0.13),
+      transparent 70%
+    ),
+    rgba(10, 10, 10, 0.78);
+  box-shadow:
+    0 18px 46px -26px rgba(0, 0, 0, 0.92),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.landing-feature-mini:hover::before {
+  opacity: 1;
+}
+
+.landing-feature-mini:hover .landing-feature-mini-body {
+  color: color-mix(in oklab, var(--foreground) 78%, var(--muted));
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .landing-status-dot-pulse {
     animation: landingStatusDotPulse 1600ms ease-in-out infinite;
@@ -547,6 +580,33 @@
     z-index: 1;
     filter: brightness(1.04);
     transform: translateY(-4px);
+  }
+
+  .landing-feature-mini::before {
+    transform: translateY(8px) scale(0.96);
+    transition:
+      opacity 150ms ease-out,
+      transform 150ms ease-out,
+      border-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+
+  .landing-feature-mini .landing-feature-mini-body {
+    transition: color 150ms ease-out;
+  }
+
+  .landing-feature-mini:hover {
+    z-index: 2;
+    transform: translateY(-10px) scale(1.018);
+  }
+
+  .landing-feature-mini:hover::before {
+    transform: translateY(0) scale(1);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow:
+      0 28px 70px -32px rgba(0, 0, 0, 0.95),
+      0 0 34px -28px currentColor,
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
   .landing-feature-hover .landing-status-cascade-row:nth-child(n + 2) {

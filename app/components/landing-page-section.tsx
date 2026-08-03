@@ -685,8 +685,8 @@ function FeatureShowcaseSection() {
         <FeatureMiniItem
           icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Deterministic Verification"
-          body="Progress unlocks only after correct completion checks."
+          title="Abstracted Vectors"
+          body="Train reusable exploit patterns beyond a single protocol implementation."
         />
         <FeatureMiniItem
           icon={<FileCode2 className="h-4 w-4" aria-hidden="true" />}
@@ -773,13 +773,15 @@ function FeatureMiniItem({
 
   return (
     <article
-      className={`landing-feature-hover relative px-5 py-7 text-left ${tintClass}`}
+      className={`landing-feature-hover landing-feature-mini relative px-5 py-7 text-left ${tintClass}`}
     >
-      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+      <div className="relative z-10 flex items-center gap-2 text-sm font-semibold text-foreground">
         {icon}
         <h3>{title}</h3>
       </div>
-      <p className="mt-4 text-sm leading-6 text-muted">{body}</p>
+      <p className="landing-feature-mini-body relative z-10 mt-4 text-sm leading-6 text-muted">
+        {body}
+      </p>
     </article>
   );
 }
