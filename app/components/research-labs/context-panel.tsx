@@ -13,7 +13,11 @@ import type {
   ResearchLabSession,
 } from "../../lib/research-labs/lab-state";
 import { deriveProtocolState } from "./execute-exploit-tab";
-import { getResearchLabAdapter, isYieldHijackLab } from "./lab-adapters";
+import {
+  getResearchLabAdapter,
+  isArbitraryCpiLab,
+  isYieldHijackLab,
+} from "./lab-adapters";
 import { ReviewCheckpointPanel } from "./report-tab";
 import type {
   AuditReportStage,
@@ -290,9 +294,26 @@ function ExecuteExploitContext({
   txResults: EnrichedTransactionResult[];
 }) {
   const adapter = getResearchLabAdapter(lab);
+  const isArbitraryCpi = isArbitraryCpiLab(lab);
   const isYieldHijack = isYieldHijackLab(lab);
   const [revealedChainHints, setRevealedChainHints] = useState(0);
   const protocolState = deriveProtocolState(txResults);
+  const payoutProgramBuilt = hasSuccessfulTransactionAction(
+    txResults,
+    "BUILD_ATTACKER_PROGRAM"
+  );
+  const payoutProgramDeployed = hasSuccessfulTransactionAction(
+    txResults,
+    "DEPLOY_ATTACKER_PROGRAM"
+  );
+  const payoutAuthorized = hasSuccessfulTransactionAction(
+    txResults,
+    "SUBMIT_DELEGATION"
+  );
+  const payoutCompleted = hasSuccessfulTransactionAction(
+    txResults,
+    "EXECUTE_DELEGATED_CPI"
+  );
   const depositSubmitted = isYieldHijack
     ? txResults.some(
         (result) =>
@@ -324,49 +345,78 @@ function ExecuteExploitContext({
       } else if (nextHintIndex === 1) {
         window.setTimeout(startYieldHijackExplorerTour, 80);
       }
-    } else if (nextHintIndex === 0) {
+    } else if (!isArbitraryCpi && nextHintIndex === 0) {
       window.setTimeout(startExploitHypothesisTour, 80);
     }
   };
+  const checkpointSteps = isArbitraryCpi
+    ? [
+        { label: "Opportunity reviewed", active: true },
+        {
+          label: payoutProgramBuilt
+            ? "Payout program configured"
+            : "Payout program not configured",
+          active: payoutProgramBuilt,
+        },
+        {
+          label: payoutProgramDeployed
+            ? "Payout program deployed"
+            : "Payout program not deployed",
+          active: payoutProgramDeployed,
+        },
+        {
+          label: payoutAuthorized
+            ? "Task payout authorized"
+            : "Task payout not authorized",
+          active: payoutAuthorized,
+        },
+        {
+          label: payoutCompleted ? "Task payout completed" : "Task payout open",
+          active: payoutCompleted,
+        },
+        { label: "Impact verified", active: impactVerified },
+        { label: "Report unlocked", active: reportUnlocked },
+      ]
+    : [
+        { label: "Hypothesis selected", active: true },
+        {
+          label: isYieldHijack
+            ? depositSubmitted
+              ? "Stake submitted"
+              : "Stake not submitted"
+            : !depositSubmitted
+              ? "Deposit not submitted"
+              : protocolState.depositKind === "regular"
+                ? "Canonical collateral deposited"
+                : protocolState.depositKind === "exploit"
+                  ? "Non-canonical credit route created"
+                  : "Unsupported deposit path observed",
+          active: depositSubmitted,
+        },
+        {
+          label: isYieldHijack
+            ? withdrawalSubmitted
+              ? "Rewards claimed"
+              : "Rewards not claimed"
+            : !withdrawalSubmitted
+              ? "Borrow not submitted"
+              : protocolState.depositKind === "regular"
+                ? "Canonical borrow executed"
+                : protocolState.hasMaxDrain
+                  ? "Treasury drain path executed"
+                  : "Borrow executed against observed credit",
+          active: withdrawalSubmitted,
+        },
+        { label: "Impact verified", active: impactVerified },
+        { label: "Report unlocked", active: reportUnlocked },
+      ];
 
   return (
     <>
       <ExploitCheckpointPanel
         impactVerified={impactVerified}
         onOpenReport={onOpenReport}
-        steps={[
-          { label: "Hypothesis selected", active: true },
-          {
-            label: isYieldHijack
-              ? depositSubmitted
-                ? "Stake submitted"
-                : "Stake not submitted"
-              : !depositSubmitted
-                ? "Deposit not submitted"
-                : protocolState.depositKind === "regular"
-                  ? "Canonical collateral deposited"
-                  : protocolState.depositKind === "exploit"
-                    ? "Non-canonical credit route created"
-                    : "Unsupported deposit path observed",
-            active: depositSubmitted,
-          },
-          {
-            label: isYieldHijack
-              ? withdrawalSubmitted
-                ? "Rewards claimed"
-                : "Rewards not claimed"
-              : !withdrawalSubmitted
-                ? "Borrow not submitted"
-                : protocolState.depositKind === "regular"
-                  ? "Canonical borrow executed"
-                  : protocolState.hasMaxDrain
-                    ? "Treasury drain path executed"
-                    : "Borrow executed against observed credit",
-            active: withdrawalSubmitted,
-          },
-          { label: "Impact verified", active: impactVerified },
-          { label: "Report unlocked", active: reportUnlocked },
-        ]}
+        steps={checkpointSteps}
       />
 
       {!impactVerified ? (
@@ -405,6 +455,17 @@ function ExecuteExploitContext({
         </ContextBlock>
       ) : null}
     </>
+  );
+}
+
+function hasSuccessfulTransactionAction(
+  txResults: EnrichedTransactionResult[],
+  actionType: string
+) {
+  return txResults.some(
+    (result) =>
+      result.executionStatus === "success" &&
+      result.instructionType.includes(actionType)
   );
 }
 
@@ -606,7 +667,7 @@ function ExploitCheckpointPanel({
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white">Report Finding</p>
             <p className="mt-1 text-sm leading-5 text-zinc-500">
-              Answer the questions and prepare your first Finding Report
+              Answer the questions and prepare your first Finding Report.
             </p>
           </div>
         </div>
@@ -916,11 +977,13 @@ function CertificateCheckpointPanel({
                   : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
             } disabled:cursor-not-allowed disabled:opacity-70`}
           >
-            {certificateMinted
-              ? "Certificate minted"
-              : isMintingCertificate
-                ? <CertificateMintLoader />
-                : "Mint NFT Certificate"}
+            {certificateMinted ? (
+              "Certificate minted"
+            ) : isMintingCertificate ? (
+              <CertificateMintLoader />
+            ) : (
+              "Mint NFT Certificate"
+            )}
           </button>
         )}
 
