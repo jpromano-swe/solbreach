@@ -954,6 +954,7 @@ export default function Home() {
           }
           profileDisplayName={profileName.trim() || undefined}
           profileImageSrc={profileAvatarSrc}
+          walletStatus={status}
         />
 
         <main

@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { HeaderCourseNav, type CourseLevelTarget } from "./course-nav";
-import { WalletButton } from "./wallet-button";
 import type { RootSection } from "../lib/hooks/use-level-route";
 import type { LevelsView } from "../lib/levels/course-status";
 
@@ -16,6 +15,7 @@ export function AppHeader({
   onSelectVulnerabilities,
   profileDisplayName,
   profileImageSrc,
+  walletStatus,
 }: {
   activeLevelsView: LevelsView;
   activeSection: RootSection;
@@ -26,6 +26,7 @@ export function AppHeader({
   onSelectVulnerabilities: () => void;
   profileDisplayName?: string;
   profileImageSrc?: string;
+  walletStatus: string;
 }) {
   const isLandingView = activeSection === "levels" && activeLevelsView === "landing";
 
@@ -65,13 +66,27 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
-          {!isLandingView ? (
-            <WalletButton
-              isProfileActive={activeSection === "profile"}
-              onOpenProfile={onOpenProfile}
-              profileDisplayName={profileDisplayName}
-              profileImageSrc={profileImageSrc}
-            />
+          {walletStatus === "connected" ? (
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition-[border-color,background-color,color,opacity,transform] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                activeSection === "profile"
+                  ? "border-foreground/20 bg-foreground text-background"
+                  : "border-border bg-card/70 text-foreground hover:bg-accent"
+              }`}
+            >
+              {profileImageSrc ? (
+                <Image
+                  src={profileImageSrc}
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 rounded-full object-cover"
+                />
+              ) : null}
+              <span>{profileDisplayName ?? "My Profile"}</span>
+            </button>
           ) : null}
         </div>
       </div>
