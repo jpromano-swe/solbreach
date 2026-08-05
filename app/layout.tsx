@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   description:
     "Gamified Solana security training with interactive exploit levels and wallet-bound certifications.",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: { url: "/favicon.png", type: "image/png" },
+    shortcut: { url: "/favicon.png", type: "image/png" },
+    apple: { url: "/favicon.png", type: "image/png" },
   },
 };
 
