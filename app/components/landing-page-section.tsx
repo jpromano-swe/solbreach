@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import gsap from "gsap";
+import { TextPlugin } from "gsap/TextPlugin";
 import {
   ArrowRight,
   Check,
@@ -56,7 +58,21 @@ const PARTNER_LOGOS = [
   },
 ];
 
+const HERO_TITLE = "Security Training Layer";
+const HERO_SUBTITLE_LINES = [
+  "Practice finding real security issues and learn to fix",
+  "vulnerable programs before shipping to production.",
+];
+const HERO_SUBTITLE_BOOT_LINES = [
+  "█▓▒░ ▒█▓░ █▒▓░ ▓█▒░ █▓▒░ ▒█▓░",
+  "░▓█▒ ▓▒█░ ▒░█▓ █░▓▒ ▓█░▒ ░▒▓█",
+];
+
+gsap.registerPlugin(TextPlugin);
+
 export function LandingPageSection({
+  enableAppEntry,
+  onPlayNow,
   documentationUrl,
   repositoryUrl,
 }: {
@@ -65,11 +81,224 @@ export function LandingPageSection({
   onPlayNow?: () => void;
   repositoryUrl?: string;
 }) {
-  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const resolvedDocumentationUrl =
     documentationUrl ??
     repositoryUrl ??
     "https://solbreach.gitbook.io/documentation";
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+  const heroRootRef = useRef<HTMLDivElement>(null);
+  const heroLevelsPreviewRef = useRef<HTMLDivElement>(null);
+  const heroPrimaryCtaRef = useRef<HTMLButtonElement>(null);
+  const heroTitleLineRef = useRef<HTMLSpanElement>(null);
+  const heroTitleKickerRef = useRef<HTMLSpanElement>(null);
+  const heroSubtitleLineRefs = useRef<Array<HTMLParagraphElement | null>>([]);
+
+  useEffect(() => {
+    const titleLine = heroTitleLineRef.current;
+    const titleKicker = heroTitleKickerRef.current;
+    const primaryCta = heroPrimaryCtaRef.current;
+    const subtitleLines = heroSubtitleLineRefs.current.filter(
+      (line): line is HTMLParagraphElement => Boolean(line),
+    );
+    const levelsPreview = heroLevelsPreviewRef.current;
+    if (
+      !titleLine ||
+      !titleKicker ||
+      !primaryCta ||
+      subtitleLines.length === 0 ||
+      !levelsPreview
+    ) {
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      subtitleLines.forEach((line, index) => {
+        line.textContent = HERO_SUBTITLE_LINES[index] ?? "";
+      });
+      gsap.set([titleKicker, ...subtitleLines, primaryCta, levelsPreview], {
+        autoAlpha: 1,
+        scale: 1,
+        y: 0,
+      });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      const titleChars = gsap.utils.toArray<HTMLElement>(
+        ".landing-hero-title-char",
+      );
+
+      gsap.set(titleChars, { opacity: 0, textShadow: "none" });
+      gsap.set(titleKicker, { autoAlpha: 0, y: 10 });
+      gsap.set(subtitleLines, { autoAlpha: 0, y: 8 });
+      gsap.set(primaryCta, { autoAlpha: 0, scale: 0.88, y: 10 });
+      gsap.set(levelsPreview, { autoAlpha: 0, y: 18 });
+      subtitleLines.forEach((line, index) => {
+        line.textContent = HERO_SUBTITLE_BOOT_LINES[index] ?? "";
+      });
+
+      const tl = gsap.timeline();
+      const titleCharStagger = 0.074;
+      const titleSequenceDuration =
+        (titleChars.length - 1) * titleCharStagger + 0.126;
+      titleChars.forEach((char, index) => {
+        tl.set(char, { opacity: 0 }, 0)
+          .to(char, { duration: 0.032, opacity: 1 }, index * titleCharStagger)
+          .to(
+            char,
+            { duration: 0.018, opacity: 0.3 },
+            index * titleCharStagger + 0.032,
+          )
+          .to(
+            char,
+            {
+              duration: 0.06,
+              opacity: 1,
+              textShadow:
+                "0 0 10px rgba(0, 255, 102, 0.95), 0 0 26px rgba(20, 241, 149, 0.3)",
+            },
+            index * titleCharStagger + 0.048,
+          );
+      });
+
+      tl.to(
+        titleKicker,
+        {
+          duration: 0.55,
+          ease: "power2.out",
+          autoAlpha: 1,
+          y: 0,
+        },
+        titleSequenceDuration + 0.12,
+      );
+
+      const subtitleLineStagger = 0.8;
+      const subtitleDecodeDuration = 1.5;
+      const subtitleStartAt = titleSequenceDuration + 0.67;
+      subtitleLines.forEach((line, index) => {
+        const lineStartAt = subtitleStartAt + index * subtitleLineStagger;
+        tl.to(
+          line,
+          {
+            duration: 0.35,
+            ease: "power2.out",
+            autoAlpha: 1,
+            y: 0,
+          },
+          lineStartAt,
+        ).to(
+          line,
+          {
+            duration: subtitleDecodeDuration,
+            ease: "none",
+            text: {
+              chars: "█▓▒░",
+              value: HERO_SUBTITLE_LINES[index] ?? "",
+            } as { chars: string; value: string },
+          },
+          lineStartAt,
+        );
+      });
+
+      const subtitleEndAt =
+        subtitleStartAt +
+        (subtitleLines.length - 1) * subtitleLineStagger +
+        subtitleDecodeDuration;
+      const ctaStartAt = subtitleEndAt + 0.18;
+      const levelsStartAt = ctaStartAt + 0.16;
+      const dynamicLoopsStartAt = levelsStartAt + 0.85;
+
+      tl.to(
+        primaryCta,
+        {
+          duration: 0.46,
+          ease: "back.out(1.7)",
+          autoAlpha: 1,
+          scale: 1,
+          y: 0,
+        },
+        ctaStartAt,
+      ).to(
+        levelsPreview,
+        {
+          duration: 0.85,
+          ease: "power2.out",
+          autoAlpha: 1,
+          y: 0,
+        },
+        levelsStartAt,
+      );
+
+      gsap.set(titleChars, {
+        delay: dynamicLoopsStartAt,
+        textShadow:
+          "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)",
+      });
+      gsap.fromTo(
+        titleChars,
+        {
+          textShadow:
+            "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)",
+        },
+        {
+          delay: dynamicLoopsStartAt,
+          duration: 2.8,
+          ease: "sine.inOut",
+          repeat: -1,
+          stagger: 0,
+          textShadow:
+            "0 0 10px rgba(0, 255, 102, 0.46), 0 0 24px rgba(20, 241, 149, 0.18)",
+          yoyo: true,
+        },
+      );
+
+      gsap
+        .timeline({
+          delay: dynamicLoopsStartAt + 0.35,
+          repeat: -1,
+          repeatDelay: 2.65,
+        })
+        .to(subtitleLines, {
+          duration: 0.05,
+          ease: "none",
+          filter: "blur(0.4px)",
+          skewX: 0.7,
+          stagger: 0.025,
+          textShadow:
+            "1px 0 rgba(20, 241, 149, 0.34), -1px 0 rgba(153, 69, 255, 0.22)",
+          x: 1,
+        })
+        .to(subtitleLines, {
+          duration: 0.04,
+          ease: "none",
+          filter: "blur(0px)",
+          skewX: -0.55,
+          stagger: 0.02,
+          textShadow:
+            "-1px 0 rgba(20, 241, 149, 0.28), 1px 0 rgba(153, 69, 255, 0.18)",
+          x: -1,
+        })
+        .to(subtitleLines, {
+          duration: 0.06,
+          ease: "none",
+          filter: "none",
+          skewX: 0,
+          textShadow: "none",
+          x: 0,
+        });
+    }, heroRootRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  const handleRequestBetaAccess = () => {
+    if (enableAppEntry && onPlayNow) {
+      onPlayNow();
+      return;
+    }
+
+    window.location.assign("https://beta.solbreach.com/onboarding");
+  };
   const heroSlides = [
     {
       code: `#[derive(Accounts)]
@@ -130,57 +359,86 @@ Bind collateral mint and vault accounts to protocol config.`,
 
   return (
     <section className="space-y-10">
-      <div className="mx-auto max-w-4xl space-y-7 text-center">
-        <h1 className="mx-auto max-w-5xl text-balance py-6 text-5xl font-medium leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
-          <span className="block text-[#14f195] drop-shadow-[0_0_12px_rgba(20,241,149,0.14)] [text-shadow:0_0_12px_rgba(20,241,149,0.12),0_0_28px_rgba(20,241,149,0.05)]">
-            Security Training Layer
+      <div ref={heroRootRef} className="mx-auto max-w-4xl space-y-4 text-center">
+        <h1 className="mx-auto max-w-5xl text-balance pb-2 pt-6 text-5xl font-medium leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
+          <span
+            ref={heroTitleLineRef}
+            className="block text-[#14f195] drop-shadow-[0_0_12px_rgba(20,241,149,0.14)] [text-shadow:0_0_12px_rgba(20,241,149,0.12),0_0_28px_rgba(20,241,149,0.05)]"
+            aria-label={HERO_TITLE}
+          >
+            {HERO_TITLE.split("").map((char, index) => (
+              <span
+                key={`${char}-${index}`}
+                className="landing-hero-title-char inline-block"
+                aria-hidden="true"
+              >
+                {char === " " ? "\u00a0" : char}
+              </span>
+            ))}
           </span>
-          <span className="mt-2 block">for Solana builders</span>
+          <span ref={heroTitleKickerRef} className="mt-2 block">
+            for Solana builders
+          </span>
         </h1>
-        <p className="mx-auto max-w-4xl text-base leading-8 text-muted sm:text-lg">
-          <span className="block">
-            Practice finding real security issues, prove they matter,
-          </span>
-          <span className="block">
-            and learn how to fix vulnerable Solana programs before shipping to
-            production.
-          </span>
-        </p>
+        <div
+          className="mx-auto max-w-4xl space-y-2 font-mono text-sm leading-7 text-white sm:text-base"
+          aria-label={HERO_SUBTITLE_LINES.join(" ")}
+        >
+          {HERO_SUBTITLE_LINES.map((line, index) => (
+            <p
+              key={line}
+              ref={(node) => {
+                heroSubtitleLineRefs.current[index] = node;
+              }}
+              className="line"
+              aria-hidden="true"
+            >
+              {HERO_SUBTITLE_BOOT_LINES[index]}
+            </p>
+          ))}
+        </div>
 
-        <a
-          href="https://beta.solbreach.com/onboarding"
-          className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,box-shadow,transform] hover:bg-[#8b35f6] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        <button
+          ref={heroPrimaryCtaRef}
+          type="button"
+          onClick={handleRequestBetaAccess}
+          className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,transform,box-shadow] hover:bg-[#8b35f6] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Request Beta Access
           <ArrowRight
             className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
             aria-hidden="true"
           />
-        </a>
+        </button>
       </div>
 
-      <HeroProductCarousel
-        activeSlide={activeHeroSlide}
-        onSelectSlide={setActiveHeroSlide}
-        slides={heroSlides}
-      />
+      <div ref={heroLevelsPreviewRef}>
+        <HeroProductCarousel
+          activeSlide={activeHeroSlide}
+          onSelectSlide={setActiveHeroSlide}
+          slides={heroSlides}
+        />
+      </div>
 
       <div className="max-w-3xl text-left">
         <h2
           id="feature-showcase-title"
           className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl"
         >
-          Inspect, exploit, verify, and report.
+          Build your security mindset
         </h2>
         <p className="mt-4 text-base leading-7 text-muted sm:text-lg">
-          Build security judgment through guided Vulnerability Modules and
-          applied Research Labs.
+          Develop the judgement to identify, prove, and communicate real security
+          risks.
         </p>
       </div>
 
       <FeatureShowcaseSection />
       <PartnerTrustSection />
-      <LandingCtaSection documentationUrl={resolvedDocumentationUrl} />
+      <LandingCtaSection
+        onGetStarted={handleRequestBetaAccess}
+        documentationUrl={resolvedDocumentationUrl}
+      />
     </section>
   );
 }
@@ -224,7 +482,13 @@ function PartnerTrustSection() {
   );
 }
 
-function LandingCtaSection({ documentationUrl }: { documentationUrl: string }) {
+function LandingCtaSection({
+  onGetStarted,
+  documentationUrl,
+}: {
+  onGetStarted: () => void;
+  documentationUrl: string;
+}) {
   return (
     <section className="relative z-20 -mb-36 pb-0 pt-10 sm:-mb-44 sm:pt-14">
       <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-card/88 px-6 py-10 shadow-[0_38px_130px_-100px_rgba(20,241,149,0.42),0_36px_120px_-104px_rgba(153,69,255,0.48)] sm:px-10 lg:grid lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-10 lg:px-12 lg:py-12">
@@ -253,16 +517,17 @@ function LandingCtaSection({ documentationUrl }: { documentationUrl: string }) {
           </p>
 
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-            <a
-              href="https://beta.solbreach.com/onboarding"
-              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,box-shadow,transform] hover:bg-[#8b35f6] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            <button
+              type="button"
+              onClick={onGetStarted}
+              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,transform,box-shadow] hover:bg-[#8b35f6] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Request Beta Access
               <ArrowRight
                 className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
                 aria-hidden="true"
               />
-            </a>
+            </button>
             <a
               href={documentationUrl}
               target="_blank"
@@ -654,7 +919,7 @@ function FeatureShowcaseSection() {
         <FeaturePreview
           tint="mixed"
           title="Breach Rooms"
-          description="Unguided audit environment to obtain first-flight experiences with an auditor tool-kit."
+          description="Audit environment designed to obtain first-flight experiences and learn to rely on the auditor tool-kit."
         >
           <BreachRoomsPreview />
         </FeaturePreview>
@@ -840,12 +1105,12 @@ function SecurityResearchLabPreview() {
         <CodeComparisonPanel
           sequenceOrder={1}
           title="Inspect Code"
-          lines={["Approved mint", "Canonical Vault", "Credited collateral"]}
+          lines={["Review code", "Check State", "Analyze Accounts"]}
         />
         <CodeComparisonPanel
           sequenceOrder={2}
           title="Exploit interface"
-          lines={["Credit increase", "Treasury decrease", "Finding report"]}
+          lines={["Prepare Attack", "Exploit Protocol", "Report Finding"]}
         />
       </div>
     </div>
@@ -903,7 +1168,8 @@ function BreachRoomsPreview() {
             Mini-audit environment
           </div>
           <p className="text-sm leading-6 text-muted">
-            Less-guided protocol review with scoped evidence and reporting.
+            Unguided protocol review with reduced scope for user audit
+            practicing.
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-medium text-muted">
