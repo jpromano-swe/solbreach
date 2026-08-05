@@ -1,9 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ClusterSelect } from "./cluster-select";
 import { HeaderCourseNav, type CourseLevelTarget } from "./course-nav";
-import { ThemeToggle } from "./theme-toggle";
 import type { RootSection } from "../lib/hooks/use-level-route";
 import type { LevelsView } from "../lib/levels/course-status";
 
@@ -55,7 +53,6 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
-          <ClusterSelect />
           {walletStatus === "connected" ? (
             <button
               type="button"
@@ -69,7 +66,6 @@ export function AppHeader({
               My Profile
             </button>
           ) : null}
-          <ThemeToggle />
         </div>
       </div>
     </header>
