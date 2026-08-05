@@ -3,10 +3,10 @@
 import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import {
+  Check,
   Cpu,
   FileCode2,
   LockKeyhole,
-  Send,
   ShieldCheck,
   Sparkles,
   Zap,
@@ -40,12 +40,35 @@ const LANDING_RUST_CODE_KEYWORDS = new Set([
   "vec",
 ]);
 
+const PARTNER_LOGOS = [
+  {
+    name: "SuperteamAR",
+    src: "/partners_logos/lZw-I2Cb_400x400.jpg",
+  },
+  {
+    name: "Waylearn",
+    src: "/partners_logos/image-removebg-preview (4).png",
+  },
+  {
+    name: "Dev3Pack",
+    src: "/partners_logos/icon_transparent.png",
+  },
+];
+
 export function LandingPageSection({
+  documentationUrl,
   repositoryUrl,
 }: {
-  repositoryUrl: string;
+  documentationUrl?: string;
+  enableAppEntry?: boolean;
+  onPlayNow?: () => void;
+  repositoryUrl?: string;
 }) {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+  const resolvedDocumentationUrl =
+    documentationUrl ??
+    repositoryUrl ??
+    "https://solbreach.gitbook.io/documentation";
   const heroSlides = [
     {
       code: `#[derive(Accounts)]
@@ -62,59 +85,65 @@ pub struct DepositTokens<'info> {
     pub token_program: Program<'info, Token>,
 }`,
       highlightedLines: [6, 7],
-      label: "Vulnerabilities",
+      label: "Vulnerability Modules",
       panel: <HeroMissionStatusCard />,
       title: "levels/01-illusionist/lib.rs",
     },
     {
-      code: `pub fn execute_security_council_action(ctx: Context<AdminAction>) -> Result<()> {
-    require!(ctx.accounts.council.threshold >= 2, ErrorCode::Quorum);
-
-    let action = ctx.accounts.pending_action.load()?;
-    action.execute_without_timelock()?;
-
-    ctx.accounts.market.update_oracle(action.oracle)?;
-    ctx.accounts.market.enable_collateral(action.mint)?;
+      code: `pub fn deposit_collateral(
+    position: &mut Position,
+    collateral: &TokenAccount,
+    vault: &TokenAccount,
+) -> Result<()> {
+    position.credited_collateral = position
+        .credited_collateral
+        .saturating_add(collateral.amount);
 
     Ok(())
 }`,
-      highlightedLines: [4, 6, 7],
+      highlightedLines: [6, 7, 8],
       label: "Research Labs",
       panel: <HeroResearchLabPanel />,
-      title: "research-labs/governance-takeover.rs",
+      title: "research-labs/rl1/account-substitution.rs",
     },
     {
-      code: `pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
-    let vault = &mut ctx.accounts.vault;
+      code: `# Account Substitution
 
-    require!(vault.balance >= amount, ErrorCode::InsufficientFunds);
+Severity: Critical
+Likelihood: High
 
-    vault.balance -= amount;
-    transfer_to_user(ctx.accounts.user.key(), amount)?;
+Root cause:
+The deposit path trusts caller-supplied collateral accounts.
 
-    Ok(())
-}`,
-      highlightedLines: [4, 6, 7],
-      label: "Reviews",
-      panel: <HeroReviewRoomPanel />,
-      title: "review-room/finding-target.rs",
+Proof of impact:
+Illegitimate credit enabled a treasury withdrawal.
+
+Mitigation:
+Bind collateral mint and vault accounts to protocol config.`,
+      highlightedLines: [3, 4, 7, 10],
+      label: "Audit Reports",
+      panel: <HeroAuditReportPanel />,
+      title: "research-labs/rl1/audit-report.md",
     },
   ];
 
   return (
     <section className="space-y-10">
       <div className="mx-auto max-w-4xl space-y-7 text-center">
-        <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl lg:text-7xl">
-          Master Solana Programs{" "}
-          <span className="text-[#14f195] drop-shadow-[0_0_28px_rgba(20,241,149,0.22)]">
-            Security
+        <h1 className="mx-auto max-w-5xl text-balance py-6 text-5xl font-medium leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
+          <span className="block text-[#14f195] drop-shadow-[0_0_12px_rgba(20,241,149,0.14)] [text-shadow:0_0_12px_rgba(20,241,149,0.12),0_0_28px_rgba(20,241,149,0.05)]">
+            Security Training Layer
           </span>
-          .
+          <span className="mt-2 block">for Solana builders</span>
         </h1>
-        <p className="mx-auto max-w-3xl text-base leading-8 text-muted sm:text-lg">
-          Hands-on solana programs security wargame. Exploit real
-          vulnerabilities, learn from past hacks, participate on review training
-          and earn verifiable certifications.
+        <p className="mx-auto max-w-4xl text-base leading-8 text-muted sm:text-lg">
+          <span className="block">
+            Practice finding real security issues, prove they matter,
+          </span>
+          <span className="block">
+            and learn how to fix vulnerable Solana programs before shipping to
+            production.
+          </span>
         </p>
 
         <button
@@ -138,63 +167,106 @@ pub struct DepositTokens<'info> {
           id="feature-showcase-title"
           className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl"
         >
-          Exploit, analyze, and report
+          Inspect, exploit, verify, and report.
         </h2>
         <p className="mt-4 text-base leading-7 text-muted sm:text-lg">
-          Train the fundamentals of security workflow on Solana
+          Build security judgment through guided Vulnerability Modules and
+          applied Research Labs.
         </p>
       </div>
 
       <FeatureShowcaseSection />
-      <LandingCtaSection repositoryUrl={repositoryUrl} />
+      <PartnerTrustSection />
+      <LandingCtaSection documentationUrl={resolvedDocumentationUrl} />
     </section>
   );
 }
 
-function LandingCtaSection({
-  repositoryUrl,
-}: {
-  repositoryUrl: string;
-}) {
+function PartnerTrustSection() {
   return (
-    <section className="grid items-center gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="flex min-h-[360px] items-center justify-center">
-        <Image
-          src="/solana_logo_nobg.png"
-          alt="Solana logo"
-          width={1254}
-          height={1254}
-          className="h-auto w-[min(76%,360px)] drop-shadow-[0_32px_80px_rgba(20,241,149,0.18)]"
-          priority={false}
-        />
-      </div>
-
-      <div className="max-w-xl lg:ml-auto">
-        <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-          Start your Solana security researcher journey today
+    <section
+      className="relative isolate overflow-hidden pb-16 pt-24 sm:pb-20 sm:pt-32"
+      aria-labelledby="partner-trust-title"
+    >
+      <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
+        <h2
+          id="partner-trust-title"
+          className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl"
+        >
+          Trusted by leading teams worldwide
         </h2>
-        <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
-          Open the wargame, inspect vulnerable programs, complete on-chain
-          objectives, and turn each exploit into review-ready proof.
-        </p>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 opacity-90"
-          >
-            Beta Test Closed
-          </button>
-          <a
-            href={repositoryUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-card/80 px-6 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Read Docs
-          </a>
+        <div className="mt-20 grid gap-12 sm:grid-cols-3 sm:gap-14">
+          {PARTNER_LOGOS.map((partner, index) => (
+            <div
+              className="solbreach-partner-float flex flex-col items-center gap-5"
+              data-float-index={index}
+              key={partner.name}
+            >
+              <Image
+                src={partner.src}
+                alt={`${partner.name} logo`}
+                width={192}
+                height={192}
+                className="h-32 w-32 object-contain drop-shadow-[0_22px_54px_rgba(0,0,0,0.45)] sm:h-44 sm:w-44 lg:h-48 lg:w-48"
+              />
+              <p className="text-base font-semibold text-foreground">
+                {partner.name}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LandingCtaSection({ documentationUrl }: { documentationUrl: string }) {
+  return (
+    <section className="relative z-20 -mb-36 pb-0 pt-10 sm:-mb-44 sm:pt-14">
+      <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-card/88 px-6 py-10 shadow-[0_38px_130px_-100px_rgba(20,241,149,0.42),0_36px_120px_-104px_rgba(153,69,255,0.48)] sm:px-10 lg:grid lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-10 lg:px-12 lg:py-12">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_46%_60%_at_18%_45%,rgba(20,241,149,0.07),transparent_70%),radial-gradient(ellipse_52%_58%_at_78%_18%,rgba(153,69,255,0.06),transparent_68%)]"
+        />
+        <div className="relative flex min-h-[220px] items-center justify-center lg:min-h-[300px]">
+          <Image
+            src="/solana_logo_nobg.png"
+            alt="Solana logo"
+            width={1254}
+            height={1254}
+            className="h-auto w-[min(66%,260px)] drop-shadow-[0_24px_56px_rgba(20,241,149,0.1)] lg:w-[min(72%,310px)]"
+            priority={false}
+          />
+        </div>
+
+        <div className="relative mx-auto max-w-2xl text-center lg:mx-0 lg:text-left">
+          <h2 className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+            Practice the full Solana security workflow.
+          </h2>
+          <p className="mt-5 text-base leading-7 text-muted sm:text-lg">
+            Inspect vulnerable code, prove what breaks, and turn your evidence
+            into a clear finding.
+          </p>
+
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 opacity-90"
+            >
+              Beta Test Closed
+            </button>
+            <a
+              href={documentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background/80 px-6 text-sm font-medium text-foreground transition-[background-color,transform] hover:bg-accent active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Read Documentation
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -299,41 +371,37 @@ function HeroResearchLabPanel() {
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-              Research lab
+              Research Labs
             </p>
             <h3 className="mt-3 text-xl font-semibold tracking-[-0.05em]">
-              Governance Takeover
+              RL1: Account Substitution
             </h3>
           </div>
-          <span className="w-fit rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-red-100">
-            Critical
+          <span className="w-fit rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-200">
+            Intermediate
           </span>
         </div>
 
         <div className="mt-5 space-y-3 text-sm leading-6 text-muted">
           <p>
-            Research social engineering and durable nonce abuse that escalates
-            governance authority.
-          </p>
-          <p>
-            Review focus: governance flow, transaction freshness, authority
-            boundaries, and proposal execution.
+            Investigate whether non-canonical collateral accounts can create
+            illegitimate credit and withdraw treasury value.
           </p>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2 lg:flex-nowrap">
-          <HeroMetric label="Date" value="Apr 1, 2026" />
-          <HeroMetric label="Time" value="3-5h" />
-          <HeroMetric label="Class" value="Governance" />
+          <HeroMetric label="Level" value="Intermediate" />
+          <HeroMetric label="Time" value="45-75 min" />
+          <HeroMetric label="Reward" value="250 XP" />
         </div>
 
         <div className="mt-5 rounded-[18px] border border-border bg-background/80 p-4">
           <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
-            Reviewer checklist
+            Investigation checklist
           </p>
           <div className="mt-4 space-y-3 text-sm text-muted">
-            <ChecklistItem text="Can stale pre-signed governance transactions execute after context changes?" />
-            <ChecklistItem text="Can two signers authorize critical admin powers without delay?" />
+            <ChecklistItem text="Approved mint and canonical vault binding" />
+            <ChecklistItem text="Credit increase and treasury balance decrease" />
           </div>
         </div>
       </div>
@@ -341,35 +409,41 @@ function HeroResearchLabPanel() {
   );
 }
 
-function HeroReviewRoomPanel() {
+function HeroAuditReportPanel() {
   return (
     <div className="space-y-3">
-      <div className="rounded-[24px] border border-border bg-card/95 p-5 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
+      <div className="rounded-[24px] border border-border bg-card/95 p-4 shadow-[0_30px_90px_-48px_rgba(0,0,0,0.9)]">
         <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-          Review room
+          Audit Report
         </p>
-        <div className="mt-5 space-y-4">
-          <HeroReviewField label="Title" value="Unchecked CPI target" />
-          <HeroReviewField
-            label="Summary"
-            value="The program lets users choose the CPI target, allowing malicious instructions to run with delegated authority."
-          />
+        <div className="mt-4 space-y-3">
+          <HeroReviewField compact label="Title" value="Account Substitution" />
           <div className="flex flex-wrap gap-2 lg:flex-nowrap">
-            <HeroMetric label="Severity" value="High" tone="red" />
-            <HeroMetric label="Impact" value="Medium" tone="amber" />
-            <HeroMetric label="Likelihood" value="Low" tone="cyan" />
+            <HeroMetric label="Severity" value="Critical" tone="red" />
+            <HeroMetric label="Likelihood" value="High" tone="amber" />
           </div>
           <HeroReviewField
-            label="Recommendation"
-            value="Allowlist trusted program IDs and validate CPI accounts before forwarding signer privileges."
+            compact
+            label="Root cause"
+            value="The deposit path does not bind caller-supplied collateral accounts to the approved mint and vault."
+          />
+          <HeroReviewField
+            compact
+            label="Proof of impact"
+            value="Illegitimate credit enabled withdrawal of treasury liquidity."
+          />
+          <HeroReviewField
+            compact
+            label="Mitigation"
+            value="Validate the collateral mint and canonical vault before crediting a position."
           />
 
           <button
             type="button"
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <Send className="h-4 w-4" aria-hidden="true" />
-            Send review
+            <FileCode2 className="h-4 w-4" aria-hidden="true" />
+            Review Audit Report
           </button>
         </div>
       </div>
@@ -389,14 +463,13 @@ function HeroMissionStatusCard() {
             Level 1
           </p>
         </div>
-        <StatusChip>Armed</StatusChip>
+        <StatusChip>In progress</StatusChip>
       </div>
 
       <div className="mt-5 space-y-3">
-        <HeroStatusRow label="Cluster" value="devnet" />
-        <HeroStatusRow label="Wallet" value="9xQe...1b2C" />
-        <HeroStatusRow label="PDA state" value="Live" />
-        <HeroStatusRow label="Win condition" value="Ledger forged" />
+        <HeroStatusRow label="Modules" value="4 playable modules" />
+        <HeroStatusRow label="Progress" value="Wallet-bound progress" />
+        <HeroStatusRow label="Result" value="Impact verified" />
       </div>
 
       <div className="mt-5 space-y-2">
@@ -408,7 +481,7 @@ function HeroMissionStatusCard() {
           <div className="h-full w-full rounded-full bg-[linear-gradient(90deg,rgba(153,69,255,0.95),rgba(20,241,149,0.95))]" />
         </div>
         <p className="text-sm leading-6 text-muted">
-          Exploit objective verified. Wallet-bound certification is ready.
+          Complete the module flow to unlock its wallet-bound badge.
         </p>
       </div>
 
@@ -416,7 +489,7 @@ function HeroMissionStatusCard() {
         type="button"
         className="mt-6 min-h-12 w-full rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white transition hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        Mint certification
+        Claim Badge
       </button>
     </div>
   );
@@ -466,9 +539,7 @@ function HeroCodeWindow({
                 <span className="select-none text-right text-[11px] text-muted/55">
                   {lineNumber}
                 </span>
-                <span className="whitespace-pre">
-                  {renderRustLine(line)}
-                </span>
+                <span className="whitespace-pre">{renderRustLine(line)}</span>
               </span>
             );
           })}
@@ -508,13 +579,27 @@ function HeroMetric({
   );
 }
 
-function HeroReviewField({ label, value }: { label: string; value: string }) {
+function HeroReviewField({
+  compact = false,
+  label,
+  value,
+}: {
+  compact?: boolean;
+  label: string;
+  value: string;
+}) {
   return (
     <label className="block">
       <span className="text-[11px] uppercase tracking-[0.26em] text-muted">
         {label}
       </span>
-      <span className="mt-2 block rounded-[16px] border border-border bg-background/80 px-4 py-3 text-sm text-foreground">
+      <span
+        className={`block border border-border bg-background/80 text-foreground ${
+          compact
+            ? "mt-1.5 rounded-xl px-3 py-2 text-xs leading-5"
+            : "mt-2 rounded-[16px] px-4 py-3 text-sm"
+        }`}
+      >
         {value}
       </span>
     </label>
@@ -537,7 +622,7 @@ function HeroStatusRow({ label, value }: { label: string; value: string }) {
 function FeatureShowcaseSection() {
   return (
     <section
-      className="relative overflow-hidden bg-background/80 shadow-[0_36px_120px_-90px_rgba(20,241,149,0.45),0_28px_100px_-90px_rgba(153,69,255,0.55)]"
+      className="relative overflow-hidden bg-background/80 shadow-[0_36px_120px_-90px_rgba(20,241,149,0.45),0_28px_100px_-90px_rgba(153,69,255,0.55)] [mask-image:linear-gradient(to_bottom,#000_0%,#000_78%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,#000_0%,#000_78%,transparent_100%)]"
       aria-labelledby="feature-showcase-title"
       style={{
         backgroundImage: [
@@ -549,24 +634,24 @@ function FeatureShowcaseSection() {
       <div className="grid divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
         <FeaturePreview
           tint="purple"
-          title="Exploit Foundations"
-          description="Interact with vulnerable devnet programs, complete exploit objectives, and unlock wallet-bound certifications."
+          title="Vulnerability Modules"
+          description="Learn one Solana exploit family at a time through guided, wallet-bound challenges."
         >
           <ExploitFoundationsPreview />
         </FeaturePreview>
         <FeaturePreview
           tint="green"
-          title="Security Research Labs"
-          description="Study structured research scenarios side-by-side while tracing real-world Solana bug patterns."
+          title="Research Labs"
+          description="Inspect protocol, exploit it, verify impact, and build a finding report."
         >
           <SecurityResearchLabPreview />
         </FeaturePreview>
         <FeaturePreview
           tint="mixed"
-          title="Arena & Reviewer Training"
-          description="Practice professional findings and team review rooms built for onboarding, assessment, and readiness."
+          title="Breach Rooms"
+          description="Unguided audit environment to obtain first-flight experiences with an auditor tool-kit."
         >
-          <ArenaTrainingPreview />
+          <BreachRoomsPreview />
         </FeaturePreview>
       </div>
 
@@ -574,38 +659,38 @@ function FeatureShowcaseSection() {
         <FeatureMiniItem
           icon={<Zap className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
-          title="Real Vulnerable Programs"
-          body="Intentionally vulnerable Solana programs deployed on devnet."
+          title="Controlled Vulnerable Programs"
+          body="Practice against vulnerable Solana programs in safe labs."
         />
         <FeatureMiniItem
           icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Exploit Verification"
-          body="On-chain objectives with wallet-bound certifications."
+          title="Abstracted Vectors"
+          body="Train reusable exploit patterns beyond a single protocol implementation."
         />
         <FeatureMiniItem
           icon={<FileCode2 className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
-          title="Secure Comparisons"
-          body="Insecure implementations beside patched versions."
+          title="Account and State Evidence"
+          body="Trace accounts, PDAs, authorities, and before-and-after protocol state."
         />
         <FeatureMiniItem
           icon={<LockKeyhole className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Bug Patterns"
-          body="Arbitrary CPI, PDA misuse, signer confusion, and authority bugs."
+          title="Solana Bug Patterns"
+          body="Account substitution, PDA authority misuse, arbitrary CPI, and signer or authority failures."
         />
         <FeatureMiniItem
           icon={<Cpu className="h-4 w-4" aria-hidden="true" />}
           tint="purple"
-          title="Security Writeups"
-          body="Severity, exploit reasoning, impact, and remediation practice."
+          title="Audit-Style Reporting"
+          body="Connect root cause, exploit path, evidence, impact, and mitigation."
         />
         <FeatureMiniItem
           icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
           tint="green"
-          title="Review Rooms"
-          body="Challenge environments for first-flights, and review writeup training."
+          title="Wallet-Bound Certificates"
+          body="Record validated module completion against the learner wallet."
         />
       </div>
     </section>
@@ -629,10 +714,11 @@ function FeaturePreview({
       : tint === "green"
         ? "bg-[radial-gradient(ellipse_70%_42%_at_50%_0%,rgba(20,241,149,0.08),transparent_72%)]"
         : "bg-[radial-gradient(ellipse_70%_42%_at_30%_0%,rgba(153,69,255,0.08),transparent_70%),radial-gradient(ellipse_70%_42%_at_70%_0%,rgba(20,241,149,0.07),transparent_70%)]";
+  const paddingClass = tint === "green" ? "px-4 sm:px-5" : "px-6 sm:px-8";
 
   return (
     <article
-      className={`flex min-h-[520px] flex-col items-center justify-between px-6 py-12 text-center sm:px-8 ${tintClass}`}
+      className={`landing-feature-hover relative flex min-h-[520px] flex-col items-center justify-between py-12 text-center ${paddingClass} ${tintClass}`}
     >
       <div className="flex min-h-[300px] w-full items-start justify-center">
         {children}
@@ -662,16 +748,20 @@ function FeatureMiniItem({
 }) {
   const tintClass =
     tint === "purple"
-      ? "text-[#b184ff] bg-[linear-gradient(180deg,rgba(153,69,255,0.045),transparent)]"
-      : "text-[#14f195] bg-[linear-gradient(180deg,rgba(20,241,149,0.04),transparent)]";
+      ? "landing-feature-mini-purple text-[#b184ff] bg-[linear-gradient(180deg,rgba(153,69,255,0.045),transparent)]"
+      : "landing-feature-mini-green text-[#14f195] bg-[linear-gradient(180deg,rgba(20,241,149,0.04),transparent)]";
 
   return (
-    <article className={`px-5 py-7 text-left ${tintClass}`}>
-      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+    <article
+      className={`landing-feature-hover landing-feature-mini relative px-5 py-7 text-left ${tintClass}`}
+    >
+      <div className="relative z-10 flex items-center gap-2 text-sm font-semibold text-foreground">
         {icon}
         <h3>{title}</h3>
       </div>
-      <p className="mt-4 text-sm leading-6 text-muted">{body}</p>
+      <p className="landing-feature-mini-body relative z-10 mt-4 text-sm leading-6 text-muted">
+        {body}
+      </p>
     </article>
   );
 }
@@ -683,17 +773,25 @@ function ExploitFoundationsPreview() {
         <div className="flex items-start justify-between gap-6">
           <div>
             <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background">
-              <Zap className="h-4 w-4 text-foreground" aria-hidden="true" />
+              <FileCode2
+                className="h-4 w-4 text-foreground"
+                aria-hidden="true"
+              />
             </div>
-            <p className="mt-7 text-xs font-medium text-muted">CERTIFICATIONS</p>
-            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-              4 exploits
+            <p className="mt-7 text-xs font-medium text-muted">
+              THE ILLUSIONIST
             </p>
-            <p className="mt-1 text-xs text-muted">2 certified</p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              4 playable modules
+            </p>
+            <p className="mt-1 text-xs text-muted">Wallet-bound progress</p>
           </div>
-          <div className="rounded-md border border-border bg-background p-3 shadow-sm">
+          <div className="landing-certificate-success rounded-md border border-border bg-background p-3 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/60" />
+              <span
+                className="landing-status-dot-pulse h-2.5 w-2.5 rounded-full bg-emerald-400/60"
+                aria-hidden="true"
+              />
               <span className="h-1.5 w-14 rounded-full bg-muted/20" />
             </div>
             <div className="space-y-2">
@@ -707,13 +805,19 @@ function ExploitFoundationsPreview() {
             />
           </div>
         </div>
-        <div className="mt-7 grid grid-cols-[72px_1fr] gap-y-3 text-sm text-muted">
-          <span>Setup</span>
-          <span className="mt-1 h-2 w-20 rounded-full bg-muted/15" />
-          <span>Verify</span>
-          <span className="mt-1 h-2 w-28 rounded-full bg-muted/15" />
-          <span>Mint</span>
-          <span className="mt-1 h-2 w-16 rounded-full bg-muted/15" />
+        <div className="mt-7 space-y-3 text-sm text-muted">
+          <div className="landing-status-cascade-row grid grid-cols-[72px_1fr]">
+            <span>Status</span>
+            <span className="text-xs text-foreground">In progress</span>
+          </div>
+          <div className="landing-status-cascade-row grid grid-cols-[72px_1fr]">
+            <span>Result</span>
+            <span className="text-xs text-foreground">Impact verified</span>
+          </div>
+          <div className="landing-status-cascade-row grid grid-cols-[72px_1fr]">
+            <span>Reward</span>
+            <span className="text-xs text-foreground">Claim badge</span>
+          </div>
         </div>
       </div>
     </div>
@@ -722,19 +826,21 @@ function ExploitFoundationsPreview() {
 
 function SecurityResearchLabPreview() {
   return (
-    <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
-      <div className="flex items-center gap-2 bg-accent px-6 py-4 text-left text-sm font-medium text-foreground">
+    <div className="flex h-auto min-h-[320px] w-full max-w-[420px] flex-col overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)] sm:h-[320px]">
+      <div className="flex items-center gap-2 bg-accent px-5 py-4 text-left text-sm font-medium text-foreground">
         <FileCode2 className="h-3.5 w-3.5" aria-hidden="true" />
-        Governance Takeover Research Lab
+        RL1: Account Substitution
       </div>
-      <div className="grid flex-1 gap-3 p-6 sm:grid-cols-2">
+      <div className="grid flex-1 gap-4 px-4 pb-7 pt-5 sm:grid-cols-2">
         <CodeComparisonPanel
-          title="Vulnerable"
-          lines={["unchecked CPI", "static PDA", "missing signer"]}
+          sequenceOrder={1}
+          title="Inspect Code"
+          lines={["Approved mint", "Canonical Vault", "Credited collateral"]}
         />
         <CodeComparisonPanel
-          title="Patched"
-          lines={["program guard", "user seeds", "authority check"]}
+          sequenceOrder={2}
+          title="Exploit interface"
+          lines={["Credit increase", "Treasury decrease", "Finding report"]}
         />
       </div>
     </div>
@@ -743,19 +849,29 @@ function SecurityResearchLabPreview() {
 
 function CodeComparisonPanel({
   lines,
+  sequenceOrder,
   title,
 }: {
   lines: string[];
+  sequenceOrder: 1 | 2;
   title: string;
 }) {
   return (
-    <div className="flex min-h-[170px] flex-col justify-center rounded-lg border border-border bg-background p-5 text-left">
-      <p className="text-xs font-medium text-foreground">{title}</p>
-      <div className="mt-5 space-y-2.5 font-mono text-[11px] leading-5 text-muted">
-        {lines.map((line) => (
-          <div key={line} className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-muted/30" />
-            <span>{line}</span>
+    <div
+      className={`landing-rl1-sequence-panel landing-rl1-sequence-panel-${sequenceOrder} flex min-h-[160px] flex-col justify-start rounded-xl border border-border bg-background px-4 py-5 text-left sm:min-h-[210px]`}
+    >
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <div className="mt-6 space-y-3 font-mono text-xs leading-5 text-muted">
+        {lines.map((line, index) => (
+          <div
+            key={line}
+            className={`landing-rl1-sequence-line landing-rl1-sequence-line-${index + 1} flex items-center gap-2`}
+          >
+            <span className="relative h-3 w-3 shrink-0" aria-hidden="true">
+              <span className="landing-rl1-sequence-dot absolute inset-0 m-auto h-1.5 w-1.5 rounded-full bg-muted/30" />
+              <Check className="landing-rl1-sequence-check absolute inset-0 h-3 w-3 text-[#14f195]" />
+            </span>
+            <span className="landing-rl1-sequence-label">{line}</span>
           </div>
         ))}
       </div>
@@ -763,39 +879,37 @@ function CodeComparisonPanel({
   );
 }
 
-function ArenaTrainingPreview() {
+function BreachRoomsPreview() {
   return (
     <div className="flex h-[275px] w-full max-w-[360px] flex-col overflow-hidden rounded-[18px] border border-border bg-card text-left shadow-[0_24px_70px_-48px_rgba(0,0,0,0.55)]">
       <div className="flex items-center justify-between border-b border-border bg-accent px-6 py-4">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-          Breach Room
+          <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
+          Breach Rooms
         </div>
-        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground">
-          Live
+        <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200">
+          TBD
         </span>
       </div>
       <div className="flex flex-1 flex-col justify-center gap-4 p-6">
-        <div className="min-h-[128px] rounded-lg border border-border bg-background p-5">
+        <div className="landing-breach-room-shell min-h-[128px] rounded-lg border border-border bg-background p-5">
           <div className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
-            <Send className="h-4 w-4" aria-hidden="true" />
-            Sending review
+            <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+            Mini-audit environment
           </div>
-          <div className="space-y-2">
-            <span className="block h-1.5 w-40 rounded-full bg-muted/20" />
-            <span className="block h-1.5 w-28 rounded-full bg-muted/20" />
-            <span className="block h-1.5 w-36 rounded-full bg-muted/20" />
-          </div>
+          <p className="text-sm leading-6 text-muted">
+            Less-guided protocol review with scoped evidence and reporting.
+          </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-medium text-muted">
-          <span className="rounded-md border border-border bg-background px-2 py-2">
-            Severity
+          <span className="landing-breach-step landing-breach-step-1 landing-breach-step-interim rounded-md border border-border bg-background px-2 py-2">
+            Clone Repo
           </span>
-          <span className="rounded-md border border-border bg-background px-2 py-2">
-            Impact
+          <span className="landing-breach-step landing-breach-step-2 landing-breach-step-interim rounded-md border border-border bg-background px-2 py-2">
+            Inspect
           </span>
-          <span className="rounded-md border border-border bg-background px-2 py-2">
-            Likelihood
+          <span className="landing-breach-step landing-breach-step-3 landing-breach-step-report rounded-md border border-border bg-background px-2 py-2">
+            Report
           </span>
         </div>
       </div>
