@@ -16,7 +16,9 @@ function isLevelView(value: string | null): value is LevelId {
     value === "level0" ||
     value === "level1" ||
     value === "level2" ||
-    value === "level3"
+    value === "level3" ||
+    value === "level4" ||
+    value === "level5"
   );
 }
 

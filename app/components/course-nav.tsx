@@ -1,17 +1,23 @@
 import { useCallback, useState, type ComponentType } from "react";
 import {
   ChevronDown,
-  CopyX,
   Cpu,
   FileCode2,
   LockKeyhole,
+  Recycle,
   ScanSearch,
   Send,
   ShieldCheck,
   Zap,
 } from "lucide-react";
 
-export type CourseLevelTarget = "level0" | "level1" | "level2" | "level3";
+export type CourseLevelTarget =
+  | "level0"
+  | "level1"
+  | "level2"
+  | "level3"
+  | "level4"
+  | "level5";
 
 type CourseMenuItem = {
   description: string;
@@ -54,13 +60,15 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
     items: [
       {
         icon: ScanSearch,
-        title: "The Shapeshifter",
-        description: "Data matching failures across mints, owners, vaults, and state",
+        target: "level4",
+        title: "The Mirror Trap",
+        description: "Mismatched stored account data across protocol roles",
       },
       {
-        icon: CopyX,
-        title: "The Mirror Trap",
-        description: "Duplicate mutable accounts alias separate protocol roles",
+        icon: Recycle,
+        target: "level5",
+        title: "The Time Traveler",
+        description: "Address reuse through unsafe PDA lifecycle handling",
       },
     ],
   },

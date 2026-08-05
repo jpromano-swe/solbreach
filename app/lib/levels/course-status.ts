@@ -1,4 +1,10 @@
-export type LevelId = "level0" | "level1" | "level2" | "level3";
+export type LevelId =
+  | "level0"
+  | "level1"
+  | "level2"
+  | "level3"
+  | "level4"
+  | "level5";
 export type LevelsView = "landing" | LevelId;
 export type LevelStatus =
   | "ready"
@@ -127,6 +133,22 @@ export function buildLevelTiles({
       title: "Trojan Horse",
       status: level3Status,
       summary: "Abuse arbitrary CPI and the forwarded guild signer.",
+    },
+    {
+      id: "level4",
+      index: "04",
+      label: "Data matching",
+      title: "Mirror Trap",
+      status: "ready",
+      summary: "Match stored account data before protocol state changes.",
+    },
+    {
+      id: "level5",
+      index: "05",
+      label: "Address reuse",
+      title: "Time Traveler",
+      status: "ready",
+      summary: "Reuse a deterministic PDA address through unsafe lifecycle handling.",
     },
   ];
 }

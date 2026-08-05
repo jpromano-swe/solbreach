@@ -59,7 +59,9 @@ function getMintState({
     level1: level1Completed,
     level2: level2Completed,
     level3: level3Completed,
-  }[activeLevel as "level1" | "level2" | "level3"];
+    level4: false,
+    level5: false,
+  }[activeLevel as "level1" | "level2" | "level3" | "level4" | "level5"];
 
   return {
     mintDisabled: true,
@@ -249,6 +251,42 @@ export function useActiveLevelStatus({
             {
               label: "Win condition",
               value: `${(level3State?.rewardAmount ?? 0n).toString()} / ${(level3State?.bountyAmount || LEVEL_3_DEFAULT_TARGET).toString()}`,
+            },
+          ],
+        };
+      case "level4":
+        return {
+          badge: "Frontend draft",
+          chipLabel,
+          ...mintState,
+          progressValue: 35,
+          rows: [
+            ...baseRows,
+            {
+              label: "Data state",
+              value: "Draft simulation",
+            },
+            {
+              label: "Win condition",
+              value: "Data checks mapped",
+            },
+          ],
+        };
+      case "level5":
+        return {
+          badge: "Frontend draft",
+          chipLabel,
+          ...mintState,
+          progressValue: 35,
+          rows: [
+            ...baseRows,
+            {
+              label: "PDA state",
+              value: "Draft simulation",
+            },
+            {
+              label: "Win condition",
+              value: "Address reuse mapped",
             },
           ],
         };

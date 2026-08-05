@@ -8,6 +8,7 @@ import { BadgeEarnedDialog } from "./components/badge-earned-dialog";
 import { BetaAccessSection } from "./components/beta-access-section";
 import { BreachRoomsSection } from "./components/breach-rooms-section";
 import { CertificateMintLoader } from "./components/certificate-mint-loader";
+import { FutureVulnerabilityPanel } from "./components/future-vulnerability-panel";
 import { GridBackground } from "./components/grid-background";
 import { LandingPageSection } from "./components/landing-page-section";
 import { Level1Panel } from "./components/level-1-panel";
@@ -1057,6 +1058,12 @@ export default function Home() {
                       level3Error={level3Error}
                       level3State={level3State}
                       onMint={activeLevelStatus.onMint}
+                      status={status}
+                    />
+                  ) : activeLevel === "level4" || activeLevel === "level5" ? (
+                    <FutureVulnerabilityPanel
+                      guide={activeGuide}
+                      levelId={activeLevel}
                       status={status}
                     />
                   ) : (

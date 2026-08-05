@@ -108,12 +108,50 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     },
   },
   {
-    id: "supply-chain",
+    id: "level-4",
+    target: "level4",
+    title: LEVEL_GUIDES.level4.missionTitle,
+    summary:
+      "Inspect mismatched stored data across market, position, vault, and collateral accounts.",
+    difficulty: "Advanced",
+    time: "45-60 min",
+    theme: "Data matching",
+    status: "available",
+    compact: {
+      cta: "Start level",
+      levelLabel: "LEVEL 4",
+      metadata: "Advanced · 45-60 min · Data matching",
+      summary:
+        "Find valid-looking accounts whose stored relationships do not match.",
+      title: "The Mirror Trap",
+    },
+  },
+  {
+    id: "level-5",
+    target: "level5",
+    title: LEVEL_GUIDES.level5.missionTitle,
+    summary:
+      "Map address reuse caused by unsafe PDA lifecycle and stale receipt recreation.",
+    difficulty: "Advanced",
+    time: "45-60 min",
+    theme: "Address reuse",
+    status: "available",
+    compact: {
+      cta: "Start level",
+      levelLabel: "LEVEL 5",
+      metadata: "Advanced · 45-60 min · Address reuse",
+      summary:
+        "Track how a PDA address can reappear and become trusted again.",
+      title: "The Time Traveler",
+    },
+  },
+  {
+    id: "future-module-1",
     title: "To Be Delivered",
     summary: "Future modules to be added",
     difficulty: "Advanced",
     time: "Coming soon",
-    theme: "Build trust",
+    theme: "Future track",
     status: "locked",
     compact: {
       imageSrc: "/vulnerabilities/11-to-be-delivered.png",
@@ -123,12 +161,12 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     },
   },
   {
-    id: "wallet-side",
+    id: "future-module-2",
     title: "To Be Delivered",
     summary: "Future modules to be added",
     difficulty: "Advanced",
     time: "Coming soon",
-    theme: "Client trust",
+    theme: "Future track",
     status: "locked",
     compact: {
       imageSrc: "/vulnerabilities/11-to-be-delivered.png",
@@ -162,7 +200,7 @@ export function VulnerabilitiesSection({
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-400">
             Learn Solana security through focused protocol scenarios that move
-            from lifecycle basics into exploit causality.
+            from account data relationships into exploit causality.
           </p>
         </div>
 
