@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import {
+  ArrowRight,
   Check,
   Cpu,
   FileCode2,
@@ -146,14 +147,16 @@ Bind collateral mint and vault accounts to protocol config.`,
           </span>
         </p>
 
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 shadow-none opacity-90"
+        <a
+          href="/onboarding"
+          className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,box-shadow,transform] hover:bg-[#8b35f6] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          Beta Test Closed
-        </button>
+          Request Beta Access
+          <ArrowRight
+            className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+            aria-hidden="true"
+          />
+        </a>
       </div>
 
       <HeroProductCarousel
@@ -250,14 +253,16 @@ function LandingCtaSection({ documentationUrl }: { documentationUrl: string }) {
           </p>
 
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="inline-flex min-h-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.06] px-6 text-sm font-medium text-zinc-400 opacity-90"
+            <a
+              href="/onboarding"
+              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,box-shadow,transform] hover:bg-[#8b35f6] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              Beta Test Closed
-            </button>
+              Request Beta Access
+              <ArrowRight
+                className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+                aria-hidden="true"
+              />
+            </a>
             <a
               href={documentationUrl}
               target="_blank"
