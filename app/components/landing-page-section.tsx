@@ -148,7 +148,7 @@ Bind collateral mint and vault accounts to protocol config.`,
         </p>
 
         <a
-          href="/onboarding"
+          href="https://beta.solbreach.com/onboarding"
           className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,box-shadow,transform] hover:bg-[#8b35f6] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Request Beta Access
@@ -254,7 +254,7 @@ function LandingCtaSection({ documentationUrl }: { documentationUrl: string }) {
 
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
             <a
-              href="/onboarding"
+              href="https://beta.solbreach.com/onboarding"
               className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-6 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-[background-color,box-shadow,transform] hover:bg-[#8b35f6] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Request Beta Access
