@@ -31,11 +31,46 @@ type BackendLevelCatalogItem = {
   uuid?: unknown;
 };
 
+type RequiredPdaMetadata = {
+  address: string;
+  label?: string;
+  seeds?: string[];
+};
+
+type BackendLevelSession = {
+  challenge_context?: Record<string, unknown> | null;
+  exploit_status?: string | null;
+  id?: string | null;
+};
+
+export type FutureLevelStartResponse = {
+  certification?: FutureLevelCertification | null;
+  challenge?: Record<string, unknown> | null;
+  challenge_context?: Record<string, unknown> | null;
+  execution?: Record<string, unknown> | null;
+  exploit_status?: string | null;
+  level?: Record<string, unknown>;
+  level_id?: string;
+  level_session_id?: string | null;
+  session?: BackendLevelSession | null;
+  state?: string;
+};
+
+type FutureLevelCertification = {
+  metadata?: Record<string, unknown>;
+  mint_status?: string;
+  slug?: string;
+  title?: string;
+  unlock_status?: string;
+};
+
 export type Level4Challenge = {
   challenge?: unknown;
   expected_collateral_mint?: string;
   exploit_parameters?: Record<string, unknown>;
   level4_state_pda?: string;
+  network?: "devnet" | string;
+  program_id?: string;
   level_session_id?: string;
   market_pda?: string;
   mismatched_collateral_mint?: string;
@@ -43,7 +78,7 @@ export type Level4Challenge = {
   mismatched_vault?: string;
   position_pda?: string;
   required_accounts?: string[];
-  required_pdas?: string[];
+  required_pdas?: Array<string | RequiredPdaMetadata>;
   user_collateral?: string;
   wallet_address?: string;
   collateral_vault?: string;
@@ -55,12 +90,14 @@ export type Level5Challenge = {
   expected_status_before?: "Archived" | "Closed" | string;
   exploit_parameters?: Record<string, unknown>;
   level5_state_pda?: string;
+  network?: "devnet" | string;
+  program_id?: string;
   level_session_id?: string;
   lifecycle_registry_pda?: string;
   order_id?: string;
   receipt_pda?: string;
   required_accounts?: string[];
-  required_pdas?: string[];
+  required_pdas?: Array<string | RequiredPdaMetadata>;
   wallet_address?: string;
 };
 
@@ -74,17 +111,13 @@ export type FutureLevelSetupResponse = {
 };
 
 export type FutureLevelStatusResponse = {
-  certification?: {
-    metadata?: Record<string, unknown>;
-    mint_status?: string;
-    slug?: string;
-    title?: string;
-    unlock_status?: string;
-  } | null;
+  certification?: FutureLevelCertification | null;
   challenge_context?: Partial<FutureLevelChallenge> | null;
   completed?: boolean;
   exploit_status?: string | null;
+  level?: Record<string, unknown>;
   level_id: string;
+  session?: BackendLevelSession | null;
   level_session_id?: string | null;
   state?: string;
   unlock_status?: string;
@@ -192,6 +225,47 @@ function readLevelSlug(level: BackendLevelCatalogItem) {
     : null;
 }
 
+export function getChallengeFromLevelResponse(
+  response: FutureLevelStartResponse | FutureLevelStatusResponse | null | undefined
+) {
+  const value = asRecord(response);
+  const challenge =
+    value.challenge && typeof value.challenge === "object"
+      ? asRecord(value.challenge)
+      : null;
+
+  return (
+    response?.challenge_context ??
+    challenge ??
+    response?.session?.challenge_context ??
+    null
+  ) as Partial<FutureLevelChallenge> | null;
+}
+
+export function getLevelSessionId(
+  response: FutureLevelStartResponse | FutureLevelStatusResponse | null | undefined
+) {
+  return response?.level_session_id ?? response?.session?.id ?? null;
+}
+
+export function getExploitStatus(
+  response: FutureLevelStartResponse | FutureLevelStatusResponse | null | undefined
+) {
+  return response?.exploit_status ?? response?.session?.exploit_status ?? null;
+}
+
+function withLevelSessionId(
+  challenge: Partial<FutureLevelChallenge> | null | undefined,
+  levelSessionId?: string | null
+) {
+  if (!challenge) return null;
+
+  return {
+    ...challenge,
+    level_session_id: levelSessionId ?? challenge.level_session_id,
+  } as FutureLevelChallenge;
+}
+
 export async function resolveFutureLevelBackendId(
   accessToken: string,
   levelId: FutureLevelId
@@ -229,7 +303,7 @@ export async function startFutureLevel(
   levelId: FutureLevelId
 ) {
   const backendLevelId = await resolveFutureLevelBackendId(accessToken, levelId);
-  return backendRequest(`/api/v1/levels/${backendLevelId}/start`, {
+  return backendRequest<FutureLevelStartResponse>(`/api/v1/levels/${backendLevelId}/start`, {
     accessToken,
     method: "POST",
   });
@@ -245,7 +319,7 @@ export async function setupFutureLevel({
   walletAddress: string;
 }) {
   const backendLevelId = await resolveFutureLevelBackendId(accessToken, levelId);
-  return backendRequest<FutureLevelSetupResponse>(
+  const response = await backendRequest<FutureLevelSetupResponse>(
     `/api/v1/levels/${backendLevelId}/setup`,
     {
       accessToken,
@@ -253,6 +327,13 @@ export async function setupFutureLevel({
       method: "POST",
     }
   );
+
+  return {
+    ...response,
+    challenge:
+      withLevelSessionId(response.challenge, response.level_session_id) ??
+      response.challenge,
+  };
 }
 
 export async function fetchFutureLevelBackendStatus(
@@ -388,10 +469,14 @@ export async function submitFutureLevelProof({
   return result;
 }
 
+function requiredPdaAddress(value: string | RequiredPdaMetadata) {
+  return typeof value === "string" ? value : value.address;
+}
+
 function uniqueChallengeAccounts(challenge: FutureLevelChallenge) {
   const candidates = [
     ...(challenge.required_accounts ?? []),
-    ...(challenge.required_pdas ?? []),
+    ...(challenge.required_pdas ?? []).map(requiredPdaAddress),
     ...Object.entries(challenge)
       .filter(([key, value]) => key.endsWith("_pda") && typeof value === "string")
       .map(([, value]) => value as string),

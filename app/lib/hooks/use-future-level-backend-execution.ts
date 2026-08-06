@@ -13,6 +13,8 @@ import {
 import {
   executeFutureLevelProofTransaction,
   fetchFutureLevelBackendStatus,
+  getChallengeFromLevelResponse,
+  getLevelSessionId,
   setupFutureLevel,
   startFutureLevel,
   submitFutureLevelProof,
@@ -45,11 +47,12 @@ function logFrontendError(label: string, error: unknown) {
 function challengeFromStatus(
   status: Awaited<ReturnType<typeof fetchFutureLevelBackendStatus>> | undefined
 ) {
-  if (!status?.challenge_context) return null;
+  const restoredChallenge = getChallengeFromLevelResponse(status);
+  if (!restoredChallenge) return null;
 
   return {
-    ...status.challenge_context,
-    level_session_id: status.level_session_id ?? undefined,
+    ...restoredChallenge,
+    level_session_id: getLevelSessionId(status) ?? undefined,
   } as FutureLevelChallenge;
 }
 
@@ -117,7 +120,7 @@ export function useFutureLevelBackendExecution({
   const ensureStarted = useCallback(
     async (accessToken: string) => {
       try {
-        await startFutureLevel(accessToken, levelId);
+        return await startFutureLevel(accessToken, levelId);
       } catch (error) {
         const message = parseTransactionError(error).toLowerCase();
         if (
@@ -127,6 +130,7 @@ export function useFutureLevelBackendExecution({
         ) {
           throw error;
         }
+        return null;
       }
     },
     [levelId]
@@ -201,15 +205,27 @@ export function useFutureLevelBackendExecution({
           | Awaited<ReturnType<typeof setupFutureLevel>>;
 
         try {
-          await ensureStarted(auth.accessToken);
+          const startResponse = await ensureStarted(auth.accessToken);
           const restoredChallenge = challenge ?? statusChallenge;
           const restoredSessionId =
-            levelSessionId ?? backendStatus?.level_session_id ?? null;
+            levelSessionId ??
+            getLevelSessionId(backendStatus) ??
+            getLevelSessionId(startResponse) ??
+            null;
+          const startChallenge = getChallengeFromLevelResponse(startResponse);
+          const effectiveChallenge =
+            restoredChallenge ??
+            (startChallenge
+              ? ({
+                  ...startChallenge,
+                  level_session_id: restoredSessionId ?? undefined,
+                } as FutureLevelChallenge)
+              : null);
 
           setup =
-            restoredChallenge && restoredSessionId
+            effectiveChallenge && restoredSessionId
               ? {
-                  challenge: restoredChallenge,
+                  challenge: effectiveChallenge,
                   level_session_id: restoredSessionId,
                 }
               : await setupFutureLevel({
