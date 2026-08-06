@@ -56,6 +56,8 @@ export function buildLevelTiles({
   level3DelegationReady,
   level3HasGuildAuthority,
   level3HasLevelState,
+  level4Completed,
+  level5Completed,
 }: {
   level0Completed?: boolean;
   level0HasLevelState?: boolean;
@@ -70,6 +72,8 @@ export function buildLevelTiles({
   level3DelegationReady: boolean;
   level3HasGuildAuthority?: boolean;
   level3HasLevelState?: boolean;
+  level4Completed?: boolean;
+  level5Completed?: boolean;
 }): LevelTileConfig[] {
   const level0Status: LevelStatus = level0Completed
     ? "cleared"
@@ -139,7 +143,7 @@ export function buildLevelTiles({
       index: "04",
       label: "Data matching",
       title: "Mirror Trap",
-      status: "ready",
+      status: level4Completed ? "cleared" : "ready",
       summary: "Match stored account data before protocol state changes.",
     },
     {
@@ -147,7 +151,7 @@ export function buildLevelTiles({
       index: "05",
       label: "Address reuse",
       title: "Time Traveler",
-      status: "ready",
+      status: level5Completed ? "cleared" : "ready",
       summary: "Reuse a deterministic PDA address through unsafe lifecycle handling.",
     },
   ];

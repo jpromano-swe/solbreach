@@ -399,11 +399,15 @@ export default function Home() {
   const level1Badge = getLevelBadge(badges, 1);
   const level2Badge = getLevelBadge(badges, 2);
   const level3Badge = getLevelBadge(badges, 3);
+  const level4Badge = getLevelBadge(badges, 4);
+  const level5Badge = getLevelBadge(badges, 5);
   const level1Completed = Boolean(level1Badge?.earned);
   const level2Completed =
     Boolean(level0State?.completedLevels[2]) || level2BackendCompleted;
   const level3Completed =
     Boolean(level0State?.completedLevels[3]) || level3BackendCompleted;
+  const level4Completed = Boolean(level4Badge?.earned);
+  const level5Completed = Boolean(level5Badge?.earned);
   const researchLabCertificateState =
     effectiveCertificateState ?? certificateState;
   const level0Certificate = researchLabCertificateState?.[0];
@@ -603,6 +607,8 @@ export default function Home() {
       level3DelegationReady,
       level3Error,
       level3State,
+      level4Completed,
+      level5Completed,
       mutateLevel0State,
       mutateLevel1BackendStatus,
       mutateLevel2State,
@@ -625,6 +631,8 @@ export default function Home() {
     level2StageBadge: level2Stage.badge,
     level2State,
     level3Completed,
+    level4Completed,
+    level5Completed,
     level3StageBadge: level3Stage.badge,
     level3State,
     levelTiles,
@@ -1063,9 +1071,14 @@ export default function Home() {
                     />
                   ) : activeLevel === "level4" || activeLevel === "level5" ? (
                     <FutureVulnerabilityPanel
+                      address={address}
+                      badges={badges}
                       guide={activeGuide}
                       levelId={activeLevel}
+                      onBadgeSeen={markBadgeSeen}
+                      onBadgeStateChanged={() => mutateBadges()}
                       status={status}
+                      wallet={wallet}
                     />
                   ) : (
                     <LevelWorkspacePage

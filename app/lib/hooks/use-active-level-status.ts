@@ -28,6 +28,8 @@ function getMintState({
   level1Completed,
   level2Completed,
   level3Completed,
+  level4Completed,
+  level5Completed,
 }: {
   activeLevel: LevelId;
   badges?: UserBadge[];
@@ -35,6 +37,8 @@ function getMintState({
   level1Completed: boolean;
   level2Completed: boolean;
   level3Completed: boolean;
+  level4Completed: boolean;
+  level5Completed: boolean;
 }) {
   if (activeLevel === "level0") {
     return {
@@ -59,8 +63,8 @@ function getMintState({
     level1: level1Completed,
     level2: level2Completed,
     level3: level3Completed,
-    level4: false,
-    level5: false,
+    level4: level4Completed,
+    level5: level5Completed,
   }[activeLevel as "level1" | "level2" | "level3" | "level4" | "level5"];
 
   return {
@@ -91,6 +95,8 @@ export function useActiveLevelStatus({
   level2StageBadge,
   level2State,
   level3Completed,
+  level4Completed,
+  level5Completed,
   level3StageBadge,
   level3State,
   levelTiles,
@@ -110,6 +116,8 @@ export function useActiveLevelStatus({
   level2StageBadge: string;
   level2State?: Level2Snapshot;
   level3Completed: boolean;
+  level4Completed: boolean;
+  level5Completed: boolean;
   level3StageBadge: string;
   level3State?: Level3Snapshot;
   levelTiles: LevelTileConfig[];
@@ -130,6 +138,8 @@ export function useActiveLevelStatus({
       level1Completed,
       level2Completed,
       level3Completed,
+      level4Completed,
+      level5Completed,
     });
 
     const chipLabel = activeTile ? getStatusLabel(activeTile.status) : "Ready";
@@ -256,37 +266,39 @@ export function useActiveLevelStatus({
         };
       case "level4":
         return {
-          badge: "Frontend draft",
+          badge: level4Completed ? "Cleared" : "Backend live",
           chipLabel,
           ...mintState,
-          progressValue: 35,
+          progressValue: level4Completed ? 100 : 35,
           rows: [
             ...baseRows,
             {
               label: "Data state",
-              value: "Draft simulation",
+              value: level4Completed ? "Verified" : "Challenge ready",
             },
             {
               label: "Win condition",
-              value: "Data checks mapped",
+              value: level4Completed ? "Data route verified" : "Data checks mapped",
             },
           ],
         };
       case "level5":
         return {
-          badge: "Frontend draft",
+          badge: level5Completed ? "Cleared" : "Backend live",
           chipLabel,
           ...mintState,
-          progressValue: 35,
+          progressValue: level5Completed ? 100 : 35,
           rows: [
             ...baseRows,
             {
               label: "PDA state",
-              value: "Draft simulation",
+              value: level5Completed ? "Verified" : "Challenge ready",
             },
             {
               label: "Win condition",
-              value: "Address reuse mapped",
+              value: level5Completed
+                ? "Address reuse verified"
+                : "Address reuse mapped",
             },
           ],
         };
@@ -305,6 +317,8 @@ export function useActiveLevelStatus({
     level2StageBadge,
     level2State,
     level3Completed,
+    level4Completed,
+    level5Completed,
     level3StageBadge,
     level3State,
     levelTiles,

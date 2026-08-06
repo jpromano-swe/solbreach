@@ -121,6 +121,10 @@ export function LandingPageSection({
       const titleChars = gsap.utils.toArray<HTMLElement>(
         ".landing-hero-title-char",
       );
+      const titleGlowActive =
+        "0 0 10px rgba(0, 255, 102, 0.95), 0 0 26px rgba(20, 241, 149, 0.3)";
+      const titleGlowIdle =
+        "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)";
 
       gsap.set(titleChars, { opacity: 0, textShadow: "none" });
       gsap.set(titleKicker, { autoAlpha: 0, y: 10 });
@@ -132,26 +136,25 @@ export function LandingPageSection({
       });
 
       const tl = gsap.timeline();
-      const titleCharStagger = 0.074;
+      const titleCharStagger = 0.049;
       const titleSequenceDuration =
-        (titleChars.length - 1) * titleCharStagger + 0.126;
+        (titleChars.length - 1) * titleCharStagger + 0.084;
       titleChars.forEach((char, index) => {
         tl.set(char, { opacity: 0 }, 0)
-          .to(char, { duration: 0.032, opacity: 1 }, index * titleCharStagger)
+          .to(char, { duration: 0.021, opacity: 1 }, index * titleCharStagger)
           .to(
             char,
-            { duration: 0.018, opacity: 0.3 },
-            index * titleCharStagger + 0.032,
+            { duration: 0.012, opacity: 0.3 },
+            index * titleCharStagger + 0.021,
           )
           .to(
             char,
             {
-              duration: 0.06,
+              duration: 0.04,
               opacity: 1,
-              textShadow:
-                "0 0 10px rgba(0, 255, 102, 0.95), 0 0 26px rgba(20, 241, 149, 0.3)",
+              textShadow: titleGlowActive,
             },
-            index * titleCharStagger + 0.048,
+            index * titleCharStagger + 0.032,
           );
       });
 
@@ -223,25 +226,19 @@ export function LandingPageSection({
         levelsStartAt,
       );
 
-      gsap.set(titleChars, {
-        delay: dynamicLoopsStartAt,
-        textShadow:
-          "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)",
-      });
       gsap.fromTo(
         titleChars,
         {
-          textShadow:
-            "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)",
+          textShadow: titleGlowActive,
         },
         {
           delay: dynamicLoopsStartAt,
-          duration: 2.8,
+          duration: 1.87,
           ease: "sine.inOut",
+          immediateRender: false,
           repeat: -1,
           stagger: 0,
-          textShadow:
-            "0 0 10px rgba(0, 255, 102, 0.46), 0 0 24px rgba(20, 241, 149, 0.18)",
+          textShadow: titleGlowIdle,
           yoyo: true,
         },
       );

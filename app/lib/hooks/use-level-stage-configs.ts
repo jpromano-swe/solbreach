@@ -74,6 +74,8 @@ export function useLevelStageConfigs({
   level3DelegationReady,
   level3Error,
   level3State,
+  level4Completed,
+  level5Completed,
   mutateLevel0State,
   mutateLevel1BackendStatus,
   mutateLevel2State,
@@ -121,6 +123,8 @@ export function useLevelStageConfigs({
   level3DelegationReady: boolean;
   level3Error?: unknown;
   level3State?: Level3Snapshot;
+  level4Completed?: boolean;
+  level5Completed?: boolean;
   mutateLevel0State: StageAction;
   mutateLevel1BackendStatus: StageAction;
   mutateLevel2State: StageAction;
@@ -586,6 +590,8 @@ export function useLevelStageConfigs({
       level3DelegationReady,
       level3HasGuildAuthority: level3State?.hasGuildAuthority,
       level3HasLevelState: level3State?.hasLevel3State,
+      level4Completed,
+      level5Completed,
     });
   }, [
     level0State?.hasLevel0State,
@@ -601,6 +607,8 @@ export function useLevelStageConfigs({
     level3DelegationReady,
     level3State?.hasGuildAuthority,
     level3State?.hasLevel3State,
+    level4Completed,
+    level5Completed,
   ]);
 
   return {
