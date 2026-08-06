@@ -186,6 +186,12 @@ function readLevelIdentifier(level: BackendLevelCatalogItem) {
   return typeof id === "string" && id.trim() ? id : null;
 }
 
+function readLevelSlug(level: BackendLevelCatalogItem) {
+  return typeof level.slug === "string" && level.slug.trim()
+    ? level.slug
+    : null;
+}
+
 export async function resolveFutureLevelBackendId(
   accessToken: string,
   levelId: FutureLevelId
@@ -197,11 +203,21 @@ export async function resolveFutureLevelBackendId(
   const payload = await backendRequest<unknown>("/api/v1/levels", {
     accessToken,
   });
-  const level = extractLevels(payload).find((item) => item.slug === slug);
+  const levels = extractLevels(payload);
+  const returnedSlugs = levels
+    .map(readLevelSlug)
+    .filter((item): item is string => Boolean(item));
+  console.info(`${LOG_PREFIX} backend level slugs`, returnedSlugs);
+
+  const level = levels.find((item) => item.slug === slug);
   const backendLevelId = level ? readLevelIdentifier(level) : null;
 
   if (!backendLevelId) {
-    throw new Error(`Backend level not found for slug ${slug}.`);
+    throw new Error(
+      `Backend sync/setup error: expected vulnerability level slug "${slug}" was not returned by /api/v1/levels. Returned slugs: ${
+        returnedSlugs.length > 0 ? returnedSlugs.join(", ") : "none"
+      }. Reseed/restart the backend and retry.`
+    );
   }
 
   levelIdCache.set(slug, backendLevelId);
