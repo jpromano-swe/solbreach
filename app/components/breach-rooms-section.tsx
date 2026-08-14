@@ -1,31 +1,40 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
+  AlertTriangle,
+  ArrowLeft,
   ArrowRight,
-  BookOpen,
   CheckCircle2,
+  CircleDot,
   ClipboardList,
+  Clock3,
   Code2,
-  FileText,
+  ExternalLink,
+  GitPullRequestArrow,
   Play,
+  Search,
   Send,
   ShieldCheck,
   Terminal,
-  Video,
+  Trophy,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
-type RoomTab = "details" | "setup" | "scope" | "report";
+type RoomTab = "details" | "knownIssues" | "scope";
+type RoomView = "list" | "room";
+type ReviewState = "notSubmitted" | "judged";
 
 type ReportDraft = {
+  category: string;
   impact: "High" | "Medium" | "Low";
   likelihood: "High" | "Medium" | "Low";
   mitigation: string;
   proof: string;
+  reportMarkdown: string;
   rootImpact: string;
   scope: string;
   title: string;
@@ -36,73 +45,133 @@ const ROOM_TABS: Array<{
   id: RoomTab;
   label: string;
 }> = [
-  { id: "details", label: "Room Details", icon: ClipboardList },
-  { id: "setup", label: "Tooling Setup", icon: Terminal },
+  { id: "details", label: "Contest Details", icon: ClipboardList },
+  { id: "knownIssues", label: "Known Issues", icon: ShieldCheck },
   { id: "scope", label: "Scope", icon: Code2 },
-  { id: "report", label: "Report Template", icon: FileText },
+];
+
+const BREACH_ROOM = {
+  id: "br-1",
+  title: "Breach Room 1",
+  subtitle: "Vault Ledger",
+  category: "Rust / Anchor",
+  difficulty: "Beginner Friendly",
+  xp: 100,
+  nsloc: 290,
+  repoPath: "local-breach-rooms/breach-room-1",
+  description:
+    "Audit a compact Anchor protocol that routes bounty payouts through account relationships, reusable receipts, and delegated CPI execution.",
+  tags: ["Rust", "Anchor", "SVM"],
+};
+
+const AUDITOR_SKILL_SETUP = [
+  {
+    title: "Install the Solana auditor skill",
+    command: "Install: https://github.com/solanabr/auditor-skill",
+    description: "Add the auditor workflow before opening the room codebase.",
+  },
+  {
+    title: "Run it from the Rust codebase",
+    command: "/auditor:audit-cycle",
+    description: "Use this slash command after cloning the Breach Room repo.",
+  },
 ];
 
 const ROOM_FLOW = [
-  "Watch the setup briefing",
-  "Map protocol scope",
-  "Run agent-assisted review",
-  "Execute manual fuzz checks",
-  "Submit a finding report",
+  "Open room scope",
+  "Install auditor skill",
+  "Audit the Rust codebase",
+  "Submit finding package",
+  "Manual review",
 ];
 
-const AGENT_SETUP = [
+const KNOWN_ISSUES = [
   {
-    title: "Load the Solana Auditing Skill",
+    title: "Local token minting is mocked",
     description:
-      "Use it to map accounts, PDA seeds, CPI targets, signer assumptions, and missing validation boundaries.",
+      "The room uses local token references so reviewers can focus on account relationships.",
   },
   {
-    title: "Ask for an audit plan first",
+    title: "Reward values are synthetic",
     description:
-      "Start with a pass over trust boundaries before asking for exploit ideas or report text.",
+      "XP and payout figures are training metadata, not production funds.",
   },
   {
-    title: "Keep evidence manual",
+    title: "Program ID is room-scoped",
     description:
-      "Use the agent to guide coverage, then confirm behavior with tests, logs, state deltas, and code references.",
+      "The declared program address is only used to keep the local Anchor workspace deterministic.",
   },
 ];
 
-const MANUAL_TOOLS = [
-  "Anchor tests for deterministic happy-path and failure-path checks",
-  "LiteSVM or Mollusk style local execution for account and instruction replay",
-  "Trident-style fuzzing for account permutations, signer misuse, and boundary values",
-  "Manual transaction review for accounts, authorities, and state mutations",
+const SCOPE_FILES = [
+  "programs/breach_room_1/src/lib.rs",
+  "tests/breach_room_1.ts",
+  "Anchor.toml",
+  "Cargo.toml",
+  "package.json",
 ];
 
-const REPORT_TEMPLATE = `# Finding Title
+const REVIEW_FINDINGS = {
+  matched: [
+    {
+      severity: "High",
+      title: "Caller-selected payout program is accepted during CPI execution",
+      reference: "Matched: execute_payout_via_cpi route",
+    },
+  ],
+  missed: [
+    {
+      severity: "Medium",
+      title:
+        "Task approval accepts valid but mismatched category and vault accounts",
+    },
+    {
+      severity: "Low",
+      title:
+        "Receipt lifecycle can reopen a reused PDA without a one-way generation guard",
+    },
+  ],
+};
 
-## Summary
-Describe the vulnerable behavior in one or two sentences.
+const BREACH_ROOM_REPORT_TEMPLATE = `# Finding Title
+
+## Finding Summary
+- Category:
+- Severity:
+- Likelihood:
+- Affected file or instruction:
+
+## Description
+Describe the normal protocol behavior, then describe the vulnerable behavior.
 
 ## Root Cause
-Explain the missing validation, broken invariant, or incorrect trust assumption.
+Explain the missing validation, broken invariant, or incorrect trust assumption. Include the relevant code path.
 
-## Impact
-Describe the concrete value movement, state corruption, or access control failure.
+## Proof of Impact
+Show how the issue changes protocol state, value movement, authority, or user balances.
+
+## Evidence
+- Source reference:
+- Test or transaction evidence:
+- Account/state delta:
 
 ## Proof of Concept
 List the exact steps, accounts, inputs, and observed state changes.
 
 ## Recommended Mitigation
-Describe the validation or control that prevents this vulnerability class.
+Describe the validation, constraint, lifecycle guard, or CPI allowlist that prevents this vulnerability class.
 
-## Evidence
-- Source reference:
-- Transaction or test evidence:
-- Account/state delta:
+## Notes
+Add any assumptions, reproduction limits, or extra reviewer context.
 `;
 
 const INITIAL_REPORT_DRAFT: ReportDraft = {
+  category: "",
   impact: "Medium",
   likelihood: "Medium",
   mitigation: "",
   proof: "",
+  reportMarkdown: BREACH_ROOM_REPORT_TEMPLATE,
   rootImpact: "",
   scope: "",
   title: "",
@@ -112,15 +181,21 @@ function StatusPill({
   children,
   tone = "green",
 }: {
-  children: string;
-  tone?: "green" | "purple" | "zinc";
+  children: ReactNode;
+  tone?: "amber" | "blue" | "green" | "purple" | "red" | "zinc";
 }) {
   const toneClass =
     tone === "green"
       ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-200"
       : tone === "purple"
         ? "border-primary/30 bg-primary/15 text-primary"
-        : "border-white/10 bg-white/[0.04] text-zinc-300";
+        : tone === "amber"
+          ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-200"
+          : tone === "red"
+            ? "border-red-400/30 bg-red-400/10 text-red-200"
+            : tone === "blue"
+              ? "border-cyan-300/25 bg-cyan-300/10 text-cyan-100"
+              : "border-white/10 bg-white/[0.04] text-zinc-300";
 
   return (
     <span
@@ -131,15 +206,20 @@ function StatusPill({
   );
 }
 
-function TutorialModal({
-  onStart,
-}: {
-  onStart: () => void;
-}) {
+function RoomMark() {
+  return (
+    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/30 bg-[radial-gradient(circle_at_38%_25%,rgba(20,241,149,0.45),transparent_35%),linear-gradient(135deg,rgba(153,69,255,0.75),rgba(20,241,149,0.35),rgba(0,0,0,0.82))] shadow-[0_18px_60px_-26px_rgba(20,241,149,0.75)]">
+      <div className="absolute inset-[6px] rounded-xl border border-white/15" />
+      <ShieldCheck className="relative h-8 w-8 text-white" aria-hidden={true} />
+    </div>
+  );
+}
+
+function TutorialModal({ onStart }: { onStart: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-md">
       <section
-        aria-label="Breach Room tutorial"
+        aria-label="Breach Room 1 setup"
         className="relative grid max-h-[calc(100vh-3rem)] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-white/[0.12] bg-[#07090b] shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]"
       >
         <div className="border-b border-white/10 p-6 md:border-b-0 md:border-r md:p-8">
@@ -152,7 +232,7 @@ function TutorialModal({
               className="h-10 w-auto"
               priority
             />
-            <StatusPill tone="purple">Breach Room 0</StatusPill>
+            <StatusPill tone="purple">Breach Room 1</StatusPill>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/60">
@@ -163,10 +243,10 @@ function TutorialModal({
                 </span>
                 <div>
                   <p className="text-lg font-semibold text-foreground">
-                    Tutorial video placeholder
+                    Room briefing placeholder
                   </p>
                   <p className="mt-1 text-sm text-muted">
-                    Add the walkthrough video here when the room content is final.
+                    Add the walkthrough video when the first room is final.
                   </p>
                 </div>
               </div>
@@ -177,20 +257,20 @@ function TutorialModal({
         <div className="p-6 md:p-8">
           <div className="space-y-4">
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">
-              Before You Begin
+              Before You Audit
             </p>
             <h2 className="max-w-xl text-4xl font-semibold tracking-[-0.07em] text-foreground sm:text-5xl">
-              Prepare your audit workspace.
+              Install the auditor workflow.
             </h2>
             <p className="max-w-xl text-base leading-7 text-muted">
-              Breach Room 0 teaches the review loop before a real room starts:
-              set up your agent, run manual checks, collect evidence, and write
-              a concise finding report.
+              Breach Room 1 starts from a local Rust/Anchor codebase. Install
+              the Solana auditor skill, then run the audit cycle from the cloned
+              repository.
             </p>
           </div>
 
           <div className="mt-7 space-y-4">
-            {AGENT_SETUP.map((item, index) => (
+            {AUDITOR_SKILL_SETUP.map((item, index) => (
               <div
                 key={item.title}
                 className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4"
@@ -200,6 +280,9 @@ function TutorialModal({
                 </span>
                 <div>
                   <p className="font-semibold text-foreground">{item.title}</p>
+                  <code className="mt-2 block rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs text-zinc-200">
+                    {item.command}
+                  </code>
                   <p className="mt-1 text-sm leading-6 text-muted">
                     {item.description}
                   </p>
@@ -210,21 +293,20 @@ function TutorialModal({
 
           <div className="mt-7 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-              Agent prompt starter
+              Two-line setup
             </p>
             <pre className="whitespace-pre-wrap rounded-xl bg-black/55 p-4 text-xs leading-6 text-zinc-300">
-{`Load the Solana Auditing Skill.
-Map the accounts, authorities, CPI targets, PDA seeds, and signer assumptions.
-Suggest fuzz cases, but separate hypotheses from verified evidence.`}
+              {`Install: https://github.com/solanabr/auditor-skill
+Run from the Rust/Anchor repo: /auditor:audit-cycle`}
             </pre>
           </div>
 
           <button
             type="button"
             onClick={onStart}
-            className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Start Breach Room 0
+            Open Breach Room 1
             <ArrowRight className="h-4 w-4" aria-hidden={true} />
           </button>
         </div>
@@ -260,37 +342,201 @@ function TabButton({
   );
 }
 
-function RoomDetails() {
+function BreachRoomList({ onOpenRoom }: { onOpenRoom: () => void }) {
   return (
-    <div className="space-y-8">
-      <section className="space-y-4">
-        <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-          About the room
-        </h3>
-        <p className="max-w-3xl text-sm leading-7 text-muted">
-          BR0 is a tutorial room. The objective is not to solve a hidden exploit
-          yet. It walks you through how a SolBreach audit room is structured,
-          how to combine agentic review with manual verification, and how to
-          turn evidence into a finding report.
-        </p>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div>
+        <div className="mb-8">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.36em] text-primary">
+            Breach Rooms
+          </p>
+          <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
+            Choose your audit room.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-muted sm:text-lg">
+            Practice real security review loops: clone a scoped repo, audit it
+            with tooling, submit evidence, and wait for manual judging.
+          </p>
+        </div>
+
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-2xl border border-white/10 bg-white/[0.035] p-1">
+            <button
+              type="button"
+              className="min-h-10 rounded-xl bg-white text-sm font-semibold text-black px-4"
+            >
+              Live Rooms
+            </button>
+            <button
+              type="button"
+              className="min-h-10 rounded-xl px-4 text-sm font-semibold text-muted"
+            >
+              Reviewed Rooms
+            </button>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-4 text-sm font-semibold text-zinc-300"
+            >
+              <CircleDot className="h-4 w-4" aria-hidden={true} />
+              Status 1/1
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-4 text-sm font-semibold text-zinc-300"
+            >
+              <Search className="h-4 w-4" aria-hidden={true} />
+              Filter
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpenRoom}
+          className="group grid w-full gap-5 rounded-[24px] border border-white/10 bg-[#090d13]/90 p-6 text-left shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)] transition-[transform,border-color,background-color] hover:-translate-y-1 hover:border-primary/35 hover:bg-[#0b1118] active:scale-[0.96] md:grid-cols-[auto_minmax(0,1fr)_11rem]"
+        >
+          <RoomMark />
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                {BREACH_ROOM.title}: {BREACH_ROOM.subtitle}
+              </h2>
+              <StatusPill tone="green">Live</StatusPill>
+            </div>
+            <p className="mt-1 text-sm font-semibold text-muted">
+              First SolBreach audit room
+            </p>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
+              {BREACH_ROOM.description}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <StatusPill tone="green">{BREACH_ROOM.difficulty}</StatusPill>
+              {BREACH_ROOM.tags.map((tag) => (
+                <StatusPill key={tag} tone="zinc">
+                  {tag}
+                </StatusPill>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-between gap-5 md:items-end">
+            <div className="text-left md:text-right">
+              <p className="text-2xl font-semibold text-foreground">
+                {BREACH_ROOM.xp}
+                <span className="ml-1 text-base text-muted">XP</span>
+              </p>
+              <p className="mt-1 text-xs uppercase tracking-[0.22em] text-zinc-500">
+                Flat reward
+              </p>
+            </div>
+
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 transition-colors group-hover:text-primary">
+              View room
+              <ArrowRight className="h-4 w-4" aria-hidden={true} />
+            </span>
+          </div>
+        </button>
+      </div>
+
+      <aside className="h-fit rounded-[24px] border border-white/10 bg-[#090b0d]/85 p-5">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="font-semibold text-foreground">Auditor profile</h2>
+          <Trophy className="h-5 w-5 text-primary" aria-hidden={true} />
+        </div>
+        <div className="space-y-4 text-sm">
+          <div className="flex justify-between gap-4">
+            <span className="text-muted">Rank</span>
+            <span className="font-semibold text-foreground">Unranked</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted">Total earned</span>
+            <span className="font-semibold text-foreground">0 XP</span>
+          </div>
+          <div className="border-t border-white/10 pt-4">
+            {[
+              ["High", "0", "red"],
+              ["Medium", "0", "amber"],
+              ["Low", "0", "green"],
+            ].map(([label, value, tone]) => (
+              <div
+                key={label}
+                className="mb-3 flex items-center justify-between last:mb-0"
+              >
+                <StatusPill tone={tone as "amber" | "green" | "red"}>
+                  {label}
+                </StatusPill>
+                <span className="font-semibold text-foreground">{value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between gap-4 border-t border-white/10 pt-4">
+            <span className="text-muted">Valid submissions</span>
+            <span className="font-semibold text-foreground">0</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function ContestDetails({
+  onSubmit,
+  reviewState,
+}: {
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  reviewState: ReviewState;
+}) {
+  return (
+    <div className="space-y-7">
+      <section className="rounded-[24px] border border-white/10 bg-black/30 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex gap-4">
+            <RoomMark />
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-2xl font-semibold tracking-[-0.04em]">
+                  {BREACH_ROOM.subtitle}
+                </h3>
+                <StatusPill tone="green">Live</StatusPill>
+              </div>
+              <p className="mt-1 text-sm text-muted">{BREACH_ROOM.category}</p>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-300">
+                {BREACH_ROOM.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <p className="text-2xl font-semibold text-foreground">
+              {BREACH_ROOM.xp} XP
+            </p>
+            <p className="mt-1 text-xs uppercase tracking-[0.22em] text-zinc-500">
+              Review reward
+            </p>
+          </div>
+        </div>
       </section>
 
       <div className="grid gap-4 md:grid-cols-3">
         {[
           {
-            icon: ShieldCheck,
-            title: "Understand scope",
-            body: "Start from protocol purpose, actors, assets, and files in scope.",
+            icon: Terminal,
+            title: "Clone and inspect",
+            body: "Start from the local Anchor workspace and map every trusted account path.",
           },
           {
             icon: Wrench,
-            title: "Test assumptions",
-            body: "Use manual and fuzz checks to confirm behavior instead of relying on guesses.",
+            title: "Verify manually",
+            body: "Use the auditor skill for coverage, then confirm behavior with code and tests.",
           },
           {
-            icon: FileText,
-            title: "Write the finding",
-            body: "Connect root cause, impact, proof, and mitigation in a report format.",
+            icon: GitPullRequestArrow,
+            title: "Submit for judging",
+            body: "The platform package will become a review PR in the Breach Room repo.",
           },
         ].map((item) => {
           const Icon = item.icon;
@@ -308,50 +554,207 @@ function RoomDetails() {
           );
         })}
       </div>
+
+      <form
+        onSubmit={onSubmit}
+        className="overflow-hidden rounded-[24px] border border-white/10 bg-[#080b0e]/85"
+      >
+        <div className="border-b border-white/10 bg-white/[0.025] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-zinc-500">
+                Submission details
+              </p>
+              <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
+                Submit a Vulnerability
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">
+                Fill the audit report template with one vulnerability. Backend
+                wiring should convert this package into a review PR against the
+                Breach Room repository.
+              </p>
+            </div>
+            <StatusPill tone={reviewState === "judged" ? "green" : "purple"}>
+              {reviewState === "judged" ? "Judged" : "Draft"}
+            </StatusPill>
+          </div>
+        </div>
+
+        <div className="space-y-5 p-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2 md:col-span-2">
+              <span className="text-sm font-semibold text-foreground">
+                Title
+              </span>
+              <input
+                name="title"
+                placeholder="One-line vulnerability title"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
+                required
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-foreground">
+                Category
+              </span>
+              <select
+                name="category"
+                defaultValue="Missing Validation"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
+              >
+                <option>Missing Validation</option>
+                <option>Data Matching</option>
+                <option>Address Reuse</option>
+                <option>Arbitrary CPI</option>
+                <option>Account Substitution</option>
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-foreground">
+                Source reference
+              </span>
+              <input
+                name="scope"
+                placeholder="programs/breach_room_1/src/lib.rs:120"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
+              />
+            </label>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold text-foreground">
+                Severity
+              </legend>
+              <div className="grid grid-cols-3 gap-2">
+                {["High", "Medium", "Low"].map((severity) => (
+                  <label
+                    key={severity}
+                    className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors has-[:checked]:border-primary/45 has-[:checked]:bg-primary/[0.18] has-[:checked]:text-primary"
+                  >
+                    <input
+                      type="radio"
+                      name="impact"
+                      value={severity}
+                      defaultChecked={severity === "Medium"}
+                      className="sr-only"
+                    />
+                    {severity}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold text-foreground">
+                Likelihood
+              </legend>
+              <div className="grid grid-cols-3 gap-2">
+                {["High", "Medium", "Low"].map((likelihood) => (
+                  <label
+                    key={likelihood}
+                    className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors has-[:checked]:border-primary/45 has-[:checked]:bg-primary/[0.18] has-[:checked]:text-primary"
+                  >
+                    <input
+                      type="radio"
+                      name="likelihood"
+                      value={likelihood}
+                      defaultChecked={likelihood === "Medium"}
+                      className="sr-only"
+                    />
+                    {likelihood}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+
+          <label className="block overflow-hidden rounded-2xl border border-white/10 bg-black/45">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+              <div>
+                <span className="text-sm font-semibold text-foreground">
+                  Audit report template
+                </span>
+                <p className="mt-1 text-xs text-muted">
+                  Based on the Research Labs audit report structure.
+                </p>
+              </div>
+              <StatusPill tone="zinc">Markdown</StatusPill>
+            </div>
+            <textarea
+              name="reportMarkdown"
+              defaultValue={BREACH_ROOM_REPORT_TEMPLATE}
+              className="min-h-[34rem] w-full resize-y bg-transparent px-4 py-4 font-mono text-sm leading-7 text-zinc-200 outline-none placeholder:text-zinc-600"
+              required
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3 text-xs text-muted">
+              <span>Supports Markdown and code references.</span>
+              <span>One vulnerability per submission.</span>
+            </div>
+          </label>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+            <p className="text-sm text-muted">
+              Target PR path:{" "}
+              <code className="text-zinc-300">
+                submissions/breach-room-1/&lt;wallet&gt;.md
+              </code>
+            </p>
+            <button
+              type="submit"
+              disabled={reviewState === "judged"}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              {reviewState === "judged"
+                ? "Vulnerability submitted"
+                : "Submit a Vulnerability"}
+              <Send className="h-4 w-4" aria-hidden={true} />
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   );
 }
 
-function ToolingSetup() {
+function KnownIssuesPanel({ reviewState }: { reviewState: ReviewState }) {
+  if (reviewState === "judged") {
+    return <ReviewResultsPanel />;
+  }
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-      <section className="space-y-5">
+    <div className="space-y-6">
+      <section>
         <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-          Agent-assisted review
+          Known issues
         </h3>
-        <div className="space-y-3">
-          {AGENT_SETUP.map((item) => (
-            <div
-              key={item.title}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-            >
-              <p className="font-semibold text-foreground">{item.title}</p>
-              <p className="mt-1 text-sm leading-6 text-muted">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </div>
+        <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
+          These are disclosed room constraints and out-of-scope assumptions.
+          They are not valid findings for judging.
+        </p>
       </section>
 
-      <section className="space-y-5">
-        <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-          Manual fuzzing checklist
-        </h3>
-        <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.045] p-5">
-          <div className="space-y-4">
-            {MANUAL_TOOLS.map((tool) => (
-              <div key={tool} className="flex gap-3">
-                <CheckCircle2
-                  className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300"
-                  aria-hidden={true}
-                />
-                <p className="text-sm leading-6 text-zinc-300">{tool}</p>
+      <div className="space-y-3">
+        {KNOWN_ISSUES.map((issue) => (
+          <article
+            key={issue.title}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+          >
+            <div className="flex gap-3">
+              <AlertTriangle
+                className="mt-0.5 h-5 w-5 shrink-0 text-yellow-300"
+                aria-hidden={true}
+              />
+              <div>
+                <h4 className="font-semibold text-foreground">{issue.title}</h4>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  {issue.description}
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
@@ -361,12 +764,13 @@ function ScopePanel() {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <section>
         <h3 className="text-2xl font-semibold tracking-[-0.04em]">Scope</h3>
+        <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
+          Clone the room repository locally, inspect only the scoped files, and
+          use code references in your submitted finding package.
+        </p>
+
         <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/45">
-          {[
-            "programs/breach_room_0/src/lib.rs",
-            "tests/breach_room_0.ts",
-            "Anchor.toml",
-          ].map((file, index) => (
+          {SCOPE_FILES.map((file, index) => (
             <div
               key={file}
               className={`grid grid-cols-[3rem_minmax(0,1fr)] items-center ${
@@ -394,196 +798,411 @@ function ScopePanel() {
           <li>No social engineering.</li>
           <li>No dependency disclosure outside the room.</li>
         </ul>
+
+        <button
+          type="button"
+          className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-primary/35 bg-primary/15 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/[0.22] active:scale-[0.96]"
+        >
+          View repo setup
+          <ExternalLink className="h-4 w-4" aria-hidden={true} />
+        </button>
       </aside>
     </div>
   );
 }
 
-function ReportTemplatePanel({
-  draft,
-  onDraftChange,
-  onSubmit,
+function ReviewResultsPanel() {
+  const found = REVIEW_FINDINGS.matched.length;
+  const total = REVIEW_FINDINGS.matched.length + REVIEW_FINDINGS.missed.length;
+  const percent = Math.round((found / total) * 100);
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-[24px] border border-white/10 bg-black/35 p-5">
+        <div className="flex flex-wrap items-center gap-5">
+          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+            <div className="absolute inset-2 rounded-full border-4 border-white/10" />
+            <div className="text-center">
+              <p className="text-xl font-semibold text-foreground">
+                {percent}%
+              </p>
+              <p className="text-[10px] font-semibold uppercase text-zinc-500">
+                found
+              </p>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-2xl font-semibold tracking-[-0.04em]">
+              You identified {found} of {total} vulnerabilities.
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
+              Manual review matched one finding from your package. Missed items
+              are shown so you can improve the next audit pass.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[24px] border border-emerald-400/20 bg-emerald-400/[0.045] p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <CheckCircle2
+            className="h-5 w-5 text-emerald-300"
+            aria-hidden={true}
+          />
+          <h3 className="font-semibold text-foreground">Your submissions</h3>
+          <StatusPill tone="green">{found}</StatusPill>
+        </div>
+        {REVIEW_FINDINGS.matched.map((finding) => (
+          <article key={finding.title} className="rounded-2xl bg-black/35 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-foreground">
+                  {finding.title}
+                </h4>
+                <p className="mt-1 text-sm text-muted">{finding.reference}</p>
+              </div>
+              <StatusPill tone="red">{finding.severity}</StatusPill>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section className="rounded-[24px] border border-yellow-400/20 bg-yellow-400/[0.035] p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <AlertTriangle
+            className="h-5 w-5 text-yellow-300"
+            aria-hidden={true}
+          />
+          <h3 className="font-semibold text-foreground">
+            Missed vulnerabilities
+          </h3>
+          <StatusPill tone="amber">{REVIEW_FINDINGS.missed.length}</StatusPill>
+        </div>
+        <div className="space-y-3">
+          {REVIEW_FINDINGS.missed.map((finding) => (
+            <article
+              key={finding.title}
+              className="rounded-2xl border border-white/10 bg-black/35 p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h4 className="font-semibold text-foreground">
+                  {finding.title}
+                </h4>
+                <StatusPill
+                  tone={finding.severity === "Medium" ? "amber" : "green"}
+                >
+                  {finding.severity}
+                </StatusPill>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
+  const steps = [
+    {
+      title: "Live",
+      description: "The room is open for submissions.",
+      complete: true,
+    },
+    {
+      title: "Submission PR",
+      description: "Finding package is sent to the Breach Room repo.",
+      complete: reviewState === "judged",
+    },
+    {
+      title: "Manual judging",
+      description: "The SolBreach team reviews matched and missed issues.",
+      complete: reviewState === "judged",
+    },
+    {
+      title: "Results",
+      description: "XP and feedback become visible on the room page.",
+      complete: reviewState === "judged",
+    },
+  ];
+
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="font-semibold text-foreground">Review pipeline</h2>
+        <GitPullRequestArrow
+          className="h-5 w-5 text-primary"
+          aria-hidden={true}
+        />
+      </div>
+
+      <div className="space-y-5">
+        {steps.map((step) => (
+          <div
+            key={step.title}
+            className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-3"
+          >
+            <span
+              className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                step.complete
+                  ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
+                  : "border-white/15 bg-white/[0.04] text-zinc-500"
+              }`}
+            >
+              {step.complete ? (
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden={true} />
+              ) : (
+                <Clock3 className="h-3.5 w-3.5" aria-hidden={true} />
+              )}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {step.title}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                {step.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RewardsBreakdown({ reviewState }: { reviewState: ReviewState }) {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="font-semibold text-foreground">Rewards breakdown</h2>
+        <StatusPill tone="purple">Room 1</StatusPill>
+      </div>
+      <div className="space-y-3 text-sm">
+        <div className="flex justify-between gap-4">
+          <span className="text-muted">nSLOC</span>
+          <span className="font-semibold text-foreground">
+            {BREACH_ROOM.nsloc}
+          </span>
+        </div>
+        <div className="border-t border-white/10 pt-3">
+          <div className="mb-3 flex justify-between gap-4">
+            <StatusPill tone="red">High</StatusPill>
+            <span className="font-semibold text-foreground">100 XP</span>
+          </div>
+          <div className="mb-3 flex justify-between gap-4">
+            <StatusPill tone="amber">Medium</StatusPill>
+            <span className="font-semibold text-foreground">20 XP</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <StatusPill tone="green">Low</StatusPill>
+            <span className="font-semibold text-foreground">2 XP</span>
+          </div>
+        </div>
+        <div className="flex justify-between gap-4 border-t border-white/10 pt-3">
+          <span className="text-muted">Room state</span>
+          <span className="font-semibold text-emerald-200">
+            {reviewState === "judged" ? "Reviewed" : "Live"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoomProgress({
+  reviewState,
+  tutorialComplete,
 }: {
-  draft: ReportDraft;
-  onDraftChange: (draft: ReportDraft) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  reviewState: ReviewState;
+  tutorialComplete: boolean;
 }) {
   return (
-    <form className="space-y-7" onSubmit={onSubmit}>
-      <div>
-        <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-          Finding report template
-        </h3>
-        <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
-          Use this structure to turn the investigation into a concise report.
-          The prototype stores the report locally until the backend room flow is
-          connected.
-        </p>
+    <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
+      <p className="text-sm font-semibold text-foreground">Room progress</p>
+      <div className="mt-5 space-y-4">
+        {ROOM_FLOW.map((step, index) => {
+          const done =
+            (index === 0 && tutorialComplete) ||
+            (index === 1 && tutorialComplete) ||
+            (index === 3 && reviewState === "judged") ||
+            (index === 4 && reviewState === "judged");
+
+          return (
+            <div
+              key={step}
+              className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
+            >
+              <span
+                className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-semibold ${
+                  done
+                    ? "border-emerald-400/40 bg-emerald-400/[0.15] text-emerald-200"
+                    : "border-white/[0.12] bg-white/[0.03] text-zinc-500"
+                }`}
+              >
+                {done ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden={true} />
+                ) : (
+                  index + 1
+                )}
+              </span>
+              <p
+                className={`text-sm leading-6 ${done ? "text-zinc-200" : "text-muted"}`}
+              >
+                {step}
+              </p>
+            </div>
+          );
+        })}
       </div>
+    </div>
+  );
+}
 
-      <div className="rounded-2xl border border-white/10 bg-black/45 p-4">
-        <pre className="whitespace-pre-wrap text-xs leading-6 text-zinc-400">
-          {REPORT_TEMPLATE}
-        </pre>
-      </div>
+function RoomWorkspace({
+  activeTab,
+  onBack,
+  onSubmit,
+  onTabChange,
+  reviewState,
+  tutorialComplete,
+}: {
+  activeTab: RoomTab;
+  onBack: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onTabChange: (tab: RoomTab) => void;
+  reviewState: ReviewState;
+  tutorialComplete: boolean;
+}) {
+  const activeTabContent = useMemo(() => {
+    if (activeTab === "details") {
+      return <ContestDetails onSubmit={onSubmit} reviewState={reviewState} />;
+    }
+    if (activeTab === "knownIssues") {
+      return <KnownIssuesPanel reviewState={reviewState} />;
+    }
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-2 md:col-span-2">
-          <span className="text-sm font-semibold text-foreground">Title</span>
-          <input
-            value={draft.title}
-            onChange={(event) =>
-              onDraftChange({ ...draft, title: event.target.value })
-            }
-            placeholder="One-line finding title"
-            className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
-          />
-        </label>
+    return <ScopePanel />;
+  }, [activeTab, onSubmit, reviewState]);
 
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-foreground">Impact</span>
-          <select
-            value={draft.impact}
-            onChange={(event) =>
-              onDraftChange({
-                ...draft,
-                impact: event.target.value as ReportDraft["impact"],
-              })
-            }
-            className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
-          >
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
-        </label>
-
-        <label className="space-y-2">
-          <span className="text-sm font-semibold text-foreground">
-            Likelihood
-          </span>
-          <select
-            value={draft.likelihood}
-            onChange={(event) =>
-              onDraftChange({
-                ...draft,
-                likelihood: event.target.value as ReportDraft["likelihood"],
-              })
-            }
-            className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
-          >
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
-        </label>
-
-        <label className="space-y-2 md:col-span-2">
-          <span className="text-sm font-semibold text-foreground">Scope</span>
-          <input
-            value={draft.scope}
-            onChange={(event) =>
-              onDraftChange({ ...draft, scope: event.target.value })
-            }
-            placeholder="Affected file, instruction, or account path"
-            className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
-          />
-        </label>
-
-        <label className="space-y-2 md:col-span-2">
-          <span className="text-sm font-semibold text-foreground">
-            Root cause and impact
-          </span>
-          <textarea
-            value={draft.rootImpact}
-            onChange={(event) =>
-              onDraftChange({ ...draft, rootImpact: event.target.value })
-            }
-            placeholder="Explain the normal behavior, the broken assumption, and why it matters."
-            className="min-h-28 w-full resize-y rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
-          />
-        </label>
-
-        <label className="space-y-2 md:col-span-2">
-          <span className="text-sm font-semibold text-foreground">
-            Proof of concept
-          </span>
-          <textarea
-            value={draft.proof}
-            onChange={(event) =>
-              onDraftChange({ ...draft, proof: event.target.value })
-            }
-            placeholder="List the steps, inputs, and observed account or state changes."
-            className="min-h-28 w-full resize-y rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
-          />
-        </label>
-
-        <label className="space-y-2 md:col-span-2">
-          <span className="text-sm font-semibold text-foreground">
-            Recommended mitigation
-          </span>
-          <textarea
-            value={draft.mitigation}
-            onChange={(event) =>
-              onDraftChange({ ...draft, mitigation: event.target.value })
-            }
-            placeholder="Describe the validation, constraint, or invariant that prevents this class of issue."
-            className="min-h-24 w-full resize-y rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
-          />
-        </label>
-      </div>
-
-      <div className="flex justify-end border-t border-white/10 pt-5">
+  return (
+    <>
+      <div className="mb-8">
         <button
-          type="submit"
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          type="button"
+          onClick={onBack}
+          className="mb-6 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-sm font-semibold text-zinc-300 transition-colors hover:bg-white/[0.07] hover:text-foreground active:scale-[0.96]"
         >
-          Submit Finding
-          <Send className="h-4 w-4" aria-hidden={true} />
+          <ArrowLeft className="h-4 w-4" aria-hidden={true} />
+          All Breach Rooms
         </button>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <StatusPill tone="purple">Breach Room 1</StatusPill>
+              <StatusPill tone="green">Live</StatusPill>
+              <StatusPill tone="zinc">{BREACH_ROOM.xp} XP</StatusPill>
+            </div>
+            <div>
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.36em] text-primary">
+                First Breach Room
+              </p>
+              <h1 className="max-w-3xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
+                {BREACH_ROOM.subtitle}
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-muted sm:text-lg">
+                {BREACH_ROOM.description}
+              </p>
+            </div>
+          </div>
+
+          <RoomProgress
+            reviewState={reviewState}
+            tutorialComplete={tutorialComplete}
+          />
+        </div>
       </div>
-    </form>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#090b0d]/[0.88] shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)]">
+          <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
+            {ROOM_TABS.map((tab) => (
+              <TabButton
+                key={tab.id}
+                active={activeTab === tab.id}
+                icon={tab.icon}
+                label={tab.label}
+                onClick={() => onTabChange(tab.id)}
+              />
+            ))}
+          </div>
+
+          <div
+            className={`p-5 sm:p-7 ${
+              tutorialComplete ? "" : "pointer-events-none opacity-50"
+            }`}
+          >
+            {activeTabContent}
+          </div>
+        </div>
+
+        <aside className="space-y-4">
+          <RewardsBreakdown reviewState={reviewState} />
+          <ReviewPipeline reviewState={reviewState} />
+        </aside>
+      </div>
+    </>
   );
 }
 
 export function BreachRoomsSection() {
+  const [view, setView] = useState<RoomView>("list");
   const [activeTab, setActiveTab] = useState<RoomTab>("details");
-  const [tutorialOpen, setTutorialOpen] = useState(true);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialComplete, setTutorialComplete] = useState(false);
-  const [draft, setDraft] = useState<ReportDraft>(INITIAL_REPORT_DRAFT);
-  const [submittedDraft, setSubmittedDraft] = useState<ReportDraft | null>(
-    null
-  );
+  const [reviewState, setReviewState] = useState<ReviewState>("notSubmitted");
+  const [, setDraft] = useState<ReportDraft>(INITIAL_REPORT_DRAFT);
 
-  const activeTabContent = useMemo(() => {
-    if (activeTab === "details") return <RoomDetails />;
-    if (activeTab === "setup") return <ToolingSetup />;
-    if (activeTab === "scope") return <ScopePanel />;
-
-    return (
-      <ReportTemplatePanel
-        draft={draft}
-        onDraftChange={setDraft}
-        onSubmit={(event) => {
-          event.preventDefault();
-
-          if (!draft.title.trim()) {
-            toast.error("Add a finding title before submitting.");
-            return;
-          }
-
-          setSubmittedDraft(draft);
-          toast.success("Finding report staged.", {
-            description: "Backend submission will be wired after BR0 hardening.",
-          });
-        }}
-      />
-    );
-  }, [activeTab, draft]);
+  const handleOpenRoom = () => {
+    setView("room");
+    setActiveTab("details");
+    setTutorialOpen(true);
+  };
 
   const handleStartTutorial = () => {
     setTutorialComplete(true);
     setTutorialOpen(false);
+  };
+
+  const handleBack = () => {
+    setView("list");
+    setTutorialOpen(false);
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    setDraft({
+      category: formData.get("category")?.toString() || "",
+      impact: (formData.get("impact")?.toString() ||
+        "Medium") as ReportDraft["impact"],
+      likelihood: (formData.get("likelihood")?.toString() ||
+        "Medium") as ReportDraft["likelihood"],
+      mitigation: "",
+      proof: formData.get("reportMarkdown")?.toString() || "",
+      reportMarkdown: formData.get("reportMarkdown")?.toString() || "",
+      rootImpact: formData.get("reportMarkdown")?.toString() || "",
+      scope: formData.get("scope")?.toString() || "",
+      title: formData.get("title")?.toString() || "",
+    });
+    setReviewState("judged");
+    setActiveTab("knownIssues");
+
+    toast.success("Finding package sent for judging.", {
+      description:
+        "Frontend mock: backend should create the review PR in the Breach Room repo.",
+    });
   };
 
   return (
@@ -594,178 +1213,18 @@ export function BreachRoomsSection() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div className="mb-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <StatusPill tone="purple">Breach Room 0</StatusPill>
-              <StatusPill tone="green">Tutorial</StatusPill>
-              <StatusPill tone="zinc">100 XP</StatusPill>
-            </div>
-            <div>
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.36em] text-primary">
-                First Room Prototype
-              </p>
-              <h1 className="max-w-3xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
-                Learn the audit room workflow.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-muted sm:text-lg">
-                Set up agent-assisted review, run manual checks, and submit a
-                structured finding report before entering less-guided rooms.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setTutorialOpen(true)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary transition-colors hover:bg-primary/[0.22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                <Video className="h-4 w-4" aria-hidden={true} />
-                View Tutorial
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("report")}
-                disabled={!tutorialComplete}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-foreground transition-colors hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                Open Report Template
-                <ArrowRight className="h-4 w-4" aria-hidden={true} />
-              </button>
-            </div>
-          </div>
-
-          <aside className="h-fit rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-            <p className="text-sm font-semibold text-foreground">
-              Room progress
-            </p>
-            <div className="mt-5 space-y-4">
-              {ROOM_FLOW.map((step, index) => {
-                const done =
-                  (index === 0 && tutorialComplete) ||
-                  (index === 4 && Boolean(submittedDraft));
-
-                return (
-                  <div
-                    key={step}
-                    className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
-                  >
-                    <span
-                      className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-semibold ${
-                        done
-                          ? "border-emerald-400/40 bg-emerald-400/[0.15] text-emerald-200"
-                          : "border-white/[0.12] bg-white/[0.03] text-zinc-500"
-                      }`}
-                    >
-                      {done ? (
-                        <CheckCircle2
-                          className="h-3.5 w-3.5"
-                          aria-hidden={true}
-                        />
-                      ) : (
-                        index + 1
-                      )}
-                    </span>
-                    <p
-                      className={`text-sm leading-6 ${
-                        done ? "text-zinc-200" : "text-muted"
-                      }`}
-                    >
-                      {step}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </aside>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#090b0d]/[0.88] shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)]">
-            <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
-              {ROOM_TABS.map((tab) => (
-                <TabButton
-                  key={tab.id}
-                  active={activeTab === tab.id}
-                  icon={tab.icon}
-                  label={tab.label}
-                  onClick={() => setActiveTab(tab.id)}
-                />
-              ))}
-            </div>
-
-            <div
-              className={`p-5 sm:p-7 ${
-                tutorialComplete ? "" : "pointer-events-none opacity-50"
-              }`}
-            >
-              {activeTabContent}
-            </div>
-          </div>
-
-          <aside className="space-y-4">
-            <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="font-semibold text-foreground">
-                  Rewards breakdown
-                </h2>
-                <StatusPill tone="purple">Prototype</StatusPill>
-              </div>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted">Accepted tutorial report</span>
-                  <span className="font-semibold text-foreground">100 XP</span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted">Certificate</span>
-                  <span className="font-semibold text-zinc-500">TBD</span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted">Room state</span>
-                  <span className="font-semibold text-emerald-200">
-                    Training
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
-              <h2 className="font-semibold text-foreground">Submissions</h2>
-              <div className="mt-4 rounded-2xl border border-white/10 bg-black/[0.35] p-4">
-                {submittedDraft ? (
-                  <div className="space-y-2">
-                    <p className="font-semibold text-foreground">
-                      {submittedDraft.title}
-                    </p>
-                    <p className="text-sm text-muted">
-                      Impact {submittedDraft.impact} / Likelihood{" "}
-                      {submittedDraft.likelihood}
-                    </p>
-                    <StatusPill tone="green">Draft staged</StatusPill>
-                  </div>
-                ) : (
-                  <div className="py-8 text-center">
-                    <BookOpen
-                      className="mx-auto h-8 w-8 text-zinc-600"
-                      aria-hidden={true}
-                    />
-                    <p className="mt-3 text-sm font-semibold text-foreground">
-                      No findings submitted.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("report")}
-                      disabled={!tutorialComplete}
-                      className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary disabled:cursor-not-allowed disabled:text-zinc-600"
-                    >
-                      Submit your first report
-                      <ArrowRight className="h-4 w-4" aria-hidden={true} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </aside>
-        </div>
+        {view === "list" ? (
+          <BreachRoomList onOpenRoom={handleOpenRoom} />
+        ) : (
+          <RoomWorkspace
+            activeTab={activeTab}
+            onBack={handleBack}
+            onSubmit={handleSubmit}
+            onTabChange={setActiveTab}
+            reviewState={reviewState}
+            tutorialComplete={tutorialComplete}
+          />
+        )}
       </div>
     </section>
   );

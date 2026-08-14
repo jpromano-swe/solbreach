@@ -51,3 +51,6 @@ test-ledger/
 
 # local Solana keypairs
 .keys/
+
+# local Breach Room scaffolds live in a separate repo later
+/local-breach-rooms/

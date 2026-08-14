@@ -874,7 +874,6 @@ export default function Home() {
       activeSection === "profile" ||
       activeSection === "vulnerabilities" ||
       activeSection === "research-labs" ||
-      activeSection === "breach-rooms" ||
       (activeSection === "levels" && activeLevelsView !== "landing");
 
     if (!protectedSection) return;
