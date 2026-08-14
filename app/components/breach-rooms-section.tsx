@@ -25,6 +25,7 @@ import {
   Send,
   ShieldCheck,
   Trophy,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -254,33 +255,46 @@ function RoomMark() {
   );
 }
 
-function TutorialModal({ onStart }: { onStart: () => void }) {
+function TutorialModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-md">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-4 backdrop-blur-md"
+      onClick={onClose}
+    >
       <section
         aria-label="Breach Room 1 setup"
-        className="relative max-h-[calc(100vh-3rem)] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/[0.12] bg-[#07090b] p-6 shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] sm:p-8"
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-[24px] border border-white/[0.12] bg-[#07090b] p-5 shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] sm:p-6"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="space-y-4">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close setup instructions"
+          className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] text-zinc-400 transition-colors hover:bg-white/[0.08] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <X className="h-4 w-4" aria-hidden={true} />
+        </button>
+
+        <div className="space-y-3 pr-12">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">
             Before You Audit
           </p>
-          <h2 className="max-w-xl text-4xl font-semibold tracking-[-0.07em] text-foreground sm:text-5xl">
+          <h2 className="max-w-xl text-3xl font-semibold tracking-[-0.07em] text-foreground sm:text-4xl">
             Install the auditor workflow.
           </h2>
         </div>
 
-        <div className="mx-auto mt-6 max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-black/60">
-          <div className="flex aspect-video items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(153,69,255,0.22),transparent_38%),linear-gradient(135deg,rgba(20,241,149,0.11),rgba(153,69,255,0.09),rgba(0,0,0,0.78))]">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
-                <Play className="h-5 w-5 fill-current" aria-hidden={true} />
+        <div className="mx-auto mt-5 max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-black/60">
+          <div className="flex h-40 items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(153,69,255,0.22),transparent_38%),linear-gradient(135deg,rgba(20,241,149,0.11),rgba(153,69,255,0.09),rgba(0,0,0,0.78))] sm:h-44">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
+                <Play className="h-4 w-4 fill-current" aria-hidden={true} />
               </span>
               <div>
-                <p className="text-base font-semibold text-foreground">
+                <p className="text-sm font-semibold text-foreground">
                   Room briefing placeholder
                 </p>
-                <p className="mt-1 text-sm text-muted">
+                <p className="mt-0.5 text-xs text-muted">
                   Add the walkthrough video when the first room is final.
                 </p>
               </div>
@@ -288,24 +302,26 @@ function TutorialModal({ onStart }: { onStart: () => void }) {
           </div>
         </div>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-5 space-y-3">
           {AUDITOR_SKILL_SETUP.map((item, index) => (
             <div
               key={item.title}
-              className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-sm font-semibold text-primary">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-sm font-semibold text-primary">
                 {index + 1}
               </span>
               <div>
-                <p className="font-semibold text-foreground">{item.title}</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {item.title}
+                </p>
                 {item.command ? (
-                  <code className="mt-2 block rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs text-zinc-200">
+                  <code className="mt-1.5 block rounded-xl border border-white/10 bg-black/45 px-3 py-1.5 text-xs text-zinc-200">
                     {item.command}
                   </code>
                 ) : null}
                 {item.description ? (
-                  <p className="mt-1 text-sm leading-6 text-muted">
+                  <p className="mt-1 text-xs leading-5 text-muted">
                     {item.description}
                   </p>
                 ) : null}
@@ -316,8 +332,8 @@ function TutorialModal({ onStart }: { onStart: () => void }) {
 
         <button
           type="button"
-          onClick={onStart}
-          className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          onClick={onClose}
+          className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Open Breach Room 1
           <ArrowRight className="h-4 w-4" aria-hidden={true} />
@@ -1444,7 +1460,7 @@ export function BreachRoomsSection() {
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-[#050708] text-foreground">
-      {tutorialOpen ? <TutorialModal onStart={handleStartTutorial} /> : null}
+      {tutorialOpen ? <TutorialModal onClose={handleStartTutorial} /> : null}
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(153,69,255,0.16),transparent_35%),radial-gradient(circle_at_82%_16%,rgba(20,241,149,0.12),transparent_38%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:64px_64px]" />
