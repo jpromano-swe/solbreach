@@ -1233,19 +1233,27 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
     reviewState === "accepted" ||
     reviewState === "rejected" ||
     reviewState === "needs_revision";
+  const stepToneClass = {
+    amber: "border-yellow-400/45 bg-yellow-400/15 text-yellow-200",
+    green: "border-emerald-400/40 bg-emerald-400/15 text-emerald-200",
+    red: "border-red-400/45 bg-red-400/15 text-red-200",
+    zinc: "border-white/15 bg-white/[0.04] text-zinc-500",
+  } as const;
 
   const steps = [
     {
       title: "Live",
       description: "The room is open for submissions.",
-      complete: true,
+      state: "complete",
+      tone: "green",
     },
     {
       title: "Submission PR",
       description: submitted
         ? "Finding package is linked to a review PR."
         : "Submit a finding package to create a review PR.",
-      complete: submitted,
+      state: submitted ? "complete" : "waiting",
+      tone: submitted ? "green" : "zinc",
     },
     {
       title: "PR review",
@@ -1253,7 +1261,18 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
         reviewState === "pending_review"
           ? "Merge accepts the finding. Closing without merge rejects it."
           : "GitHub webhook records the PR outcome.",
-      complete: finalized,
+      state:
+        reviewState === "pending_review"
+          ? "active"
+          : finalized
+            ? "complete"
+            : "waiting",
+      tone:
+        reviewState === "pending_review"
+          ? "amber"
+          : finalized
+            ? "green"
+            : "zinc",
     },
     {
       title: "Results",
@@ -1263,9 +1282,15 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
           : reviewState === "rejected"
             ? "Finding rejected. No EXP granted."
             : "Final status appears after PR review.",
-      complete: finalized,
+      state: finalized ? "complete" : "waiting",
+      tone: reviewState === "rejected" ? "red" : finalized ? "green" : "zinc",
     },
-  ];
+  ] satisfies Array<{
+    description: string;
+    state: "active" | "complete" | "waiting";
+    title: string;
+    tone: keyof typeof stepToneClass;
+  }>;
 
   return (
     <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
@@ -1284,13 +1309,9 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
             className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-3"
           >
             <span
-              className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
-                step.complete
-                  ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
-                  : "border-white/15 bg-white/[0.04] text-zinc-500"
-              }`}
+              className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${stepToneClass[step.tone]}`}
             >
-              {step.complete ? (
+              {step.state === "complete" ? (
                 <CheckCircle2 className="h-3.5 w-3.5" aria-hidden={true} />
               ) : (
                 <Clock3 className="h-3.5 w-3.5" aria-hidden={true} />
