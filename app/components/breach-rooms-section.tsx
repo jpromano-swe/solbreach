@@ -84,12 +84,19 @@ const BREACH_ROOM = {
   xp: 100,
   nsloc: 290,
   repoPath: "local-breach-rooms/breach-room-1",
+  repoUrl:
+    "https://github.com/jpromano-swe/solbreach-breachrooms/tree/main/breach-room-1",
   description:
     "Vault Bridge coordinates contributor task approvals, receipt reopening, and payout routing through a compact Anchor treasury workflow.",
   tags: ["Rust", "Anchor"],
 };
 
 const AUDITOR_SKILL_SETUP = [
+  {
+    title: "Clone the repo as you would normally do.",
+    command: "",
+    description: "",
+  },
   {
     title: "Install the Solana auditor skill",
     command: "Install: https://github.com/solanabr/auditor-skill",
@@ -254,18 +261,6 @@ function TutorialModal({ onStart }: { onStart: () => void }) {
         aria-label="Breach Room 1 setup"
         className="relative max-h-[calc(100vh-3rem)] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/[0.12] bg-[#07090b] p-6 shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] sm:p-8"
       >
-        <div className="mb-7 flex items-center gap-3">
-          <Image
-            src="/logo_crop.png"
-            alt="SolBreach"
-            width={1480}
-            height={304}
-            className="h-10 w-auto"
-            priority
-          />
-          <StatusPill tone="purple">Breach Room 1</StatusPill>
-        </div>
-
         <div className="space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">
             Before You Audit
@@ -275,14 +270,14 @@ function TutorialModal({ onStart }: { onStart: () => void }) {
           </h2>
         </div>
 
-        <div className="mt-7 overflow-hidden rounded-2xl border border-white/10 bg-black/60">
+        <div className="mx-auto mt-6 max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-black/60">
           <div className="flex aspect-video items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(153,69,255,0.22),transparent_38%),linear-gradient(135deg,rgba(20,241,149,0.11),rgba(153,69,255,0.09),rgba(0,0,0,0.78))]">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
-                <Play className="h-7 w-7 fill-current" aria-hidden={true} />
+            <div className="flex flex-col items-center gap-3 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
+                <Play className="h-5 w-5 fill-current" aria-hidden={true} />
               </span>
               <div>
-                <p className="text-lg font-semibold text-foreground">
+                <p className="text-base font-semibold text-foreground">
                   Room briefing placeholder
                 </p>
                 <p className="mt-1 text-sm text-muted">
@@ -293,11 +288,7 @@ function TutorialModal({ onStart }: { onStart: () => void }) {
           </div>
         </div>
 
-        <p className="mt-4 text-sm font-semibold text-zinc-300">
-          Clone the repo as you would normally do.
-        </p>
-
-        <div className="mt-7 space-y-4">
+        <div className="mt-6 space-y-4">
           {AUDITOR_SKILL_SETUP.map((item, index) => (
             <div
               key={item.title}
@@ -308,12 +299,16 @@ function TutorialModal({ onStart }: { onStart: () => void }) {
               </span>
               <div>
                 <p className="font-semibold text-foreground">{item.title}</p>
-                <code className="mt-2 block rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs text-zinc-200">
-                  {item.command}
-                </code>
-                <p className="mt-1 text-sm leading-6 text-muted">
-                  {item.description}
-                </p>
+                {item.command ? (
+                  <code className="mt-2 block rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs text-zinc-200">
+                    {item.command}
+                  </code>
+                ) : null}
+                {item.description ? (
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    {item.description}
+                  </p>
+                ) : null}
               </div>
             </div>
           ))}
@@ -1198,13 +1193,15 @@ function RoomHeaderCard({
         </p>
 
         <div className="flex shrink-0 flex-wrap justify-end gap-3">
-          <button
-            type="button"
+          <a
+            href={BREACH_ROOM.repoUrl}
+            target="_blank"
+            rel="noreferrer"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             View repo
             <ExternalLink className="h-4 w-4" aria-hidden={true} />
-          </button>
+          </a>
           <button
             type={reportingStarted ? "submit" : "button"}
             form={reportingStarted ? "breach-room-report-form" : undefined}
