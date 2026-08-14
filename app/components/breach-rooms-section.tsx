@@ -83,24 +83,6 @@ const AUDITOR_SKILL_SETUP = [
   },
 ];
 
-const KNOWN_ISSUES = [
-  {
-    title: "Local token minting is mocked",
-    description:
-      "The room uses local token references so reviewers can focus on account relationships.",
-  },
-  {
-    title: "Reward values are synthetic",
-    description:
-      "XP and payout figures are training metadata, not production funds.",
-  },
-  {
-    title: "Program ID is room-scoped",
-    description:
-      "The declared program address is only used to keep the local Anchor workspace deterministic.",
-  },
-];
-
 const SCOPE_FILES = [
   "programs/breach_room_1/src/lib.rs",
   "tests/breach_room_1.ts",
@@ -725,12 +707,6 @@ function FindingReportForm({
                   Report body
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-zinc-300">
-                    Formatted
-                  </span>
-                  <span className="rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-semibold text-muted">
-                    Raw
-                  </span>
                   <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">
                     <Image
                       src="/rust-logo.png"
@@ -780,91 +756,40 @@ function KnownIssuesPanel({ reviewState }: { reviewState: ReviewState }) {
   }
 
   return (
-    <div className="space-y-6">
-      <section>
-        <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-          Known issues
-        </h3>
-        <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
-          These are disclosed room constraints and out-of-scope assumptions.
-          They are not valid findings for judging.
-        </p>
-      </section>
-
-      <div className="space-y-3">
-        {KNOWN_ISSUES.map((issue) => (
-          <article
-            key={issue.title}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-          >
-            <div className="flex gap-3">
-              <AlertTriangle
-                className="mt-0.5 h-5 w-5 shrink-0 text-yellow-300"
-                aria-hidden={true}
-              />
-              <div>
-                <h4 className="font-semibold text-foreground">{issue.title}</h4>
-                <p className="mt-1 text-sm leading-6 text-muted">
-                  {issue.description}
-                </p>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+    <div className="flex items-center gap-3 text-sm font-semibold text-zinc-200">
+      <CheckCircle2 className="h-5 w-5 text-emerald-300" aria-hidden={true} />
+      No known issues
     </div>
   );
 }
 
 function ScopePanel() {
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <section>
-        <h3 className="text-2xl font-semibold tracking-[-0.04em]">Scope</h3>
-        <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
-          Clone the room repository locally, inspect only the scoped files, and
-          use code references in your submitted finding package.
-        </p>
+    <section>
+      <h3 className="text-2xl font-semibold tracking-[-0.04em]">Scope</h3>
+      <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
+        Clone the room repository locally, inspect only the scoped files, and
+        use code references in your submitted finding package.
+      </p>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/45">
-          {SCOPE_FILES.map((file, index) => (
-            <div
-              key={file}
-              className={`grid grid-cols-[3rem_minmax(0,1fr)] items-center ${
-                index > 0 ? "border-t border-white/10" : ""
-              }`}
-            >
-              <span className="border-r border-white/10 py-4 text-center text-xs text-zinc-500">
-                {index + 1}
-              </span>
-              <code className="truncate px-4 py-4 text-sm text-zinc-300">
-                {file}
-              </code>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <aside className="h-fit rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
-          Out of scope
-        </p>
-        <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
-          <li>No production funds.</li>
-          <li>No live network targets.</li>
-          <li>No social engineering.</li>
-          <li>No dependency disclosure outside the room.</li>
-        </ul>
-
-        <button
-          type="button"
-          className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-primary/35 bg-primary/15 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/[0.22] active:scale-[0.96]"
-        >
-          View repo setup
-          <ExternalLink className="h-4 w-4" aria-hidden={true} />
-        </button>
-      </aside>
-    </div>
+      <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black/45">
+        {SCOPE_FILES.map((file, index) => (
+          <div
+            key={file}
+            className={`grid grid-cols-[3rem_minmax(0,1fr)] items-center ${
+              index > 0 ? "border-t border-white/10" : ""
+            }`}
+          >
+            <span className="border-r border-white/10 py-4 text-center text-xs text-zinc-500">
+              {index + 1}
+            </span>
+            <code className="truncate px-4 py-4 text-sm text-zinc-300">
+              {file}
+            </code>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
