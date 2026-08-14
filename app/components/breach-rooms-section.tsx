@@ -496,8 +496,8 @@ function ContestDetails({
   ];
 
   return (
-    <div className="space-y-7">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-6">
+    <div className="-m-5 sm:-m-7">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-5 pb-6 pt-5 sm:px-7 sm:pt-7">
         <div>
           <h2 className="text-3xl font-semibold tracking-[-0.05em]">
             Submit your finding
@@ -513,7 +513,7 @@ function ContestDetails({
 
       <form
         onSubmit={onSubmit}
-        className="rounded-[22px] bg-[#141719]/75 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.045)]"
+        className="bg-[#121619]/85 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:px-7 sm:py-7"
       >
         <div className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
@@ -993,9 +993,6 @@ function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
               </h1>
               <LiveStatusPill />
             </div>
-            <p className="mt-1 text-sm font-semibold text-muted">
-              {BREACH_ROOM.title} · {BREACH_ROOM.category}
-            </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <StatusPill tone="green">{BREACH_ROOM.difficulty}</StatusPill>
               {BREACH_ROOM.tags.map((tag) => (
@@ -1008,26 +1005,28 @@ function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
         </div>
       </div>
 
-      <p className="mt-7 max-w-3xl text-sm leading-7 text-zinc-300">
-        {BREACH_ROOM.description}
-      </p>
+      <div className="mt-7 flex flex-wrap items-end justify-between gap-5">
+        <p className="max-w-3xl text-sm leading-7 text-zinc-300">
+          {BREACH_ROOM.description}
+        </p>
 
-      <div className="mt-7 flex flex-wrap justify-end gap-3">
-        <button
-          type="button"
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          View repo
-          <ExternalLink className="h-4 w-4" aria-hidden={true} />
-        </button>
-        <button
-          type="button"
-          onClick={onSubmitFinding}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          Submit finding
-          <Send className="h-4 w-4" aria-hidden={true} />
-        </button>
+        <div className="flex shrink-0 flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            View repo
+            <ExternalLink className="h-4 w-4" aria-hidden={true} />
+          </button>
+          <button
+            type="button"
+            onClick={onSubmitFinding}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Submit finding
+            <Send className="h-4 w-4" aria-hidden={true} />
+          </button>
+        </div>
       </div>
     </section>
   );
