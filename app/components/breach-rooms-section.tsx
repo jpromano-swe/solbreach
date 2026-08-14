@@ -17,9 +17,7 @@ import {
   Search,
   Send,
   ShieldCheck,
-  Terminal,
   Trophy,
-  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -75,14 +73,6 @@ const AUDITOR_SKILL_SETUP = [
     command: "/auditor:audit-cycle",
     description: "Use this slash command after cloning the Breach Room repo.",
   },
-];
-
-const ROOM_FLOW = [
-  "Open room scope",
-  "Install auditor skill",
-  "Audit the Rust codebase",
-  "Submit finding package",
-  "Manual review",
 ];
 
 const KNOWN_ISSUES = [
@@ -220,96 +210,81 @@ function TutorialModal({ onStart }: { onStart: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-md">
       <section
         aria-label="Breach Room 1 setup"
-        className="relative grid max-h-[calc(100vh-3rem)] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-white/[0.12] bg-[#07090b] shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]"
+        className="relative max-h-[calc(100vh-3rem)] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/[0.12] bg-[#07090b] p-6 shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] sm:p-8"
       >
-        <div className="border-b border-white/10 p-6 md:border-b-0 md:border-r md:p-8">
-          <div className="mb-6 flex items-center gap-3">
-            <Image
-              src="/logo_crop.png"
-              alt="SolBreach"
-              width={1480}
-              height={304}
-              className="h-10 w-auto"
-              priority
-            />
-            <StatusPill tone="purple">Breach Room 1</StatusPill>
-          </div>
+        <div className="mb-7 flex items-center gap-3">
+          <Image
+            src="/logo_crop.png"
+            alt="SolBreach"
+            width={1480}
+            height={304}
+            className="h-10 w-auto"
+            priority
+          />
+          <StatusPill tone="purple">Breach Room 1</StatusPill>
+        </div>
 
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/60">
-            <div className="flex aspect-video items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(153,69,255,0.22),transparent_38%),linear-gradient(135deg,rgba(20,241,149,0.11),rgba(153,69,255,0.09),rgba(0,0,0,0.78))]">
-              <div className="flex flex-col items-center gap-4 text-center">
-                <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
-                  <Play className="h-7 w-7 fill-current" aria-hidden={true} />
-                </span>
-                <div>
-                  <p className="text-lg font-semibold text-foreground">
-                    Room briefing placeholder
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                    Add the walkthrough video when the first room is final.
-                  </p>
-                </div>
+        <div className="space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">
+            Before You Audit
+          </p>
+          <h2 className="max-w-xl text-4xl font-semibold tracking-[-0.07em] text-foreground sm:text-5xl">
+            Install the auditor workflow.
+          </h2>
+        </div>
+
+        <div className="mt-7 overflow-hidden rounded-2xl border border-white/10 bg-black/60">
+          <div className="flex aspect-video items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(153,69,255,0.22),transparent_38%),linear-gradient(135deg,rgba(20,241,149,0.11),rgba(153,69,255,0.09),rgba(0,0,0,0.78))]">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
+                <Play className="h-7 w-7 fill-current" aria-hidden={true} />
+              </span>
+              <div>
+                <p className="text-lg font-semibold text-foreground">
+                  Room briefing placeholder
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  Add the walkthrough video when the first room is final.
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-6 md:p-8">
-          <div className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">
-              Before You Audit
-            </p>
-            <h2 className="max-w-xl text-4xl font-semibold tracking-[-0.07em] text-foreground sm:text-5xl">
-              Install the auditor workflow.
-            </h2>
-            <p className="max-w-xl text-base leading-7 text-muted">
-              Breach Room 1 starts from a local Rust/Anchor codebase. Install
-              the Solana auditor skill, then run the audit cycle from the cloned
-              repository.
-            </p>
-          </div>
+        <p className="mt-4 text-sm font-semibold text-zinc-300">
+          Clone the repo as you would normally do.
+        </p>
 
-          <div className="mt-7 space-y-4">
-            {AUDITOR_SKILL_SETUP.map((item, index) => (
-              <div
-                key={item.title}
-                className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-sm font-semibold text-primary">
-                  {index + 1}
-                </span>
-                <div>
-                  <p className="font-semibold text-foreground">{item.title}</p>
-                  <code className="mt-2 block rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs text-zinc-200">
-                    {item.command}
-                  </code>
-                  <p className="mt-1 text-sm leading-6 text-muted">
-                    {item.description}
-                  </p>
-                </div>
+        <div className="mt-7 space-y-4">
+          {AUDITOR_SKILL_SETUP.map((item, index) => (
+            <div
+              key={item.title}
+              className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-sm font-semibold text-primary">
+                {index + 1}
+              </span>
+              <div>
+                <p className="font-semibold text-foreground">{item.title}</p>
+                <code className="mt-2 block rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-xs text-zinc-200">
+                  {item.command}
+                </code>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  {item.description}
+                </p>
               </div>
-            ))}
-          </div>
-
-          <div className="mt-7 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-              Two-line setup
-            </p>
-            <pre className="whitespace-pre-wrap rounded-xl bg-black/55 p-4 text-xs leading-6 text-zinc-300">
-              {`Install: https://github.com/solanabr/auditor-skill
-Run from the Rust/Anchor repo: /auditor:audit-cycle`}
-            </pre>
-          </div>
-
-          <button
-            type="button"
-            onClick={onStart}
-            className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Open Breach Room 1
-            <ArrowRight className="h-4 w-4" aria-hidden={true} />
-          </button>
+            </div>
+          ))}
         </div>
+
+        <button
+          type="button"
+          onClick={onStart}
+          className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          Open Breach Room 1
+          <ArrowRight className="h-4 w-4" aria-hidden={true} />
+        </button>
       </section>
     </div>
   );
@@ -492,69 +467,6 @@ function ContestDetails({
 }) {
   return (
     <div className="space-y-7">
-      <section className="rounded-[24px] border border-white/10 bg-black/30 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="flex gap-4">
-            <RoomMark />
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-                  {BREACH_ROOM.subtitle}
-                </h3>
-                <StatusPill tone="green">Live</StatusPill>
-              </div>
-              <p className="mt-1 text-sm text-muted">{BREACH_ROOM.category}</p>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-300">
-                {BREACH_ROOM.description}
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <p className="text-2xl font-semibold text-foreground">
-              {BREACH_ROOM.xp} XP
-            </p>
-            <p className="mt-1 text-xs uppercase tracking-[0.22em] text-zinc-500">
-              Review reward
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          {
-            icon: Terminal,
-            title: "Clone and inspect",
-            body: "Start from the local Anchor workspace and map every trusted account path.",
-          },
-          {
-            icon: Wrench,
-            title: "Verify manually",
-            body: "Use the auditor skill for coverage, then confirm behavior with code and tests.",
-          },
-          {
-            icon: GitPullRequestArrow,
-            title: "Submit for judging",
-            body: "The platform package will become a review PR in the Breach Room repo.",
-          },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <article
-              key={item.title}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-            >
-              <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/25 bg-primary/12 text-primary">
-                <Icon className="h-5 w-5" aria-hidden={true} />
-              </span>
-              <h4 className="font-semibold text-foreground">{item.title}</h4>
-              <p className="mt-2 text-sm leading-6 text-muted">{item.body}</p>
-            </article>
-          );
-        })}
-      </div>
-
       <form
         onSubmit={onSubmit}
         className="overflow-hidden rounded-[24px] border border-white/10 bg-[#080b0e]/85"
@@ -562,21 +474,16 @@ function ContestDetails({
         <div className="border-b border-white/10 bg-white/[0.025] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-zinc-500">
-                Submission details
-              </p>
-              <h3 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">
-                Submit a Vulnerability
+              <h3 className="text-2xl font-semibold tracking-[-0.04em]">
+                Submit your finding
               </h3>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">
-                Fill the audit report template with one vulnerability. Backend
-                wiring should convert this package into a review PR against the
-                Breach Room repository.
+                Fill one audit report template for each vulnerability you find.
               </p>
             </div>
-            <StatusPill tone={reviewState === "judged" ? "green" : "purple"}>
-              {reviewState === "judged" ? "Judged" : "Draft"}
-            </StatusPill>
+            {reviewState === "judged" ? (
+              <StatusPill tone="green">Judged</StatusPill>
+            ) : null}
           </div>
         </div>
 
@@ -627,19 +534,35 @@ function ContestDetails({
                 Severity
               </legend>
               <div className="grid grid-cols-3 gap-2">
-                {["High", "Medium", "Low"].map((severity) => (
+                {[
+                  {
+                    label: "High",
+                    className:
+                      "has-[:checked]:border-red-400/50 has-[:checked]:bg-red-400/[0.16] has-[:checked]:text-red-100",
+                  },
+                  {
+                    label: "Medium",
+                    className:
+                      "has-[:checked]:border-amber-300/50 has-[:checked]:bg-amber-300/[0.16] has-[:checked]:text-amber-100",
+                  },
+                  {
+                    label: "Low",
+                    className:
+                      "has-[:checked]:border-emerald-300/50 has-[:checked]:bg-emerald-300/[0.14] has-[:checked]:text-emerald-100",
+                  },
+                ].map((severity) => (
                   <label
-                    key={severity}
-                    className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors has-[:checked]:border-primary/45 has-[:checked]:bg-primary/[0.18] has-[:checked]:text-primary"
+                    key={severity.label}
+                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors ${severity.className}`}
                   >
                     <input
                       type="radio"
                       name="impact"
-                      value={severity}
-                      defaultChecked={severity === "Medium"}
+                      value={severity.label}
+                      defaultChecked={severity.label === "Medium"}
                       className="sr-only"
                     />
-                    {severity}
+                    {severity.label}
                   </label>
                 ))}
               </div>
@@ -650,19 +573,35 @@ function ContestDetails({
                 Likelihood
               </legend>
               <div className="grid grid-cols-3 gap-2">
-                {["High", "Medium", "Low"].map((likelihood) => (
+                {[
+                  {
+                    label: "High",
+                    className:
+                      "has-[:checked]:border-red-400/50 has-[:checked]:bg-red-400/[0.16] has-[:checked]:text-red-100",
+                  },
+                  {
+                    label: "Medium",
+                    className:
+                      "has-[:checked]:border-amber-300/50 has-[:checked]:bg-amber-300/[0.16] has-[:checked]:text-amber-100",
+                  },
+                  {
+                    label: "Low",
+                    className:
+                      "has-[:checked]:border-emerald-300/50 has-[:checked]:bg-emerald-300/[0.14] has-[:checked]:text-emerald-100",
+                  },
+                ].map((likelihood) => (
                   <label
-                    key={likelihood}
-                    className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors has-[:checked]:border-primary/45 has-[:checked]:bg-primary/[0.18] has-[:checked]:text-primary"
+                    key={likelihood.label}
+                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors ${likelihood.className}`}
                   >
                     <input
                       type="radio"
                       name="likelihood"
-                      value={likelihood}
-                      defaultChecked={likelihood === "Medium"}
+                      value={likelihood.label}
+                      defaultChecked={likelihood.label === "Medium"}
                       className="sr-only"
                     />
-                    {likelihood}
+                    {likelihood.label}
                   </label>
                 ))}
               </div>
@@ -679,7 +618,6 @@ function ContestDetails({
                   Based on the Research Labs audit report structure.
                 </p>
               </div>
-              <StatusPill tone="zinc">Markdown</StatusPill>
             </div>
             <textarea
               name="reportMarkdown"
@@ -687,27 +625,17 @@ function ContestDetails({
               className="min-h-[34rem] w-full resize-y bg-transparent px-4 py-4 font-mono text-sm leading-7 text-zinc-200 outline-none placeholder:text-zinc-600"
               required
             />
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3 text-xs text-muted">
-              <span>Supports Markdown and code references.</span>
-              <span>One vulnerability per submission.</span>
-            </div>
           </label>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
-            <p className="text-sm text-muted">
-              Target PR path:{" "}
-              <code className="text-zinc-300">
-                submissions/breach-room-1/&lt;wallet&gt;.md
-              </code>
-            </p>
+          <div className="flex justify-end border-t border-white/10 pt-5">
             <button
               type="submit"
               disabled={reviewState === "judged"}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {reviewState === "judged"
-                ? "Vulnerability submitted"
-                : "Submit a Vulnerability"}
+                ? "Finding submitted"
+                : "Submit your finding"}
               <Send className="h-4 w-4" aria-hidden={true} />
             </button>
           </div>
@@ -921,7 +849,7 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
     },
     {
       title: "Results",
-      description: "XP and feedback become visible on the room page.",
+      description: "Review feedback becomes visible on the room page.",
       complete: reviewState === "judged",
     },
   ];
@@ -970,108 +898,18 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
   );
 }
 
-function RewardsBreakdown({ reviewState }: { reviewState: ReviewState }) {
-  return (
-    <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="font-semibold text-foreground">Rewards breakdown</h2>
-        <StatusPill tone="purple">Room 1</StatusPill>
-      </div>
-      <div className="space-y-3 text-sm">
-        <div className="flex justify-between gap-4">
-          <span className="text-muted">nSLOC</span>
-          <span className="font-semibold text-foreground">
-            {BREACH_ROOM.nsloc}
-          </span>
-        </div>
-        <div className="border-t border-white/10 pt-3">
-          <div className="mb-3 flex justify-between gap-4">
-            <StatusPill tone="red">High</StatusPill>
-            <span className="font-semibold text-foreground">100 XP</span>
-          </div>
-          <div className="mb-3 flex justify-between gap-4">
-            <StatusPill tone="amber">Medium</StatusPill>
-            <span className="font-semibold text-foreground">20 XP</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <StatusPill tone="green">Low</StatusPill>
-            <span className="font-semibold text-foreground">2 XP</span>
-          </div>
-        </div>
-        <div className="flex justify-between gap-4 border-t border-white/10 pt-3">
-          <span className="text-muted">Room state</span>
-          <span className="font-semibold text-emerald-200">
-            {reviewState === "judged" ? "Reviewed" : "Live"}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RoomProgress({
-  reviewState,
-  tutorialComplete,
-}: {
-  reviewState: ReviewState;
-  tutorialComplete: boolean;
-}) {
-  return (
-    <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5">
-      <p className="text-sm font-semibold text-foreground">Room progress</p>
-      <div className="mt-5 space-y-4">
-        {ROOM_FLOW.map((step, index) => {
-          const done =
-            (index === 0 && tutorialComplete) ||
-            (index === 1 && tutorialComplete) ||
-            (index === 3 && reviewState === "judged") ||
-            (index === 4 && reviewState === "judged");
-
-          return (
-            <div
-              key={step}
-              className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
-            >
-              <span
-                className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-semibold ${
-                  done
-                    ? "border-emerald-400/40 bg-emerald-400/[0.15] text-emerald-200"
-                    : "border-white/[0.12] bg-white/[0.03] text-zinc-500"
-                }`}
-              >
-                {done ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden={true} />
-                ) : (
-                  index + 1
-                )}
-              </span>
-              <p
-                className={`text-sm leading-6 ${done ? "text-zinc-200" : "text-muted"}`}
-              >
-                {step}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function RoomWorkspace({
   activeTab,
   onBack,
   onSubmit,
   onTabChange,
   reviewState,
-  tutorialComplete,
 }: {
   activeTab: RoomTab;
   onBack: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onTabChange: (tab: RoomTab) => void;
   reviewState: ReviewState;
-  tutorialComplete: boolean;
 }) {
   const activeTabContent = useMemo(() => {
     if (activeTab === "details") {
@@ -1095,32 +933,6 @@ function RoomWorkspace({
           <ArrowLeft className="h-4 w-4" aria-hidden={true} />
           All Breach Rooms
         </button>
-
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <StatusPill tone="purple">Breach Room 1</StatusPill>
-              <StatusPill tone="green">Live</StatusPill>
-              <StatusPill tone="zinc">{BREACH_ROOM.xp} XP</StatusPill>
-            </div>
-            <div>
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.36em] text-primary">
-                First Breach Room
-              </p>
-              <h1 className="max-w-3xl text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
-                {BREACH_ROOM.subtitle}
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-muted sm:text-lg">
-                {BREACH_ROOM.description}
-              </p>
-            </div>
-          </div>
-
-          <RoomProgress
-            reviewState={reviewState}
-            tutorialComplete={tutorialComplete}
-          />
-        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -1137,17 +949,10 @@ function RoomWorkspace({
             ))}
           </div>
 
-          <div
-            className={`p-5 sm:p-7 ${
-              tutorialComplete ? "" : "pointer-events-none opacity-50"
-            }`}
-          >
-            {activeTabContent}
-          </div>
+          <div className="p-5 sm:p-7">{activeTabContent}</div>
         </div>
 
         <aside className="space-y-4">
-          <RewardsBreakdown reviewState={reviewState} />
           <ReviewPipeline reviewState={reviewState} />
         </aside>
       </div>
@@ -1159,7 +964,6 @@ export function BreachRoomsSection() {
   const [view, setView] = useState<RoomView>("list");
   const [activeTab, setActiveTab] = useState<RoomTab>("details");
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [tutorialComplete, setTutorialComplete] = useState(false);
   const [reviewState, setReviewState] = useState<ReviewState>("notSubmitted");
   const [, setDraft] = useState<ReportDraft>(INITIAL_REPORT_DRAFT);
 
@@ -1170,7 +974,6 @@ export function BreachRoomsSection() {
   };
 
   const handleStartTutorial = () => {
-    setTutorialComplete(true);
     setTutorialOpen(false);
   };
 
@@ -1222,7 +1025,6 @@ export function BreachRoomsSection() {
             onSubmit={handleSubmit}
             onTabChange={setActiveTab}
             reviewState={reviewState}
-            tutorialComplete={tutorialComplete}
           />
         )}
       </div>
