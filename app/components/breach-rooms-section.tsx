@@ -51,7 +51,7 @@ const ROOM_TABS: Array<{
 const BREACH_ROOM = {
   id: "br-1",
   title: "Breach Room 1",
-  subtitle: "Vault Ledger",
+  subtitle: "Vault Bridge",
   category: "Rust / Anchor",
   difficulty: "Beginner Friendly",
   xp: 100,
@@ -123,15 +123,7 @@ const REVIEW_FINDINGS = {
   ],
 };
 
-const BREACH_ROOM_REPORT_TEMPLATE = `# Finding Title
-
-## Finding Summary
-- Category:
-- Severity:
-- Likelihood:
-- Affected file or instruction:
-
-## Description
+const BREACH_ROOM_REPORT_TEMPLATE = `## Description
 Describe the normal protocol behavior, then describe the vulnerable behavior.
 
 ## Root Cause
@@ -465,28 +457,52 @@ function ContestDetails({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   reviewState: ReviewState;
 }) {
+  const [reportFields, setReportFields] = useState({
+    category: "Missing Validation",
+    impact: "Medium" as ReportDraft["impact"],
+    likelihood: "Medium" as ReportDraft["likelihood"],
+    scope: "",
+    title: "",
+  });
+
+  const severityOptions = [
+    {
+      label: "High" as const,
+      className:
+        "has-[:checked]:border-red-400/50 has-[:checked]:bg-red-400/[0.16] has-[:checked]:text-red-100",
+    },
+    {
+      label: "Medium" as const,
+      className:
+        "has-[:checked]:border-amber-300/50 has-[:checked]:bg-amber-300/[0.16] has-[:checked]:text-amber-100",
+    },
+    {
+      label: "Low" as const,
+      className:
+        "has-[:checked]:border-emerald-300/50 has-[:checked]:bg-emerald-300/[0.14] has-[:checked]:text-emerald-100",
+    },
+  ];
+
   return (
     <div className="space-y-7">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-semibold tracking-[-0.05em]">
+            Submit your finding
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">
+            Fill one audit report template for each vulnerability you find.
+          </p>
+        </div>
+        {reviewState === "judged" ? (
+          <StatusPill tone="green">Judged</StatusPill>
+        ) : null}
+      </div>
+
       <form
         onSubmit={onSubmit}
         className="overflow-hidden rounded-[24px] border border-white/10 bg-[#080b0e]/85"
       >
-        <div className="border-b border-white/10 bg-white/[0.025] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-                Submit your finding
-              </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">
-                Fill one audit report template for each vulnerability you find.
-              </p>
-            </div>
-            {reviewState === "judged" ? (
-              <StatusPill tone="green">Judged</StatusPill>
-            ) : null}
-          </div>
-        </div>
-
         <div className="space-y-5 p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 md:col-span-2">
@@ -496,6 +512,13 @@ function ContestDetails({
               <input
                 name="title"
                 placeholder="One-line vulnerability title"
+                value={reportFields.title}
+                onChange={(event) =>
+                  setReportFields((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
+                }
                 className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
                 required
               />
@@ -507,7 +530,13 @@ function ContestDetails({
               </span>
               <select
                 name="category"
-                defaultValue="Missing Validation"
+                value={reportFields.category}
+                onChange={(event) =>
+                  setReportFields((current) => ({
+                    ...current,
+                    category: event.target.value,
+                  }))
+                }
                 className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
               >
                 <option>Missing Validation</option>
@@ -525,6 +554,13 @@ function ContestDetails({
               <input
                 name="scope"
                 placeholder="programs/breach_room_1/src/lib.rs:120"
+                value={reportFields.scope}
+                onChange={(event) =>
+                  setReportFields((current) => ({
+                    ...current,
+                    scope: event.target.value,
+                  }))
+                }
                 className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
               />
             </label>
@@ -534,23 +570,7 @@ function ContestDetails({
                 Severity
               </legend>
               <div className="grid grid-cols-3 gap-2">
-                {[
-                  {
-                    label: "High",
-                    className:
-                      "has-[:checked]:border-red-400/50 has-[:checked]:bg-red-400/[0.16] has-[:checked]:text-red-100",
-                  },
-                  {
-                    label: "Medium",
-                    className:
-                      "has-[:checked]:border-amber-300/50 has-[:checked]:bg-amber-300/[0.16] has-[:checked]:text-amber-100",
-                  },
-                  {
-                    label: "Low",
-                    className:
-                      "has-[:checked]:border-emerald-300/50 has-[:checked]:bg-emerald-300/[0.14] has-[:checked]:text-emerald-100",
-                  },
-                ].map((severity) => (
+                {severityOptions.map((severity) => (
                   <label
                     key={severity.label}
                     className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors ${severity.className}`}
@@ -559,7 +579,13 @@ function ContestDetails({
                       type="radio"
                       name="impact"
                       value={severity.label}
-                      defaultChecked={severity.label === "Medium"}
+                      checked={reportFields.impact === severity.label}
+                      onChange={() =>
+                        setReportFields((current) => ({
+                          ...current,
+                          impact: severity.label,
+                        }))
+                      }
                       className="sr-only"
                     />
                     {severity.label}
@@ -573,23 +599,7 @@ function ContestDetails({
                 Likelihood
               </legend>
               <div className="grid grid-cols-3 gap-2">
-                {[
-                  {
-                    label: "High",
-                    className:
-                      "has-[:checked]:border-red-400/50 has-[:checked]:bg-red-400/[0.16] has-[:checked]:text-red-100",
-                  },
-                  {
-                    label: "Medium",
-                    className:
-                      "has-[:checked]:border-amber-300/50 has-[:checked]:bg-amber-300/[0.16] has-[:checked]:text-amber-100",
-                  },
-                  {
-                    label: "Low",
-                    className:
-                      "has-[:checked]:border-emerald-300/50 has-[:checked]:bg-emerald-300/[0.14] has-[:checked]:text-emerald-100",
-                  },
-                ].map((likelihood) => (
+                {severityOptions.map((likelihood) => (
                   <label
                     key={likelihood.label}
                     className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors ${likelihood.className}`}
@@ -598,7 +608,13 @@ function ContestDetails({
                       type="radio"
                       name="likelihood"
                       value={likelihood.label}
-                      defaultChecked={likelihood.label === "Medium"}
+                      checked={reportFields.likelihood === likelihood.label}
+                      onChange={() =>
+                        setReportFields((current) => ({
+                          ...current,
+                          likelihood: likelihood.label,
+                        }))
+                      }
                       className="sr-only"
                     />
                     {likelihood.label}
@@ -607,6 +623,27 @@ function ContestDetails({
               </div>
             </fieldset>
           </div>
+
+          <section className="overflow-hidden rounded-2xl border border-white/10 bg-black/45">
+            <div className="border-b border-white/10 bg-white/[0.03] px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">
+                Report summary
+              </span>
+              <p className="mt-1 text-xs text-muted">
+                Generated from your selections above. Review this before
+                submitting.
+              </p>
+            </div>
+            <pre className="whitespace-pre-wrap px-4 py-4 font-mono text-sm leading-7 text-zinc-200">
+              {`# ${reportFields.title || "Finding Title"}
+
+## Finding Summary
+- Category: ${reportFields.category}
+- Severity: ${reportFields.impact}
+- Likelihood: ${reportFields.likelihood}
+- Affected file or instruction: ${reportFields.scope || "Add source reference above"}`}
+            </pre>
+          </section>
 
           <label className="block overflow-hidden rounded-2xl border border-white/10 bg-black/45">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
@@ -898,6 +935,88 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
   );
 }
 
+function RewardsBreakdown() {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5 shadow-[0_24px_72px_-56px_rgba(0,0,0,0.9)]">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="font-semibold text-foreground">Rewards breakdown</h2>
+        <StatusPill tone="purple">Room 1</StatusPill>
+      </div>
+      <div className="space-y-3 text-sm">
+        <div className="flex justify-between gap-4">
+          <span className="text-muted">nSLOC</span>
+          <span className="font-semibold text-foreground">
+            {BREACH_ROOM.nsloc}
+          </span>
+        </div>
+        <div className="space-y-3 border-t border-white/10 pt-3">
+          <div className="flex justify-between gap-4">
+            <StatusPill tone="red">High</StatusPill>
+            <span className="font-semibold text-foreground">100 XP</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <StatusPill tone="amber">Medium</StatusPill>
+            <span className="font-semibold text-foreground">20 XP</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <StatusPill tone="green">Low</StatusPill>
+            <span className="font-semibold text-foreground">2 XP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
+  return (
+    <section className="mb-7 rounded-[24px] border border-white/10 bg-[#090d13]/90 p-5 shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)] sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-6">
+        <div className="flex min-w-0 gap-5">
+          <RoomMark />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
+                {BREACH_ROOM.subtitle}
+              </h1>
+              <StatusPill tone="green">Live</StatusPill>
+            </div>
+            <p className="mt-1 text-sm font-semibold text-muted">
+              {BREACH_ROOM.title} · {BREACH_ROOM.category}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <StatusPill tone="green">{BREACH_ROOM.difficulty}</StatusPill>
+              {BREACH_ROOM.tags.map((tag) => (
+                <StatusPill key={tag} tone="zinc">
+                  {tag}
+                </StatusPill>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onSubmitFinding}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          Submit finding
+          <Send className="h-4 w-4" aria-hidden={true} />
+        </button>
+      </div>
+
+      <p className="mt-7 max-w-3xl text-sm leading-7 text-zinc-300">
+        {BREACH_ROOM.description}
+      </p>
+
+      <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+        <StatusPill tone="green">Live</StatusPill>
+        <span className="text-muted">Manual review after submission</span>
+      </div>
+    </section>
+  );
+}
+
 function RoomWorkspace({
   activeTab,
   onBack,
@@ -935,7 +1054,9 @@ function RoomWorkspace({
         </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <RoomHeaderCard onSubmitFinding={() => onTabChange("details")} />
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#090b0d]/[0.88] shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)]">
           <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
             {ROOM_TABS.map((tab) => (
@@ -953,6 +1074,7 @@ function RoomWorkspace({
         </div>
 
         <aside className="space-y-4">
+          <RewardsBreakdown />
           <ReviewPipeline reviewState={reviewState} />
         </aside>
       </div>
