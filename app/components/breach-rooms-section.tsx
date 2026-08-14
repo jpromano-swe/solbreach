@@ -26,6 +26,14 @@ type RoomTab = "details" | "knownIssues" | "scope";
 type RoomView = "list" | "room";
 type ReviewState = "notSubmitted" | "judged";
 
+type ReportFields = {
+  impact: ReportDraft["impact"];
+  likelihood: ReportDraft["likelihood"];
+  reportMarkdown: string;
+  scope: string;
+  title: string;
+};
+
 type ReportDraft = {
   category: string;
   impact: "High" | "Medium" | "Low";
@@ -161,6 +169,14 @@ const BREACH_ROOM_REPORT_TEMPLATE = `# Root + Impact
 ## Notes
 Add any assumptions, reproduction limits, or extra reviewer context.
 `;
+
+const INITIAL_REPORT_FIELDS: ReportFields = {
+  impact: "Medium",
+  likelihood: "Medium",
+  reportMarkdown: BREACH_ROOM_REPORT_TEMPLATE,
+  scope: "",
+  title: "",
+};
 
 const INITIAL_REPORT_DRAFT: ReportDraft = {
   category: "",
@@ -477,20 +493,15 @@ function BreachRoomList({ onOpenRoom }: { onOpenRoom: () => void }) {
   );
 }
 
-function ContestDetails({
-  onSubmit,
-  reviewState,
+function SeverityField({
+  name,
+  onChange,
+  value,
 }: {
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  reviewState: ReviewState;
+  name: "impact" | "likelihood";
+  onChange: (value: ReportDraft["impact"]) => void;
+  value: ReportDraft["impact"];
 }) {
-  const [reportFields, setReportFields] = useState({
-    impact: "Medium" as ReportDraft["impact"],
-    likelihood: "Medium" as ReportDraft["likelihood"],
-    scope: "",
-    title: "",
-  });
-
   const severityOptions = [
     {
       label: "High" as const,
@@ -510,6 +521,116 @@ function ContestDetails({
   ];
 
   return (
+    <div className="flex flex-nowrap gap-2">
+      {severityOptions.map((option) => (
+        <label
+          key={option.label}
+          className={`flex min-h-8 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-[#0a0c0e] px-3 text-xs font-semibold text-zinc-300 transition-colors ${option.className}`}
+        >
+          <input
+            type="radio"
+            name={name}
+            value={option.label}
+            checked={value === option.label}
+            onChange={() => onChange(option.label)}
+            className="sr-only"
+          />
+          {option.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function ContestDetails() {
+  return (
+    <article className="rounded-[22px] border border-white/10 bg-[#090f16]/75 p-6 sm:p-8">
+      <div className="max-w-5xl space-y-8 text-sm leading-7 text-zinc-300">
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+            About the Project
+          </h2>
+          <p>
+            RustFund is a decentralized crowdfunding platform built on the
+            Solana blockchain. It enables creators to launch fundraising
+            campaigns and contributors to support projects they believe in, all
+            in a trustless and transparent manner.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-xl font-semibold text-foreground">Features</h3>
+          <ul className="list-disc space-y-2 pl-6">
+            <li>
+              <strong className="text-zinc-100">
+                Create Fundraising Campaigns:
+              </strong>{" "}
+              Creators can launch campaigns with custom names, descriptions, and
+              funding goals.
+            </li>
+            <li>
+              <strong className="text-zinc-100">Contribute to Projects:</strong>{" "}
+              Users can contribute SOL to any active campaign.
+            </li>
+            <li>
+              <strong className="text-zinc-100">Refund Mechanism:</strong>{" "}
+              Contributors can get refunds if deadlines are reached and goals
+              aren&apos;t met.
+            </li>
+            <li>
+              <strong className="text-zinc-100">Secure Withdrawals:</strong>{" "}
+              Creators can withdraw funds once their campaign succeeds.
+            </li>
+          </ul>
+        </section>
+
+        <section className="space-y-5">
+          <h3 className="text-xl font-semibold text-foreground">Actors</h3>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <h4 className="font-semibold text-foreground">Creator</h4>
+              <ul className="mt-3 list-disc space-y-2 pl-6">
+                <li>Creates new fundraising campaigns.</li>
+                <li>Sets campaign deadline.</li>
+                <li>Withdraws raised funds after successful campaigns.</li>
+                <li>Has exclusive rights to manage their campaign settings.</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground">Contributor</h4>
+              <ul className="mt-3 list-disc space-y-2 pl-6">
+                <li>Contributes SOL to campaigns.</li>
+                <li>
+                  Can request refunds if the campaign fails to meet the goal and
+                  the deadline is reached.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </div>
+    </article>
+  );
+}
+
+function FindingReportForm({
+  canSubmit,
+  onFieldsChange,
+  onSubmit,
+  reportFields,
+  reviewState,
+}: {
+  canSubmit: boolean;
+  onFieldsChange: (fields: ReportFields) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  reportFields: ReportFields;
+  reviewState: ReviewState;
+}) {
+  const updateFields = (patch: Partial<ReportFields>) => {
+    onFieldsChange({ ...reportFields, ...patch });
+  };
+
+  return (
     <div className="-m-5 sm:-m-7">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-5 pb-6 pt-5 sm:px-7 sm:pt-7">
         <div>
@@ -526,6 +647,7 @@ function ContestDetails({
       </div>
 
       <form
+        id="breach-room-report-form"
         onSubmit={onSubmit}
         className="bg-[#121619]/85 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:px-7 sm:py-7"
       >
@@ -541,10 +663,7 @@ function ContestDetails({
                 maxLength={250}
                 value={reportFields.title}
                 onChange={(event) =>
-                  setReportFields((current) => ({
-                    ...current,
-                    title: event.target.value,
-                  }))
+                  updateFields({ title: event.target.value })
                 }
                 className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
                 required
@@ -559,68 +678,34 @@ function ContestDetails({
 
           <div className="h-px bg-white/10" />
 
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
-            <div className="grid gap-6 sm:grid-cols-2 xl:w-[32rem]">
+          <div className="grid gap-5 lg:grid-cols-[14rem_14rem_minmax(14rem,0.8fr)]">
+            <div>
               <fieldset className="space-y-2.5">
                 <legend className="text-sm font-semibold text-foreground">
                   Impact
                 </legend>
-                <div className="flex flex-wrap gap-2">
-                  {severityOptions.map((severity) => (
-                    <label
-                      key={severity.label}
-                      className={`flex min-h-8 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-[#0a0c0e] px-3 text-xs font-semibold text-zinc-300 transition-colors ${severity.className}`}
-                    >
-                      <input
-                        type="radio"
-                        name="impact"
-                        value={severity.label}
-                        checked={reportFields.impact === severity.label}
-                        onChange={() =>
-                          setReportFields((current) => ({
-                            ...current,
-                            impact: severity.label,
-                          }))
-                        }
-                        className="sr-only"
-                      />
-                      {severity.label}
-                    </label>
-                  ))}
-                </div>
+                <SeverityField
+                  name="impact"
+                  value={reportFields.impact}
+                  onChange={(impact) => updateFields({ impact })}
+                />
               </fieldset>
+            </div>
 
+            <div>
               <fieldset className="space-y-2.5">
                 <legend className="text-sm font-semibold text-foreground">
                   Likelihood
                 </legend>
-                <div className="flex flex-wrap gap-2">
-                  {severityOptions.map((likelihood) => (
-                    <label
-                      key={likelihood.label}
-                      className={`flex min-h-8 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-[#0a0c0e] px-3 text-xs font-semibold text-zinc-300 transition-colors ${likelihood.className}`}
-                    >
-                      <input
-                        type="radio"
-                        name="likelihood"
-                        value={likelihood.label}
-                        checked={reportFields.likelihood === likelihood.label}
-                        onChange={() =>
-                          setReportFields((current) => ({
-                            ...current,
-                            likelihood: likelihood.label,
-                          }))
-                        }
-                        className="sr-only"
-                      />
-                      {likelihood.label}
-                    </label>
-                  ))}
-                </div>
+                <SeverityField
+                  name="likelihood"
+                  value={reportFields.likelihood}
+                  onChange={(likelihood) => updateFields({ likelihood })}
+                />
               </fieldset>
             </div>
 
-            <label className="w-full space-y-2">
+            <label className="space-y-2">
               <span className="text-sm font-semibold text-foreground">
                 Scope
               </span>
@@ -628,10 +713,9 @@ function ContestDetails({
                 name="scope"
                 value={reportFields.scope}
                 onChange={(event) =>
-                  setReportFields((current) => ({
-                    ...current,
+                  updateFields({
                     scope: event.target.value,
-                  }))
+                  })
                 }
                 className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
               >
@@ -651,27 +735,9 @@ function ContestDetails({
             </span>
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0c0e]">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3">
-                <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-zinc-400">
-                  {[
-                    "B",
-                    "I",
-                    "H",
-                    "P",
-                    "Quote",
-                    "Code",
-                    "List",
-                    "1.",
-                    "Undo",
-                    "Redo",
-                  ].map((tool) => (
-                    <span
-                      key={tool}
-                      className="rounded-lg border border-white/10 bg-black/20 px-2 py-1"
-                    >
-                      {tool}
-                    </span>
-                  ))}
-                </div>
+                <span className="text-xs font-semibold text-muted">
+                  Report body
+                </span>
                 <div className="flex items-center gap-2">
                   <span className="rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-zinc-300">
                     Formatted
@@ -679,32 +745,40 @@ function ContestDetails({
                   <span className="rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-semibold text-muted">
                     Raw
                   </span>
-                  <span className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">
+                  <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">
+                    <Image
+                      src="/rust-logo.png"
+                      alt=""
+                      width={3000}
+                      height={2000}
+                      className="h-4 w-5 object-contain brightness-0 invert"
+                      aria-hidden={true}
+                    />
                     Rust
                   </span>
                 </div>
               </div>
               <textarea
                 name="reportMarkdown"
-                defaultValue={BREACH_ROOM_REPORT_TEMPLATE}
+                value={reportFields.reportMarkdown}
+                onChange={(event) =>
+                  updateFields({ reportMarkdown: event.target.value })
+                }
                 className="min-h-[34rem] w-full resize-y bg-transparent px-4 py-4 font-mono text-sm leading-7 text-zinc-200 outline-none placeholder:text-zinc-600"
                 required
               />
-              <div className="flex justify-end border-t border-white/10 px-4 py-2 text-xs text-muted">
-                Supports Markdown
-              </div>
             </div>
           </label>
 
           <div className="flex justify-end border-t border-white/10 pt-5">
             <button
               type="submit"
-              disabled={reviewState === "judged"}
+              disabled={!canSubmit || reviewState === "judged"}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {reviewState === "judged"
                 ? "Finding submitted"
-                : "Submit your finding"}
+                : "Submit Finding"}
               <Send className="h-4 w-4" aria-hidden={true} />
             </button>
           </div>
@@ -1000,7 +1074,17 @@ function RewardsBreakdown() {
   );
 }
 
-function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
+function RoomHeaderCard({
+  canSubmit,
+  reportingStarted,
+  reviewState,
+  onStartReporting,
+}: {
+  canSubmit: boolean;
+  onStartReporting: () => void;
+  reportingStarted: boolean;
+  reviewState: ReviewState;
+}) {
   return (
     <section className="mb-7 rounded-[24px] border border-white/10 bg-[#090d13]/90 p-5 shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)] sm:p-6">
       <div className="flex flex-wrap items-start gap-6">
@@ -1039,11 +1123,15 @@ function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
             <ExternalLink className="h-4 w-4" aria-hidden={true} />
           </button>
           <button
-            type="button"
-            onClick={onSubmitFinding}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            type={reportingStarted ? "submit" : "button"}
+            form={reportingStarted ? "breach-room-report-form" : undefined}
+            disabled={
+              reportingStarted && (!canSubmit || reviewState === "judged")
+            }
+            onClick={reportingStarted ? undefined : onStartReporting}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Submit finding
+            {reportingStarted ? "Submit Finding" : "Start Reporting"}
             <Send className="h-4 w-4" aria-hidden={true} />
           </button>
         </div>
@@ -1065,16 +1153,46 @@ function RoomWorkspace({
   onTabChange: (tab: RoomTab) => void;
   reviewState: ReviewState;
 }) {
+  const [reportingStarted, setReportingStarted] = useState(false);
+  const [reportFields, setReportFields] = useState<ReportFields>(
+    INITIAL_REPORT_FIELDS
+  );
+
+  const canSubmit =
+    reportingStarted &&
+    reportFields.title.trim().length > 0 &&
+    reportFields.scope.trim().length > 0 &&
+    reportFields.reportMarkdown.trim().length > 0;
+
   const activeTabContent = useMemo(() => {
+    if (reportingStarted) {
+      return (
+        <FindingReportForm
+          canSubmit={canSubmit}
+          onFieldsChange={setReportFields}
+          onSubmit={onSubmit}
+          reportFields={reportFields}
+          reviewState={reviewState}
+        />
+      );
+    }
+
     if (activeTab === "details") {
-      return <ContestDetails onSubmit={onSubmit} reviewState={reviewState} />;
+      return <ContestDetails />;
     }
     if (activeTab === "knownIssues") {
       return <KnownIssuesPanel reviewState={reviewState} />;
     }
 
     return <ScopePanel />;
-  }, [activeTab, onSubmit, reviewState]);
+  }, [
+    activeTab,
+    canSubmit,
+    onSubmit,
+    reportFields,
+    reportingStarted,
+    reviewState,
+  ]);
 
   return (
     <>
@@ -1089,21 +1207,33 @@ function RoomWorkspace({
         </button>
       </div>
 
-      <RoomHeaderCard onSubmitFinding={() => onTabChange("details")} />
+      <RoomHeaderCard
+        canSubmit={canSubmit}
+        onStartReporting={() => {
+          setReportingStarted(true);
+          onTabChange("details");
+        }}
+        reportingStarted={reportingStarted}
+        reviewState={reviewState}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#090b0d]/[0.88] shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)]">
-          <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
-            {ROOM_TABS.map((tab) => (
-              <TabButton
-                key={tab.id}
-                active={activeTab === tab.id}
-                icon={tab.icon}
-                label={tab.label}
-                onClick={() => onTabChange(tab.id)}
-              />
-            ))}
-          </div>
+          {reportingStarted ? (
+            <div className="min-h-[65px] border-b border-white/10" />
+          ) : (
+            <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
+              {ROOM_TABS.map((tab) => (
+                <TabButton
+                  key={tab.id}
+                  active={activeTab === tab.id}
+                  icon={tab.icon}
+                  label={tab.label}
+                  onClick={() => onTabChange(tab.id)}
+                />
+              ))}
+            </div>
+          )}
 
           <div className="p-5 sm:p-7">{activeTabContent}</div>
         </div>
