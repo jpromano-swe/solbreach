@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -11,6 +17,7 @@ import {
   ClipboardList,
   Clock3,
   Code2,
+  Download,
   ExternalLink,
   GitPullRequestArrow,
   Play,
@@ -67,7 +74,7 @@ const BREACH_ROOM = {
   repoPath: "local-breach-rooms/breach-room-1",
   description:
     "Vault Bridge coordinates contributor task approvals, receipt reopening, and payout routing through a compact Anchor treasury workflow.",
-  tags: ["Rust", "Anchor", "SVM"],
+  tags: ["Rust", "Anchor"],
 };
 
 const AUDITOR_SKILL_SETUP = [
@@ -524,9 +531,13 @@ function SeverityField({
   );
 }
 
-function ContestDetails() {
+function ContestDetails({
+  onStartReporting,
+}: {
+  onStartReporting: () => void;
+}) {
   return (
-    <article>
+    <article className="space-y-10">
       <div className="max-w-5xl space-y-8 text-sm leading-7 text-zinc-300">
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
@@ -591,6 +602,49 @@ function ContestDetails() {
           </div>
         </section>
       </div>
+
+      <section className="space-y-5">
+        <h2 className="text-3xl font-semibold tracking-[-0.05em] text-foreground">
+          Submissions
+        </h2>
+
+        <div className="rounded-[24px] border border-white/10 bg-[#0b111a]/70 p-5 shadow-[0_24px_80px_-60px_rgba(0,0,0,0.95)]">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h3 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+                My Submissions
+              </h3>
+              <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-lg border border-white/15 bg-white/[0.035] px-2 text-sm font-semibold text-zinc-300">
+                0
+              </span>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Download submissions"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] text-zinc-400 transition-colors hover:bg-white/[0.07] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Download className="h-4.5 w-4.5" aria-hidden={true} />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onStartReporting}
+            className="mt-6 flex min-h-[11rem] w-full items-center justify-center rounded-2xl border border-white/15 bg-[#090d13]/70 px-5 text-center transition-[border-color,background-color,transform] duration-200 ease-in-out hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/[0.035] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <span>
+              <span className="block text-base font-semibold text-foreground">
+                You have no submissions.
+              </span>
+              <span className="mt-4 inline-flex items-center justify-center gap-2 text-sm font-semibold text-zinc-300">
+                Click here to submit your first vulnerability
+                <ArrowRight className="h-4 w-4" aria-hidden={true} />
+              </span>
+            </span>
+          </button>
+        </div>
+      </section>
     </article>
   );
 }
@@ -957,7 +1011,6 @@ function RewardsBreakdown() {
     <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5 shadow-[0_24px_72px_-56px_rgba(0,0,0,0.9)]">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="font-semibold text-foreground">Rewards breakdown</h2>
-        <StatusPill tone="purple">Room 1</StatusPill>
       </div>
       <div className="space-y-3 text-sm">
         <div className="flex justify-between gap-4">
@@ -1065,6 +1118,7 @@ function RoomWorkspace({
   reviewState: ReviewState;
 }) {
   const [reportingStarted, setReportingStarted] = useState(false);
+  const [stageTransitioning, setStageTransitioning] = useState(false);
   const [reportFields, setReportFields] = useState<ReportFields>(
     INITIAL_REPORT_FIELDS
   );
@@ -1074,6 +1128,19 @@ function RoomWorkspace({
     reportFields.title.trim().length > 0 &&
     reportFields.scope.trim().length > 0 &&
     reportFields.reportMarkdown.trim().length > 0;
+
+  const handleStartReporting = useCallback(() => {
+    if (reportingStarted || stageTransitioning) {
+      return;
+    }
+
+    setStageTransitioning(true);
+    window.setTimeout(() => {
+      setReportingStarted(true);
+      onTabChange("details");
+      window.setTimeout(() => setStageTransitioning(false), 20);
+    }, 180);
+  }, [onTabChange, reportingStarted, stageTransitioning]);
 
   const activeTabContent = useMemo(() => {
     if (reportingStarted) {
@@ -1089,7 +1156,7 @@ function RoomWorkspace({
     }
 
     if (activeTab === "details") {
-      return <ContestDetails />;
+      return <ContestDetails onStartReporting={handleStartReporting} />;
     }
     if (activeTab === "knownIssues") {
       return <KnownIssuesPanel reviewState={reviewState} />;
@@ -1099,6 +1166,7 @@ function RoomWorkspace({
   }, [
     activeTab,
     canSubmit,
+    handleStartReporting,
     onSubmit,
     reportFields,
     reportingStarted,
@@ -1120,37 +1188,42 @@ function RoomWorkspace({
 
       <RoomHeaderCard
         canSubmit={canSubmit}
-        onStartReporting={() => {
-          setReportingStarted(true);
-          onTabChange("details");
-        }}
+        onStartReporting={handleStartReporting}
         reportingStarted={reportingStarted}
         reviewState={reviewState}
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#090b0d]/[0.88] shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)]">
-          {reportingStarted ? (
-            <div className="flex min-h-[65px] items-center border-b border-white/10 px-5">
-              <h2 className="text-lg font-semibold tracking-[-0.03em] text-foreground">
-                Finding Submission
-              </h2>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
-              {ROOM_TABS.map((tab) => (
-                <TabButton
-                  key={tab.id}
-                  active={activeTab === tab.id}
-                  icon={tab.icon}
-                  label={tab.label}
-                  onClick={() => onTabChange(tab.id)}
-                />
-              ))}
-            </div>
-          )}
+          <div
+            className={`transition-[opacity,transform,filter] duration-200 ease-in-out ${
+              stageTransitioning
+                ? "translate-y-1 opacity-0 blur-[2px]"
+                : "translate-y-0 opacity-100 blur-0"
+            }`}
+          >
+            {reportingStarted ? (
+              <div className="flex min-h-[65px] items-center border-b border-white/10 px-5">
+                <h2 className="text-lg font-semibold tracking-[-0.03em] text-foreground">
+                  Finding Submission
+                </h2>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
+                {ROOM_TABS.map((tab) => (
+                  <TabButton
+                    key={tab.id}
+                    active={activeTab === tab.id}
+                    icon={tab.icon}
+                    label={tab.label}
+                    onClick={() => onTabChange(tab.id)}
+                  />
+                ))}
+              </div>
+            )}
 
-          <div className="p-5 sm:p-7">{activeTabContent}</div>
+            <div className="p-5 sm:p-7">{activeTabContent}</div>
+          </div>
         </div>
 
         <aside className="space-y-4">
