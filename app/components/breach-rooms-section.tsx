@@ -123,25 +123,40 @@ const REVIEW_FINDINGS = {
   ],
 };
 
-const BREACH_ROOM_REPORT_TEMPLATE = `## Description
-Describe the normal protocol behavior, then describe the vulnerable behavior.
+const BREACH_ROOM_REPORT_TEMPLATE = `# Root + Impact
+
+## Description
+- Describe the normal behavior in one or more sentences.
+- Explain the specific issue or problem in one or more sentences.
 
 ## Root Cause
-Explain the missing validation, broken invariant, or incorrect trust assumption. Include the relevant code path.
+\`\`\`rust
+// Root cause in the codebase with @> marks to highlight the relevant section
+\`\`\`
 
-## Proof of Impact
-Show how the issue changes protocol state, value movement, authority, or user balances.
+## Risk
+**Likelihood:**
+- Reason 1 // Describe when this will occur. Avoid using "if" statements.
+- Reason 2
+
+**Impact:**
+- Impact 1
+- Impact 2
+
+## Proof of Concept
+\`\`\`rust
+// Add reproduction steps, test code, or transaction-building logic here.
+\`\`\`
+
+## Recommended Mitigation
+\`\`\`rust
+// Replace the vulnerable path with the required validation or constraint.
+\`\`\`
 
 ## Evidence
 - Source reference:
 - Test or transaction evidence:
 - Account/state delta:
-
-## Proof of Concept
-List the exact steps, accounts, inputs, and observed state changes.
-
-## Recommended Mitigation
-Describe the validation, constraint, lifecycle guard, or CPI allowlist that prevents this vulnerability class.
 
 ## Notes
 Add any assumptions, reproduction limits, or extra reviewer context.
@@ -470,7 +485,6 @@ function ContestDetails({
   reviewState: ReviewState;
 }) {
   const [reportFields, setReportFields] = useState({
-    category: "Missing Validation",
     impact: "Medium" as ReportDraft["impact"],
     likelihood: "Medium" as ReportDraft["likelihood"],
     scope: "",
@@ -515,15 +529,16 @@ function ContestDetails({
         onSubmit={onSubmit}
         className="bg-[#121619]/85 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:px-7 sm:py-7"
       >
-        <div className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2 md:col-span-2">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="block space-y-2">
               <span className="text-sm font-semibold text-foreground">
                 Title
               </span>
               <input
                 name="title"
                 placeholder="One-line vulnerability title"
+                maxLength={250}
                 value={reportFields.title}
                 onChange={(event) =>
                   setReportFields((current) => ({
@@ -535,37 +550,82 @@ function ContestDetails({
                 required
               />
             </label>
+            <div className="flex justify-end">
+              <span className="text-xs text-muted">
+                {reportFields.title.length}/250
+              </span>
+            </div>
+          </div>
 
-            <label className="space-y-2">
+          <div className="h-px bg-white/10" />
+
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+            <div className="grid gap-6 sm:grid-cols-2 xl:w-[32rem]">
+              <fieldset className="space-y-2.5">
+                <legend className="text-sm font-semibold text-foreground">
+                  Impact
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {severityOptions.map((severity) => (
+                    <label
+                      key={severity.label}
+                      className={`flex min-h-8 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-[#0a0c0e] px-3 text-xs font-semibold text-zinc-300 transition-colors ${severity.className}`}
+                    >
+                      <input
+                        type="radio"
+                        name="impact"
+                        value={severity.label}
+                        checked={reportFields.impact === severity.label}
+                        onChange={() =>
+                          setReportFields((current) => ({
+                            ...current,
+                            impact: severity.label,
+                          }))
+                        }
+                        className="sr-only"
+                      />
+                      {severity.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="space-y-2.5">
+                <legend className="text-sm font-semibold text-foreground">
+                  Likelihood
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {severityOptions.map((likelihood) => (
+                    <label
+                      key={likelihood.label}
+                      className={`flex min-h-8 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-[#0a0c0e] px-3 text-xs font-semibold text-zinc-300 transition-colors ${likelihood.className}`}
+                    >
+                      <input
+                        type="radio"
+                        name="likelihood"
+                        value={likelihood.label}
+                        checked={reportFields.likelihood === likelihood.label}
+                        onChange={() =>
+                          setReportFields((current) => ({
+                            ...current,
+                            likelihood: likelihood.label,
+                          }))
+                        }
+                        className="sr-only"
+                      />
+                      {likelihood.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+
+            <label className="w-full space-y-2">
               <span className="text-sm font-semibold text-foreground">
-                Category
+                Scope
               </span>
               <select
-                name="category"
-                value={reportFields.category}
-                onChange={(event) =>
-                  setReportFields((current) => ({
-                    ...current,
-                    category: event.target.value,
-                  }))
-                }
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
-              >
-                <option>Missing Validation</option>
-                <option>Data Matching</option>
-                <option>Address Reuse</option>
-                <option>Arbitrary CPI</option>
-                <option>Account Substitution</option>
-              </select>
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-foreground">
-                Source reference
-              </span>
-              <input
                 name="scope"
-                placeholder="programs/breach_room_1/src/lib.rs:120"
                 value={reportFields.scope}
                 onChange={(event) =>
                   setReportFields((current) => ({
@@ -573,107 +633,67 @@ function ContestDetails({
                     scope: event.target.value,
                   }))
                 }
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
-              />
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
+              >
+                <option value="">Select affected file from scope</option>
+                {SCOPE_FILES.map((file) => (
+                  <option key={file} value={file}>
+                    {file}
+                  </option>
+                ))}
+              </select>
             </label>
-
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-semibold text-foreground">
-                Severity
-              </legend>
-              <div className="grid grid-cols-3 gap-2">
-                {severityOptions.map((severity) => (
-                  <label
-                    key={severity.label}
-                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-[#0a0c0e] px-3 text-sm font-semibold text-zinc-300 transition-colors ${severity.className}`}
-                  >
-                    <input
-                      type="radio"
-                      name="impact"
-                      value={severity.label}
-                      checked={reportFields.impact === severity.label}
-                      onChange={() =>
-                        setReportFields((current) => ({
-                          ...current,
-                          impact: severity.label,
-                        }))
-                      }
-                      className="sr-only"
-                    />
-                    {severity.label}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-semibold text-foreground">
-                Likelihood
-              </legend>
-              <div className="grid grid-cols-3 gap-2">
-                {severityOptions.map((likelihood) => (
-                  <label
-                    key={likelihood.label}
-                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-[#0a0c0e] px-3 text-sm font-semibold text-zinc-300 transition-colors ${likelihood.className}`}
-                  >
-                    <input
-                      type="radio"
-                      name="likelihood"
-                      value={likelihood.label}
-                      checked={reportFields.likelihood === likelihood.label}
-                      onChange={() =>
-                        setReportFields((current) => ({
-                          ...current,
-                          likelihood: likelihood.label,
-                        }))
-                      }
-                      className="sr-only"
-                    />
-                    {likelihood.label}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
           </div>
 
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0c0e]">
-            <div className="border-b border-white/10 bg-white/[0.03] px-4 py-3">
-              <span className="text-sm font-semibold text-foreground">
-                Report summary
-              </span>
-              <p className="mt-1 text-xs text-muted">
-                Generated from your selections above. Review this before
-                submitting.
-              </p>
-            </div>
-            <pre className="whitespace-pre-wrap px-4 py-4 font-mono text-sm leading-7 text-zinc-200">
-              {`# ${reportFields.title || "Finding Title"}
-
-## Finding Summary
-- Category: ${reportFields.category}
-- Severity: ${reportFields.impact}
-- Likelihood: ${reportFields.likelihood}
-- Affected file or instruction: ${reportFields.scope || "Add source reference above"}`}
-            </pre>
-          </section>
-
-          <label className="block overflow-hidden rounded-2xl border border-white/10 bg-[#0a0c0e]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
-              <div>
-                <span className="text-sm font-semibold text-foreground">
-                  Audit report template
-                </span>
-                <p className="mt-1 text-xs text-muted">
-                  Based on the Research Labs audit report structure.
-                </p>
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-foreground">
+              Description
+            </span>
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0c0e]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-zinc-400">
+                  {[
+                    "B",
+                    "I",
+                    "H",
+                    "P",
+                    "Quote",
+                    "Code",
+                    "List",
+                    "1.",
+                    "Undo",
+                    "Redo",
+                  ].map((tool) => (
+                    <span
+                      key={tool}
+                      className="rounded-lg border border-white/10 bg-black/20 px-2 py-1"
+                    >
+                      {tool}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-zinc-300">
+                    Formatted
+                  </span>
+                  <span className="rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-semibold text-muted">
+                    Raw
+                  </span>
+                  <span className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">
+                    Rust
+                  </span>
+                </div>
+              </div>
+              <textarea
+                name="reportMarkdown"
+                defaultValue={BREACH_ROOM_REPORT_TEMPLATE}
+                className="min-h-[34rem] w-full resize-y bg-transparent px-4 py-4 font-mono text-sm leading-7 text-zinc-200 outline-none placeholder:text-zinc-600"
+                required
+              />
+              <div className="flex justify-end border-t border-white/10 px-4 py-2 text-xs text-muted">
+                Supports Markdown
               </div>
             </div>
-            <textarea
-              name="reportMarkdown"
-              defaultValue={BREACH_ROOM_REPORT_TEMPLATE}
-              className="min-h-[34rem] w-full resize-y bg-transparent px-4 py-4 font-mono text-sm leading-7 text-zinc-200 outline-none placeholder:text-zinc-600"
-              required
-            />
           </label>
 
           <div className="flex justify-end border-t border-white/10 pt-5">
@@ -1124,7 +1144,7 @@ export function BreachRoomsSection() {
     const formData = new FormData(event.currentTarget);
 
     setDraft({
-      category: formData.get("category")?.toString() || "",
+      category: "Breach Room Finding",
       impact: (formData.get("impact")?.toString() ||
         "Medium") as ReportDraft["impact"],
       likelihood: (formData.get("likelihood")?.toString() ||
