@@ -3,6 +3,7 @@
 import Image from "next/image";
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -29,10 +30,23 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  type BreachRoomReviewStatus,
+  type BreachRoomSeverity,
+  type BreachRoomSubmission as BackendBreachRoomSubmission,
+  type BreachRoomSubmissionsSummary,
+  listMyBreachRoomSubmissions,
+  submitBreachRoomFinding,
+} from "../lib/breach-rooms";
+import {
+  ensureBackendWalletAuth,
+  readStoredBackendWalletAuth,
+} from "../lib/levels/level1-backend";
+import { useWallet } from "../lib/wallet/context";
 
 type RoomTab = "details" | "knownIssues" | "scope";
 type RoomView = "list" | "room";
-type ReviewState = "notSubmitted" | "accepted";
+type ReviewState = "not_submitted" | BreachRoomReviewStatus;
 
 type ReportFields = {
   impact: ReportDraft["impact"];
@@ -55,16 +69,24 @@ type ReportDraft = {
 };
 
 type BreachRoomSubmission = {
+  category: string;
   id: string;
   impact: ReportDraft["impact"];
   likelihood: ReportDraft["likelihood"];
+  prUrl: string | null;
   reportMarkdown: string;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+  roomId: string;
   scope: string;
-  status: "accepted";
+  status: BreachRoomReviewStatus;
+  submissionId: string;
   submittedAt: string;
   title: string;
   xpAwarded: number;
 };
+
+type SubmissionSummary = BreachRoomSubmissionsSummary;
 
 const ROOM_TABS: Array<{
   icon: LucideIcon;
@@ -140,11 +162,70 @@ const REVIEW_FINDINGS = {
   ],
 };
 
-const XP_BY_IMPACT: Record<ReportDraft["impact"], number> = {
-  High: 100,
-  Medium: 20,
-  Low: 2,
+const EMPTY_SUBMISSIONS_SUMMARY: SubmissionSummary = {
+  acceptedByImpact: {
+    high: 0,
+    medium: 0,
+    low: 0,
+  },
+  totalEarnedXp: 0,
+  validSubmissions: 0,
 };
+
+const REWARD_BY_IMPACT: Record<BreachRoomSeverity, number> = {
+  high: 100,
+  medium: 20,
+  low: 2,
+};
+
+function toBackendSeverity(value: ReportDraft["impact"]): BreachRoomSeverity {
+  return value.toLowerCase() as BreachRoomSeverity;
+}
+
+function toDisplaySeverity(value: BreachRoomSeverity): ReportDraft["impact"] {
+  return value === "high" ? "High" : value === "medium" ? "Medium" : "Low";
+}
+
+function normalizeSubmission(
+  submission: BackendBreachRoomSubmission
+): BreachRoomSubmission {
+  return {
+    category: submission.category,
+    id: submission.id,
+    impact: toDisplaySeverity(submission.impact),
+    likelihood: toDisplaySeverity(submission.likelihood),
+    prUrl: submission.prUrl,
+    reportMarkdown: submission.reportMarkdown,
+    reviewedAt: submission.reviewedAt,
+    reviewNotes: submission.reviewNotes,
+    roomId: submission.roomId,
+    scope: submission.scope,
+    status: submission.status,
+    submissionId: submission.submissionId,
+    submittedAt: submission.submittedAt,
+    title: submission.title,
+    xpAwarded: submission.xpAwarded,
+  };
+}
+
+function statusLabel(status: BreachRoomReviewStatus) {
+  if (status === "pending_review") return "Pending review";
+  if (status === "needs_revision") return "Needs revision";
+  return status === "accepted" ? "Accepted" : "Rejected";
+}
+
+function statusTone(
+  status: BreachRoomReviewStatus
+): "amber" | "green" | "purple" | "red" {
+  if (status === "accepted") return "green";
+  if (status === "rejected") return "red";
+  if (status === "needs_revision") return "amber";
+  return "purple";
+}
+
+function latestReviewState(submissions: BreachRoomSubmission[]): ReviewState {
+  return submissions[0]?.status ?? "not_submitted";
+}
 
 const BREACH_ROOM_REPORT_TEMPLATE = `# Root + Impact
 
@@ -372,26 +453,11 @@ function TabButton({
 
 function BreachRoomList({
   onOpenRoom,
-  submissions,
+  summary,
 }: {
   onOpenRoom: () => void;
-  submissions: BreachRoomSubmission[];
+  summary: SubmissionSummary;
 }) {
-  const totalEarned = submissions.reduce(
-    (total, submission) => total + submission.xpAwarded,
-    0
-  );
-  const acceptedByImpact = submissions.reduce(
-    (counts, submission) => ({
-      ...counts,
-      [submission.impact]: counts[submission.impact] + 1,
-    }),
-    { High: 0, Medium: 0, Low: 0 } satisfies Record<
-      ReportDraft["impact"],
-      number
-    >
-  );
-
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div>
@@ -504,14 +570,14 @@ function BreachRoomList({
           <div className="flex justify-between gap-4">
             <span className="text-muted">Total earned</span>
             <span className="font-semibold text-foreground">
-              {totalEarned} XP
+              {summary.totalEarnedXp} XP
             </span>
           </div>
           <div className="border-t border-white/10 pt-4">
             {[
-              ["High", acceptedByImpact.High.toString(), "red"],
-              ["Medium", acceptedByImpact.Medium.toString(), "amber"],
-              ["Low", acceptedByImpact.Low.toString(), "green"],
+              ["High", summary.acceptedByImpact.high.toString(), "red"],
+              ["Medium", summary.acceptedByImpact.medium.toString(), "amber"],
+              ["Low", summary.acceptedByImpact.low.toString(), "green"],
             ].map(([label, value, tone]) => (
               <div
                 key={label}
@@ -527,7 +593,7 @@ function BreachRoomList({
           <div className="flex justify-between gap-4 border-t border-white/10 pt-4">
             <span className="text-muted">Valid submissions</span>
             <span className="font-semibold text-foreground">
-              {submissions.length}
+              {summary.validSubmissions}
             </span>
           </div>
         </div>
@@ -586,11 +652,17 @@ function SeverityField({
 }
 
 function ContestDetails({
+  isLoadingSubmissions,
+  onRefreshSubmissions,
   onStartReporting,
   submissions,
+  submissionsError,
 }: {
+  isLoadingSubmissions: boolean;
+  onRefreshSubmissions: () => void;
   onStartReporting: () => void;
   submissions: BreachRoomSubmission[];
+  submissionsError: string | null;
 }) {
   return (
     <article className="space-y-10">
@@ -684,7 +756,30 @@ function ContestDetails({
             </button>
           </div>
 
-          {submissions.length > 0 ? (
+          {submissionsError ? (
+            <div className="mt-6 rounded-2xl border border-red-400/25 bg-red-400/[0.055] p-4">
+              <p className="text-sm font-semibold text-red-100">
+                Couldn&apos;t load submissions.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                {submissionsError}
+              </p>
+              <button
+                type="button"
+                onClick={onRefreshSubmissions}
+                className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-white/10 bg-white/[0.035] px-4 text-sm font-semibold text-zinc-300 transition-colors hover:bg-white/[0.07] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                Retry
+              </button>
+            </div>
+          ) : isLoadingSubmissions && submissions.length === 0 ? (
+            <div className="mt-6 space-y-3">
+              <div className="h-24 animate-pulse rounded-2xl border border-white/10 bg-white/[0.035]" />
+              <p className="text-center text-sm text-muted">
+                Loading submissions...
+              </p>
+            </div>
+          ) : submissions.length > 0 ? (
             <div className="mt-6 space-y-3">
               {submissions.map((submission) => (
                 <article
@@ -697,7 +792,9 @@ function ContestDetails({
                         <h4 className="font-semibold text-foreground">
                           {submission.title}
                         </h4>
-                        <StatusPill tone="green">Accepted</StatusPill>
+                        <StatusPill tone={statusTone(submission.status)}>
+                          {statusLabel(submission.status)}
+                        </StatusPill>
                       </div>
                       <p className="mt-2 text-sm text-muted">
                         {submission.scope}
@@ -726,14 +823,45 @@ function ContestDetails({
                           {submission.likelihood} likelihood
                         </StatusPill>
                       </div>
+                      {submission.prUrl ? (
+                        <a
+                          href={submission.prUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 text-xs font-semibold text-zinc-300 transition-colors hover:bg-white/[0.07] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        >
+                          View review PR
+                          <ExternalLink
+                            className="h-3.5 w-3.5"
+                            aria-hidden={true}
+                          />
+                        </a>
+                      ) : null}
+                      {submission.reviewNotes ? (
+                        <p className="mt-3 text-sm leading-6 text-muted">
+                          {submission.reviewNotes}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="text-right">
-                      <p className="text-xl font-semibold text-emerald-200">
-                        +{submission.xpAwarded} XP
+                      <p
+                        className={`text-xl font-semibold ${
+                          submission.status === "accepted"
+                            ? "text-emerald-200"
+                            : "text-zinc-300"
+                        }`}
+                      >
+                        {submission.status === "accepted"
+                          ? `+${submission.xpAwarded} XP`
+                          : `${submission.xpAwarded} XP`}
                       </p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-emerald-300/70">
-                        Granted
+                      <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                        {submission.status === "accepted"
+                          ? "Granted"
+                          : submission.status === "pending_review"
+                            ? "Awaiting PR"
+                            : "Final"}
                       </p>
                     </div>
                   </div>
@@ -774,14 +902,18 @@ function ContestDetails({
 
 function FindingReportForm({
   canSubmit,
+  isSubmitting,
   onFieldsChange,
   onSubmit,
   reportFields,
+  submissionError,
 }: {
   canSubmit: boolean;
+  isSubmitting: boolean;
   onFieldsChange: (fields: ReportFields) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   reportFields: ReportFields;
+  submissionError: string | null;
 }) {
   const updateFields = (patch: Partial<ReportFields>) => {
     onFieldsChange({ ...reportFields, ...patch });
@@ -792,9 +924,16 @@ function FindingReportForm({
       <form
         id="breach-room-report-form"
         onSubmit={onSubmit}
+        aria-busy={isSubmitting}
         className="bg-[#121619]/85 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:px-7 sm:py-7"
       >
         <div className="space-y-6">
+          {submissionError ? (
+            <div className="rounded-2xl border border-red-400/25 bg-red-400/[0.055] px-4 py-3 text-sm leading-6 text-red-100">
+              {submissionError}
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <label className="block space-y-2">
               <span className="text-sm font-semibold text-foreground">
@@ -910,10 +1049,10 @@ function FindingReportForm({
           <div className="flex justify-end border-t border-white/10 pt-5">
             <button
               type="submit"
-              disabled={!canSubmit}
+              disabled={!canSubmit || isSubmitting}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              Submit Finding
+              {isSubmitting ? "Creating review PR..." : "Submit Finding"}
               <Send className="h-4 w-4" aria-hidden={true} />
             </button>
           </div>
@@ -926,6 +1065,36 @@ function FindingReportForm({
 function KnownIssuesPanel({ reviewState }: { reviewState: ReviewState }) {
   if (reviewState === "accepted") {
     return <ReviewResultsPanel />;
+  }
+
+  if (reviewState === "pending_review") {
+    return (
+      <div className="rounded-2xl border border-primary/25 bg-primary/[0.055] p-5">
+        <div className="flex items-center gap-3 text-sm font-semibold text-zinc-100">
+          <Clock3 className="h-5 w-5 text-primary" aria-hidden={true} />
+          Review PR pending
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          The backend created the review PR. Merge it to accept the finding and
+          grant EXP, or close it without merge to reject it.
+        </p>
+      </div>
+    );
+  }
+
+  if (reviewState === "rejected") {
+    return (
+      <div className="rounded-2xl border border-red-400/25 bg-red-400/[0.055] p-5">
+        <div className="flex items-center gap-3 text-sm font-semibold text-red-100">
+          <AlertTriangle className="h-5 w-5" aria-hidden={true} />
+          Finding rejected
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          The review PR was closed without merge. No EXP was granted for this
+          submission.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -1058,6 +1227,12 @@ function ReviewResultsPanel() {
 }
 
 function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
+  const submitted = reviewState !== "not_submitted";
+  const finalized =
+    reviewState === "accepted" ||
+    reviewState === "rejected" ||
+    reviewState === "needs_revision";
+
   const steps = [
     {
       title: "Live",
@@ -1066,18 +1241,28 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
     },
     {
       title: "Submission PR",
-      description: "Finding package is sent to the Breach Room repo.",
-      complete: reviewState === "accepted",
+      description: submitted
+        ? "Finding package is linked to a review PR."
+        : "Submit a finding package to create a review PR.",
+      complete: submitted,
     },
     {
-      title: "Manual judging",
-      description: "The SolBreach team reviews matched and missed issues.",
-      complete: reviewState === "accepted",
+      title: "PR review",
+      description:
+        reviewState === "pending_review"
+          ? "Merge accepts the finding. Closing without merge rejects it."
+          : "GitHub webhook records the PR outcome.",
+      complete: finalized,
     },
     {
       title: "Results",
-      description: "Review feedback becomes visible on the room page.",
-      complete: reviewState === "accepted",
+      description:
+        reviewState === "accepted"
+          ? "Finding accepted and EXP granted."
+          : reviewState === "rejected"
+            ? "Finding rejected. No EXP granted."
+            : "Final status appears after PR review.",
+      complete: finalized,
     },
   ];
 
@@ -1125,16 +1310,7 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
   );
 }
 
-function RewardsBreakdown({
-  submissions,
-}: {
-  submissions: BreachRoomSubmission[];
-}) {
-  const earnedXp = submissions.reduce(
-    (total, submission) => total + submission.xpAwarded,
-    0
-  );
-
+function RewardsBreakdown({ summary }: { summary: SubmissionSummary }) {
   return (
     <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5 shadow-[0_24px_72px_-56px_rgba(0,0,0,0.9)]">
       <div className="mb-5 flex items-center justify-between">
@@ -1149,20 +1325,28 @@ function RewardsBreakdown({
         </div>
         <div className="flex justify-between gap-4 border-t border-white/10 pt-3">
           <span className="text-muted">Earned</span>
-          <span className="font-semibold text-emerald-200">{earnedXp} XP</span>
+          <span className="font-semibold text-emerald-200">
+            {summary.totalEarnedXp} XP
+          </span>
         </div>
         <div className="space-y-3 border-t border-white/10 pt-3">
           <div className="flex justify-between gap-4">
             <StatusPill tone="red">High</StatusPill>
-            <span className="font-semibold text-foreground">100 XP</span>
+            <span className="font-semibold text-foreground">
+              {REWARD_BY_IMPACT.high} XP
+            </span>
           </div>
           <div className="flex justify-between gap-4">
             <StatusPill tone="amber">Medium</StatusPill>
-            <span className="font-semibold text-foreground">20 XP</span>
+            <span className="font-semibold text-foreground">
+              {REWARD_BY_IMPACT.medium} XP
+            </span>
           </div>
           <div className="flex justify-between gap-4">
             <StatusPill tone="green">Low</StatusPill>
-            <span className="font-semibold text-foreground">2 XP</span>
+            <span className="font-semibold text-foreground">
+              {REWARD_BY_IMPACT.low} XP
+            </span>
           </div>
         </div>
       </div>
@@ -1172,10 +1356,12 @@ function RewardsBreakdown({
 
 function RoomHeaderCard({
   canSubmit,
+  isSubmitting,
   reportingStarted,
   onStartReporting,
 }: {
   canSubmit: boolean;
+  isSubmitting: boolean;
   onStartReporting: () => void;
   reportingStarted: boolean;
 }) {
@@ -1221,11 +1407,15 @@ function RoomHeaderCard({
           <button
             type={reportingStarted ? "submit" : "button"}
             form={reportingStarted ? "breach-room-report-form" : undefined}
-            disabled={reportingStarted && !canSubmit}
+            disabled={reportingStarted && (!canSubmit || isSubmitting)}
             onClick={reportingStarted ? undefined : onStartReporting}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-24px_rgba(153,69,255,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            {reportingStarted ? "Submit Finding" : "Start Reporting"}
+            {reportingStarted
+              ? isSubmitting
+                ? "Creating PR..."
+                : "Submit Finding"
+              : "Start Reporting"}
             <Send className="h-4 w-4" aria-hidden={true} />
           </button>
         </div>
@@ -1236,18 +1426,30 @@ function RoomHeaderCard({
 
 function RoomWorkspace({
   activeTab,
+  isSubmitting,
+  isLoadingSubmissions,
   onBack,
+  onRefreshSubmissions,
   onSubmit,
   onTabChange,
   reviewState,
+  summary,
   submissions,
+  submissionError,
+  submissionsError,
 }: {
   activeTab: RoomTab;
+  isSubmitting: boolean;
+  isLoadingSubmissions: boolean;
   onBack: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onRefreshSubmissions: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
   onTabChange: (tab: RoomTab) => void;
   reviewState: ReviewState;
+  summary: SubmissionSummary;
   submissions: BreachRoomSubmission[];
+  submissionError: string | null;
+  submissionsError: string | null;
 }) {
   const [reportingStarted, setReportingStarted] = useState(false);
   const [stageTransitioning, setStageTransitioning] = useState(false);
@@ -1275,8 +1477,12 @@ function RoomWorkspace({
   }, [onTabChange, reportingStarted, stageTransitioning]);
 
   const handleAcceptedSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      onSubmit(event);
+    async (event: FormEvent<HTMLFormElement>) => {
+      const submitted = await onSubmit(event);
+      if (!submitted) {
+        return false;
+      }
+
       setStageTransitioning(true);
       window.setTimeout(() => {
         setReportingStarted(false);
@@ -1284,6 +1490,7 @@ function RoomWorkspace({
         onTabChange("details");
         window.setTimeout(() => setStageTransitioning(false), 20);
       }, 180);
+      return true;
     },
     [onSubmit, onTabChange]
   );
@@ -1293,9 +1500,11 @@ function RoomWorkspace({
       return (
         <FindingReportForm
           canSubmit={canSubmit}
+          isSubmitting={isSubmitting}
           onFieldsChange={setReportFields}
           onSubmit={handleAcceptedSubmit}
           reportFields={reportFields}
+          submissionError={submissionError}
         />
       );
     }
@@ -1303,8 +1512,11 @@ function RoomWorkspace({
     if (activeTab === "details") {
       return (
         <ContestDetails
+          isLoadingSubmissions={isLoadingSubmissions}
+          onRefreshSubmissions={onRefreshSubmissions}
           onStartReporting={handleStartReporting}
           submissions={submissions}
+          submissionsError={submissionsError}
         />
       );
     }
@@ -1318,10 +1530,15 @@ function RoomWorkspace({
     canSubmit,
     handleAcceptedSubmit,
     handleStartReporting,
+    isLoadingSubmissions,
+    isSubmitting,
+    onRefreshSubmissions,
     reportFields,
     reportingStarted,
     reviewState,
+    submissionError,
     submissions,
+    submissionsError,
   ]);
 
   return (
@@ -1339,6 +1556,7 @@ function RoomWorkspace({
 
       <RoomHeaderCard
         canSubmit={canSubmit}
+        isSubmitting={isSubmitting}
         onStartReporting={handleStartReporting}
         reportingStarted={reportingStarted}
       />
@@ -1377,7 +1595,7 @@ function RoomWorkspace({
         </div>
 
         <aside className="space-y-4">
-          <RewardsBreakdown submissions={submissions} />
+          <RewardsBreakdown summary={summary} />
           <ReviewPipeline reviewState={reviewState} />
         </aside>
       </div>
@@ -1386,12 +1604,97 @@ function RoomWorkspace({
 }
 
 export function BreachRoomsSection() {
+  const { wallet } = useWallet();
   const [view, setView] = useState<RoomView>("list");
   const [activeTab, setActiveTab] = useState<RoomTab>("details");
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [reviewState, setReviewState] = useState<ReviewState>("notSubmitted");
+  const [reviewState, setReviewState] = useState<ReviewState>("not_submitted");
   const [submissions, setSubmissions] = useState<BreachRoomSubmission[]>([]);
+  const [summary, setSummary] = useState<SubmissionSummary>(
+    EMPTY_SUBMISSIONS_SUMMARY
+  );
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [, setDraft] = useState<ReportDraft>(INITIAL_REPORT_DRAFT);
+
+  const refreshSubmissions = useCallback(
+    async (options: { quiet?: boolean } = {}) => {
+      if (!wallet) {
+        setSubmissions([]);
+        setSummary(EMPTY_SUBMISSIONS_SUMMARY);
+        setReviewState("not_submitted");
+        setSubmissionsError(null);
+        return;
+      }
+
+      if (!options.quiet) {
+        setIsLoadingSubmissions(true);
+      }
+      setSubmissionsError(null);
+
+      try {
+        const auth = readStoredBackendWalletAuth();
+        if (!auth || auth.walletAddress !== wallet.account.address) {
+          setSubmissions([]);
+          setSummary(EMPTY_SUBMISSIONS_SUMMARY);
+          setReviewState("not_submitted");
+          return;
+        }
+
+        const response = await listMyBreachRoomSubmissions(auth.accessToken);
+        const normalized = response.submissions.map(normalizeSubmission);
+        setSubmissions(normalized);
+        setSummary(response.summary);
+        setReviewState(latestReviewState(normalized));
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Breach Room submissions could not be loaded.";
+        setSubmissionsError(message);
+      } finally {
+        if (!options.quiet) {
+          setIsLoadingSubmissions(false);
+        }
+      }
+    },
+    [wallet]
+  );
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void refreshSubmissions();
+    });
+  }, [refreshSubmissions]);
+
+  useEffect(() => {
+    const hasPendingSubmission = submissions.some(
+      (submission) => submission.status === "pending_review"
+    );
+
+    if (!wallet || !hasPendingSubmission) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void refreshSubmissions({ quiet: true });
+    }, 15000);
+
+    return () => window.clearInterval(interval);
+  }, [refreshSubmissions, submissions, wallet]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (wallet) {
+        void refreshSubmissions({ quiet: true });
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [refreshSubmissions, wallet]);
 
   const handleOpenRoom = () => {
     setView("room");
@@ -1408,8 +1711,17 @@ export function BreachRoomsSection() {
     setTutorialOpen(false);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSubmissionError(null);
+
+    if (!wallet) {
+      setSubmissionError(
+        "Connect and authenticate your wallet before submitting a finding."
+      );
+      return false;
+    }
+
     const formData = new FormData(event.currentTarget);
     const impact = (formData.get("impact")?.toString() ||
       "Medium") as ReportDraft["impact"];
@@ -1430,32 +1742,65 @@ export function BreachRoomsSection() {
       scope,
       title,
     });
-    setSubmissions((current) => [
-      {
-        id: `br1-${Date.now()}`,
-        impact,
-        likelihood,
+
+    setIsSubmitting(true);
+
+    try {
+      const auth = await ensureBackendWalletAuth(wallet);
+      const response = await submitBreachRoomFinding(auth.accessToken, {
+        category: "missing_validation",
+        impact: toBackendSeverity(impact),
+        likelihood: toBackendSeverity(likelihood),
         reportMarkdown,
         scope,
-        status: "accepted",
-        submittedAt: new Date().toISOString(),
         title,
-        xpAwarded: XP_BY_IMPACT[impact],
-      },
-      ...current,
-    ]);
-    setReviewState("accepted");
-    setActiveTab("details");
+        walletAddress: wallet.account.address,
+      });
 
-    window.setTimeout(() => {
-      document
-        .getElementById("breach-room-submissions")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 320);
+      setReviewState(response.status);
+      await refreshSubmissions({ quiet: true });
+      setActiveTab("details");
 
-    toast.success("Finding accepted. EXP granted.", {
-      description: `+${XP_BY_IMPACT[impact]} XP added to My Submissions.`,
-    });
+      window.setTimeout(() => {
+        document
+          .getElementById("breach-room-submissions")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 320);
+
+      if (response.prCreationStatus === "failed") {
+        toast.error("Submission saved, but PR creation failed.", {
+          description:
+            response.prCreationError ??
+            "Check backend GitHub integration logs.",
+        });
+      } else if (response.status === "pending_review") {
+        toast.success("Finding submitted for PR review.", {
+          description: response.prUrl
+            ? "Review PR created. Merge it to accept and grant EXP."
+            : "Submission is pending review.",
+        });
+      } else if (response.status === "accepted") {
+        toast.success("Finding accepted.", {
+          description: `Backend granted ${response.xpAwarded} XP.`,
+        });
+      } else if (response.status === "rejected") {
+        toast.error("Finding rejected.", {
+          description: "No EXP was granted.",
+        });
+      }
+
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Finding submission failed. Try again.";
+      setSubmissionError(message);
+      toast.error("Finding submission failed.", { description: message });
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1467,18 +1812,23 @@ export function BreachRoomsSection() {
 
       <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         {view === "list" ? (
-          <BreachRoomList
-            onOpenRoom={handleOpenRoom}
-            submissions={submissions}
-          />
+          <BreachRoomList onOpenRoom={handleOpenRoom} summary={summary} />
         ) : (
           <RoomWorkspace
             activeTab={activeTab}
+            isLoadingSubmissions={isLoadingSubmissions}
+            isSubmitting={isSubmitting}
             onBack={handleBack}
+            onRefreshSubmissions={() => {
+              void refreshSubmissions();
+            }}
             onSubmit={handleSubmit}
             onTabChange={setActiveTab}
             reviewState={reviewState}
+            summary={summary}
             submissions={submissions}
+            submissionError={submissionError}
+            submissionsError={submissionsError}
           />
         )}
       </div>
