@@ -58,7 +58,7 @@ const BREACH_ROOM = {
   nsloc: 290,
   repoPath: "local-breach-rooms/breach-room-1",
   description:
-    "Audit a compact Anchor protocol that routes bounty payouts through account relationships, reusable receipts, and delegated CPI execution.",
+    "Vault Bridge coordinates contributor task approvals, receipt reopening, and payout routing through a compact Anchor treasury workflow.",
   tags: ["Rust", "Anchor", "SVM"],
 };
 
@@ -184,6 +184,18 @@ function StatusPill({
       className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-semibold ${toneClass}`}
     >
       {children}
+    </span>
+  );
+}
+
+function LiveStatusPill() {
+  return (
+    <span className="inline-flex min-h-7 items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-200">
+      <span className="relative flex h-2 w-2" aria-hidden={true}>
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+      </span>
+      Live
     </span>
   );
 }
@@ -485,7 +497,7 @@ function ContestDetails({
 
   return (
     <div className="space-y-7">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-6">
         <div>
           <h2 className="text-3xl font-semibold tracking-[-0.05em]">
             Submit your finding
@@ -501,9 +513,9 @@ function ContestDetails({
 
       <form
         onSubmit={onSubmit}
-        className="overflow-hidden rounded-[24px] border border-white/10 bg-[#080b0e]/85"
+        className="rounded-[22px] bg-[#141719]/75 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.045)]"
       >
-        <div className="space-y-5 p-5">
+        <div className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 md:col-span-2">
               <span className="text-sm font-semibold text-foreground">
@@ -519,7 +531,7 @@ function ContestDetails({
                     title: event.target.value,
                   }))
                 }
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
                 required
               />
             </label>
@@ -537,7 +549,7 @@ function ContestDetails({
                     category: event.target.value,
                   }))
                 }
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
               >
                 <option>Missing Validation</option>
                 <option>Data Matching</option>
@@ -561,7 +573,7 @@ function ContestDetails({
                     scope: event.target.value,
                   }))
                 }
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
               />
             </label>
 
@@ -573,7 +585,7 @@ function ContestDetails({
                 {severityOptions.map((severity) => (
                   <label
                     key={severity.label}
-                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors ${severity.className}`}
+                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-[#0a0c0e] px-3 text-sm font-semibold text-zinc-300 transition-colors ${severity.className}`}
                   >
                     <input
                       type="radio"
@@ -602,7 +614,7 @@ function ContestDetails({
                 {severityOptions.map((likelihood) => (
                   <label
                     key={likelihood.label}
-                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-zinc-300 transition-colors ${likelihood.className}`}
+                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-[#0a0c0e] px-3 text-sm font-semibold text-zinc-300 transition-colors ${likelihood.className}`}
                   >
                     <input
                       type="radio"
@@ -624,7 +636,7 @@ function ContestDetails({
             </fieldset>
           </div>
 
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-black/45">
+          <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0c0e]">
             <div className="border-b border-white/10 bg-white/[0.03] px-4 py-3">
               <span className="text-sm font-semibold text-foreground">
                 Report summary
@@ -645,7 +657,7 @@ function ContestDetails({
             </pre>
           </section>
 
-          <label className="block overflow-hidden rounded-2xl border border-white/10 bg-black/45">
+          <label className="block overflow-hidden rounded-2xl border border-white/10 bg-[#0a0c0e]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
               <div>
                 <span className="text-sm font-semibold text-foreground">
@@ -971,15 +983,15 @@ function RewardsBreakdown() {
 function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
   return (
     <section className="mb-7 rounded-[24px] border border-white/10 bg-[#090d13]/90 p-5 shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)] sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="flex min-w-0 gap-5">
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-1 gap-5">
           <RoomMark />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
                 {BREACH_ROOM.subtitle}
               </h1>
-              <StatusPill tone="green">Live</StatusPill>
+              <LiveStatusPill />
             </div>
             <p className="mt-1 text-sm font-semibold text-muted">
               {BREACH_ROOM.title} · {BREACH_ROOM.category}
@@ -994,7 +1006,20 @@ function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
             </div>
           </div>
         </div>
+      </div>
 
+      <p className="mt-7 max-w-3xl text-sm leading-7 text-zinc-300">
+        {BREACH_ROOM.description}
+      </p>
+
+      <div className="mt-7 flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-5 text-sm font-semibold text-zinc-200 transition-colors hover:bg-white/[0.08] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          View repo
+          <ExternalLink className="h-4 w-4" aria-hidden={true} />
+        </button>
         <button
           type="button"
           onClick={onSubmitFinding}
@@ -1003,15 +1028,6 @@ function RoomHeaderCard({ onSubmitFinding }: { onSubmitFinding: () => void }) {
           Submit finding
           <Send className="h-4 w-4" aria-hidden={true} />
         </button>
-      </div>
-
-      <p className="mt-7 max-w-3xl text-sm leading-7 text-zinc-300">
-        {BREACH_ROOM.description}
-      </p>
-
-      <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
-        <StatusPill tone="green">Live</StatusPill>
-        <span className="text-muted">Manual review after submission</span>
       </div>
     </section>
   );
