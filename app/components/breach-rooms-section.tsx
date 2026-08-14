@@ -43,6 +43,7 @@ import {
   readStoredBackendWalletAuth,
 } from "../lib/levels/level1-backend";
 import { useWallet } from "../lib/wallet/context";
+import { WalletButton } from "./wallet-button";
 
 type RoomTab = "details" | "knownIssues" | "scope";
 type RoomView = "list" | "room";
@@ -1603,7 +1604,15 @@ function RoomWorkspace({
   );
 }
 
-export function BreachRoomsSection() {
+export function BreachRoomsSection({
+  onOpenProfile,
+  profileDisplayName,
+  profileImageSrc,
+}: {
+  onOpenProfile?: () => void;
+  profileDisplayName?: string;
+  profileImageSrc?: string;
+} = {}) {
   const { wallet } = useWallet();
   const [view, setView] = useState<RoomView>("list");
   const [activeTab, setActiveTab] = useState<RoomTab>("details");
@@ -1614,6 +1623,7 @@ export function BreachRoomsSection() {
     EMPTY_SUBMISSIONS_SUMMARY
   );
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [isAuthenticatingBackend, setIsAuthenticatingBackend] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionsError, setSubmissionsError] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
@@ -1668,6 +1678,56 @@ export function BreachRoomsSection() {
       void refreshSubmissions();
     });
   }, [refreshSubmissions]);
+
+  useEffect(() => {
+    if (!wallet) {
+      return;
+    }
+
+    const storedAuth = readStoredBackendWalletAuth();
+    if (storedAuth?.walletAddress === wallet.account.address) {
+      return;
+    }
+
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) {
+        return;
+      }
+
+      setIsAuthenticatingBackend(true);
+      ensureBackendWalletAuth(wallet)
+        .then(() => {
+          if (!cancelled) {
+            void refreshSubmissions({ quiet: true });
+          }
+        })
+        .catch((error) => {
+          if (cancelled) {
+            return;
+          }
+
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Wallet authentication failed.";
+          setSubmissionsError(message);
+          toast.error("Wallet authentication failed.", {
+            description: message,
+          });
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setIsAuthenticatingBackend(false);
+          }
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshSubmissions, wallet]);
 
   useEffect(() => {
     const hasPendingSubmission = submissions.some(
@@ -1811,6 +1871,23 @@ export function BreachRoomsSection() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="mb-8 flex justify-end">
+          <div className="flex flex-col items-end gap-2">
+            <WalletButton
+              onOpenProfile={onOpenProfile}
+              profileDisplayName={profileDisplayName}
+              profileImageSrc={profileImageSrc}
+              disconnectedButtonClassName="min-h-11 rounded-2xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-[0_18px_52px_-30px_rgba(153,69,255,0.85)] transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              connectedButtonClassName="min-w-[11rem]"
+            />
+            {isAuthenticatingBackend ? (
+              <p className="text-xs font-semibold text-zinc-500">
+                Authenticating wallet...
+              </p>
+            ) : null}
+          </div>
+        </div>
+
         {view === "list" ? (
           <BreachRoomList onOpenRoom={handleOpenRoom} summary={summary} />
         ) : (

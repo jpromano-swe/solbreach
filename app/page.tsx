@@ -1186,7 +1186,13 @@ export default function Home() {
               }
             />
           ) : activeSection === "breach-rooms" ? (
-            <BreachRoomsSection />
+            <BreachRoomsSection
+              onOpenProfile={() =>
+                requireRegisteredWallet(() => setActiveSection("profile"))
+              }
+              profileDisplayName={profileName.trim() || undefined}
+              profileImageSrc={profileAvatarSrc}
+            />
           ) : (
             <section className="space-y-8">
               <div className="max-w-3xl space-y-4">
