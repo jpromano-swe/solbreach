@@ -544,7 +544,7 @@ function SeverityField({
 
 function ContestDetails() {
   return (
-    <article className="rounded-[22px] border border-white/10 bg-[#090f16]/75 p-6 sm:p-8">
+    <article>
       <div className="max-w-5xl space-y-8 text-sm leading-7 text-zinc-300">
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
@@ -632,20 +632,6 @@ function FindingReportForm({
 
   return (
     <div className="-m-5 sm:-m-7">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-5 pb-6 pt-5 sm:px-7 sm:pt-7">
-        <div>
-          <h2 className="text-3xl font-semibold tracking-[-0.05em]">
-            Submit your finding
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">
-            Fill one audit report template for each vulnerability you find.
-          </p>
-        </div>
-        {reviewState === "judged" ? (
-          <StatusPill tone="green">Judged</StatusPill>
-        ) : null}
-      </div>
-
       <form
         id="breach-room-report-form"
         onSubmit={onSubmit}
@@ -1220,7 +1206,11 @@ function RoomWorkspace({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#090b0d]/[0.88] shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)]">
           {reportingStarted ? (
-            <div className="min-h-[65px] border-b border-white/10" />
+            <div className="flex min-h-[65px] items-center border-b border-white/10 px-5">
+              <h2 className="text-lg font-semibold tracking-[-0.03em] text-foreground">
+                Finding Submission
+              </h2>
+            </div>
           ) : (
             <div className="flex flex-wrap gap-2 border-b border-white/10 p-3">
               {ROOM_TABS.map((tab) => (
