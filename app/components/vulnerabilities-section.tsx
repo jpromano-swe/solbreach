@@ -223,11 +223,9 @@ export function VulnerabilitiesSection({
                       type="button"
                       onClick={() => onSelectLevel(card.target!)}
                       className={
-                        card.compact?.imageSrc
+                        card.compact
                           ? "group relative h-full min-h-[270px] w-full p-8 text-left transition duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
-                          : card.compact
-                            ? "group m-6 w-[calc(100%-3rem)] self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40 lg:m-8 lg:w-[calc(100%-4rem)]"
-                            : "group m-6 rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 lg:m-8"
+                          : "group m-6 rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 lg:m-8"
                       }
                     >
                       {card.compact ? (
@@ -267,7 +265,7 @@ export function VulnerabilitiesSection({
                   ) : (
                     <div
                       className={
-                        card.compact?.imageSrc
+                        card.compact
                           ? "group relative h-full min-h-[270px] p-8 text-left opacity-35 grayscale"
                           : "m-6 rounded-[22px] border border-red-400/10 bg-red-500/[0.025] p-6 opacity-55 grayscale lg:m-8"
                       }
@@ -399,7 +397,7 @@ function StatusBadge({
   if (status === "completed") {
     return (
       <span
-        className={`inline-flex items-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff]/12 font-medium text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.12)] ${className}`}
+        className={`inline-flex min-h-7 items-center gap-2 rounded-full border border-[#9945ff]/35 bg-[#9945ff]/12 font-medium text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.12)] ${className}`}
       >
         <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
         Completed
@@ -417,7 +415,7 @@ function StatusBadge({
 function AvailableBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 font-medium text-[#8fffd0] shadow-[0_0_0_rgba(20,241,149,0)] motion-safe:animate-[availabilityPillBreath_2.8s_ease-in-out_infinite] ${className}`}
+      className={`inline-flex min-h-7 items-center gap-2 rounded-full border border-[#14f195]/25 bg-[#14f195]/8 font-medium text-[#8fffd0] shadow-[0_0_0_rgba(20,241,149,0)] motion-safe:animate-[availabilityPillBreath_2.8s_ease-in-out_infinite] ${className}`}
     >
       <span className="h-2 w-2 rounded-full bg-[#14f195] motion-safe:animate-[availabilityDotBlink_1.35s_ease-in-out_infinite]" />
       Available
@@ -428,7 +426,7 @@ function AvailableBadge({ className = "" }: { className?: string }) {
 function LockedBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border border-red-400/20 bg-red-500/8 font-medium text-red-200/75 ${className}`}
+      className={`inline-flex min-h-7 items-center gap-2 rounded-full border border-red-400/20 bg-red-500/8 font-medium text-red-200/75 ${className}`}
     >
       <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
       Locked
@@ -450,15 +448,10 @@ function CompactVulnerabilityCardContent({
     : completed
       ? "text-[#b892ff] group-hover:text-white"
       : "text-[#8fffd0] group-hover:text-[#14f195]";
-  const pillCtaClass = locked
-    ? "border-red-400/15 bg-red-500/5 text-red-200/55 group-hover:border-red-300/25 group-hover:bg-red-500/10 group-hover:text-red-200/75"
-    : completed
-      ? "border-[#9945ff]/20 bg-[#9945ff]/5 text-[#c7a6ff] group-hover:border-[#9945ff]/40 group-hover:bg-[#9945ff]/10 group-hover:text-white"
-      : "border-[#14f195]/20 bg-[#14f195]/5 text-[#8fffd0] group-hover:border-[#14f195]/35 group-hover:bg-[#14f195]/10 group-hover:text-[#14f195]";
 
-  if (compact.imageSrc) {
-    return (
-      <div className={`relative min-h-[300px] ${compact.className ?? ""}`}>
+  return (
+    <div className={`relative min-h-[300px] ${compact.className ?? ""}`}>
+      {compact.imageSrc ? (
         <Image
           src={compact.imageSrc}
           alt=""
@@ -468,83 +461,59 @@ function CompactVulnerabilityCardContent({
           sizes="(min-width: 1280px) 168px, (min-width: 640px) 152px, 58vw"
           priority={!locked}
         />
+      ) : (
+        <div
+          className={`pointer-events-none absolute bottom-9 right-[-56px] z-0 h-[150px] w-[58%] max-w-[190px] opacity-0 sm:right-1 sm:bottom-12 sm:w-[152px] xl:right-2 xl:w-[168px] ${compact.imageClassName ?? ""}`}
+          aria-hidden="true"
+        />
+      )}
 
-        <div className="relative z-10 flex min-h-[300px] flex-col">
-          <div className="flex items-center justify-between gap-4">
-            <span
-              className={`text-sm font-semibold tracking-[0.16em] ${
-                locked
-                  ? "text-red-200/45"
-                  : completed
-                    ? "text-[#d7c0ff]"
-                    : "text-[#b892ff]"
-              }`}
-            >
-              {compact.levelLabel}
-            </span>
-            <StatusBadge className="px-3 py-1 text-sm" status={status} />
-          </div>
+      <div className="relative z-10 flex min-h-[300px] flex-col">
+        <div className="flex items-center justify-between gap-4">
+          <span
+            className={`text-sm font-semibold tracking-[0.16em] ${
+              locked
+                ? "text-red-200/45"
+                : completed
+                  ? "text-[#d7c0ff]"
+                  : "text-[#b892ff]"
+            }`}
+          >
+            {compact.levelLabel}
+          </span>
+          <StatusBadge className="px-3 py-1 text-sm" status={status} />
+        </div>
 
-          <div className="mt-10 max-w-[74%] sm:mt-10 sm:max-w-[52%]">
-            <h2
-              className={`text-2xl font-semibold leading-[1.04] tracking-[-0.06em] ${
-                locked ? "text-zinc-500" : "text-white"
-              }`}
-            >
-              {compact.title}
-            </h2>
-            <p
-              className={`mt-5 whitespace-pre-line text-sm leading-6 ${
-                locked ? "text-zinc-600" : "text-zinc-400"
-              }`}
-            >
-              {compact.summary}
+        <div className="mt-10 max-w-[74%] sm:mt-10 sm:max-w-[52%]">
+          <h2
+            className={`text-2xl font-semibold leading-[1.04] tracking-[-0.06em] ${
+              locked ? "text-zinc-500" : "text-white"
+            }`}
+          >
+            {compact.title}
+          </h2>
+          <p
+            className={`mt-5 whitespace-pre-line text-sm leading-6 ${
+              locked ? "text-zinc-600" : "text-zinc-400"
+            }`}
+          >
+            {compact.summary}
+          </p>
+          {compact.metadata ? (
+            <p className="mt-5 whitespace-pre-line text-xs font-semibold text-zinc-500">
+              {compact.metadata}
             </p>
-            {compact.metadata ? (
-              <p className="mt-5 whitespace-pre-line text-xs font-semibold text-zinc-500">
-                {compact.metadata}
-              </p>
-            ) : null}
-            {compact.cta ? (
-              <span
-                className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] transition ${ctaToneClass} ${compact.ctaClassName ?? ""}`}
-              >
-                {completed ? "Review level" : compact.cta}
-                <ArrowRight className="h-5 w-5" aria-hidden="true" />
-              </span>
-            ) : null}
-          </div>
+          ) : null}
+          {compact.cta ? (
+            <span
+              className={`mt-8 inline-flex items-center gap-3 text-xl font-semibold tracking-[-0.03em] transition ${ctaToneClass} ${compact.ctaClassName ?? ""}`}
+            >
+              {completed ? "Review level" : compact.cta}
+              <ArrowRight className="h-5 w-5" aria-hidden="true" />
+            </span>
+          ) : null}
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex min-h-[235px] flex-col">
-      <div className="flex items-center justify-between gap-4">
-        <span className="rounded-full border border-[#9945ff]/20 bg-[#9945ff]/5 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[#b892ff]">
-          {compact.levelLabel}
-        </span>
-        <StatusBadge className="px-2.5 py-0.5 text-[10px]" status={status} />
-      </div>
-
-      <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-white">
-        {compact.title}
-      </h2>
-      <p className="mt-3 max-w-[90%] text-sm leading-6 text-zinc-400">
-        {compact.summary}
-      </p>
-
-      <p className="mt-6 text-xs font-medium text-zinc-400">
-        {compact.metadata}
-      </p>
-
-      <span
-        className={`mt-8 inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${pillCtaClass}`}
-      >
-        {completed ? "Review level" : compact.cta}
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </span>
     </div>
   );
 }
