@@ -11,24 +11,29 @@ export function AppHeader({
   onOpenLanding,
   onOpenProfile,
   onSelectLevel,
+  onSelectBreachRooms,
   onSelectResearchLabs,
   onSelectVulnerabilities,
   profileDisplayName,
   profileImageSrc,
+  breachRoomsUnlocked,
   walletStatus,
 }: {
   activeLevelsView: LevelsView;
   activeSection: RootSection;
+  breachRoomsUnlocked: boolean;
   onOpenLanding: () => void;
   onOpenProfile: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
+  onSelectBreachRooms: () => void;
   onSelectResearchLabs: () => void;
   onSelectVulnerabilities: () => void;
   profileDisplayName?: string;
   profileImageSrc?: string;
   walletStatus: string;
 }) {
-  const isLandingView = activeSection === "levels" && activeLevelsView === "landing";
+  const isLandingView =
+    activeSection === "levels" && activeLevelsView === "landing";
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
@@ -57,6 +62,8 @@ export function AppHeader({
 
         {activeSection !== "levels" || activeLevelsView !== "landing" ? (
           <HeaderCourseNav
+            breachRoomsUnlocked={breachRoomsUnlocked}
+            onSelectBreachRooms={onSelectBreachRooms}
             onSelectResearchLabs={onSelectResearchLabs}
             onSelectVulnerabilities={onSelectVulnerabilities}
             onSelectLevel={onSelectLevel}

@@ -414,8 +414,20 @@ export default function Home() {
   const level1Certificate = researchLabCertificateState?.[1];
   const level2Certificate = researchLabCertificateState?.[2];
   const level3Certificate = researchLabCertificateState?.[3];
-  const researchLab1Certified = Boolean(level1Certificate?.minted);
-  const researchLab2Certified = Boolean(level2Certificate?.minted);
+  const profileCertificateMintedLevels = useMemo(
+    () =>
+      new Set(
+        profileCertificates
+          .filter((certificate) => certificate.minted)
+          .map((certificate) => certificate.level)
+      ),
+    [profileCertificates]
+  );
+  const researchLab1Certified =
+    Boolean(level1Certificate?.minted) || profileCertificateMintedLevels.has(1);
+  const researchLab2Certified =
+    Boolean(level2Certificate?.minted) || profileCertificateMintedLevels.has(2);
+  const breachRoomsUnlocked = researchLab1Certified && researchLab2Certified;
   const badgesForDisplay = useMemo(
     () =>
       badges.map((badge) => {
@@ -944,6 +956,9 @@ export default function Home() {
           onOpenProfile={() =>
             requireRegisteredWallet(() => setActiveSection("profile"))
           }
+          onSelectBreachRooms={() =>
+            requireRegisteredWallet(() => setActiveSection("breach-rooms"))
+          }
           onSelectResearchLabs={() =>
             requireRegisteredWallet(() => {
               setActiveSection("research-labs");
@@ -961,6 +976,7 @@ export default function Home() {
           }
           profileDisplayName={profileName.trim() || undefined}
           profileImageSrc={profileAvatarSrc}
+          breachRoomsUnlocked={breachRoomsUnlocked}
           walletStatus={status}
         />
 

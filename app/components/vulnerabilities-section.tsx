@@ -8,15 +8,13 @@ import {
   LockKeyhole,
   ShieldCheck,
 } from "lucide-react";
-import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { LEVEL_GUIDES } from "../lib/levels/level-guides";
 import type { LevelId } from "../lib/levels/course-status";
 import { trackAnalyticsEvent } from "../lib/analytics";
 
-const GRID_DIVIDER_ONE = "calc((100% - 5rem) / 3 + 1.25rem)";
-const GRID_DIVIDER_TWO = "calc(2 * (100% - 5rem) / 3 + 3.75rem)";
-const GRID_ROW_DIVIDER = "calc(50% - 15px)";
+const VULNERABILITY_GRID_COLUMNS = 3;
 
 type VulnerabilityCard = {
   compact?: {
@@ -97,8 +95,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
     status: "available",
     compact: {
       cta: "Start level",
-      imageClassName:
-        "sm:!right-[-10px] xl:!right-[-16px]",
+      imageClassName: "sm:!right-[-10px] xl:!right-[-16px]",
       imageSrc: "/vulnerabilities/03-trojan-horse.png",
       levelLabel: "LEVEL 3",
       metadata: "Intermediate · 35-50 min · Delegated CPI",
@@ -140,8 +137,7 @@ const VULNERABILITY_CARDS: VulnerabilityCard[] = [
       cta: "Start level",
       levelLabel: "LEVEL 5",
       metadata: "Advanced · 45-60 min · Address reuse",
-      summary:
-        "Track how a PDA address can reappear and become trusted again.",
+      summary: "Track how a PDA address can reappear and become trusted again.",
       title: "The Time Traveler",
     },
   },
@@ -204,129 +200,119 @@ export function VulnerabilitiesSection({
           </p>
         </div>
 
-        <div className="relative mt-10 grid gap-x-10 gap-y-14 border-y border-white/[0.13] pb-10 pt-5 lg:grid-cols-3">
-          <span
-            className="pointer-events-none absolute inset-x-0 hidden h-px -translate-y-1/2 bg-white/[0.13] lg:block"
-            style={{ top: GRID_ROW_DIVIDER }}
-          />
-          <span
-            className="pointer-events-none absolute inset-y-0 hidden w-px -translate-x-1/2 bg-white/[0.13] lg:block"
-            style={{ left: GRID_DIVIDER_ONE }}
-          />
-          <span
-            className="pointer-events-none absolute inset-y-0 hidden w-px -translate-x-1/2 bg-white/[0.13] lg:block"
-            style={{ left: GRID_DIVIDER_TWO }}
-          />
-          <GridCross className="left-0 top-0 -translate-x-1/2 -translate-y-1/2" />
-          <GridCross
-            className="top-0 -translate-x-1/2 -translate-y-1/2"
-            style={{ left: GRID_DIVIDER_ONE }}
-          />
-          <GridCross
-            className="top-0 -translate-x-1/2 -translate-y-1/2"
-            style={{ left: GRID_DIVIDER_TWO }}
-          />
-          <GridCross className="right-0 top-0 translate-x-1/2 -translate-y-1/2" />
-          <GridCross
-            className="left-0 -translate-x-1/2 -translate-y-1/2"
-            style={{ top: GRID_ROW_DIVIDER }}
-          />
-          <GridCross
-            className="-translate-x-1/2 -translate-y-1/2"
-            style={{ left: GRID_DIVIDER_ONE, top: GRID_ROW_DIVIDER }}
-          />
-          <GridCross
-            className="-translate-x-1/2 -translate-y-1/2"
-            style={{ left: GRID_DIVIDER_TWO, top: GRID_ROW_DIVIDER }}
-          />
-          <GridCross
-            className="right-0 translate-x-1/2 -translate-y-1/2"
-            style={{ top: GRID_ROW_DIVIDER }}
-          />
-          <GridCross className="bottom-0 left-0 -translate-x-1/2 translate-y-1/2" />
-          <GridCross
-            className="bottom-0 -translate-x-1/2 translate-y-1/2"
-            style={{ left: GRID_DIVIDER_ONE }}
-          />
-          <GridCross
-            className="bottom-0 -translate-x-1/2 translate-y-1/2"
-            style={{ left: GRID_DIVIDER_TWO }}
-          />
-          <GridCross className="bottom-0 right-0 translate-x-1/2 translate-y-1/2" />
-          {VULNERABILITY_CARDS.map((card) => {
-            const cardStatus = getVulnerabilityCardStatus(
-              card,
-              completedLevels
-            );
-            const isLocked = cardStatus === "locked";
+        <div className="relative mt-10 border-y border-white/[0.13]">
+          <div className="grid lg:grid-cols-3">
+            {VULNERABILITY_CARDS.map((card, cardIndex) => {
+              const cardStatus = getVulnerabilityCardStatus(
+                card,
+                completedLevels
+              );
+              const isLocked = cardStatus === "locked";
 
-            return !isLocked && card.target ? (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => onSelectLevel(card.target!)}
-                className={
-                  card.compact?.imageSrc
-                    ? "group relative p-8 text-left transition duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
-                    : card.compact
-                    ? "group self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
-                    : "group rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50"
-                }
-              >
-                {card.compact ? (
-                  <CompactVulnerabilityCardContent
-                    compact={card.compact}
-                    status={cardStatus}
+              return (
+                <div
+                  key={card.id}
+                  className={getVulnerabilityGridCellClass(cardIndex)}
+                >
+                  <GridCellMarks
+                    index={cardIndex}
+                    totalCount={getVulnerabilityGridCellCount()}
                   />
-                ) : (
-                  <>
-                    <VulnerabilityCardContent
-                      card={card}
-                      status={cardStatus}
-                    />
-                    <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
-                      <span className="text-zinc-500">Interactive level</span>
-                      <span
-                        className={`inline-flex items-center gap-2 font-medium transition ${
-                          cardStatus === "available"
-                            ? "text-[#8fffd0] group-hover:text-[#14f195]"
-                            : "text-[#b892ff] group-hover:text-white"
-                        }`}
-                      >
-                        {cardStatus === "completed"
-                          ? "Review module"
-                          : "Open module"}
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      </span>
+                  {!isLocked && card.target ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectLevel(card.target!)}
+                      className={
+                        card.compact?.imageSrc
+                          ? "group relative h-full min-h-[270px] w-full p-8 text-left transition duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40"
+                          : card.compact
+                            ? "group m-6 w-[calc(100%-3rem)] self-start rounded-[18px] border border-white/10 bg-white/[0.04] p-6 text-left shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/40 lg:m-8 lg:w-[calc(100%-4rem)]"
+                            : "group m-6 rounded-[22px] border border-white/10 bg-white/[0.045] p-6 text-left shadow-2xl shadow-black/30 transition duration-300 hover:-translate-y-1 hover:border-[#9945ff]/45 hover:bg-white/[0.065] focus:outline-none focus:ring-2 focus:ring-[#9945ff]/50 lg:m-8"
+                      }
+                    >
+                      {card.compact ? (
+                        <CompactVulnerabilityCardContent
+                          compact={card.compact}
+                          status={cardStatus}
+                        />
+                      ) : (
+                        <>
+                          <VulnerabilityCardContent
+                            card={card}
+                            status={cardStatus}
+                          />
+                          <div className="mt-7 flex items-center justify-between border-t border-white/10 pt-5 text-sm">
+                            <span className="text-zinc-500">
+                              Interactive level
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-2 font-medium transition ${
+                                cardStatus === "available"
+                                  ? "text-[#8fffd0] group-hover:text-[#14f195]"
+                                  : "text-[#b892ff] group-hover:text-white"
+                              }`}
+                            >
+                              {cardStatus === "completed"
+                                ? "Review module"
+                                : "Open module"}
+                              <ArrowRight
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div
+                      className={
+                        card.compact?.imageSrc
+                          ? "group relative h-full min-h-[270px] p-8 text-left opacity-35 grayscale"
+                          : "m-6 rounded-[22px] border border-red-400/10 bg-red-500/[0.025] p-6 opacity-55 grayscale lg:m-8"
+                      }
+                    >
+                      {card.compact ? (
+                        <CompactVulnerabilityCardContent
+                          compact={card.compact}
+                          status="locked"
+                        />
+                      ) : (
+                        <>
+                          <VulnerabilityCardContent
+                            card={card}
+                            status="locked"
+                          />
+                          <div className="mt-7 border-t border-red-400/10 pt-5 text-sm text-red-200/45">
+                            Unlocks in future curriculum tracks
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </>
-                )}
-              </button>
-            ) : (
+                  )}
+                </div>
+              );
+            })}
+            {Array.from({
+              length:
+                (VULNERABILITY_GRID_COLUMNS -
+                  (VULNERABILITY_CARDS.length % VULNERABILITY_GRID_COLUMNS)) %
+                VULNERABILITY_GRID_COLUMNS,
+            }).map((_, index) => (
               <div
-                key={card.id}
-                className={
-                  card.compact?.imageSrc
-                    ? "group relative p-8 text-left opacity-35 grayscale"
-                    : "rounded-[22px] border border-red-400/10 bg-red-500/[0.025] p-6 opacity-55 grayscale"
-                }
-              >
-                {card.compact ? (
-                  <CompactVulnerabilityCardContent
-                    compact={card.compact}
-                    status="locked"
-                  />
-                ) : (
-                  <>
-                    <VulnerabilityCardContent card={card} status="locked" />
-                    <div className="mt-7 border-t border-red-400/10 pt-5 text-sm text-red-200/45">
-                      Unlocks in future curriculum tracks
-                    </div>
-                  </>
+                key={`vulnerability-grid-spacer-${index}`}
+                className={getVulnerabilityGridCellClass(
+                  VULNERABILITY_CARDS.length + index
                 )}
+                aria-hidden="true"
+              >
+                <GridCellMarks
+                  index={VULNERABILITY_CARDS.length + index}
+                  totalCount={getVulnerabilityGridCellCount()}
+                />
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -340,6 +326,67 @@ function getVulnerabilityCardStatus(
   if (card.status === "locked") return "locked";
   if (card.target && completedLevels[card.target]) return "completed";
   return "available";
+}
+
+function getVulnerabilityGridCellClass(index: number) {
+  const desktopColumn = index % VULNERABILITY_GRID_COLUMNS;
+  const desktopRow = Math.floor(index / VULNERABILITY_GRID_COLUMNS);
+
+  return [
+    "relative min-h-[255px] border-white/[0.13]",
+    index > 0 ? "border-t" : "",
+    desktopColumn > 0 ? "lg:border-l" : "",
+    desktopRow > 0 ? "lg:border-t" : "lg:border-t-0",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getVulnerabilityGridCellCount() {
+  const remainder = VULNERABILITY_CARDS.length % VULNERABILITY_GRID_COLUMNS;
+  const fillerCount =
+    remainder === 0 ? 0 : VULNERABILITY_GRID_COLUMNS - remainder;
+
+  return VULNERABILITY_CARDS.length + fillerCount;
+}
+
+function GridCellMarks({
+  index,
+  totalCount,
+}: {
+  index: number;
+  totalCount: number;
+}) {
+  const desktopColumn = index % VULNERABILITY_GRID_COLUMNS;
+  const isLastColumn = desktopColumn === VULNERABILITY_GRID_COLUMNS - 1;
+  const isLastRow = index >= totalCount - VULNERABILITY_GRID_COLUMNS;
+
+  return (
+    <>
+      <GridCrossMark className="left-0 top-0 -translate-x-1/2 -translate-y-1/2" />
+      {isLastColumn ? (
+        <GridCrossMark className="right-0 top-0 translate-x-1/2 -translate-y-1/2" />
+      ) : null}
+      {isLastRow ? (
+        <GridCrossMark className="bottom-0 left-0 -translate-x-1/2 translate-y-1/2" />
+      ) : null}
+      {isLastColumn && isLastRow ? (
+        <GridCrossMark className="bottom-0 right-0 translate-x-1/2 translate-y-1/2" />
+      ) : null}
+    </>
+  );
+}
+
+function GridCrossMark({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`pointer-events-none absolute z-10 hidden h-4 w-4 lg:block ${className}`}
+      aria-hidden="true"
+    >
+      <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/30" />
+      <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/30" />
+    </span>
+  );
 }
 
 function StatusBadge({
@@ -385,25 +432,6 @@ function LockedBadge({ className = "" }: { className?: string }) {
     >
       <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
       Locked
-    </span>
-  );
-}
-
-function GridCross({
-  className = "",
-  style,
-}: {
-  className?: string;
-  style?: CSSProperties;
-}) {
-  return (
-    <span
-      className={`pointer-events-none absolute hidden h-4 w-4 lg:block ${className}`}
-      style={style}
-      aria-hidden="true"
-    >
-      <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/35" />
-      <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-white/35" />
     </span>
   );
 }
@@ -581,13 +609,7 @@ function VulnerabilityCardContent({
   );
 }
 
-function Metric({
-  icon,
-  label,
-}: {
-  icon: ReactNode;
-  label: string;
-}) {
+function Metric({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">
       <span className="text-[#b892ff] [&>svg]:h-4 [&>svg]:w-4">{icon}</span>

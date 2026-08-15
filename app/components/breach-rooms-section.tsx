@@ -340,12 +340,12 @@ function RoomMark() {
 function TutorialModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-4 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-3 backdrop-blur-md sm:py-6"
       onClick={onClose}
     >
       <section
         aria-label="Breach Room 1 setup"
-        className="relative max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-[24px] border border-white/[0.12] bg-[#07090b] p-5 shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] sm:p-6"
+        className="relative flex max-h-[min(42rem,calc(100svh-1.5rem))] w-full max-w-xl flex-col overflow-y-auto rounded-[24px] border border-white/[0.12] bg-[#07090b] p-4 shadow-[0_34px_110px_-42px_rgba(153,69,255,0.55)] sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -357,19 +357,19 @@ function TutorialModal({ onClose }: { onClose: () => void }) {
           <X className="h-4 w-4" aria-hidden={true} />
         </button>
 
-        <div className="space-y-3 pr-12">
+        <div className="space-y-2 pr-12">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">
             Before You Audit
           </p>
-          <h2 className="max-w-xl text-3xl font-semibold tracking-[-0.07em] text-foreground sm:text-4xl">
+          <h2 className="max-w-xl text-2xl font-semibold tracking-[-0.06em] text-foreground sm:text-3xl">
             Install the auditor workflow.
           </h2>
         </div>
 
-        <div className="mx-auto mt-5 max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-black/60">
-          <div className="flex h-40 items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(153,69,255,0.22),transparent_38%),linear-gradient(135deg,rgba(20,241,149,0.11),rgba(153,69,255,0.09),rgba(0,0,0,0.78))] sm:h-44">
+        <div className="mx-auto mt-4 w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-black/60">
+          <div className="flex h-28 items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(153,69,255,0.22),transparent_38%),linear-gradient(135deg,rgba(20,241,149,0.11),rgba(153,69,255,0.09),rgba(0,0,0,0.78))] sm:h-32">
             <div className="flex flex-col items-center gap-2 text-center">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/50 text-primary">
                 <Play className="h-4 w-4 fill-current" aria-hidden={true} />
               </span>
               <div>
@@ -384,13 +384,13 @@ function TutorialModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-4 space-y-3">
           {AUDITOR_SKILL_SETUP.map((item, index) => (
             <div
               key={item.title}
-              className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3"
+              className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-sm font-semibold text-primary">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/30 bg-primary/15 text-xs font-semibold text-primary">
                 {index + 1}
               </span>
               <div>
@@ -398,7 +398,7 @@ function TutorialModal({ onClose }: { onClose: () => void }) {
                   {item.title}
                 </p>
                 {item.command ? (
-                  <code className="mt-1.5 block rounded-xl border border-white/10 bg-black/45 px-3 py-1.5 text-xs text-zinc-200">
+                  <code className="mt-1.5 block rounded-xl border border-white/10 bg-black/45 px-3 py-1.5 text-[11px] leading-5 text-zinc-200 sm:text-xs">
                     {item.command}
                   </code>
                 ) : null}
@@ -415,7 +415,7 @@ function TutorialModal({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_18px_52px_-22px_rgba(153,69,255,0.75)] transition-transform hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Open Breach Room 1
           <ArrowRight className="h-4 w-4" aria-hidden={true} />
@@ -1259,7 +1259,7 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
       title: "PR review",
       description:
         reviewState === "pending_review"
-          ? "Merge accepts the finding. Closing without merge rejects it."
+          ? "SolBreach team is reviewing your submission."
           : "GitHub webhook records the PR outcome.",
       state:
         reviewState === "pending_review"
@@ -1388,8 +1388,8 @@ function RoomHeaderCard({
   reportingStarted: boolean;
 }) {
   return (
-    <section className="mb-7 rounded-[24px] border border-white/10 bg-[#090d13]/90 p-5 shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)] sm:p-6">
-      <div className="flex flex-wrap items-start gap-6">
+    <section className="mb-6 rounded-[24px] border border-white/10 bg-[#090d13]/90 p-5 shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)] sm:p-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="flex min-w-0 flex-1 gap-5">
           <RoomMark />
           <div className="min-w-0">
@@ -1407,14 +1407,11 @@ function RoomHeaderCard({
                 </StatusPill>
               ))}
             </div>
+            <p className="mt-6 max-w-3xl text-sm leading-7 text-zinc-300">
+              {BREACH_ROOM.description}
+            </p>
           </div>
         </div>
-      </div>
-
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-5">
-        <p className="max-w-3xl text-sm leading-7 text-zinc-300">
-          {BREACH_ROOM.description}
-        </p>
 
         <div className="flex shrink-0 flex-wrap justify-end gap-3">
           <a
@@ -1565,7 +1562,7 @@ function RoomWorkspace({
 
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-5">
         <button
           type="button"
           onClick={onBack}
@@ -1583,7 +1580,7 @@ function RoomWorkspace({
         reportingStarted={reportingStarted}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#090b0d]/[0.88] shadow-[0_32px_90px_-60px_rgba(0,0,0,0.9)]">
           <div
             className={`transition-[opacity,transform,filter] duration-200 ease-in-out ${
@@ -1616,7 +1613,7 @@ function RoomWorkspace({
           </div>
         </div>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4 lg:sticky lg:top-28">
           <RewardsBreakdown summary={summary} />
           <ReviewPipeline reviewState={reviewState} />
         </aside>
@@ -1891,8 +1888,8 @@ export function BreachRoomsSection({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_10%,rgba(153,69,255,0.16),transparent_35%),radial-gradient(circle_at_82%_16%,rgba(20,241,149,0.12),transparent_38%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div className="mb-8 flex justify-end">
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+        <div className="mb-6 flex justify-end">
           <div className="flex flex-col items-end gap-2">
             <WalletButton
               onOpenProfile={onOpenProfile}
