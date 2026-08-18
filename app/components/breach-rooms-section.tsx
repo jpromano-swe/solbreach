@@ -42,7 +42,6 @@ import {
   readStoredBackendWalletAuth,
 } from "../lib/levels/level1-backend";
 import { useWallet } from "../lib/wallet/context";
-import { WalletButton } from "./wallet-button";
 
 type RoomTab = "details" | "knownIssues" | "scope";
 type RoomView = "list" | "room";
@@ -104,7 +103,7 @@ const BREACH_ROOM = {
   subtitle: "Vault Bridge",
   category: "Rust / Anchor",
   difficulty: "Beginner Friendly",
-  xp: 100,
+  xp: 500,
   nsloc: 290,
   repoPath: "local-breach-rooms/breach-room-1",
   repoUrl:
@@ -565,10 +564,10 @@ function BreachRoomList({
             <div className="text-left md:text-right">
               <p className="text-2xl font-semibold text-foreground">
                 {BREACH_ROOM.xp}
-                <span className="ml-1 text-base text-muted">XP</span>
+                <span className="ml-1 text-base text-muted">EXP</span>
               </p>
               <p className="mt-1 text-xs uppercase tracking-[0.22em] text-zinc-500">
-                Flat reward
+                Max reward
               </p>
             </div>
 
@@ -1462,11 +1461,11 @@ function RoomWorkspace({
 
   return (
     <>
-      <div className="mb-5 inline-flex rounded-[18px] border border-white/10 bg-[#091015]/75 p-1 shadow-[0_18px_54px_-44px_rgba(20,241,149,0.55)]">
+      <div className="mb-5">
         <button
           type="button"
           onClick={onBack}
-          className="group inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-sm font-semibold text-zinc-300 transition-[background-color,border-color,color,transform] duration-200 ease-out hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="group inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-[#07090b] px-4 text-sm font-semibold text-zinc-300 shadow-[0_18px_54px_-44px_rgba(20,241,149,0.55)] transition-[background-color,border-color,color,transform] duration-200 ease-out hover:border-primary/30 hover:bg-[#0b1210] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <ArrowLeft
             className="h-4 w-4 transition-transform duration-200 ease-out group-hover:-translate-x-1 group-focus-visible:-translate-x-1"
@@ -1525,15 +1524,7 @@ function RoomWorkspace({
   );
 }
 
-export function BreachRoomsSection({
-  onOpenProfile,
-  profileDisplayName,
-  profileImageSrc,
-}: {
-  onOpenProfile?: () => void;
-  profileDisplayName?: string;
-  profileImageSrc?: string;
-} = {}) {
+export function BreachRoomsSection() {
   const { wallet } = useWallet();
   const [view, setView] = useState<RoomView>("list");
   const [activeTab, setActiveTab] = useState<RoomTab>("details");
@@ -1792,22 +1783,13 @@ export function BreachRoomsSection({
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div className="mb-6 flex justify-end">
-          <div className="flex flex-col items-end gap-2">
-            <WalletButton
-              onOpenProfile={onOpenProfile}
-              profileDisplayName={profileDisplayName}
-              profileImageSrc={profileImageSrc}
-              disconnectedButtonClassName="min-h-11 rounded-2xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-[0_18px_52px_-30px_rgba(153,69,255,0.85)] transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              connectedButtonClassName="min-w-[12rem] border-[#9945ff]/35 bg-[#152033]/95"
-            />
-            {isAuthenticatingBackend ? (
-              <p className="text-xs font-semibold text-zinc-500">
-                Authenticating wallet...
-              </p>
-            ) : null}
+        {isAuthenticatingBackend ? (
+          <div className="mb-6 flex justify-end">
+            <p className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-xs font-semibold text-zinc-500">
+              Authenticating wallet...
+            </p>
           </div>
-        </div>
+        ) : null}
 
         {view === "list" ? (
           <BreachRoomList onOpenRoom={handleOpenRoom} summary={summary} />

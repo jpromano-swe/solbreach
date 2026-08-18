@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { HeaderCourseNav, type CourseLevelTarget } from "./course-nav";
+import { WalletButton } from "./wallet-button";
 import type { RootSection } from "../lib/hooks/use-level-route";
 import type { LevelsView } from "../lib/levels/course-status";
 
@@ -32,6 +33,7 @@ export function AppHeader({
 }) {
   const isLandingView =
     activeSection === "levels" && activeLevelsView === "landing";
+  const showAppWallet = !isLandingView;
 
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
@@ -70,27 +72,17 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
-          {walletStatus === "connected" ? (
-            <button
-              type="button"
-              onClick={onOpenProfile}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition-[border-color,background-color,color,opacity,transform] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                activeSection === "profile"
-                  ? "border-foreground/20 bg-foreground text-background"
-                  : "border-border bg-card/70 text-foreground hover:bg-accent"
-              }`}
-            >
-              {profileImageSrc ? (
-                <Image
-                  src={profileImageSrc}
-                  alt=""
-                  width={28}
-                  height={28}
-                  className="h-7 w-7 rounded-full object-cover"
-                />
-              ) : null}
-              <span>{profileDisplayName ?? "My Profile"}</span>
-            </button>
+          {showAppWallet ? (
+            <WalletButton
+              isProfileActive={activeSection === "profile"}
+              onOpenProfile={onOpenProfile}
+              profileDisplayName={profileDisplayName}
+              profileImageSrc={profileImageSrc}
+              disconnectedButtonClassName="min-h-11 rounded-2xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-[0_18px_52px_-30px_rgba(153,69,255,0.85)] transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              connectedButtonClassName="min-w-[12rem] border-[#9945ff]/35 bg-[#152033]/95"
+            />
+          ) : walletStatus === "connected" ? (
+            <div className="hidden lg:block" aria-hidden="true" />
           ) : null}
         </div>
       </div>
