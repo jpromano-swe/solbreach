@@ -427,7 +427,6 @@ export default function Home() {
     Boolean(level1Certificate?.minted) || profileCertificateMintedLevels.has(1);
   const researchLab2Certified =
     Boolean(level2Certificate?.minted) || profileCertificateMintedLevels.has(2);
-  const breachRoomsUnlocked = researchLab1Certified && researchLab2Certified;
   const badgesForDisplay = useMemo(
     () =>
       badges.map((badge) => {
@@ -976,7 +975,6 @@ export default function Home() {
           }
           profileDisplayName={profileName.trim() || undefined}
           profileImageSrc={profileAvatarSrc}
-          breachRoomsUnlocked={breachRoomsUnlocked}
           walletStatus={status}
         />
 

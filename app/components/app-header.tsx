@@ -16,12 +16,10 @@ export function AppHeader({
   onSelectVulnerabilities,
   profileDisplayName,
   profileImageSrc,
-  breachRoomsUnlocked,
   walletStatus,
 }: {
   activeLevelsView: LevelsView;
   activeSection: RootSection;
-  breachRoomsUnlocked: boolean;
   onOpenLanding: () => void;
   onOpenProfile: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
@@ -62,7 +60,6 @@ export function AppHeader({
 
         {activeSection !== "levels" || activeLevelsView !== "landing" ? (
           <HeaderCourseNav
-            breachRoomsUnlocked={breachRoomsUnlocked}
             onSelectBreachRooms={onSelectBreachRooms}
             onSelectResearchLabs={onSelectResearchLabs}
             onSelectVulnerabilities={onSelectVulnerabilities}

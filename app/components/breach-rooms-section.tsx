@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
@@ -141,28 +140,6 @@ const SCOPE_FILES = [
   "package.json",
 ];
 
-const REVIEW_FINDINGS = {
-  matched: [
-    {
-      severity: "High",
-      title: "Caller-selected payout program is accepted during CPI execution",
-      reference: "Matched: execute_payout_via_cpi route",
-    },
-  ],
-  missed: [
-    {
-      severity: "Medium",
-      title:
-        "Task approval accepts valid but mismatched category and vault accounts",
-    },
-    {
-      severity: "Low",
-      title:
-        "Receipt lifecycle can reopen a reused PDA without a one-way generation guard",
-    },
-  ],
-};
-
 const EMPTY_SUBMISSIONS_SUMMARY: SubmissionSummary = {
   acceptedByImpact: {
     high: 0,
@@ -187,6 +164,36 @@ function toDisplaySeverity(value: BreachRoomSeverity): ReportDraft["impact"] {
   return value === "high" ? "High" : value === "medium" ? "Medium" : "Low";
 }
 
+function nullableTrimmedString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function resolveSubmissionReviewNotes(submission: BackendBreachRoomSubmission) {
+  const genericClosedPrMessage =
+    /^GitHub PR #\d+ was closed without merge; submission rejected\.$/;
+  const comment =
+    nullableTrimmedString(submission.reviewComment) ??
+    nullableTrimmedString(submission.review_comment) ??
+    nullableTrimmedString(submission.reviewerComment) ??
+    nullableTrimmedString(submission.reviewer_comment) ??
+    nullableTrimmedString(submission.prComment) ??
+    nullableTrimmedString(submission.pr_comment) ??
+    nullableTrimmedString(submission.githubComment) ??
+    nullableTrimmedString(submission.github_comment) ??
+    nullableTrimmedString(submission.rejectionReason) ??
+    nullableTrimmedString(submission.rejection_reason);
+  const notes =
+    nullableTrimmedString(submission.reviewNotes) ??
+    nullableTrimmedString(submission.review_notes);
+
+  if (comment) return comment;
+  if (notes && !genericClosedPrMessage.test(notes)) return notes;
+
+  return null;
+}
+
 function normalizeSubmission(
   submission: BackendBreachRoomSubmission
 ): BreachRoomSubmission {
@@ -198,7 +205,7 @@ function normalizeSubmission(
     prUrl: submission.prUrl,
     reportMarkdown: submission.reportMarkdown,
     reviewedAt: submission.reviewedAt,
-    reviewNotes: submission.reviewNotes,
+    reviewNotes: resolveSubmissionReviewNotes(submission),
     roomId: submission.roomId,
     scope: submission.scope,
     status: submission.status,
@@ -215,17 +222,32 @@ function statusLabel(status: BreachRoomReviewStatus) {
   return status === "accepted" ? "Accepted" : "Rejected";
 }
 
-function statusTone(
-  status: BreachRoomReviewStatus
-): "amber" | "green" | "purple" | "red" {
-  if (status === "accepted") return "green";
-  if (status === "rejected") return "red";
-  if (status === "needs_revision") return "amber";
-  return "purple";
-}
-
 function latestReviewState(submissions: BreachRoomSubmission[]): ReviewState {
   return submissions[0]?.status ?? "not_submitted";
+}
+
+function submissionCardClass(status: BreachRoomReviewStatus) {
+  if (status === "accepted") {
+    return "border-emerald-300/25 bg-emerald-400/[0.055] shadow-[0_18px_54px_-44px_rgba(16,185,129,0.75)]";
+  }
+
+  if (status === "rejected") {
+    return "border-red-400/25 bg-red-400/[0.06] shadow-[0_18px_54px_-44px_rgba(248,113,113,0.75)]";
+  }
+
+  return "border-yellow-300/25 bg-yellow-300/[0.055] shadow-[0_18px_54px_-44px_rgba(250,204,21,0.65)]";
+}
+
+function submissionStatusPillClass(status: BreachRoomReviewStatus) {
+  if (status === "accepted") {
+    return "border-emerald-300/45 bg-emerald-500/20 text-emerald-100";
+  }
+
+  if (status === "rejected") {
+    return "border-red-300/45 bg-red-500/20 text-red-100";
+  }
+
+  return "border-yellow-300/50 bg-yellow-400/20 text-yellow-100";
 }
 
 const BREACH_ROOM_REPORT_TEMPLATE = `# Root + Impact
@@ -785,7 +807,7 @@ function ContestDetails({
               {submissions.map((submission) => (
                 <article
                   key={submission.id}
-                  className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.045] p-4"
+                  className={`rounded-2xl border p-4 transition-[border-color,background-color,box-shadow] ${submissionCardClass(submission.status)}`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0">
@@ -793,9 +815,11 @@ function ContestDetails({
                         <h4 className="font-semibold text-foreground">
                           {submission.title}
                         </h4>
-                        <StatusPill tone={statusTone(submission.status)}>
+                        <span
+                          className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-semibold ${submissionStatusPillClass(submission.status)}`}
+                        >
                           {statusLabel(submission.status)}
-                        </StatusPill>
+                        </span>
                       </div>
                       <p className="mt-2 text-sm text-muted">
                         {submission.scope}
@@ -850,7 +874,9 @@ function ContestDetails({
                         className={`text-xl font-semibold ${
                           submission.status === "accepted"
                             ? "text-emerald-200"
-                            : "text-zinc-300"
+                            : submission.status === "rejected"
+                              ? "text-red-100"
+                              : "text-yellow-100"
                         }`}
                       >
                         {submission.status === "accepted"
@@ -861,7 +887,7 @@ function ContestDetails({
                         {submission.status === "accepted"
                           ? "Granted"
                           : submission.status === "pending_review"
-                            ? "Awaiting PR"
+                            ? "Reviewing"
                             : "Final"}
                       </p>
                     </div>
@@ -1063,41 +1089,7 @@ function FindingReportForm({
   );
 }
 
-function KnownIssuesPanel({ reviewState }: { reviewState: ReviewState }) {
-  if (reviewState === "accepted") {
-    return <ReviewResultsPanel />;
-  }
-
-  if (reviewState === "pending_review") {
-    return (
-      <div className="rounded-2xl border border-primary/25 bg-primary/[0.055] p-5">
-        <div className="flex items-center gap-3 text-sm font-semibold text-zinc-100">
-          <Clock3 className="h-5 w-5 text-primary" aria-hidden={true} />
-          Review PR pending
-        </div>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          The backend created the review PR. Merge it to accept the finding and
-          grant EXP, or close it without merge to reject it.
-        </p>
-      </div>
-    );
-  }
-
-  if (reviewState === "rejected") {
-    return (
-      <div className="rounded-2xl border border-red-400/25 bg-red-400/[0.055] p-5">
-        <div className="flex items-center gap-3 text-sm font-semibold text-red-100">
-          <AlertTriangle className="h-5 w-5" aria-hidden={true} />
-          Finding rejected
-        </div>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          The review PR was closed without merge. No EXP was granted for this
-          submission.
-        </p>
-      </div>
-    );
-  }
-
+function KnownIssuesPanel() {
   return (
     <div className="flex items-center gap-3 text-sm font-semibold text-zinc-200">
       <CheckCircle2 className="h-5 w-5 text-emerald-300" aria-hidden={true} />
@@ -1133,97 +1125,6 @@ function ScopePanel() {
         ))}
       </div>
     </section>
-  );
-}
-
-function ReviewResultsPanel() {
-  const found = REVIEW_FINDINGS.matched.length;
-  const total = REVIEW_FINDINGS.matched.length + REVIEW_FINDINGS.missed.length;
-  const percent = Math.round((found / total) * 100);
-
-  return (
-    <div className="space-y-6">
-      <section className="rounded-[24px] border border-white/10 bg-black/35 p-5">
-        <div className="flex flex-wrap items-center gap-5">
-          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-            <div className="absolute inset-2 rounded-full border-4 border-white/10" />
-            <div className="text-center">
-              <p className="text-xl font-semibold text-foreground">
-                {percent}%
-              </p>
-              <p className="text-[10px] font-semibold uppercase text-zinc-500">
-                found
-              </p>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-              You identified {found} of {total} vulnerabilities.
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-muted">
-              Manual review matched one finding from your package. Missed items
-              are shown so you can improve the next audit pass.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-[24px] border border-emerald-400/20 bg-emerald-400/[0.045] p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <CheckCircle2
-            className="h-5 w-5 text-emerald-300"
-            aria-hidden={true}
-          />
-          <h3 className="font-semibold text-foreground">Your submissions</h3>
-          <StatusPill tone="green">{found}</StatusPill>
-        </div>
-        {REVIEW_FINDINGS.matched.map((finding) => (
-          <article key={finding.title} className="rounded-2xl bg-black/35 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h4 className="font-semibold text-foreground">
-                  {finding.title}
-                </h4>
-                <p className="mt-1 text-sm text-muted">{finding.reference}</p>
-              </div>
-              <StatusPill tone="red">{finding.severity}</StatusPill>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="rounded-[24px] border border-yellow-400/20 bg-yellow-400/[0.035] p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <AlertTriangle
-            className="h-5 w-5 text-yellow-300"
-            aria-hidden={true}
-          />
-          <h3 className="font-semibold text-foreground">
-            Missed vulnerabilities
-          </h3>
-          <StatusPill tone="amber">{REVIEW_FINDINGS.missed.length}</StatusPill>
-        </div>
-        <div className="space-y-3">
-          {REVIEW_FINDINGS.missed.map((finding) => (
-            <article
-              key={finding.title}
-              className="rounded-2xl border border-white/10 bg-black/35 p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <h4 className="font-semibold text-foreground">
-                  {finding.title}
-                </h4>
-                <StatusPill
-                  tone={finding.severity === "Medium" ? "amber" : "green"}
-                >
-                  {finding.severity}
-                </StatusPill>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-    </div>
   );
 }
 
@@ -1540,7 +1441,7 @@ function RoomWorkspace({
       );
     }
     if (activeTab === "knownIssues") {
-      return <KnownIssuesPanel reviewState={reviewState} />;
+      return <KnownIssuesPanel />;
     }
 
     return <ScopePanel />;
@@ -1554,7 +1455,6 @@ function RoomWorkspace({
     onRefreshSubmissions,
     reportFields,
     reportingStarted,
-    reviewState,
     submissionError,
     submissions,
     submissionsError,
@@ -1562,13 +1462,16 @@ function RoomWorkspace({
 
   return (
     <>
-      <div className="mb-5">
+      <div className="mb-5 inline-flex rounded-[18px] border border-white/10 bg-[#091015]/75 p-1 shadow-[0_18px_54px_-44px_rgba(20,241,149,0.55)]">
         <button
           type="button"
           onClick={onBack}
-          className="mb-6 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-sm font-semibold text-zinc-300 transition-colors hover:bg-white/[0.07] hover:text-foreground active:scale-[0.96]"
+          className="group inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-sm font-semibold text-zinc-300 transition-[background-color,border-color,color,transform] duration-200 ease-out hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden={true} />
+          <ArrowLeft
+            className="h-4 w-4 transition-transform duration-200 ease-out group-hover:-translate-x-1 group-focus-visible:-translate-x-1"
+            aria-hidden={true}
+          />
           All Breach Rooms
         </button>
       </div>
@@ -1896,7 +1799,7 @@ export function BreachRoomsSection({
               profileDisplayName={profileDisplayName}
               profileImageSrc={profileImageSrc}
               disconnectedButtonClassName="min-h-11 rounded-2xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-[0_18px_52px_-30px_rgba(153,69,255,0.85)] transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              connectedButtonClassName="min-w-[11rem]"
+              connectedButtonClassName="min-w-[12rem] border-[#9945ff]/35 bg-[#152033]/95"
             />
             {isAuthenticatingBackend ? (
               <p className="text-xs font-semibold text-zinc-500">

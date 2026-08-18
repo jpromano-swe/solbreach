@@ -95,13 +95,11 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
 ];
 
 export function HeaderCourseNav({
-  breachRoomsUnlocked,
   onSelectBreachRooms,
   onSelectResearchLabs,
   onSelectVulnerabilities,
   onSelectLevel,
 }: {
-  breachRoomsUnlocked: boolean;
   onSelectBreachRooms: () => void;
   onSelectResearchLabs: () => void;
   onSelectVulnerabilities: () => void;
@@ -132,17 +130,7 @@ export function HeaderCourseNav({
         label="Research Labs"
         onClick={onSelectResearchLabs}
       />
-      {breachRoomsUnlocked ? (
-        <HeaderDirectButton
-          label="Breach Rooms"
-          onClick={onSelectBreachRooms}
-        />
-      ) : (
-        <HeaderLockedButton
-          label="Breach Rooms"
-          legend="Complete RL1 and RL2 to unlock"
-        />
-      )}
+      <HeaderDirectButton label="Breach Rooms" onClick={onSelectBreachRooms} />
 
       <div
         className={`absolute left-0 right-0 top-full h-4 ${
@@ -305,37 +293,5 @@ function HeaderDirectButton({
     >
       {label}
     </button>
-  );
-}
-
-function HeaderLockedButton({
-  label,
-  legend,
-}: {
-  label: string;
-  legend: string;
-}) {
-  const legendId = `${label.toLowerCase().replace(/\s+/g, "-")}-unlock-legend`;
-
-  return (
-    <span className="group relative inline-flex">
-      <button
-        type="button"
-        aria-disabled="true"
-        aria-describedby={legendId}
-        onClick={(event) => event.preventDefault()}
-        className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-full border border-border/60 bg-muted/20 px-4 text-sm font-medium text-muted/55 transition-[border-color,background-color,color,transform] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
-        {label}
-      </button>
-      <span
-        id={legendId}
-        role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-[calc(100%+0.55rem)] z-50 w-max max-w-[220px] -translate-x-1/2 translate-y-1 rounded-xl border border-[#ffd23f]/25 bg-[#11100a]/95 px-3 py-2 text-center text-xs font-medium text-[#ffe88a] opacity-0 shadow-[0_18px_50px_-30px_rgba(255,210,63,0.75)] backdrop-blur-xl transition-[opacity,transform] delay-500 duration-150 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 motion-reduce:transition-none"
-      >
-        {legend}
-      </span>
-    </span>
   );
 }
