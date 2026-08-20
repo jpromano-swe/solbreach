@@ -48,6 +48,8 @@ type RoomView = "list" | "room";
 type ReviewState = "not_submitted" | BreachRoomReviewStatus;
 
 type ReportFields = {
+  category: string;
+  customCategory: string;
   impact: ReportDraft["impact"];
   likelihood: ReportDraft["likelihood"];
   reportMarkdown: string;
@@ -100,7 +102,7 @@ const ROOM_TABS: Array<{
 const BREACH_ROOM = {
   id: "br-1",
   title: "Breach Room 1",
-  subtitle: "Vault Bridge",
+  subtitle: "Rust Cornerstone",
   category: "Rust / Anchor",
   difficulty: "Beginner Friendly",
   xp: 500,
@@ -109,7 +111,7 @@ const BREACH_ROOM = {
   repoUrl:
     "https://github.com/jpromano-swe/solbreach-breachrooms/tree/main/breach-room-1",
   description:
-    "Vault Bridge coordinates contributor task approvals, receipt reopening, and payout routing through a compact Anchor treasury workflow.",
+    "Rust Cornerstone coordinates contributor task approvals, receipt reopening, and payout routing through a compact Anchor treasury workflow.",
   tags: ["Rust", "Anchor"],
 };
 
@@ -137,6 +139,24 @@ const SCOPE_FILES = [
   "Anchor.toml",
   "Cargo.toml",
   "package.json",
+];
+
+const CUSTOM_FINDING_CATEGORY = "custom";
+
+const FINDING_CATEGORY_OPTIONS = [
+  { value: "missing_validation", label: "Missing Validation" },
+  { value: "access_control", label: "Access Control" },
+  { value: "account_substitution", label: "Account Substitution" },
+  { value: "pda_lifecycle", label: "PDA Lifecycle" },
+  { value: "address_reuse", label: "Address Reuse" },
+  { value: "data_matching", label: "Data Matching" },
+  { value: "arbitrary_cpi", label: "Arbitrary CPI" },
+  { value: "unchecked_account", label: "Unchecked Account" },
+  { value: "signer_authorization", label: "Signer Authorization" },
+  { value: "state_machine", label: "State Machine" },
+  { value: "arithmetic_safety", label: "Arithmetic Safety" },
+  { value: "reinitialization", label: "Reinitialization" },
+  { value: CUSTOM_FINDING_CATEGORY, label: "Custom" },
 ];
 
 const EMPTY_SUBMISSIONS_SUMMARY: SubmissionSummary = {
@@ -169,18 +189,58 @@ function nullableTrimmedString(value: unknown) {
     : null;
 }
 
+function findingCategoryLabel(category: string) {
+  const normalized = category.trim();
+  const option = FINDING_CATEGORY_OPTIONS.find(
+    (candidate) => candidate.value === normalized
+  );
+
+  if (option && option.value !== CUSTOM_FINDING_CATEGORY) {
+    return option.label;
+  }
+
+  if (!normalized) {
+    return "Uncategorized";
+  }
+
+  return normalized
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
+}
+
+function selectedFindingCategory(fields: ReportFields) {
+  return fields.category === CUSTOM_FINDING_CATEGORY
+    ? fields.customCategory.trim()
+    : fields.category.trim();
+}
+
 function resolveSubmissionReviewNotes(submission: BackendBreachRoomSubmission) {
-  const genericClosedPrMessage =
-    /^GitHub PR #\d+ was closed without merge; submission rejected\.$/;
+  const genericReviewMessages = [
+    /^GitHub PR #\d+ was closed without merge; submission rejected\.$/,
+    /^GitHub PR #\d+ was merged; submission accepted\.$/,
+  ];
   const comment =
+    nullableTrimmedString(submission.comment) ??
     nullableTrimmedString(submission.reviewComment) ??
     nullableTrimmedString(submission.review_comment) ??
     nullableTrimmedString(submission.reviewerComment) ??
     nullableTrimmedString(submission.reviewer_comment) ??
+    nullableTrimmedString(submission.reviewerNotes) ??
+    nullableTrimmedString(submission.reviewer_notes) ??
     nullableTrimmedString(submission.prComment) ??
     nullableTrimmedString(submission.pr_comment) ??
     nullableTrimmedString(submission.githubComment) ??
     nullableTrimmedString(submission.github_comment) ??
+    nullableTrimmedString(submission.githubReviewComment) ??
+    nullableTrimmedString(submission.github_review_comment) ??
+    nullableTrimmedString(submission.teamComment) ??
+    nullableTrimmedString(submission.team_comment) ??
+    nullableTrimmedString(submission.decisionComment) ??
+    nullableTrimmedString(submission.decision_comment) ??
+    nullableTrimmedString(submission.reviewReason) ??
+    nullableTrimmedString(submission.review_reason) ??
     nullableTrimmedString(submission.rejectionReason) ??
     nullableTrimmedString(submission.rejection_reason);
   const notes =
@@ -188,7 +248,9 @@ function resolveSubmissionReviewNotes(submission: BackendBreachRoomSubmission) {
     nullableTrimmedString(submission.review_notes);
 
   if (comment) return comment;
-  if (notes && !genericClosedPrMessage.test(notes)) return notes;
+  if (notes && genericReviewMessages.every((pattern) => !pattern.test(notes))) {
+    return notes;
+  }
 
   return null;
 }
@@ -289,6 +351,8 @@ Add any assumptions, reproduction limits, or extra reviewer context.
 `;
 
 const INITIAL_REPORT_FIELDS: ReportFields = {
+  category: "missing_validation",
+  customCategory: "",
   impact: "Medium",
   likelihood: "Medium",
   reportMarkdown: BREACH_ROOM_REPORT_TEMPLATE,
@@ -824,6 +888,9 @@ function ContestDetails({
                         {submission.scope}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
+                        <StatusPill tone="zinc">
+                          {findingCategoryLabel(submission.category)}
+                        </StatusPill>
                         <StatusPill
                           tone={
                             submission.impact === "High"
@@ -986,7 +1053,78 @@ function FindingReportForm({
 
           <div className="h-px bg-white/10" />
 
-          <div className="grid gap-5 lg:grid-cols-[14rem_14rem_minmax(14rem,0.8fr)]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(14rem,0.85fr)_minmax(16rem,1.15fr)]">
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-foreground">
+                Category
+              </span>
+              <select
+                name="category"
+                value={reportFields.category}
+                onChange={(event) =>
+                  updateFields({
+                    category: event.target.value,
+                    customCategory:
+                      event.target.value === CUSTOM_FINDING_CATEGORY
+                        ? reportFields.customCategory
+                        : "",
+                  })
+                }
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
+                required
+              >
+                {FINDING_CATEGORY_OPTIONS.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-semibold text-foreground">
+                Scope
+              </span>
+              <select
+                name="scope"
+                value={reportFields.scope}
+                onChange={(event) =>
+                  updateFields({
+                    scope: event.target.value,
+                  })
+                }
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
+              >
+                <option value="">Select affected file from scope</option>
+                {SCOPE_FILES.map((file) => (
+                  <option key={file} value={file}>
+                    {file}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {reportFields.category === CUSTOM_FINDING_CATEGORY ? (
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold text-foreground">
+                Custom category
+              </span>
+              <input
+                name="customCategory"
+                placeholder="Add vulnerability vector"
+                maxLength={80}
+                value={reportFields.customCategory}
+                onChange={(event) =>
+                  updateFields({ customCategory: event.target.value })
+                }
+                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-zinc-600 focus:border-primary/55"
+                required
+              />
+            </label>
+          ) : null}
+
+          <div className="grid gap-5 lg:grid-cols-[14rem_14rem]">
             <div>
               <fieldset className="space-y-2.5">
                 <legend className="text-sm font-semibold text-foreground">
@@ -1012,29 +1150,6 @@ function FindingReportForm({
                 />
               </fieldset>
             </div>
-
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-foreground">
-                Scope
-              </span>
-              <select
-                name="scope"
-                value={reportFields.scope}
-                onChange={(event) =>
-                  updateFields({
-                    scope: event.target.value,
-                  })
-                }
-                className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0a0c0e] px-4 text-sm text-foreground outline-none transition-colors focus:border-primary/55"
-              >
-                <option value="">Select affected file from scope</option>
-                {SCOPE_FILES.map((file) => (
-                  <option key={file} value={file}>
-                    {file}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
 
           <label className="block space-y-2">
@@ -1378,6 +1493,7 @@ function RoomWorkspace({
 
   const canSubmit =
     reportingStarted &&
+    selectedFindingCategory(reportFields).length > 0 &&
     reportFields.title.trim().length > 0 &&
     reportFields.scope.trim().length > 0 &&
     reportFields.reportMarkdown.trim().length > 0;
@@ -1458,6 +1574,9 @@ function RoomWorkspace({
     submissions,
     submissionsError,
   ]);
+  const pipelineReviewState: ReviewState = reportingStarted
+    ? "not_submitted"
+    : reviewState;
 
   return (
     <>
@@ -1517,7 +1636,7 @@ function RoomWorkspace({
 
         <aside className="space-y-4 lg:sticky lg:top-28">
           <RewardsBreakdown summary={summary} />
-          <ReviewPipeline reviewState={reviewState} />
+          <ReviewPipeline reviewState={pipelineReviewState} />
         </aside>
       </div>
     </>
@@ -1695,6 +1814,12 @@ export function BreachRoomsSection() {
     }
 
     const formData = new FormData(event.currentTarget);
+    const rawCategory = formData.get("category")?.toString() || "";
+    const customCategory = formData.get("customCategory")?.toString() || "";
+    const category =
+      rawCategory === CUSTOM_FINDING_CATEGORY
+        ? customCategory.trim()
+        : rawCategory.trim();
     const impact = (formData.get("impact")?.toString() ||
       "Medium") as ReportDraft["impact"];
     const likelihood = (formData.get("likelihood")?.toString() ||
@@ -1704,7 +1829,7 @@ export function BreachRoomsSection() {
     const title = formData.get("title")?.toString() || "";
 
     setDraft({
-      category: "Breach Room Finding",
+      category,
       impact,
       likelihood,
       mitigation: "",
@@ -1720,7 +1845,7 @@ export function BreachRoomsSection() {
     try {
       const auth = await ensureBackendWalletAuth(wallet);
       const response = await submitBreachRoomFinding(auth.accessToken, {
-        category: "missing_validation",
+        category,
         impact: toBackendSeverity(impact),
         likelihood: toBackendSeverity(likelihood),
         reportMarkdown,

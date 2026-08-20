@@ -13,8 +13,13 @@ export type BreachRoomSeverity = "high" | "medium" | "low";
 
 export type BreachRoomSubmission = {
   category: string;
+  comment?: string | null;
+  decisionComment?: string | null;
+  decision_comment?: string | null;
   githubComment?: string | null;
   github_comment?: string | null;
+  githubReviewComment?: string | null;
+  github_review_comment?: string | null;
   id: string;
   impact: BreachRoomSeverity;
   likelihood: BreachRoomSeverity;
@@ -26,11 +31,17 @@ export type BreachRoomSubmission = {
   reportMarkdown: string;
   reviewedAt: string | null;
   reviewComment?: string | null;
+  reviewReason?: string | null;
+  review_reason?: string | null;
   reviewerComment?: string | null;
   reviewer_comment?: string | null;
+  reviewerNotes?: string | null;
+  reviewer_notes?: string | null;
   reviewNotes: string | null;
   review_comment?: string | null;
   review_notes?: string | null;
+  teamComment?: string | null;
+  team_comment?: string | null;
   roomId: string;
   scope: string;
   status: BreachRoomReviewStatus;
