@@ -101,17 +101,15 @@ const ROOM_TABS: Array<{
 
 const BREACH_ROOM = {
   id: "br-1",
-  title: "Breach Room 1",
-  subtitle: "Rust Cornerstone",
+  title: "Rust Cornerstone",
   category: "Rust / Anchor",
   difficulty: "Beginner Friendly",
-  xp: 500,
+  xp: 300,
   nsloc: 290,
   repoPath: "local-breach-rooms/breach-room-1",
   repoUrl:
     "https://github.com/jpromano-swe/solbreach-breachrooms/tree/main/breach-room-1",
-  description:
-    "Rust Cornerstone coordinates contributor task approvals, receipt reopening, and payout routing through a compact Anchor treasury workflow.",
+  description: "Your first Solana audit.",
   tags: ["Rust", "Anchor"],
 };
 
@@ -415,9 +413,16 @@ function LiveStatusPill() {
 
 function RoomMark() {
   return (
-    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/30 bg-[radial-gradient(circle_at_38%_25%,rgba(20,241,149,0.45),transparent_35%),linear-gradient(135deg,rgba(153,69,255,0.75),rgba(20,241,149,0.35),rgba(0,0,0,0.82))] shadow-[0_18px_60px_-26px_rgba(20,241,149,0.75)]">
-      <div className="absolute inset-[6px] rounded-xl border border-white/15" />
-      <ShieldCheck className="relative h-8 w-8 text-white" aria-hidden={true} />
+    <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
+      <Image
+        src="/badges/breach-room-rust-cornerstone.png"
+        alt=""
+        width={245}
+        height={292}
+        className="h-full w-full object-contain drop-shadow-[0_18px_34px_rgba(37,99,235,0.45)]"
+        priority={false}
+        aria-hidden={true}
+      />
     </div>
   );
 }
@@ -539,24 +544,25 @@ function TabButton({
 
 function BreachRoomList({
   onOpenRoom,
+  submissions,
   summary,
 }: {
   onOpenRoom: () => void;
+  submissions: BreachRoomSubmission[];
   summary: SubmissionSummary;
 }) {
+  const roomIncomplete = submissions.length > 0 && summary.validSubmissions < 3;
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div>
         <div className="mb-8">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.36em] text-primary">
-            Breach Rooms
-          </p>
           <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
-            Choose your audit room.
+            Choose a Breach Room to audit
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-muted sm:text-lg">
-            Practice real security review loops: clone a scoped repo, audit it
-            with tooling, submit evidence, and wait for manual judging.
+            Clone a scoped repo, audit it with the provided toolkit, submit your
+            findings, and gain exp for the leaderboard.
           </p>
         </div>
 
@@ -604,13 +610,10 @@ function BreachRoomList({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
-                {BREACH_ROOM.title}: {BREACH_ROOM.subtitle}
+                {BREACH_ROOM.title}
               </h2>
-              <StatusPill tone="green">Live</StatusPill>
+              <LiveStatusPill />
             </div>
-            <p className="mt-1 text-sm font-semibold text-muted">
-              First SolBreach audit room
-            </p>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
               {BREACH_ROOM.description}
             </p>
@@ -627,7 +630,7 @@ function BreachRoomList({
           <div className="flex flex-col justify-between gap-5 md:items-end">
             <div className="text-left md:text-right">
               <p className="text-2xl font-semibold text-foreground">
-                {BREACH_ROOM.xp}
+                +{BREACH_ROOM.xp}
                 <span className="ml-1 text-base text-muted">EXP</span>
               </p>
               <p className="mt-1 text-xs uppercase tracking-[0.22em] text-zinc-500">
@@ -635,10 +638,20 @@ function BreachRoomList({
               </p>
             </div>
 
-            <span className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 transition-colors group-hover:text-primary">
-              View room
-              <ArrowRight className="h-4 w-4" aria-hidden={true} />
-            </span>
+            <div className="space-y-2 text-left md:text-right">
+              {roomIncomplete ? (
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-yellow-200">
+                  Incomplete
+                </p>
+              ) : null}
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 transition-colors group-hover:text-primary">
+                Go To Room
+                <ArrowRight
+                  className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-1"
+                  aria-hidden={true}
+                />
+              </span>
+            </div>
           </div>
         </button>
       </div>
@@ -1410,7 +1423,7 @@ function RoomHeaderCard({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground sm:text-4xl">
-                {BREACH_ROOM.subtitle}
+                {BREACH_ROOM.title}
               </h1>
               <LiveStatusPill />
             </div>
@@ -1917,7 +1930,11 @@ export function BreachRoomsSection() {
         ) : null}
 
         {view === "list" ? (
-          <BreachRoomList onOpenRoom={handleOpenRoom} summary={summary} />
+          <BreachRoomList
+            onOpenRoom={handleOpenRoom}
+            submissions={submissions}
+            summary={summary}
+          />
         ) : (
           <RoomWorkspace
             activeTab={activeTab}
