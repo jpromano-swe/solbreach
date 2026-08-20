@@ -214,6 +214,42 @@ function selectedFindingCategory(fields: ReportFields) {
     : fields.category.trim();
 }
 
+function breachRoomUserStats(
+  submissions: BreachRoomSubmission[],
+  summary: SubmissionSummary
+) {
+  const acceptedSubmissions = submissions.filter(
+    (submission) => submission.status === "accepted"
+  );
+  const acceptedByImpact = acceptedSubmissions.reduce(
+    (counts, submission) => {
+      if (submission.impact === "High") counts.high += 1;
+      if (submission.impact === "Medium") counts.medium += 1;
+      if (submission.impact === "Low") counts.low += 1;
+      return counts;
+    },
+    { high: 0, medium: 0, low: 0 }
+  );
+  const acceptedXp = acceptedSubmissions.reduce(
+    (total, submission) => total + Math.max(0, submission.xpAwarded),
+    0
+  );
+
+  return {
+    acceptedByImpact:
+      acceptedSubmissions.length > 0
+        ? acceptedByImpact
+        : summary.acceptedByImpact,
+    totalEarnedXp:
+      acceptedSubmissions.length > 0 ? acceptedXp : summary.totalEarnedXp,
+    totalSubmissions: submissions.length,
+    validSubmissions:
+      acceptedSubmissions.length > 0
+        ? acceptedSubmissions.length
+        : summary.validSubmissions,
+  };
+}
+
 function resolveSubmissionReviewNotes(submission: BackendBreachRoomSubmission) {
   const genericReviewMessages = [
     /^GitHub PR #\d+ was closed without merge; submission rejected\.$/,
@@ -551,7 +587,9 @@ function BreachRoomList({
   submissions: BreachRoomSubmission[];
   summary: SubmissionSummary;
 }) {
-  const roomIncomplete = submissions.length > 0 && summary.validSubmissions < 3;
+  const userStats = breachRoomUserStats(submissions, summary);
+  const roomIncomplete =
+    userStats.totalSubmissions > 0 && userStats.validSubmissions < 3;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -669,14 +707,14 @@ function BreachRoomList({
           <div className="flex justify-between gap-4">
             <span className="text-muted">Total earned</span>
             <span className="font-semibold text-foreground">
-              {summary.totalEarnedXp} XP
+              {userStats.totalEarnedXp} XP
             </span>
           </div>
           <div className="border-t border-white/10 pt-4">
             {[
-              ["High", summary.acceptedByImpact.high.toString(), "red"],
-              ["Medium", summary.acceptedByImpact.medium.toString(), "amber"],
-              ["Low", summary.acceptedByImpact.low.toString(), "green"],
+              ["High", userStats.acceptedByImpact.high.toString(), "red"],
+              ["Medium", userStats.acceptedByImpact.medium.toString(), "amber"],
+              ["Low", userStats.acceptedByImpact.low.toString(), "green"],
             ].map(([label, value, tone]) => (
               <div
                 key={label}
@@ -690,9 +728,15 @@ function BreachRoomList({
             ))}
           </div>
           <div className="flex justify-between gap-4 border-t border-white/10 pt-4">
+            <span className="text-muted">Total submissions</span>
+            <span className="font-semibold text-foreground">
+              {userStats.totalSubmissions}
+            </span>
+          </div>
+          <div className="flex justify-between gap-4 border-t border-white/10 pt-4">
             <span className="text-muted">Valid submissions</span>
             <span className="font-semibold text-foreground">
-              {summary.validSubmissions}
+              {userStats.validSubmissions}
             </span>
           </div>
         </div>
@@ -1360,7 +1404,35 @@ function ReviewPipeline({ reviewState }: { reviewState: ReviewState }) {
   );
 }
 
-function RewardsBreakdown({ summary }: { summary: SubmissionSummary }) {
+function RewardsBreakdown({
+  submissions,
+  summary,
+}: {
+  submissions: BreachRoomSubmission[];
+  summary: SubmissionSummary;
+}) {
+  const userStats = breachRoomUserStats(submissions, summary);
+  const earnedRows = [
+    {
+      count: userStats.acceptedByImpact.high,
+      label: "High",
+      tone: "red" as const,
+      xp: userStats.acceptedByImpact.high * REWARD_BY_IMPACT.high,
+    },
+    {
+      count: userStats.acceptedByImpact.medium,
+      label: "Medium",
+      tone: "amber" as const,
+      xp: userStats.acceptedByImpact.medium * REWARD_BY_IMPACT.medium,
+    },
+    {
+      count: userStats.acceptedByImpact.low,
+      label: "Low",
+      tone: "green" as const,
+      xp: userStats.acceptedByImpact.low * REWARD_BY_IMPACT.low,
+    },
+  ].filter((row) => row.count > 0);
+
   return (
     <div className="rounded-[24px] border border-white/10 bg-[#090b0d]/80 p-5 shadow-[0_24px_72px_-56px_rgba(0,0,0,0.9)]">
       <div className="mb-5 flex items-center justify-between">
@@ -1376,9 +1448,27 @@ function RewardsBreakdown({ summary }: { summary: SubmissionSummary }) {
         <div className="flex justify-between gap-4 border-t border-white/10 pt-3">
           <span className="text-muted">Earned</span>
           <span className="font-semibold text-emerald-200">
-            {summary.totalEarnedXp} XP
+            {userStats.totalEarnedXp} XP
           </span>
         </div>
+        {earnedRows.length > 0 ? (
+          <div className="space-y-2 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.045] p-3">
+            {earnedRows.map((row) => (
+              <div
+                key={row.label}
+                className="flex items-center justify-between gap-3"
+              >
+                <span className="text-xs font-semibold text-zinc-300">
+                  {row.count} {row.label}
+                  {row.count === 1 ? "" : "s"}
+                </span>
+                <span className="text-xs font-semibold text-emerald-200">
+                  +{row.xp} XP
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="space-y-3 border-t border-white/10 pt-3">
           <div className="flex justify-between gap-4">
             <StatusPill tone="red">High</StatusPill>
@@ -1648,7 +1738,7 @@ function RoomWorkspace({
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-28">
-          <RewardsBreakdown summary={summary} />
+          <RewardsBreakdown submissions={submissions} summary={summary} />
           <ReviewPipeline reviewState={pipelineReviewState} />
         </aside>
       </div>
