@@ -1,85 +1,171 @@
 # SolBreach
 
-**Practice finding and fixing Solana security bugs by exploiting vulnerable programs.**
+**Hands-on security training for Solana developers: inspect vulnerable programs, exploit them, verify impact, and explain the fix.**
 
-[Beta](https://beta.solbreach.com) · [Website](https://solbreach.com) · [Documentation](https://solbreach.gitbook.io/documentation) · [Backend](https://github.com/jpromano-swe/solbreach-backend) · [Re-submission checklist and video scripts](SUBMISSION.md)
+[Try the beta](https://beta.solbreach.com) · [Pitch](https://youtu.be/4CunhIXPDro) · [Demo](https://youtu.be/kPHk-jrA4Xk) · [Website](https://solbreach.com) · [Documentation](https://solbreach.gitbook.io/documentation) · [Backend](https://github.com/jpromano-swe/solbreach-backend/tree/backend-testing)
 
-Solana builders can read about missing account checks without learning to spot them
-in a transaction. SolBreach gives them a concrete task: inspect a vulnerable program,
-construct an exploit, verify its impact, and explain the fix.
+SolBreach is for builders who already understand Rust, Anchor, Solana accounts,
+PDAs, and token accounts, and want to recognize security failures in practice.
+Learners connect vulnerable account relationships to protocol impact, then document
+the root cause, evidence, and mitigation in an audit-style report.
 
-## What's new since Frontier
+## Try it
 
-The **2026-10-12 re-submission patch** hardens certificate mint authorization,
-restricts global initialization to the program upgrade authority, replaces public
-solver entrypoints with learner templates, and corrects product claims and setup docs.
-See [CHANGELOG.md](CHANGELOG.md) for dated repository evidence. Earlier beta, backend,
-landing and cNFT milestones are listed separately; their dates must not be presented
-as new work without comparing against the actual Frontier submission baseline.
+1. Open [beta.solbreach.com](https://beta.solbreach.com) and request beta access or
+   redeem an invitation code. The project currently documents `WAYLEARN` as a beta
+   code; availability depends on the access service.
+2. Complete onboarding and connect a Solana wallet configured for **devnet**.
+3. Start with the warmup and guided vulnerability modules, then investigate a Research Lab.
+4. Review the resulting state and evidence, complete the finding report, and claim
+   an eligible completion certificate.
 
-Demo video and pitch video: **pending recording/public links**. Use the scripts and
-checklist in [SUBMISSION.md](SUBMISSION.md); a live beta link does not replace a video.
+Use devnet SOL and test assets for the intentionally vulnerable challenges.
+The videos show the product flow; the runtime table below identifies which parts
+execute on devnet and which run in a backend sandbox or simulation.
 
-## How it works
+## Current product and execution environments
 
-1. Open the beta, complete beta access/onboarding, and connect a devnet wallet.
-2. Read a challenge and inspect its account relationships.
-3. Construct an attempt and sign the devnet transaction.
-4. Call the level's `verify_and_close` instruction after meeting its objective.
-5. Inspect the transaction in Explorer and claim a completion certificate.
+This inventory describes the source reviewed on **2026-10-12**. The product branches
+are [research-labs-frontend](https://github.com/jpromano-swe/solbreach/tree/research-labs-frontend)
+and [backend-testing](https://github.com/jpromano-swe/solbreach-backend/tree/backend-testing).
+They are the starting points for this setup; source availability does not establish
+which revision is deployed to the beta or to devnet.
 
-The repository includes a warmup and three vulnerability modules: account
-substitution, shared PDA authority, and arbitrary CPI. Research Labs additionally
-provide an inspection, impact-verification and finding-report workflow. Lab runtime
-verification and public devnet execution are distinct; a modeled lab result is not
-a devnet transaction. Breach Rooms are **roadmap / prototype**, not a shipped assessment product.
+| Experience                                       | What the learner practices                                   | Where it runs / current scope                                                                                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Level 0 — Hello SolBreach                        | Wallet, player PDA, and transaction lifecycle                | Anchor `vault` program on devnet; progression warmup.                                                                                                                   |
+| Level 1 — The Illusionist                        | Missing mint checks and account substitution                 | Anchor `vault` program on devnet, with frontend and backend learning flows.                                                                                             |
+| Level 2 — The Identity Thief                     | Shared PDA state and missing authority checks                | Anchor `vault` program on devnet, with frontend and backend learning flows.                                                                                             |
+| Level 3 — The Trojan Horse                       | Arbitrary CPI and forwarded signer privileges                | Anchor `vault` and `mercenary` programs on devnet, with frontend and backend learning flows.                                                                            |
+| RL1 — Account Substitution                       | Counterfeit collateral, protocol credit, and treasury impact | Backend LiteSVM adapter with modeled state adjustments and a local simulation fallback; see the qualification below.                                                    |
+| RL2 — Yield Hijack                               | Static PDA collisions and reward-claim authority             | Guided Python simulation of protocol state and account changes.                                                                                                         |
+| RL3 — Arbitrary CPI                              | Unchecked CPI target and delegated payout authority          | Guided Python simulation, including the displayed build, deploy, and CPI steps.                                                                                         |
+| Levels 4–5 — The Mirror Trap / The Time Traveler | Data matching and unsafe PDA address reuse                   | Frontend flows exist, but matching backend level definitions and Anchor instructions are absent from the reviewed checkout. End-to-end availability is not established. |
+| Breach Rooms                                     | Less-guided protocol review and finding submission           | Frontend prototype for a GitHub PR review workflow; its backend routes are absent from the reviewed backend checkout.                                                   |
+
+**RL1 is a hybrid runtime.** The backend selects its LiteSVM adapter when importable
+and falls back to the local runtime on `ImportError`. The adapter loads a program
+and submits transactions, but also adjusts account state directly and can turn
+failed deposit/withdraw transactions into modeled successful transitions. An RL1
+success result alone therefore does not prove successful SVM program execution.
+RL2 and RL3 use their Python runtimes even when the LiteSVM adapter is selected.
+
+Research Lab transaction references, balances, and the in-app explorer describe
+session evidence. They are not public devnet transactions. Completing a secure-pattern
+exercise explains a mitigation; it does not yet prove that a learner's patched
+program was compiled and passed an exploit regression test.
+
+### Reports and Breach Room review
+
+Research Labs combine account inspection, constrained exploit actions, impact checks,
+finding-review questions, and a structured report builder. The backend evaluates
+answers and report fields against predefined rules and verified session evidence.
+This is deterministic assessment, not an independent audit or expert review.
+
+The Breach Rooms interface is designed to submit a finding package, link a GitHub
+PR, and display a review decision and comments. Its displayed workflow describes
+SolBreach team review and a GitHub webhook recording the PR outcome. The reviewed
+backend does not contain that integration, so this repository does not establish
+an operational review service or autonomous agent review.
 
 ## How Solana is used
 
-The Anchor challenge program stores player progression and certificate accounts in
-PDAs. The `mercenary` program is an intentionally vulnerable-training CPI helper.
-The server mints completion cNFTs through Metaplex Bubblegum on devnet.
+The Anchor `vault` program implements levels 0–3, player progression, and certificate
+PDAs. The `mercenary` program is the intentionally vulnerable-training CPI helper.
+The Next.js server mints completion **compressed NFTs (cNFTs)** through Metaplex
+Bubblegum on devnet after wallet authorization and the relevant completion checks.
+The FastAPI backend stores learning sessions, reports, XP, badges, and certificate metadata.
 
 ```mermaid
 flowchart LR
-  UI[Next.js frontend] <--> API[FastAPI backend / PostgreSQL]
-  UI <--> P[Anchor challenge programs / devnet]
-  API --> A[Session + wallet authorization]
-  A --> M[Next.js mint server]
-  P --> M
-  M --> B[Metaplex Bubblegum / cNFT]
+  Learner[Learner wallet] --> UI[Next.js frontend]
+  UI <--> API[FastAPI backend]
+  API <--> DB[(PostgreSQL)]
+  API --> RL1[RL1: LiteSVM + modeled state / local fallback]
+  API --> SIM[RL2 and RL3: Python simulations]
+  UI --> CHAIN[Solana devnet: vault + mercenary]
+  UI --> MINT[Next.js certificate mint server]
+  MINT --> API
+  MINT --> CHAIN
+  MINT --> NFT[Solana devnet: Bubblegum cNFTs]
 ```
 
-| Program                          | Devnet address                                                                                                                                  |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Challenge / certificate registry | [aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2](https://explorer.solana.com/address/aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2?cluster=devnet)   |
-| Mercenary CPI helper             | [EYUQDYesXVQon3tfQavDu5gErk4oGnNmVXnQHDnCHzzv](https://explorer.solana.com/address/EYUQDYesXVQon3tfQavDu5gErk4oGnNmVXnQHDnCHzzv?cluster=devnet) |
+| Program                                       | Devnet address                                                                                                                                  |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vault` — challenges and certificate registry | [aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2](https://explorer.solana.com/address/aVf7hEpHmn7L5ZPBhtu13apZREM7VdwFKzSJ9yNovf2?cluster=devnet)   |
+| `mercenary` — CPI helper                      | [EYUQDYesXVQon3tfQavDu5gErk4oGnNmVXnQHDnCHzzv](https://explorer.solana.com/address/EYUQDYesXVQon3tfQavDu5gErk4oGnNmVXnQHDnCHzzv?cluster=devnet) |
 
-Addresses come from the source configuration. An updated local build does not imply
-that these deployed programs already contain the re-submission patch.
+These addresses match the program declarations in this repository. A local commit
+does not upgrade the deployed programs. To inspect a completed challenge, open its
+actual transaction in Solana Explorer with `cluster=devnet`; use the mint transaction
+and asset ID returned by the certificate flow to inspect the cNFT.
+
+A curated successful exploit transaction, minted cNFT example, and Colosseum project
+URL still need to be added to this README. The program address links above identify
+the programs; they do not substitute for those completion examples.
+
+## Who pays
+
+The proposed model keeps introductory learning free for developers and sells
+**licenses per cohort** to bootcamps, accelerators, hackathons, and developer education
+teams. Custom labs and Breach Rooms are potential additional offerings. Pricing
+and willingness to pay remain to be validated through a paid pilot; these are
+business plans, not claims of existing customers or revenue.
+
+The next validation milestone is a measured cohort pilot: track completion by module,
+time to completion, learner return, report quality, and willingness to pay. Interview
+and beta-participant counts are not published here without a reconciled supporting dataset.
+
+## Repository map
+
+| Path                                                                                         | Purpose                                                                                |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [`app/components/`](app/components/)                                                         | Guided modules, Research Lab workspaces, reports, profile, and Breach Rooms interface. |
+| [`app/lib/`](app/lib/)                                                                       | Wallet, backend, progression, and certificate integration.                             |
+| [`app/api/nfts/certifications/`](app/api/nfts/certifications/)                               | Server routes for certificate minting and metadata.                                    |
+| [`anchor/programs/`](anchor/programs/)                                                       | `vault` and `mercenary` Rust programs and program regression tests.                    |
+| [`app/generated/vault/`](app/generated/vault/)                                               | Generated Anchor client.                                                               |
+| [`scripts/`](scripts/)                                                                       | Maintainer tooling for certificate infrastructure and minting.                         |
+| [`tests/`](tests/)                                                                           | Frontend end-to-end and certificate authorization checks.                              |
+| [Backend repository](https://github.com/jpromano-swe/solbreach-backend/tree/backend-testing) | FastAPI service, database migrations, Research Lab runtimes, and templates.            |
 
 ## Run locally
 
-Requirements: Node.js 20+, npm, a running [backend](https://github.com/jpromano-swe/solbreach-backend),
-and a devnet wallet. Rust, Solana CLI and Anchor 0.32.1 are needed for program tests.
+Requirements: Node.js **20.9+**, npm, a running [backend](https://github.com/jpromano-swe/solbreach-backend/tree/backend-testing),
+and a devnet wallet. Rust, the Solana CLI, and Anchor **0.32.1** are additionally
+needed to build and test the on-chain programs.
 
 ```bash
+git clone --branch research-labs-frontend https://github.com/jpromano-swe/solbreach.git
+cd solbreach
 npm ci
 cp .env.example .env.local
 npm run dev
 ```
 
-Set `NEXT_PUBLIC_API_BASE_URL` and `SOLBREACH_BACKEND_URL` to your backend. For minting,
-configure server-only `SOLANA_RPC_URL`, `MERKLE_TREE_ADDRESS`, `ADMIN_PRIVATE_KEY`
-and `APP_BASE_URL`. Never use `NEXT_PUBLIC_` variables for secrets. The RPC must return
-the devnet genesis hash. The client cannot override the RPC or Merkle tree.
+Open `http://localhost:3000`. Configure the variables from [`.env.example`](.env.example):
 
-Apply backend migration `202610120001` before deploying this frontend. Every level
-requires a backend session bound to the recipient wallet and a signed mint message.
-Messages expire after five minutes, are single-use, and have a persisted limit of
-five attempts per wallet per ten minutes. Failed mint attempts consume authorization;
-retry by signing a new message. Completion is checked separately using backend state
-or a valid program-owned certificate PDA.
+| Variable                   | Purpose                                                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_BASE_URL` | Browser-facing backend URL; locally `http://localhost:8000`.                                                          |
+| `SOLBREACH_BACKEND_URL`    | Backend URL reachable by the Next.js mint server.                                                                     |
+| `APP_BASE_URL`             | Public frontend origin used for certificate metadata URLs. Use a reachable hosted origin for wallet-visible metadata. |
+| `SOLANA_RPC_URL`           | Server-side devnet RPC used for minting.                                                                              |
+| `MERKLE_TREE_ADDRESS`      | Configured Bubblegum Merkle tree for certificates.                                                                    |
+| `ADMIN_PRIVATE_KEY`        | Server-only mint authority secret key as a JSON array.                                                                |
+
+Minting requires a configured tree and authority; starting the frontend does not
+provision them. Keep secrets out of `NEXT_PUBLIC_` variables and Git. The mint server
+checks the devnet genesis hash and owns RPC/tree configuration.
+
+Apply backend migration `202610120001` before using this frontend. Certificate minting
+requires a backend session linked to the recipient wallet and a signed authorization
+message. Messages expire after five minutes, are single-use, and have a persisted
+limit of five attempts per wallet per ten minutes. A failed mint consumes its
+authorization; retry with a new signed message. Completion is checked separately
+using the relevant backend state or a valid program-owned certificate PDA.
+
+### Development checks
 
 ```bash
 npm run test:security
@@ -90,20 +176,25 @@ npm run codama:js
 npm run anchor-test
 ```
 
-## Security boundaries and evidence
+The security suite uses mocked backend/RPC responses; it does not prove a live mint.
+Build the programs before running the Rust LiteSVM tests. See [anchor/README.md](anchor/README.md)
+for program setup and administrative boundaries.
 
-The missing mint check, shared profile PDA and unchecked CPI target are intentional
-challenge vulnerabilities. Global bank/guild/certificate initialization is not a
-challenge: only the upgrade authority may initialize it. See [anchor/README.md](anchor/README.md).
-The existing global profile behavior remains part of Level 2.
+## Recent source changes and next steps
 
-LiteSVM tests validate program behavior. The backend also contains an optional RL1
-LiteSVM adapter and deterministic lab runtimes; neither is a general uploaded-code
-verification service. Completion credentials record observed completion, not proof
-of unaided work or professional auditing ability. Public Git history and regression
-tests can reveal challenge solutions even after removing the solver CLI.
+The **2026-10-12 source patch** adds wallet-bound, single-use certificate authorization,
+server-controlled devnet mint configuration, and upgrade-authority checks for global
+initialization. See [CHANGELOG.md](CHANGELOG.md) for dated source evidence and earlier
+milestones. Deployment of that patch must be verified separately. Comparing changes
+“since Frontier” also requires the actual prior submission baseline.
 
-No interview count, workshop date, paid customer count, or institutional partnership
-is claimed here without published supporting evidence. See [SUBMISSION.md](SUBMISSION.md).
+Next technical milestones are reproducible program execution for the modeled lab
+paths, compiled patch verification with exploit regression tests, and completing the
+backend integration for advanced modules and Breach Rooms. Submission follow-up is
+tracked in [SUBMISSION.md](SUBMISSION.md).
+
+The missing mint constraint, shared profile PDA, and unchecked CPI target are
+intentional challenge vulnerabilities. Completion credentials record observed
+completion; they do not establish unaided work or professional auditing ability.
 
 Built by [Juan Pablo Romano](https://github.com/jpromano-swe), Buenos Aires, Argentina.
