@@ -155,8 +155,7 @@ Minting requires a configured tree and authority; starting the frontend does not
 provision them. Keep secrets out of `NEXT_PUBLIC_` variables and Git. The mint server
 checks the devnet genesis hash and owns RPC/tree configuration.
 
-Apply backend migration `202610120001` before using this frontend. Certificate minting
-requires a backend session linked to the recipient wallet and a signed authorization
+Certificate minting requires a backend session linked to the recipient wallet and a signed authorization
 message. Messages expire after five minutes, are single-use, and have a persisted
 limit of five attempts per wallet per ten minutes. A failed mint consumes its
 authorization; retry with a new signed message. Completion is checked separately
