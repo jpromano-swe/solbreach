@@ -101,10 +101,6 @@ does not upgrade the deployed programs. To inspect a completed challenge, open i
 actual transaction in Solana Explorer with `cluster=devnet`; use the mint transaction
 and asset ID returned by the certificate flow to inspect the cNFT.
 
-A curated successful exploit transaction, minted cNFT example, and Colosseum project
-URL still need to be added to this README. The program address links above identify
-the programs; they do not substitute for those completion examples.
-
 ## Who pays
 
 The proposed model keeps introductory learning free for developers and sells
