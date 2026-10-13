@@ -42,7 +42,6 @@ which revision is deployed to the beta or to devnet.
 | RL1 — Account Substitution                       | Counterfeit collateral, protocol credit, and treasury impact | Backend LiteSVM adapter with modeled state adjustments and a local simulation fallback; see the qualification below.                                                    |
 | RL2 — Yield Hijack                               | Static PDA collisions and reward-claim authority             | Guided Python simulation of protocol state and account changes.                                                                                                         |
 | RL3 — Arbitrary CPI                              | Unchecked CPI target and delegated payout authority          | Guided Python simulation, including the displayed build, deploy, and CPI steps.                                                                                         |
-| Levels 4–5 — The Mirror Trap / The Time Traveler | Data matching and unsafe PDA address reuse                   | Frontend flows exist, but matching backend level definitions and Anchor instructions are absent from the reviewed checkout. End-to-end availability is not established. |
 | Breach Rooms                                     | Less-guided protocol review and finding submission           | Frontend prototype for a GitHub PR review workflow; its backend routes are absent from the reviewed backend checkout.                                                   |
 
 **RL1 is a hybrid runtime.** The backend selects its LiteSVM adapter when importable
