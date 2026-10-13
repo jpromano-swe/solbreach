@@ -194,4 +194,90 @@ pub fn delegate(ctx: Context<DelegateTask>, task_data: Vec<u8>) -> Result<()> {
     winCondition:
       "Drain the guild bounty through arbitrary CPI, then verify and close the per-player level PDA.",
   },
+  level4: {
+    cloneCommand: `${PLAYGROUND_REPOSITORY} && cd solbreach-playground/levels/04-data-matching`,
+    codeSnippet: `#[derive(Accounts)]
+pub struct RouteCollateral<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    pub market: Account<'info, Market>,
+
+    #[account(mut)]
+    pub position: Account<'info, Position>,
+
+    #[account(mut)]
+    pub collateral_vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user_collateral: Account<'info, TokenAccount>,
+}
+
+pub fn route_collateral(ctx: Context<RouteCollateral>, amount: u64) -> Result<()> {
+    require_keys_eq!(ctx.accounts.position.owner, ctx.accounts.user.key());
+
+    ctx.accounts.position.collateral += amount;
+    ctx.accounts.collateral_vault.amount += amount;
+    Ok(())
+}`,
+    vulnerabilityNote:
+      "Data matching gap: the program validates individual accounts but never proves the market, position, vault, and collateral mint belong together.",
+    vulnerableLines: [6, 9, 12, 15, 19, 20],
+    hints: [
+      "Matching account types is not the same as matching account relationships.",
+      "A position owner check is incomplete if the market and vault identities are not also checked.",
+      "Data matching failures often hide behind valid-looking accounts with incompatible stored fields.",
+    ],
+    lore: [
+      "A collateral router accepts a market, position, vault, and user token account. Each account is valid on its own, but the protocol never proves they describe the same market.",
+      "Your objective is to prove whether mismatched protocol data can be combined into a valid-looking collateral update.",
+    ],
+    missionTitle: "Level 4: The Mirror Trap",
+    subtitle: "Cross-account data relationship validation",
+    title: "The Mirror Trap",
+    winCondition:
+      "Map the mismatched account relationship, reproduce the unsafe collateral route, and identify the missing data checks.",
+  },
+  level5: {
+    cloneCommand: `${PLAYGROUND_REPOSITORY} && cd solbreach-playground/levels/05-time-traveler`,
+    codeSnippet: `#[derive(Accounts)]
+pub struct ReopenEscrow<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + EscrowReceipt::INIT_SPACE,
+        seeds = [b"receipt", order_id.as_ref()],
+        bump,
+    )]
+    pub receipt: Account<'info, EscrowReceipt>,
+}
+
+pub fn reopen_escrow(ctx: Context<ReopenEscrow>, order_id: [u8; 8]) -> Result<()> {
+    let receipt = &mut ctx.accounts.receipt;
+    receipt.owner = ctx.accounts.user.key();
+    receipt.order_id = order_id;
+    receipt.status = ReceiptStatus::Open;
+    Ok(())
+}`,
+    vulnerabilityNote:
+      "Address reuse from PDA lifecycle: a stale or closed receipt address can be reused with the same seeds and trusted again.",
+    vulnerableLines: [6, 9, 17, 19],
+    hints: [
+      "PDAs are deterministic across time, not just across users.",
+      "`init_if_needed` is safe only when stale state and lifecycle transitions are explicitly validated.",
+      "A closed account address can become dangerous if the protocol later treats that reused address as trusted.",
+    ],
+    lore: [
+      "A settlement protocol archives expired receipts, then later reuses the same deterministic address for reopened orders.",
+      "Your objective is to prove whether address reuse through PDA lifecycle can bring stale receipt identity back into an active flow.",
+    ],
+    missionTitle: "Level 5: The Time Traveler",
+    subtitle: "Address Reuse from PDA lifecycle",
+    title: "The Time Traveler",
+    winCondition:
+      "Map the stale receipt lifecycle, reproduce the reused-address path, and identify the missing lifecycle guard.",
+  },
 };

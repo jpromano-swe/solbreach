@@ -1,19 +1,23 @@
-"use client";
-
 import { useCallback, useState, type ComponentType } from "react";
 import {
-  ArrowRight,
   ChevronDown,
   Cpu,
   FileCode2,
   LockKeyhole,
+  Recycle,
+  ScanSearch,
   Send,
   ShieldCheck,
-  Sparkles,
   Zap,
 } from "lucide-react";
 
-export type CourseLevelTarget = "level0" | "level1" | "level2" | "level3";
+export type CourseLevelTarget =
+  | "level0"
+  | "level1"
+  | "level2"
+  | "level3"
+  | "level4"
+  | "level5";
 
 type CourseMenuItem = {
   description: string;
@@ -25,13 +29,6 @@ type CourseMenuItem = {
 type CourseMenuSection = {
   items: CourseMenuItem[];
   title: string;
-};
-
-type CourseMenuKey = "vulnerabilities" | "research-labs";
-
-const COURSE_MENU_ORDER: Record<CourseMenuKey, number> = {
-  vulnerabilities: 0,
-  "research-labs": 1,
 };
 
 const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
@@ -59,22 +56,19 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
     ],
   },
   {
-    title: "Supply Chain",
+    title: "State and Account Integrity",
     items: [
       {
-        icon: Cpu,
-        title: "Dependency Takeover",
-        description: "Malicious packages in build and deploy paths",
+        icon: ScanSearch,
+        target: "level4",
+        title: "The Mirror Trap",
+        description: "Mismatched stored account data across protocol roles",
       },
       {
-        icon: Sparkles,
-        title: "CI Secret Exposure",
-        description: "Leaked keys, tokens, and release credentials",
-      },
-      {
-        icon: ShieldCheck,
-        title: "Build Integrity",
-        description: "Reproducible artifacts and trusted signers",
+        icon: Recycle,
+        target: "level5",
+        title: "The Time Traveler",
+        description: "Address reuse through unsafe PDA lifecycle handling",
       },
     ],
   },
@@ -100,42 +94,20 @@ const VULNERABILITY_MENU_SECTIONS: CourseMenuSection[] = [
   },
 ];
 
-const RESEARCH_LAB_MENU_SECTIONS: CourseMenuSection[] = [
-  {
-    title: "Research Labs",
-    items: [
-      {
-        icon: ShieldCheck,
-        title: "Vault Mirage",
-        description: "Oracle manipulation and vault health distortion",
-      },
-      {
-        icon: LockKeyhole,
-        title: "Governance Takeover",
-        description: "Durable nonce abuse and authority escalation",
-      },
-      {
-        icon: FileCode2,
-        title: "Lending Market Manipulation",
-        description: "Collateral validation flaw and liquidity drain",
-      },
-    ],
-  },
-];
-
 export function HeaderCourseNav({
+  onSelectBreachRooms,
   onSelectResearchLabs,
+  onSelectVulnerabilities,
   onSelectLevel,
 }: {
+  onSelectBreachRooms: () => void;
   onSelectResearchLabs: () => void;
+  onSelectVulnerabilities: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeMenu, setActiveMenu] =
-    useState<CourseMenuKey>("vulnerabilities");
 
-  const openCourseMenu = useCallback((nextMenu: CourseMenuKey) => {
-    setActiveMenu(nextMenu);
+  const openCourseMenu = useCallback(() => {
     setIsMenuOpen(true);
   }, []);
 
@@ -147,23 +119,18 @@ export function HeaderCourseNav({
     >
       <HeaderMenuTrigger
         label="Vulnerabilities"
-        open={isMenuOpen && activeMenu === "vulnerabilities"}
+        open={isMenuOpen}
         onClick={() => {
-          setActiveMenu("vulnerabilities");
-          setIsMenuOpen(!(isMenuOpen && activeMenu === "vulnerabilities"));
+          onSelectVulnerabilities();
+          setIsMenuOpen(false);
         }}
-        onMouseEnter={() => openCourseMenu("vulnerabilities")}
+        onMouseEnter={openCourseMenu}
       />
-      <HeaderMenuTrigger
+      <HeaderDirectButton
         label="Research Labs"
-        open={isMenuOpen && activeMenu === "research-labs"}
-        onClick={() => {
-          setActiveMenu("research-labs");
-          setIsMenuOpen(!(isMenuOpen && activeMenu === "research-labs"));
-        }}
-        onMouseEnter={() => openCourseMenu("research-labs")}
+        onClick={onSelectResearchLabs}
       />
-      <HeaderNavButton disabled label="Review Rooms" locked />
+      <HeaderDirectButton label="Breach Rooms" onClick={onSelectBreachRooms} />
 
       <div
         className={`absolute left-0 right-0 top-full h-4 ${
@@ -181,27 +148,11 @@ export function HeaderCourseNav({
         onMouseEnter={() => setIsMenuOpen(true)}
       >
         <div className="relative overflow-hidden">
-          <div
-            className="grid w-[200%] grid-cols-2 motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-in-out motion-reduce:transition-none"
-            style={{
-              transform: `translateX(-${COURSE_MENU_ORDER[activeMenu] * 50}%)`,
-            }}
-          >
-            <CourseMenuContent
-              menu="vulnerabilities"
-              onClose={() => setIsMenuOpen(false)}
-              onSelectResearchLabs={onSelectResearchLabs}
-              onSelectLevel={onSelectLevel}
-              sections={VULNERABILITY_MENU_SECTIONS}
-            />
-            <CourseMenuContent
-              menu="research-labs"
-              onClose={() => setIsMenuOpen(false)}
-              onSelectResearchLabs={onSelectResearchLabs}
-              onSelectLevel={onSelectLevel}
-              sections={RESEARCH_LAB_MENU_SECTIONS}
-            />
-          </div>
+          <CourseMenuContent
+            onClose={() => setIsMenuOpen(false)}
+            onSelectLevel={onSelectLevel}
+            sections={VULNERABILITY_MENU_SECTIONS}
+          />
         </div>
       </div>
     </nav>
@@ -209,15 +160,11 @@ export function HeaderCourseNav({
 }
 
 function CourseMenuContent({
-  menu,
   onClose,
-  onSelectResearchLabs,
   onSelectLevel,
   sections,
 }: {
-  menu: CourseMenuKey;
   onClose: () => void;
-  onSelectResearchLabs: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
   sections: CourseMenuSection[];
 }) {
@@ -242,30 +189,48 @@ function CourseMenuContent({
           <div className="space-y-2">
             {section.items.map((item) => {
               const Icon = item.icon;
+              const unavailable = item.target == null;
 
               return (
                 <button
                   key={item.title}
                   type="button"
+                  disabled={unavailable}
                   onClick={() => {
-                    if (menu === "research-labs") {
-                      onSelectResearchLabs();
-                    } else if (item.target) {
+                    if (item.target) {
                       onSelectLevel(item.target);
                     }
 
                     onClose();
                   }}
-                  className="flex min-h-14 w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className={`flex min-h-14 w-full items-center gap-3 rounded-xl p-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                    unavailable
+                      ? "cursor-not-allowed grayscale opacity-35"
+                      : "hover:bg-accent"
+                  }`}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm">
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm ${
+                      unavailable
+                        ? "border-white/8 bg-white/[0.025] text-zinc-500"
+                        : "border-border bg-card text-foreground"
+                    }`}
+                  >
                     <Icon className="h-4 w-4" aria-hidden={true} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium text-foreground">
+                    <span
+                      className={`block text-sm font-medium ${
+                        unavailable ? "text-zinc-500" : "text-foreground"
+                      }`}
+                    >
                       {item.title}
                     </span>
-                    <span className="mt-0.5 block text-xs leading-5 text-muted">
+                    <span
+                      className={`mt-0.5 block text-xs leading-5 ${
+                        unavailable ? "text-zinc-600" : "text-muted"
+                      }`}
+                    >
                       {item.description}
                     </span>
                   </span>
@@ -275,24 +240,6 @@ function CourseMenuContent({
           </div>
         </div>
       ))}
-      {menu === "research-labs" ? (
-        <div className="border-t border-border px-4 py-3">
-          <button
-            type="button"
-            onClick={() => {
-              onSelectResearchLabs();
-              onClose();
-            }}
-            className="group inline-flex min-h-11 w-full items-center justify-between rounded-xl px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <span>Show all research labs</span>
-            <ArrowRight
-              className="h-4 w-4 text-muted motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1"
-              aria-hidden="true"
-            />
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -331,22 +278,19 @@ function HeaderMenuTrigger({
   );
 }
 
-function HeaderNavButton({
-  disabled = false,
+function HeaderDirectButton({
   label,
-  locked = false,
+  onClick,
 }: {
-  disabled?: boolean;
   label: string;
-  locked?: boolean;
+  onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      disabled={disabled}
-      className="inline-flex min-h-11 cursor-not-allowed items-center gap-2 rounded-full border border-border/60 bg-muted/20 px-4 text-sm font-medium text-muted/55 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium text-muted transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      {locked ? <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /> : null}
       {label}
     </button>
   );

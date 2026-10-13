@@ -1,76 +1,41 @@
-# Anchor Vault Program
+# SolBreach on-chain challenges
 
-This template includes a simple SOL vault program built with [Anchor](https://www.anchor-lang.com/).
+This workspace contains the `vault` challenge/certificate program and the `mercenary`
+CPI helper. Current devnet addresses and Explorer links are in the [root README](../README.md).
+It is not a personal SOL vault template.
 
-## Pre-deployed Program
+| Level                  | Learning objective                            | Verification                                      |
+| ---------------------- | --------------------------------------------- | ------------------------------------------------- |
+| 0 — Hello SolBreach    | Wallet, player PDA and transaction lifecycle  | Warmup state belongs to the player                |
+| 1 — The Illusionist    | Missing mint/account relationship validation  | Deposit goal reached                              |
+| 2 — The Identity Thief | Shared PDA and missing authority checks       | Player controls the profile commander             |
+| 3 — The Trojan Horse   | Arbitrary CPI and forwarded signer privileges | Delegated signer abuse meets the bounty objective |
 
-The vault program is deployed on **devnet** at:
+`verify_and_close_level_X` records progression and closes the level account. A
+certificate claim requires the corresponding completed level in `UserStats`.
 
-```
-F4jZpgbtTb6RWNWq6v35fUeiAsRJMrDczVPv9U23yXjB
-```
+## Administrative boundaries
 
-You can interact with it immediately by connecting your wallet to devnet.
+`init_bank`, `init_guild_authority` and `init_certification_authority` require the
+upgrade authority from the canonical loader-owned ProgramData PDA. Passing another
+program's metadata does not satisfy the PDA constraint. These controls protect
+infrastructure and are not intended training vulnerabilities. Immutable programs
+must initialize their global configuration before removing the upgrade authority.
 
-## Deploying Your Own Program
+The intentional shared global profile in Level 2 and the malicious CPI helper stay
+available for training. Use only devnet/test assets.
 
-To deploy your own version of the program:
-
-### 1. Generate a new program keypair
-
-```bash
-cd anchor
-solana-keygen new -o target/deploy/vault-keypair.json
-```
-
-### 2. Get the new program ID
-
-```bash
-solana address -k target/deploy/vault-keypair.json
-```
-
-### 3. Update the program ID
-
-Update the program ID in these files:
-
-- `anchor/Anchor.toml` - Update `vault = "..."` under `[programs.devnet]`
-- `anchor/programs/vault/src/lib.rs` - Update `declare_id!("...")`
-
-### 4. Build and deploy
+## Build and regression tests
 
 ```bash
-# Build the program
 anchor build
-
-# Get devnet SOL for deployment (~2 SOL needed)
-solana airdrop 2 --url devnet
-
-# Deploy to devnet
-anchor deploy --provider.cluster devnet
+cargo test -p vault
 ```
 
-### 5. Regenerate the TypeScript client
+Build first: LiteSVM tests embed the freshly compiled `target/deploy/vault.so` and
+`mercenary.so`. The suite covers level completion and rejection of unauthorized
+global initialization. From the frontend root, regenerate clients with `npm run codama:js`
+after an IDL change. Global init instructions now require the ProgramData account.
 
-```bash
-cd ..
-npm run codama:js
-```
-
-This updates the generated client code in `app/generated/vault/` with your new program ID.
-
-## Program Overview
-
-The vault program allows users to:
-
-- **Deposit**: Send SOL to a personal vault PDA (Program Derived Address)
-- **Withdraw**: Retrieve all SOL from your vault
-
-Each user gets their own vault derived from their wallet address.
-
-## Testing
-
-Run the Anchor tests:
-
-```bash
-anchor test --skip-deploy
-```
+A code commit does not upgrade devnet. Deploy the new program, regenerate/use the
+matching client, and then verify the demo transaction before claiming the patch is live.

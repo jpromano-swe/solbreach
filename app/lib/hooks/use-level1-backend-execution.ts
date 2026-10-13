@@ -5,9 +5,11 @@ import useSWR from "swr";
 import { toast } from "sonner";
 import { parseTransactionError } from "../errors";
 import {
-  ensureLevel1DemoAuth,
+  clearBackendWalletAuth,
+  ensureBackendWalletAuth,
   executeLevel1ExploitTransaction,
   fetchLevel1BackendStatus,
+  isBackendAuthError,
   setupLevel1,
   startLevel1,
   submitLevel1Proof,
@@ -68,15 +70,24 @@ export function useLevel1BackendExecution({
     { revalidateOnFocus: true }
   );
 
-  const ensureBackendSession = useCallback(async () => {
-    if (status !== "connected" || !address) {
+  const ensureBackendSession = useCallback(async (force = false) => {
+    if (status !== "connected" || !address || !wallet) {
       throw new Error("Connect your wallet before starting Level 1.");
     }
 
-    const auth = await ensureLevel1DemoAuth(address);
+    const auth = await ensureBackendWalletAuth(wallet, { force });
     setBackendAuth(auth);
     return auth;
-  }, [address, status]);
+  }, [address, status, wallet]);
+
+  const refreshBackendSession = useCallback(async () => {
+    if (!address) {
+      throw new Error("Connect your wallet before starting Level 1.");
+    }
+    clearBackendWalletAuth(address);
+    setBackendAuth(null);
+    return ensureBackendSession(true);
+  }, [address, ensureBackendSession]);
 
   const ensureStarted = useCallback(async (accessToken: string) => {
     try {
@@ -99,9 +110,17 @@ export function useLevel1BackendExecution({
     setIsBusy(true);
     setRuntimeError(null);
     try {
-      const auth = await ensureBackendSession();
-      await ensureStarted(auth.accessToken);
-      const setup = await setupLevel1(auth.accessToken, address);
+      let auth = await ensureBackendSession();
+      let setup: Awaited<ReturnType<typeof setupLevel1>>;
+      try {
+        await ensureStarted(auth.accessToken);
+        setup = await setupLevel1(auth.accessToken, address);
+      } catch (error) {
+        if (!isBackendAuthError(error)) throw error;
+        auth = await refreshBackendSession();
+        await ensureStarted(auth.accessToken);
+        setup = await setupLevel1(auth.accessToken, address);
+      }
       console.info(`${LOG_PREFIX} challenge payload received`, setup);
       setChallenge(setup.challenge);
       await mutateBackendStatus();
@@ -115,7 +134,13 @@ export function useLevel1BackendExecution({
     } finally {
       setIsBusy(false);
     }
-  }, [address, ensureBackendSession, ensureStarted, mutateBackendStatus]);
+  }, [
+    address,
+    ensureBackendSession,
+    ensureStarted,
+    mutateBackendStatus,
+    refreshBackendSession,
+  ]);
 
   const run = useCallback(async () => {
     if (!address || !wallet) return;
@@ -123,15 +148,28 @@ export function useLevel1BackendExecution({
     setIsBusy(true);
     setRuntimeError(null);
     try {
-      const auth = await ensureBackendSession();
-      await ensureStarted(auth.accessToken);
-      const setup =
-        challenge && backendStatus?.level_session_id
-          ? {
-              challenge,
-              level_session_id: backendStatus.level_session_id,
-            }
-          : await setupLevel1(auth.accessToken, address);
+      let auth = await ensureBackendSession();
+      let setup:
+        | {
+            challenge: Level1Challenge;
+            level_session_id: string;
+          }
+        | Awaited<ReturnType<typeof setupLevel1>>;
+      try {
+        await ensureStarted(auth.accessToken);
+        setup =
+          challenge && backendStatus?.level_session_id
+            ? {
+                challenge,
+                level_session_id: backendStatus.level_session_id,
+              }
+            : await setupLevel1(auth.accessToken, address);
+      } catch (error) {
+        if (!isBackendAuthError(error)) throw error;
+        auth = await refreshBackendSession();
+        await ensureStarted(auth.accessToken);
+        setup = await setupLevel1(auth.accessToken, address);
+      }
 
       console.info(`${LOG_PREFIX} challenge payload received`, setup);
       setChallenge(setup.challenge);
@@ -171,6 +209,7 @@ export function useLevel1BackendExecution({
     ensureBackendSession,
     ensureStarted,
     mutateBackendStatus,
+    refreshBackendSession,
     wallet,
   ]);
 

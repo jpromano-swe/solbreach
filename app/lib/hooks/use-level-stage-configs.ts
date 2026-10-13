@@ -19,6 +19,7 @@ export type StageConfig = {
   description: string;
   actionLabel: string | null;
   actionKind: "primary" | "secondary";
+  actionDisabled?: boolean;
   level1Mode?: "prepare" | "sequence" | "execute" | "complete";
   onAction?: () => Promise<void>;
 };
@@ -57,6 +58,7 @@ export function useLevelStageConfigs({
   level0Error,
   level0State,
   level1BackendAuthReady,
+  level1BackendCompleted,
   level1BackendError,
   level1ChallengeReady,
   level1Completed,
@@ -72,6 +74,8 @@ export function useLevelStageConfigs({
   level3DelegationReady,
   level3Error,
   level3State,
+  level4Completed,
+  level5Completed,
   mutateLevel0State,
   mutateLevel1BackendStatus,
   mutateLevel2State,
@@ -103,6 +107,7 @@ export function useLevelStageConfigs({
   level0Error?: unknown;
   level0State?: Level0Snapshot;
   level1BackendAuthReady: boolean;
+  level1BackendCompleted: boolean;
   level1BackendError?: unknown;
   level1ChallengeReady: boolean;
   level1Completed: boolean;
@@ -118,6 +123,8 @@ export function useLevelStageConfigs({
   level3DelegationReady: boolean;
   level3Error?: unknown;
   level3State?: Level3Snapshot;
+  level4Completed?: boolean;
+  level5Completed?: boolean;
   mutateLevel0State: StageAction;
   mutateLevel1BackendStatus: StageAction;
   mutateLevel2State: StageAction;
@@ -288,10 +295,22 @@ export function useLevelStageConfigs({
       return {
         badge: "Verified",
         title: "Level 1 exploit verified.",
-        description:
-          "The backend accepted the signed devnet transaction and recorded the forged ledger credit for this wallet.",
+        description: "",
         actionLabel: null,
         actionKind: "secondary",
+        level1Mode: "complete",
+      };
+    }
+
+    if (level1BackendCompleted && level1TxSignature) {
+      return {
+        badge: "Verified",
+        title: "Level 1 exploit verified.",
+        description:
+          "The backend verified the exploit transaction. Collect the badge to record this completion on your profile.",
+        actionLabel: "Exploit verified",
+        actionKind: "secondary",
+        actionDisabled: true,
         level1Mode: "complete",
       };
     }
@@ -328,6 +347,7 @@ export function useLevelStageConfigs({
     isLevel1BackendBusy,
     isLevel1BackendLoading,
     level1BackendAuthReady,
+    level1BackendCompleted,
     level1BackendError,
     level1ChallengeReady,
     level1Completed,
@@ -345,17 +365,6 @@ export function useLevelStageConfigs({
         title: "Attach the operator wallet first.",
         description:
           "Level 2 needs a connected signer so the board can derive the static profile PDA and verify the commander overwrite.",
-        actionLabel: null,
-        actionKind: "secondary",
-      };
-    }
-
-    if (!level0State?.isCompleted) {
-      return {
-        badge: "Locked",
-        title: "Finish Level 0 before entering the exploit board.",
-        description:
-          "The operator levels stay viewable, but their actions remain locked until the warmup registry and closeout loop are proven on-chain.",
         actionLabel: null,
         actionKind: "secondary",
       };
@@ -448,7 +457,6 @@ export function useLevelStageConfigs({
     handleVerifyLevel2,
     hasSigner,
     isLevel2Loading,
-    level0State,
     level2Completed,
     level2Error,
     level2Hijacked,
@@ -464,17 +472,6 @@ export function useLevelStageConfigs({
         title: "Attach the operator wallet first.",
         description:
           "Level 3 needs a connected signer so the board can derive the guild authority PDA, open the per-player state, and delegate into the attacker program.",
-        actionLabel: null,
-        actionKind: "secondary",
-      };
-    }
-
-    if (!level0State?.isCompleted) {
-      return {
-        badge: "Locked",
-        title: "Finish Level 0 before entering the exploit board.",
-        description:
-          "The operator levels stay viewable, but their actions remain locked until the warmup registry and closeout loop are proven on-chain.",
         actionLabel: null,
         actionKind: "secondary",
       };
@@ -567,7 +564,6 @@ export function useLevelStageConfigs({
     handleVerifyLevel3,
     hasSigner,
     isLevel3Loading,
-    level0State,
     level3Completed,
     level3DelegationReady,
     level3Error,
@@ -594,6 +590,8 @@ export function useLevelStageConfigs({
       level3DelegationReady,
       level3HasGuildAuthority: level3State?.hasGuildAuthority,
       level3HasLevelState: level3State?.hasLevel3State,
+      level4Completed,
+      level5Completed,
     });
   }, [
     level0State?.hasLevel0State,
@@ -609,6 +607,8 @@ export function useLevelStageConfigs({
     level3DelegationReady,
     level3State?.hasGuildAuthority,
     level3State?.hasLevel3State,
+    level4Completed,
+    level5Completed,
   ]);
 
   return {

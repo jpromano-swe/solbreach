@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ELK from "elkjs/lib/elk.bundled.js";
 import {
   ArrowRight,
@@ -25,7 +25,14 @@ import {
   type ReactFlowInstance,
 } from "@xyflow/react";
 import { type Address } from "@solana/kit";
-import { SkeletonLine, compactAddress } from "./level-ui";
+import {
+  AnimatedInstructionLine,
+  ProtocolVisualizationHeader,
+  SkeletonLine,
+  compactAddress,
+  useRejectedFlowPulse,
+} from "./level-ui";
+import { CertificateMintLoader } from "./certificate-mint-loader";
 
 type Level2Snapshot = {
   profilePda: Address;
@@ -33,17 +40,6 @@ type Level2Snapshot = {
   hasProfile: boolean;
   commander: Address | null;
   hasLevel2State: boolean;
-};
-
-type LevelCertificateSnapshot = {
-  assetId: Address | null;
-  certificatePda: Address;
-  exists: boolean;
-  leafIndex: number | null;
-  leafNonce: bigint | null;
-  level: 0 | 1 | 2 | 3;
-  merkleTree: Address | null;
-  minted: boolean;
 };
 
 type LabStage = 1 | 2 | 3;
@@ -59,7 +55,10 @@ type GraphAccount = {
   tone: NodeTone;
   active?: boolean;
   inactive?: boolean;
+  revealed?: boolean;
   relation?: string;
+  stageReveal?: boolean;
+  valuePulse?: boolean;
   icon: "commander" | "fingerprint" | "profile" | "shield" | "user";
 };
 
@@ -114,6 +113,15 @@ const FOCUS_LABELS: Record<FocusKey, string> = {
   verifier: "Verifier Check",
 };
 
+const OBSERVE_REVEAL_STEPS: Record<string, number> = {
+  commander: 2,
+  level2: 3,
+  profile: 1,
+  stats: 5,
+  verifier: 4,
+  wallet: 0,
+};
+
 const INSPECT_CODE = [
   '#[account(mut, seeds = [b"profile"], bump = profile.bump)]',
   "pub profile: Account<'info, UserProfile>,",
@@ -132,30 +140,32 @@ const elk = new ELK();
 export function Level2Panel({
   address,
   backendExecution,
-  certificate,
+  isCollectingLevel2Badge,
   isLoading,
-  isMinting,
   isSending,
+  level2BadgeCollected,
+  level2BadgeEarned,
   level2Completed,
   level2Error,
   level2InitialCommander,
   level2State,
-  onMint,
+  onCollectLevel2Badge,
   status,
 }: {
   address?: string;
   backendExecution: BackendExecutionState;
-  certificate?: LevelCertificateSnapshot;
+  isCollectingLevel2Badge: boolean;
   isLoading: boolean;
-  isMinting: boolean;
   isSending: boolean;
+  level2BadgeCollected: boolean;
+  level2BadgeEarned: boolean;
   level2Completed: boolean;
   level2Error: unknown;
   level2InitialCommander: string;
   level2State?: Level2Snapshot;
+  onCollectLevel2Badge: () => void;
   onInitGlobalProfile: () => Promise<void>;
   onInitLevel2: () => Promise<void>;
-  onMint: () => void;
   onUpdateProfile: () => Promise<void>;
   onVerify: () => Promise<void>;
   status: string;
@@ -171,6 +181,7 @@ export function Level2Panel({
   const [simulatedProfileReady, setSimulatedProfileReady] = useState(false);
   const [simulatedLevel2Ready, setSimulatedLevel2Ready] = useState(false);
   const [manipulationTested, setManipulationTested] = useState(false);
+  const [flowRejectionTrigger, setFlowRejectionTrigger] = useState(0);
   const [activeFocus, setActiveFocus] = useState<FocusKey>("profile");
   const [focusSequence, setFocusSequence] = useState<FocusKey[]>(
     startsComplete ? FOCUS_SEQUENCE : []
@@ -235,6 +246,11 @@ export function Level2Panel({
         commanderTarget: "wallet",
       } satisfies ManipulationState)
     : manipulation;
+  const manipulationPathReady =
+    effectiveManipulation.profileScope === "static" &&
+    effectiveManipulation.commanderTarget === "wallet";
+  const manipulationRejected =
+    labStage === 2 && manipulationTested && !manipulationPathReady;
 
   const graphAccounts = useMemo(
     () =>
@@ -409,6 +425,7 @@ export function Level2Panel({
                 setSimulatedProfileReady(true);
                 setSimulatedLevel2Ready(true);
                 setManipulationTested(true);
+                setFlowRejectionTrigger((current) => current + 1);
               }}
               readyToInspect={Boolean(exploitInspectable)}
             />
@@ -432,11 +449,14 @@ export function Level2Panel({
             accounts={graphAccounts}
             activeFocus={activeFocus}
             commanderCaptured={simulatedCommanderCaptured}
+            flowRejected={manipulationRejected}
+            flowRejectionTrigger={flowRejectionTrigger}
             focusSequenceComplete={focusSequenceComplete}
             labStage={labStage}
             manipulation={effectiveManipulation}
             manipulationTested={manipulationTested}
             observeStarted={observeStarted}
+            observeStep={observeStep}
           />
         }
         right={
@@ -445,14 +465,16 @@ export function Level2Panel({
             footer={
               (status === "connected" && Boolean(isLoading || level2Error)) ||
               effectiveLevel2Completed ||
-              Boolean(certificate?.minted) ? (
+              level2BadgeEarned ||
+              level2BadgeCollected ? (
                 <Level2StateFooter
-                  certificate={certificate}
+                  isCollectingLevel2Badge={isCollectingLevel2Badge}
                   isLoading={isLoading}
-                  isMinting={isMinting}
+                  level2BadgeCollected={level2BadgeCollected}
+                  level2BadgeEarned={level2BadgeEarned}
                   level2Completed={effectiveLevel2Completed}
                   level2Error={level2Error}
-                  onMint={onMint}
+                  onCollectLevel2Badge={onCollectLevel2Badge}
                   status={status}
                 />
               ) : null
@@ -474,9 +496,6 @@ function Level2Header({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-end">
       <div className="max-w-3xl space-y-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Static PDA identity hijack
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           Level 2: Identity Thief
         </h1>
@@ -697,16 +716,18 @@ function ManipulationPanel({
         />
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/72 p-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-          What just happened?
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted">{response}</p>
-        <div className="mt-5 space-y-3">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold leading-6 text-foreground">
+            What just happened?
+          </p>
+          <p className="text-sm leading-6 text-muted">{response}</p>
+        </div>
+        <div className="space-y-3">
           <button
             type="button"
             onClick={onTest}
-            disabled={isSending || manipulation.profileScope !== "static"}
+            disabled={isSending}
             className="min-h-12 w-full rounded-full bg-foreground px-5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45"
           >
             {isSending ? "Submitting..." : "Test commander overwrite"}
@@ -792,6 +813,9 @@ function InspectPanel({
   onFocusSelect: (key: FocusKey) => void;
   sequenceMiss: SequenceMiss | null;
 }) {
+  const [backendRequestMode, setBackendRequestMode] = useState<
+    "prepare" | "execute" | null
+  >(null);
   const actionDisabled =
     isSending ||
     backendExecution.isBusy ||
@@ -880,16 +904,18 @@ function InspectPanel({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/70 p-4">
-        <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
+      <div className="space-y-2 px-1">
+        <p className="text-sm font-semibold leading-6 text-foreground">
           Exploit sequence
         </p>
-        <p className="mt-3 text-sm leading-6 text-muted">
-          {feedback ??
+        <AnimatedInstructionLine
+          text={
+            feedback ??
             (commanderCaptured
               ? "Select dependencies in causal order to unlock verification."
-              : "Overwrite the commander before verification can pass.")}
-        </p>
+              : "Overwrite the commander before verification can pass.")
+          }
+        />
         {backendExecution.error ? (
           <p className="mt-3 text-sm leading-6 text-red-200">
             {backendExecution.error}
@@ -904,15 +930,36 @@ function InspectPanel({
       <button
         type="button"
         onClick={() => {
-          void (backendExecution.challengeReady
-            ? backendExecution.onRun()
-            : backendExecution.onPrepare());
+          const requestMode = backendExecution.challengeReady
+            ? "execute"
+            : "prepare";
+          setBackendRequestMode(requestMode);
+          void (
+            requestMode === "execute"
+              ? backendExecution.onRun()
+              : backendExecution.onPrepare()
+          ).finally(() => setBackendRequestMode(null));
         }}
         disabled={actionDisabled}
         className="min-h-12 w-full rounded-full bg-foreground px-5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45"
       >
         {actionLabel}
       </button>
+      {backendRequestMode ? (
+        <CertificateMintLoader
+          description={
+            backendRequestMode === "prepare"
+              ? "Waiting for the backend to unlock dependency mapping."
+              : "Waiting for the backend to verify the identity hijack flow."
+          }
+          label={
+            backendRequestMode === "prepare"
+              ? "Preparing exploit challenge..."
+              : "Executing exploit..."
+          }
+          variant="modal"
+        />
+      ) : null}
     </section>
   );
 }
@@ -921,20 +968,26 @@ function ProtocolTopology({
   accounts,
   activeFocus,
   commanderCaptured,
+  flowRejected,
+  flowRejectionTrigger,
   focusSequenceComplete,
   labStage,
   manipulation,
   manipulationTested,
   observeStarted,
+  observeStep,
 }: {
   accounts: GraphAccount[];
   activeFocus: FocusKey;
   commanderCaptured: boolean;
+  flowRejected: boolean;
+  flowRejectionTrigger: number;
   focusSequenceComplete: boolean;
   labStage: LabStage;
   manipulation: ManipulationState;
   manipulationTested: boolean;
   observeStarted: boolean;
+  observeStep: number;
 }) {
   const [layoutNodes, setLayoutNodes] = useState<Node<GraphNodeData>[]>([]);
   const [layoutEdges, setLayoutEdges] = useState<Edge[]>([]);
@@ -942,19 +995,12 @@ function ProtocolTopology({
     Node<GraphNodeData>,
     Edge
   > | null>(null);
-  const showAuthorityMessage =
-    labStage === 2 && commanderCaptured && manipulationTested;
-  const authorityMessageTarget = layoutNodes.find(
-    (node) => node.id === "verifier"
-  );
-  const authorityMessagePosition =
-    showAuthorityMessage && authorityMessageTarget
-      ? {
-          x: authorityMessageTarget.position.x + 270,
-          y: authorityMessageTarget.position.y + 4,
-        }
-      : null;
-
+  const fittedStageRef = useRef<LabStage | null>(null);
+  const [layoutStage, setLayoutStage] = useState<LabStage | null>(null);
+  const rejectionPulseActive = useRejectedFlowPulse({
+    rejected: flowRejected,
+    trigger: flowRejectionTrigger,
+  });
   const graph = useMemo(
     () =>
       buildGraph({
@@ -1005,21 +1051,21 @@ function ProtocolTopology({
 
       if (cancelled) return;
 
-      setLayoutNodes(
-        graph.nodes.map((node) => {
-          const layoutNode = result.children?.find(
-            (child) => child.id === node.id
-          );
-          return {
-            ...node,
-            position: {
-              x: layoutNode?.x ?? node.position.x,
-              y: layoutNode?.y ?? node.position.y,
-            },
-          };
-        })
-      );
+      const positionedNodes = graph.nodes.map((node) => {
+        const layoutNode = result.children?.find(
+          (child) => child.id === node.id
+        );
+        return {
+          ...node,
+          position: {
+            x: layoutNode?.x ?? node.position.x,
+            y: layoutNode?.y ?? node.position.y,
+          },
+        };
+      });
+      setLayoutNodes(positionedNodes);
       setLayoutEdges(graph.edges);
+      setLayoutStage(labStage);
     }
 
     void layoutGraph();
@@ -1027,10 +1073,13 @@ function ProtocolTopology({
     return () => {
       cancelled = true;
     };
-  }, [graph]);
+  }, [graph, labStage]);
 
   useEffect(() => {
     if (!flowInstance || layoutNodes.length === 0) return;
+    if (layoutStage !== labStage || fittedStageRef.current === labStage) return;
+
+    fittedStageRef.current = labStage;
 
     const timer = window.setTimeout(() => {
       void flowInstance.fitView({
@@ -1042,24 +1091,97 @@ function ProtocolTopology({
     }, 40);
 
     return () => window.clearTimeout(timer);
-  }, [flowInstance, labStage, layoutEdges.length, layoutNodes]);
+  }, [flowInstance, labStage, layoutNodes.length, layoutStage]);
+
+  const isObserveStage = labStage === 1;
+  const visibleNodeIds = useMemo(
+    () =>
+      new Set(
+        layoutNodes
+          .filter((node) => {
+            if (!isObserveStage) return true;
+            const revealStep = OBSERVE_REVEAL_STEPS[node.id] ?? 0;
+            return observeStep >= revealStep;
+          })
+          .map((node) => node.id)
+      ),
+    [isObserveStage, layoutNodes, observeStep]
+  );
+  const renderedNodes = useMemo(
+    () =>
+      layoutNodes.map((node) => {
+        const revealStep = OBSERVE_REVEAL_STEPS[node.id] ?? 0;
+        const revealed = !isObserveStage || visibleNodeIds.has(node.id);
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            revealed,
+            stageReveal:
+              isObserveStage && observeStarted && revealed && revealStep > 0,
+          },
+        };
+      }),
+    [isObserveStage, layoutNodes, observeStarted, visibleNodeIds]
+  );
+  const renderedEdges = useMemo(
+    () =>
+      layoutEdges.map((edge) => {
+        const revealed =
+          !isObserveStage ||
+          (observeStarted &&
+            visibleNodeIds.has(edge.source) &&
+            visibleNodeIds.has(edge.target));
+        const active = revealed && (Boolean(edge.animated) || isObserveStage);
+
+        return {
+          ...edge,
+          animated: active,
+          className: active
+            ? [edge.className, "level1-flow-line"].filter(Boolean).join(" ")
+            : undefined,
+          style: {
+            ...edge.style,
+            opacity: revealed ? (edge.style?.opacity ?? 1) : 0,
+            strokeDasharray: isObserveStage && revealed ? "2 10" : undefined,
+            strokeLinecap: isObserveStage ? ("round" as const) : undefined,
+          },
+        };
+      }),
+    [isObserveStage, layoutEdges, observeStarted, visibleNodeIds]
+  );
+
+  const showAuthorityMessage =
+    labStage === 2 && commanderCaptured && manipulationTested;
+  const verifierNode = layoutNodes.find((node) => node.id === "verifier");
+  const level2Node = layoutNodes.find((node) => node.id === "level2");
+  const authorityMessagePosition =
+    showAuthorityMessage && verifierNode && level2Node
+      ? {
+          x: verifierNode.position.x + (verifierNode.width ?? 244) + 36,
+          y: verifierNode.position.y + 4,
+        }
+      : null;
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/72">
-      <div className="border-b border-border px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Interactive protocol topology
-        </p>
-      </div>
+    <section
+      className={`overflow-hidden rounded-[28px] border border-border bg-card/72 ${
+        rejectionPulseActive ? "protocol-visualization-rejected" : ""
+      }`}
+    >
+      <ProtocolVisualizationHeader
+        label="Interactive protocol topology"
+        rejected={flowRejected}
+      />
       <div className="level1-flow h-[720px]">
         <ReactFlow
           colorMode="dark"
-          edges={layoutEdges}
-          fitView
+          edges={renderedEdges}
           maxZoom={1.15}
           minZoom={0.35}
           nodeTypes={{ protocol: ProtocolNode }}
-          nodes={layoutNodes}
+          nodes={renderedNodes}
           nodesDraggable={false}
           nodesFocusable={false}
           onInit={setFlowInstance}
@@ -1073,17 +1195,19 @@ function ProtocolTopology({
           {authorityMessagePosition ? (
             <ViewportPortal>
               <div
-                className="level1-activity-entry pointer-events-none absolute w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md"
+                className="pointer-events-none absolute"
                 style={{
                   transform: `translate(${authorityMessagePosition.x}px, ${authorityMessagePosition.y}px)`,
                 }}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
-                  Protocol vulnerable:
-                </p>
-                <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
-                  Connected Wallet has now program authority
-                </p>
+                <div className="level1-activity-entry w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
+                    Vulnerable Protocol:
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
+                    Connected Wallet has now program authority
+                  </p>
+                </div>
               </div>
             </ViewportPortal>
           ) : null}
@@ -1100,6 +1224,13 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
       : data.tone === "valid" || data.tone === "shared"
         ? "level1-protocol-node-official"
         : "";
+  const revealClass = data.stageReveal
+    ? "level1-protocol-node-stage-reveal"
+    : "";
+  const hiddenClass = data.revealed === false ? "opacity-0" : "";
+  const valueClass = data.valuePulse
+    ? "level2-commander-value-pulse inline-flex w-fit rounded-md border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-amber-100"
+    : "text-foreground";
   const Icon =
     data.icon === "commander"
       ? KeyRound
@@ -1115,7 +1246,9 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
     <div
       className={`level1-protocol-node ${toneClass} ${
         data.active ? "level1-protocol-node-active" : ""
-      } ${data.inactive ? "level1-protocol-node-inactive" : ""} min-h-[112px] w-[244px] rounded-[20px] border p-4`}
+      } ${
+        data.inactive ? "level1-protocol-node-inactive" : ""
+      } ${revealClass} ${hiddenClass} min-h-[112px] w-[244px] rounded-[20px] border p-4`}
     >
       <Handle type="target" position={Position.Top} />
       <div className="flex items-start gap-3">
@@ -1137,7 +1270,7 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
             ) : null}
           </div>
           <p className="mt-1 text-xs text-muted">{data.detail}</p>
-          <p className="mt-2 text-xs font-medium text-foreground">
+          <p className={`mt-2 text-xs font-medium ${valueClass}`}>
             {data.value}
           </p>
           {data.relation ? (
@@ -1224,26 +1357,32 @@ function ActivityRow({
 }
 
 function Level2StateFooter({
-  certificate,
+  isCollectingLevel2Badge,
   isLoading,
-  isMinting,
+  level2BadgeCollected,
+  level2BadgeEarned,
   level2Completed,
   level2Error,
-  onMint,
+  onCollectLevel2Badge,
   status,
 }: {
-  certificate?: LevelCertificateSnapshot;
+  isCollectingLevel2Badge: boolean;
   isLoading: boolean;
-  isMinting: boolean;
+  level2BadgeCollected: boolean;
+  level2BadgeEarned: boolean;
   level2Completed: boolean;
   level2Error: unknown;
-  onMint: () => void;
+  onCollectLevel2Badge: () => void;
   status: string;
 }) {
   const hasFooterContent =
     (status === "connected" && Boolean(isLoading || level2Error)) ||
     level2Completed ||
-    Boolean(certificate?.minted);
+    level2BadgeEarned ||
+    level2BadgeCollected;
+  const badgeReady = level2Completed && level2BadgeEarned;
+  const collectDisabled =
+    level2BadgeCollected || isCollectingLevel2Badge || !badgeReady;
 
   if (!hasFooterContent) {
     return null;
@@ -1271,26 +1410,23 @@ function Level2StateFooter({
         </div>
       ) : null}
 
-      {level2Completed || certificate?.minted ? (
-        <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
-            Certification unlocked
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Level 2 verification is recorded. Mint the wallet-bound
-            certification for this hijack path.
-          </p>
+      {level2Completed || level2BadgeEarned || level2BadgeCollected ? (
+        <div className="space-y-3">
           <button
             type="button"
-            onClick={onMint}
-            disabled={certificate?.minted || isMinting}
-            className="mt-4 inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+            onClick={onCollectLevel2Badge}
+            disabled={collectDisabled}
+            className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${
+              level2BadgeCollected || !badgeReady
+                ? "border border-border bg-accent text-muted disabled:opacity-70"
+                : "border border-[#9945ff]/35 bg-[#9945ff] text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] hover:bg-[#8b35f6]"
+            }`}
           >
-            {certificate?.minted
-              ? "Level 2 cNFT minted"
-              : isMinting
-                ? "Minting..."
-                : "Unlock Certification"}
+            {level2BadgeCollected
+              ? "Badge collected"
+              : isCollectingLevel2Badge
+                ? "Collecting..."
+                : "Collect Badge"}
           </button>
         </div>
       ) : null}
@@ -1330,6 +1466,7 @@ function buildGraphAccounts({
     level2State?.hasLevel2State || simulatedLevel2Ready
   );
   const profileShared = labStage >= 2 || observeStep >= 4;
+  const commanderTargetChanged = manipulation.commanderTarget === "wallet";
   const showHijack = simulatedCommanderCaptured;
   const dimLegitimatePath = labStage >= 3 && showHijack;
 
@@ -1370,6 +1507,7 @@ function buildGraphAccounts({
       relation: showHijack ? "OVERWRITTEN" : "INITIAL AUTHORITY",
       tone: showHijack ? "hijacked" : "neutral",
       value: commander ? compactAddress(commander, 4, 4) : "Unset",
+      valuePulse: commanderTargetChanged,
     },
     {
       active: labStage === 1 || activeFocus === "profile",

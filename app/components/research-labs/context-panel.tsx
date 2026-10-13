@@ -1,0 +1,1169 @@
+"use client";
+
+import { ArrowRight, Check, LockKeyhole, ShieldCheck } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { driver } from "driver.js";
+
+import type { QuestionnaireResult } from "../../lib/research-labs/rl1-questionnaire";
+import { CertificateMintLoader } from "../certificate-mint-loader";
+import type {
+  ResearchLabFile,
+  ResearchLabManifest,
+  ResearchLabReport,
+  ResearchLabSession,
+} from "../../lib/research-labs/lab-state";
+import { deriveProtocolState } from "./execute-exploit-tab";
+import {
+  getResearchLabAdapter,
+  isArbitraryCpiLab,
+  isYieldHijackLab,
+} from "./lab-adapters";
+import { ReviewCheckpointPanel } from "./report-tab";
+import type {
+  AuditReportStage,
+  EnrichedTransactionResult,
+  ExecuteExploitView,
+  LabPhase,
+  ReviewMode,
+} from "./types";
+
+const contextObjective =
+  "Determine whether an attacker can trigger an unauthorized state transition and collect enough evidence to report the finding.";
+
+export function LabContextPanel({
+  activeFile,
+  auditReportStage,
+  executeExploitView,
+  findingReviewPassed,
+  impactVerified,
+  isCollectingLevel1Badge,
+  isMintingResearchLabCertificate,
+  lab,
+  level1BadgeCollected,
+  level1BadgeEarned,
+  powerUserBadgeEarned,
+  phase,
+  questionnaireResult,
+  report,
+  reportUnlocked,
+  reportOpened,
+  retryQuestionIds,
+  reviewMode,
+  reviewStarted,
+  reviewStepCurrent,
+  reviewStepTotal,
+  criticalAnsweredCount,
+  criticalTotal,
+  revealedHints,
+  session,
+  researchLabCertificateMinted,
+  txResults,
+  onMintResearchLabCertificate,
+  onOpenExploit,
+  onOpenReport,
+  onRevealHint,
+  onRetryReview,
+  onContinueToLevel2,
+}: {
+  activeFile: ResearchLabFile | null;
+  auditReportStage: AuditReportStage;
+  executeExploitView: ExecuteExploitView;
+  findingReviewPassed: boolean;
+  impactVerified: boolean;
+  isCollectingLevel1Badge: boolean;
+  isMintingResearchLabCertificate: boolean;
+  lab: ResearchLabManifest;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
+  powerUserBadgeEarned: boolean;
+  phase: LabPhase;
+  questionnaireResult: QuestionnaireResult | null;
+  report: ResearchLabReport | null;
+  reportUnlocked: boolean;
+  reportOpened: boolean;
+  retryQuestionIds: string[];
+  reviewMode: ReviewMode;
+  reviewStarted: boolean;
+  reviewStepCurrent: number;
+  reviewStepTotal: number;
+  criticalAnsweredCount: number;
+  criticalTotal: number;
+  revealedHints: string[];
+  session: ResearchLabSession;
+  researchLabCertificateMinted: boolean;
+  txResults: EnrichedTransactionResult[];
+  onMintResearchLabCertificate: () => Promise<void>;
+  onOpenExploit: () => void;
+  onOpenReport: () => void;
+  onRevealHint: () => void;
+  onRetryReview: () => void;
+  onContinueToLevel2: () => void;
+}) {
+  const adapter = getResearchLabAdapter(lab);
+  const nextHint = lab.hints.find((hint) => !revealedHints.includes(hint.id));
+  const reportAccepted = Boolean(
+    report?.status === "accepted" || session.labCompleted
+  );
+  const isReportContext = phase === "SUBMIT_FINDING" || phase === "COMPLETED";
+  const isInternalEvidenceReview =
+    phase === "EXECUTE_EXPLOIT" && executeExploitView === "EVIDENCE_REVIEW";
+  const panelTitle = isInternalEvidenceReview
+    ? "Evidence Status"
+    : phase === "EXECUTE_EXPLOIT"
+      ? "Attempt State"
+      : phase === "VERIFY_IMPACT"
+        ? "Evidence Review"
+        : isReportContext
+          ? "Report Context"
+          : "Inspection Context";
+  const panelContent = (
+    <>
+      {phase === "EXECUTE_EXPLOIT" ? (
+        <ExecuteExploitContext
+          impactVerified={impactVerified}
+          lab={lab}
+          onOpenReport={onOpenReport}
+          reportUnlocked={reportUnlocked}
+          txResults={txResults}
+        />
+      ) : phase === "VERIFY_IMPACT" ? (
+        <ExecuteExploitContext
+          impactVerified={impactVerified}
+          lab={lab}
+          onOpenReport={onOpenReport}
+          reportUnlocked={reportUnlocked}
+          txResults={txResults}
+        />
+      ) : impactVerified ? (
+        <ReviewContextCard
+          adapter={adapter}
+          auditReportStage={auditReportStage}
+          findingReviewPassed={findingReviewPassed}
+          isCollectingLevel1Badge={isCollectingLevel1Badge}
+          isMintingResearchLabCertificate={isMintingResearchLabCertificate}
+          level1BadgeCollected={level1BadgeCollected}
+          level1BadgeEarned={level1BadgeEarned}
+          powerUserBadgeEarned={powerUserBadgeEarned}
+          questionnaireResult={questionnaireResult}
+          reportAccepted={reportAccepted}
+          reportOpened={reportOpened}
+          retryQuestionIds={retryQuestionIds}
+          reviewMode={reviewMode}
+          reviewStarted={reviewStarted}
+          reviewStepCurrent={reviewStepCurrent}
+          reviewStepTotal={reviewStepTotal}
+          criticalAnsweredCount={criticalAnsweredCount}
+          criticalTotal={criticalTotal}
+          researchLabCertificateMinted={researchLabCertificateMinted}
+          onContinueToLevel2={onContinueToLevel2}
+          onMintResearchLabCertificate={onMintResearchLabCertificate}
+          onOpenReport={onOpenReport}
+          onRetryReview={onRetryReview}
+        />
+      ) : null}
+
+      {phase === "EXECUTE_EXPLOIT" ||
+      phase === "VERIFY_IMPACT" ? null : !impactVerified ? (
+        <>
+          <ContextBlock title="Current Objective">
+            <p className="text-sm leading-6 text-zinc-400">
+              {adapter.briefing.objective || contextObjective}
+            </p>
+            {phase === "INSPECT" ? (
+              <button
+                type="button"
+                onClick={onOpenExploit}
+                className="mt-4 w-full rounded-xl border border-[#14f195]/25 bg-[#14f195]/8 px-4 py-2.5 text-sm font-medium text-[#8fffd0] transition hover:bg-[#14f195]/12"
+              >
+                Open exploit builder
+              </button>
+            ) : null}
+          </ContextBlock>
+
+          <ContextBlock title="Selected Evidence">
+            <div className="space-y-3 text-sm">
+              <EvidenceLine
+                label="File"
+                value={activeFile?.path ?? "No file selected"}
+              />
+              <EvidenceLine
+                label="Session"
+                value={abbreviate(session.sessionId)}
+              />
+              <EvidenceLine label="State" value={statusCopy(session.status)} />
+              <EvidenceLine
+                label="Report"
+                value={report ? formatContextValue(report.status) : "Locked"}
+              />
+            </div>
+          </ContextBlock>
+
+          <ContextBlock title="Hints">
+            <HintList
+              lab={lab}
+              nextHintAvailable={Boolean(nextHint)}
+              revealedHints={revealedHints}
+              onRevealHint={onRevealHint}
+            />
+          </ContextBlock>
+        </>
+      ) : null}
+    </>
+  );
+
+  if (phase === "INSPECT") {
+    return (
+      <aside className="h-fit min-w-0">
+        <div className="space-y-4">
+          <ReviewCheckpointPanel
+            activeStep="review"
+            criticalTotal={criticalTotal}
+            evidenceTitle="Inspection Checks"
+            evidenceItems={[...adapter.inspectChecks]}
+            showReviewRules={false}
+            title="Inspect Checkpoint"
+            unlockTitle="Exploit Interface"
+            unlockCopy="Move from source review into the protocol attack flow."
+            action={
+              <button
+                type="button"
+                onClick={onOpenExploit}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-[#14f195]/25 bg-[#14f195]/8 px-4 py-2.5 text-sm font-medium text-[#8fffd0] transition hover:bg-[#14f195]/12 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+              >
+                Try Exploit
+              </button>
+            }
+          />
+          {!impactVerified ? (
+            <ContextBlock title="Inspect Hint">
+              <HintList
+                buttonLabel="Show Hint"
+                lab={lab}
+                nextHintAvailable={Boolean(nextHint)}
+                revealedHints={revealedHints}
+                onRevealHint={onRevealHint}
+              />
+            </ContextBlock>
+          ) : null}
+        </div>
+      </aside>
+    );
+  }
+
+  if (phase === "EXECUTE_EXPLOIT" || phase === "VERIFY_IMPACT") {
+    return (
+      <aside className="h-fit min-w-0">
+        <div className="space-y-4">{panelContent}</div>
+      </aside>
+    );
+  }
+
+  if (isReportContext) {
+    return (
+      <aside className="h-fit min-w-0">
+        <div className="space-y-4">{panelContent}</div>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-white/10 bg-[#111212]/85 shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <div className="border-b border-white/10 px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-400">
+          {panelTitle}
+        </p>
+      </div>
+      <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
+        {panelContent}
+      </div>
+    </aside>
+  );
+}
+
+function ExecuteExploitContext({
+  impactVerified,
+  lab,
+  onOpenReport,
+  reportUnlocked,
+  txResults,
+}: {
+  impactVerified: boolean;
+  lab: ResearchLabManifest;
+  onOpenReport: () => void;
+  reportUnlocked: boolean;
+  txResults: EnrichedTransactionResult[];
+}) {
+  const adapter = getResearchLabAdapter(lab);
+  const isArbitraryCpi = isArbitraryCpiLab(lab);
+  const isYieldHijack = isYieldHijackLab(lab);
+  const [revealedChainHints, setRevealedChainHints] = useState(0);
+  const protocolState = deriveProtocolState(txResults);
+  const payoutProgramBuilt = hasSuccessfulTransactionAction(
+    txResults,
+    "BUILD_ATTACKER_PROGRAM"
+  );
+  const payoutProgramDeployed = hasSuccessfulTransactionAction(
+    txResults,
+    "DEPLOY_ATTACKER_PROGRAM"
+  );
+  const payoutAuthorized = hasSuccessfulTransactionAction(
+    txResults,
+    "SUBMIT_DELEGATION"
+  );
+  const payoutCompleted = hasSuccessfulTransactionAction(
+    txResults,
+    "EXECUTE_DELEGATED_CPI"
+  );
+  const depositSubmitted = isYieldHijack
+    ? txResults.some(
+        (result) =>
+          result.executionStatus === "success" &&
+          result.instructionType.includes("STAKE") &&
+          !result.instructionType.includes("CLAIM")
+      )
+    : protocolState.hasDeposit;
+  const withdrawalSubmitted = isYieldHijack
+    ? txResults.some(
+        (result) =>
+          result.executionStatus === "success" &&
+          result.instructionType.includes("CLAIM") &&
+          result.inputs.claimScope !== "own"
+      )
+    : protocolState.borrowedAmount > 0;
+  const chainHints = adapter.exploitHints;
+  const canRevealMoreHints = revealedChainHints < chainHints.length;
+  const revealNextExploitHint = () => {
+    const nextHintIndex = revealedChainHints;
+
+    setRevealedChainHints((current) =>
+      Math.min(current + 1, chainHints.length)
+    );
+
+    if (isYieldHijack) {
+      if (nextHintIndex === 0) {
+        window.setTimeout(startYieldHijackStakeTour, 80);
+      } else if (nextHintIndex === 1) {
+        window.setTimeout(startYieldHijackExplorerTour, 80);
+      }
+    } else if (!isArbitraryCpi && nextHintIndex === 0) {
+      window.setTimeout(startExploitHypothesisTour, 80);
+    }
+  };
+  const checkpointSteps = isArbitraryCpi
+    ? [
+        { label: "Opportunity reviewed", active: true },
+        {
+          label: payoutProgramBuilt
+            ? "Payout program configured"
+            : "Payout program not configured",
+          active: payoutProgramBuilt,
+        },
+        {
+          label: payoutProgramDeployed
+            ? "Payout program deployed"
+            : "Payout program not deployed",
+          active: payoutProgramDeployed,
+        },
+        {
+          label: payoutAuthorized
+            ? "Task payout authorized"
+            : "Task payout not authorized",
+          active: payoutAuthorized,
+        },
+        {
+          label: payoutCompleted ? "Task payout completed" : "Task payout open",
+          active: payoutCompleted,
+        },
+        { label: "Impact verified", active: impactVerified },
+        { label: "Report unlocked", active: reportUnlocked },
+      ]
+    : [
+        { label: "Hypothesis selected", active: true },
+        {
+          label: isYieldHijack
+            ? depositSubmitted
+              ? "Stake submitted"
+              : "Stake not submitted"
+            : !depositSubmitted
+              ? "Deposit not submitted"
+              : protocolState.depositKind === "regular"
+                ? "Canonical collateral deposited"
+                : protocolState.depositKind === "exploit"
+                  ? "Non-canonical credit route created"
+                  : "Unsupported deposit path observed",
+          active: depositSubmitted,
+        },
+        {
+          label: isYieldHijack
+            ? withdrawalSubmitted
+              ? "Rewards claimed"
+              : "Rewards not claimed"
+            : !withdrawalSubmitted
+              ? "Borrow not submitted"
+              : protocolState.depositKind === "regular"
+                ? "Canonical borrow executed"
+                : protocolState.hasMaxDrain
+                  ? "Treasury drain path executed"
+                  : "Borrow executed against observed credit",
+          active: withdrawalSubmitted,
+        },
+        { label: "Impact verified", active: impactVerified },
+        { label: "Report unlocked", active: reportUnlocked },
+      ];
+
+  return (
+    <>
+      <ExploitCheckpointPanel
+        impactVerified={impactVerified}
+        onOpenReport={onOpenReport}
+        steps={checkpointSteps}
+      />
+
+      {!impactVerified ? (
+        <ContextBlock title="Exploit Hints">
+          <div className="space-y-3">
+            {revealedChainHints === 0 ? (
+              <p className="text-sm leading-6 text-zinc-500">
+                Reveal hints only if you want guidance on the exploit sequence.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {chainHints.slice(0, revealedChainHints).map((hint, index) => (
+                  <div
+                    key={hint}
+                    className="rounded-xl border border-white/10 bg-white/[0.035] p-3"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+                      Hint {index + 1}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      {hint}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={revealNextExploitHint}
+              disabled={!canRevealMoreHints}
+              className="w-full rounded-xl border border-[#9945ff]/25 bg-[#9945ff]/10 px-4 py-2.5 text-sm font-medium text-[#c7a6ff] transition hover:bg-[#9945ff]/15 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {canRevealMoreHints ? "Reveal next hint" : "All hints revealed"}
+            </button>
+          </div>
+        </ContextBlock>
+      ) : null}
+    </>
+  );
+}
+
+function hasSuccessfulTransactionAction(
+  txResults: EnrichedTransactionResult[],
+  actionType: string
+) {
+  return txResults.some(
+    (result) =>
+      result.executionStatus === "success" &&
+      result.instructionType.includes(actionType)
+  );
+}
+
+function startExploitHypothesisTour() {
+  const requiredTargets = [
+    "[data-tour='rl1-token-source']",
+    "[data-tour='rl1-vault-destination']",
+    "[data-tour='rl1-deposit-amount']",
+  ];
+
+  if (requiredTargets.some((selector) => !document.querySelector(selector))) {
+    return;
+  }
+
+  driver({
+    allowClose: true,
+    animate: true,
+    disableActiveInteraction: false,
+    doneBtnText: "Done",
+    nextBtnText: "Next",
+    overlayColor: "#020404",
+    overlayOpacity: 0.72,
+    popoverClass: "solbreach-driver-popover",
+    popoverOffset: 14,
+    prevBtnText: "Back",
+    showButtons: ["next", "previous", "close"],
+    showProgress: true,
+    stagePadding: 8,
+    stageRadius: 14,
+    steps: [
+      {
+        element: "[data-tour='rl1-token-source']",
+        popover: {
+          title: "Step 1: Choose token source",
+          description:
+            "Start by selecting the token account that will be credited as collateral.",
+          side: "bottom",
+          align: "start",
+        },
+      },
+      {
+        element: "[data-tour='rl1-vault-destination']",
+        popover: {
+          title: "Step 2: Choose vault",
+          description:
+            "Pick the vault destination. This is where the protocol should validate whether the account path is legitimate.",
+          side: "bottom",
+          align: "start",
+        },
+      },
+      {
+        element: "[data-tour='rl1-deposit-amount']",
+        popover: {
+          title: "Step 3: Set deposit amount",
+          description:
+            "Submit an amount to observe whether collateral credit and pool liquidity update as expected.",
+          side: "right",
+          align: "center",
+        },
+      },
+    ],
+  }).drive();
+}
+
+function startYieldHijackStakeTour() {
+  const requiredTargets = [
+    "[data-tour='rl2-stake-controls']",
+    "[data-tour='rl2-current-position']",
+  ];
+
+  if (requiredTargets.some((selector) => !document.querySelector(selector))) {
+    return;
+  }
+
+  driver({
+    allowClose: true,
+    animate: true,
+    disableActiveInteraction: false,
+    doneBtnText: "Done",
+    nextBtnText: "Next",
+    overlayColor: "#020404",
+    overlayOpacity: 0.72,
+    popoverClass: "solbreach-driver-popover",
+    popoverOffset: 14,
+    prevBtnText: "Back",
+    showButtons: ["next", "previous", "close"],
+    showProgress: true,
+    stagePadding: 8,
+    stageRadius: 14,
+    steps: [
+      {
+        element: "[data-tour='rl2-stake-controls']",
+        popover: {
+          title: "Stake through the exploiter",
+          description:
+            "Submit a small stake from this interface and observe which protocol state changes.",
+          side: "right",
+          align: "center",
+        },
+      },
+      {
+        element: "[data-tour='rl2-current-position']",
+        popover: {
+          title: "Check the current position",
+          description:
+            "Compare this value before and after staking. The increase confirms that your transaction reached the active position.",
+          side: "bottom",
+          align: "center",
+        },
+      },
+    ],
+  }).drive();
+}
+
+function startYieldHijackExplorerTour() {
+  const explorerTarget = "[data-tour='rl2-open-explorer']";
+
+  if (!document.querySelector(explorerTarget)) {
+    return;
+  }
+
+  driver({
+    allowClose: true,
+    animate: true,
+    disableActiveInteraction: false,
+    doneBtnText: "Investigate",
+    nextBtnText: "Next",
+    overlayColor: "#020404",
+    overlayOpacity: 0.72,
+    popoverClass: "solbreach-driver-popover",
+    popoverOffset: 14,
+    prevBtnText: "Back",
+    showButtons: ["next", "previous", "close"],
+    showProgress: false,
+    stagePadding: 8,
+    stageRadius: 14,
+    steps: [
+      {
+        element: explorerTarget,
+        popover: {
+          title: "Investigate before claiming",
+          description:
+            "Open Explorer in a new tab. Inspect the public IDL and decoded position accounts to recover the instruction and wallet required by the claim form.",
+          side: "right",
+          align: "center",
+        },
+      },
+    ],
+  }).drive();
+}
+
+function ExploitCheckpointPanel({
+  impactVerified,
+  onOpenReport,
+  steps,
+}: {
+  impactVerified: boolean;
+  onOpenReport: () => void;
+  steps: Array<{ label: string; active: boolean }>;
+}) {
+  return (
+    <div className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+        <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+          Exploit Checkpoint
+        </p>
+      </div>
+
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+          Exploit Progress
+        </p>
+        <div className="mt-4 space-y-3">
+          {steps.map((step) => (
+            <ExploitCheckpointStep
+              key={step.label}
+              active={step.active}
+              label={step.label}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+          Unlocks Next
+        </p>
+        <div className="mt-4 flex items-center gap-4">
+          <div
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
+              impactVerified
+                ? "border-[#9945ff]/30 bg-[#9945ff]/12 text-[#d7c0ff]"
+                : "border-white/10 bg-white/[0.035] text-zinc-600"
+            }`}
+          >
+            <LockKeyhole className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white">Report Finding</p>
+            <p className="mt-1 text-sm leading-5 text-zinc-500">
+              Answer the questions and prepare your first Finding Report.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenReport}
+          disabled={!impactVerified}
+          className={`mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+            impactVerified
+              ? "border border-[#9945ff]/35 bg-[#9945ff]/18 text-[#d7c0ff] shadow-[0_0_24px_rgba(153,69,255,0.18)] hover:bg-[#9945ff]/24"
+              : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
+          }`}
+        >
+          Fill Report
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HintList({
+  buttonLabel = "Reveal Hint",
+  compact = false,
+  lab,
+  nextHintAvailable,
+  revealedHints,
+  onRevealHint,
+}: {
+  buttonLabel?: string;
+  compact?: boolean;
+  lab: ResearchLabManifest;
+  nextHintAvailable: boolean;
+  revealedHints: string[];
+  onRevealHint: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {!compact && revealedHints.length ? (
+        lab.hints
+          .filter((hint) => revealedHints.includes(hint.id))
+          .map((hint) => (
+            <div
+              key={hint.id}
+              className="rounded-xl border border-white/10 bg-white/[0.035] p-3"
+            >
+              <p className="text-sm font-semibold text-[#8fffd0]">
+                {hint.title}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-zinc-400">
+                {hint.body}
+              </p>
+            </div>
+          ))
+      ) : (
+        <p className="text-sm leading-6 text-zinc-500">
+          {compact
+            ? "Use a hint only if you are stuck."
+            : "Hints stay hidden until you ask for them."}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onRevealHint}
+        disabled={!nextHintAvailable}
+        className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-zinc-300 transition hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] disabled:cursor-not-allowed disabled:opacity-45"
+      >
+        {nextHintAvailable ? buttonLabel : "All hints revealed"}
+      </button>
+    </div>
+  );
+}
+
+function ReviewContextCard({
+  adapter,
+  auditReportStage,
+  findingReviewPassed,
+  isCollectingLevel1Badge,
+  isMintingResearchLabCertificate,
+  level1BadgeCollected,
+  level1BadgeEarned,
+  powerUserBadgeEarned,
+  questionnaireResult,
+  reportAccepted,
+  reportOpened,
+  retryQuestionIds,
+  reviewMode,
+  reviewStarted,
+  reviewStepCurrent,
+  reviewStepTotal,
+  criticalAnsweredCount,
+  criticalTotal,
+  researchLabCertificateMinted,
+  onContinueToLevel2,
+  onMintResearchLabCertificate,
+  onOpenReport,
+  onRetryReview,
+}: {
+  adapter: ReturnType<typeof getResearchLabAdapter>;
+  auditReportStage: AuditReportStage;
+  findingReviewPassed: boolean;
+  isCollectingLevel1Badge: boolean;
+  isMintingResearchLabCertificate: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
+  powerUserBadgeEarned: boolean;
+  questionnaireResult: QuestionnaireResult | null;
+  reportAccepted: boolean;
+  reportOpened: boolean;
+  retryQuestionIds: string[];
+  reviewMode: ReviewMode;
+  reviewStarted: boolean;
+  reviewStepCurrent: number;
+  reviewStepTotal: number;
+  criticalAnsweredCount: number;
+  criticalTotal: number;
+  researchLabCertificateMinted: boolean;
+  onContinueToLevel2: () => void;
+  onMintResearchLabCertificate: () => Promise<void>;
+  onOpenReport: () => void;
+  onRetryReview: () => void;
+}) {
+  if (auditReportStage === "CERTIFY_KNOWLEDGE") {
+    return (
+      <CertificateCheckpointPanel
+        adapter={adapter}
+        badgeCollected={level1BadgeCollected}
+        badgeEarned={level1BadgeEarned}
+        certificateMinted={researchLabCertificateMinted}
+        isMintingCertificate={isMintingResearchLabCertificate}
+        powerUserBadgeEarned={powerUserBadgeEarned}
+        isCollectingBadge={isCollectingLevel1Badge}
+        onMintCertificate={onMintResearchLabCertificate}
+        onNextModule={onContinueToLevel2}
+      />
+    );
+  }
+
+  if (reportAccepted) {
+    return (
+      <ContextBlock title="Status">
+        <div className="space-y-3 text-sm">
+          <EvidenceLine label="Review" value="Passed" />
+          <EvidenceLine label="Audit Report" value="Submitted" />
+          <EvidenceLine label="Completion" value="Recorded" />
+        </div>
+      </ContextBlock>
+    );
+  }
+
+  if (findingReviewPassed) {
+    return (
+      <div>
+        <ReviewCheckpointPanel
+          activeStep="report"
+          criticalTotal={criticalTotal}
+          evidenceItems={adapter.verifiedEvidenceChecks}
+          passingScore={adapter.questionnaire.passingScore}
+          unlockTitle={
+            reportOpened
+              ? "Secure Pattern and Certification"
+              : "Audit Report Builder"
+          }
+          unlockCopy={
+            reportOpened
+              ? "Complete the secure pattern review before unlocking certification."
+              : "Audit Report Builder is available now."
+          }
+        />
+        <button
+          type="button"
+          onClick={onOpenReport}
+          className="mt-4 w-full rounded-xl border border-[#9945ff]/30 bg-[#9945ff]/12 px-4 py-2.5 text-sm font-semibold text-[#c7a6ff] transition hover:bg-[#9945ff]/18 focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+        >
+          {reportOpened ? "Return to Audit Report" : "Build Audit Report"}
+        </button>
+      </div>
+    );
+  }
+
+  if (questionnaireResult && !questionnaireResult.passed) {
+    return (
+      <div className="rounded-2xl border border-amber-300/25 bg-amber-300/8 p-4">
+        <p className="text-sm font-semibold text-amber-100">
+          Review needs correction
+        </p>
+        <p className="mt-2 text-sm leading-6 text-amber-50/80">
+          Score {questionnaireResult.score}/{questionnaireResult.totalPoints}.
+          Retry only the missed required questions.
+        </p>
+        <div className="mt-3 rounded-xl border border-amber-300/15 bg-black/20 px-3 py-2 text-sm text-amber-50/80">
+          {retryQuestionIds.length} incorrect required item
+          {retryQuestionIds.length === 1 ? "" : "s"}
+        </div>
+        <button
+          type="button"
+          onClick={onRetryReview}
+          className="mt-4 w-full rounded-xl border border-amber-300/25 bg-amber-300/10 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/15"
+        >
+          Retry Incorrect Answers
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <ReportCheckpointPanel
+      criticalTotal={criticalTotal}
+      reviewMode={reviewMode}
+      reviewStarted={reviewStarted}
+      reviewStepCurrent={reviewStepCurrent}
+      reviewStepTotal={reviewStepTotal}
+      criticalAnsweredCount={criticalAnsweredCount}
+    />
+  );
+}
+
+function CertificateCheckpointPanel({
+  adapter,
+  badgeCollected,
+  badgeEarned,
+  certificateMinted,
+  isMintingCertificate,
+  powerUserBadgeEarned,
+  isCollectingBadge,
+  onMintCertificate,
+  onNextModule,
+}: {
+  adapter: ReturnType<typeof getResearchLabAdapter>;
+  badgeCollected: boolean;
+  badgeEarned: boolean;
+  certificateMinted: boolean;
+  isMintingCertificate: boolean;
+  powerUserBadgeEarned: boolean;
+  isCollectingBadge: boolean;
+  onMintCertificate: () => Promise<void>;
+  onNextModule: () => void;
+}) {
+  const canMintCertificate =
+    badgeCollected && !certificateMinted && !isMintingCertificate;
+  const showsPowerUserReward = adapter.code === "RL1";
+
+  return (
+    <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+        <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+          Certification Checkpoint
+        </p>
+      </div>
+
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          {adapter.certificate.moduleLabel}
+        </p>
+        <div className="mt-4 space-y-3 text-sm">
+          <CheckpointRuleRow label="Review" value="Secure pattern complete" />
+          <CheckpointRuleRow
+            label="Prerequisite"
+            value={
+              badgeCollected ? "Collected" : badgeEarned ? "Ready" : "Syncing"
+            }
+          />
+          <CheckpointRuleRow
+            label="Certificate"
+            value={certificateMinted ? "Minted" : "Unlocked"}
+          />
+          {showsPowerUserReward ? (
+            <CheckpointRuleRow
+              label="Power User"
+              value={
+                certificateMinted
+                  ? powerUserBadgeEarned
+                    ? "Unlocked"
+                    : "Syncing"
+                  : "After mint"
+              }
+            />
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col items-center gap-3 border-t border-white/10 pt-5">
+        {!badgeCollected ? (
+          <button
+            type="button"
+            disabled
+            className="inline-flex min-h-11 w-auto min-w-[190px] cursor-not-allowed items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-600 opacity-70"
+          >
+            {isCollectingBadge
+              ? "Collecting..."
+              : badgeEarned
+                ? "Prerequisite missing"
+                : "Badge syncing"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              void onMintCertificate();
+            }}
+            disabled={!canMintCertificate}
+            className={`inline-flex min-h-11 w-auto min-w-[190px] items-center justify-center rounded-xl px-5 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212] ${
+              certificateMinted
+                ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-zinc-500"
+                : canMintCertificate
+                  ? "border border-[#9945ff]/35 bg-[#9945ff] text-white hover:bg-[#8a35f0]"
+                  : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-zinc-600"
+            } disabled:cursor-not-allowed disabled:opacity-70`}
+          >
+            {certificateMinted ? (
+              "Certificate minted"
+            ) : isMintingCertificate ? (
+              <CertificateMintLoader />
+            ) : (
+              "Mint NFT Certificate"
+            )}
+          </button>
+        )}
+
+        {certificateMinted ? (
+          <button
+            type="button"
+            onClick={onNextModule}
+            className="group inline-flex min-h-11 w-auto min-w-[190px] items-center justify-center gap-2 rounded-xl border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-semibold text-white shadow-[0_18px_50px_-28px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8a35f0] focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111212]"
+          >
+            Next Module
+            <ArrowRight
+              className="h-4 w-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+              aria-hidden="true"
+            />
+          </button>
+        ) : null}
+      </div>
+    </aside>
+  );
+}
+
+function ReportCheckpointPanel({
+  criticalAnsweredCount,
+  criticalTotal,
+  reviewMode,
+  reviewStarted,
+  reviewStepCurrent,
+  reviewStepTotal,
+}: {
+  criticalAnsweredCount: number;
+  criticalTotal: number;
+  reviewMode: ReviewMode;
+  reviewStarted: boolean;
+  reviewStepCurrent: number;
+  reviewStepTotal: number;
+}) {
+  const progressCurrent = reviewStarted ? reviewStepCurrent : 0;
+  const progressTotal = Math.max(1, reviewStepTotal);
+
+  return (
+    <aside className="h-fit rounded-3xl border border-white/10 bg-black/20 p-5">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-6 w-6 text-[#9945ff]" />
+        <p className="text-xl font-semibold tracking-[-0.03em] text-white">
+          Report Checkpoint
+        </p>
+      </div>
+
+      <div className="mt-5 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Finding Review
+        </p>
+        <div className="mt-4 space-y-3 text-sm">
+          <CheckpointRuleRow
+            label="Questions"
+            value={`${progressCurrent}/${progressTotal}`}
+          />
+          <CheckpointRuleRow
+            label="Critical answered"
+            value={`${criticalAnsweredCount}/${criticalTotal}`}
+          />
+          <CheckpointRuleRow
+            label="Mode"
+            value={reviewMode === "retry" ? "Missed only" : "Full review"}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Unlocks Next
+        </p>
+        <div className="mt-4 flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#14f195]/20 bg-[#14f195]/6 text-[#8fffd0]">
+            <LockKeyhole className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">
+              Audit Report Builder
+            </p>
+            <p className="mt-1 text-sm leading-5 text-zinc-500">
+              Available when you confirm this finding.
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function CheckpointRuleRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-zinc-400">{label}</span>
+      <span className="font-medium text-zinc-100">{value}</span>
+    </div>
+  );
+}
+
+function ContextBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-600">
+        {title}
+      </p>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function EvidenceLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-zinc-500">{label}</span>
+      <span className="truncate text-right font-mono text-xs text-zinc-300">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function ExploitCheckpointStep({
+  label,
+  active,
+}: {
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${active ? "border-[#14f195]/40 bg-[#14f195]/12 text-[#8fffd0] shadow-[0_0_18px_rgba(20,241,149,0.14)]" : "border-white/10 bg-black/20 text-zinc-700"}`}
+      >
+        {active ? <Check className="h-4 w-4" /> : null}
+      </span>
+      <span className={`text-sm ${active ? "text-zinc-200" : "text-zinc-600"}`}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function statusCopy(status: ResearchLabSession["status"]) {
+  switch (status) {
+    case "provisioning":
+      return "Provisioning";
+    case "active":
+      return "Ready";
+    case "dirty":
+      return "Investigation updated";
+    case "running_tests":
+      return "Proof running";
+    case "passed":
+      return "Impact verified";
+    case "failed":
+      return "Proof failed";
+    case "expired":
+      return "Expired";
+    case "destroyed":
+      return "Destroyed";
+    case "error":
+      return "Runtime error";
+  }
+}
+
+function formatContextValue(value: string) {
+  return value
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function abbreviate(value: string) {
+  if (value.length <= 12) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}

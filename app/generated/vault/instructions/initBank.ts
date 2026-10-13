@@ -12,6 +12,7 @@ import {
   fixEncoderSize,
   getBytesDecoder,
   getBytesEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
@@ -49,6 +50,7 @@ export type InitBankInstruction<
   TAccountExpectedMint extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgramData extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -67,6 +69,9 @@ export type InitBankInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgramData extends string
+        ? ReadonlyAccount<TAccountProgramData>
+        : TAccountProgramData,
       ...TRemainingAccounts,
     ]
   >;
@@ -103,11 +108,13 @@ export type InitBankAsyncInput<
   TAccountBank extends string = string,
   TAccountExpectedMint extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgramData extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   bank?: Address<TAccountBank>;
   expectedMint: Address<TAccountExpectedMint>;
   systemProgram?: Address<TAccountSystemProgram>;
+  programData?: Address<TAccountProgramData>;
 };
 
 export async function getInitBankInstructionAsync<
@@ -115,13 +122,15 @@ export async function getInitBankInstructionAsync<
   TAccountBank extends string,
   TAccountExpectedMint extends string,
   TAccountSystemProgram extends string,
+  TAccountProgramData extends string,
   TProgramAddress extends Address = typeof VAULT_PROGRAM_ADDRESS,
 >(
   input: InitBankAsyncInput<
     TAccountAdmin,
     TAccountBank,
     TAccountExpectedMint,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -130,7 +139,8 @@ export async function getInitBankInstructionAsync<
     TAccountAdmin,
     TAccountBank,
     TAccountExpectedMint,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >
 > {
   // Program address.
@@ -142,6 +152,7 @@ export async function getInitBankInstructionAsync<
     bank: { value: input.bank ?? null, isWritable: true },
     expectedMint: { value: input.expectedMint ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    programData: { value: input.programData ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -156,6 +167,21 @@ export async function getInitBankInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.programData.value) {
+    accounts.programData.value = await getProgramDerivedAddress({
+      programAddress:
+        "BPFLoaderUpgradeab1e11111111111111111111111" as Address<"BPFLoaderUpgradeab1e11111111111111111111111">,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            8, 148, 145, 199, 224, 76, 159, 200, 189, 95, 92, 137, 43, 241, 144,
+            112, 48, 112, 248, 230, 106, 91, 206, 120, 170, 69, 223, 75, 83, 36,
+            161, 17,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -164,6 +190,7 @@ export async function getInitBankInstructionAsync<
       getAccountMeta(accounts.bank),
       getAccountMeta(accounts.expectedMint),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.programData),
     ],
     data: getInitBankInstructionDataEncoder().encode({}),
     programAddress,
@@ -172,7 +199,8 @@ export async function getInitBankInstructionAsync<
     TAccountAdmin,
     TAccountBank,
     TAccountExpectedMint,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >);
 }
 
@@ -181,11 +209,13 @@ export type InitBankInput<
   TAccountBank extends string = string,
   TAccountExpectedMint extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgramData extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   bank: Address<TAccountBank>;
   expectedMint: Address<TAccountExpectedMint>;
   systemProgram?: Address<TAccountSystemProgram>;
+  programData: Address<TAccountProgramData>;
 };
 
 export function getInitBankInstruction<
@@ -193,13 +223,15 @@ export function getInitBankInstruction<
   TAccountBank extends string,
   TAccountExpectedMint extends string,
   TAccountSystemProgram extends string,
+  TAccountProgramData extends string,
   TProgramAddress extends Address = typeof VAULT_PROGRAM_ADDRESS,
 >(
   input: InitBankInput<
     TAccountAdmin,
     TAccountBank,
     TAccountExpectedMint,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >,
   config?: { programAddress?: TProgramAddress },
 ): InitBankInstruction<
@@ -207,7 +239,8 @@ export function getInitBankInstruction<
   TAccountAdmin,
   TAccountBank,
   TAccountExpectedMint,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgramData
 > {
   // Program address.
   const programAddress = config?.programAddress ?? VAULT_PROGRAM_ADDRESS;
@@ -218,6 +251,7 @@ export function getInitBankInstruction<
     bank: { value: input.bank ?? null, isWritable: true },
     expectedMint: { value: input.expectedMint ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    programData: { value: input.programData ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -237,6 +271,7 @@ export function getInitBankInstruction<
       getAccountMeta(accounts.bank),
       getAccountMeta(accounts.expectedMint),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.programData),
     ],
     data: getInitBankInstructionDataEncoder().encode({}),
     programAddress,
@@ -245,7 +280,8 @@ export function getInitBankInstruction<
     TAccountAdmin,
     TAccountBank,
     TAccountExpectedMint,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >);
 }
 
@@ -259,6 +295,7 @@ export type ParsedInitBankInstruction<
     bank: TAccountMetas[1];
     expectedMint: TAccountMetas[2];
     systemProgram: TAccountMetas[3];
+    programData: TAccountMetas[4];
   };
   data: InitBankInstructionData;
 };
@@ -271,7 +308,7 @@ export function parseInitBankInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedInitBankInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 5) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -288,6 +325,7 @@ export function parseInitBankInstruction<
       bank: getNextAccount(),
       expectedMint: getNextAccount(),
       systemProgram: getNextAccount(),
+      programData: getNextAccount(),
     },
     data: getInitBankInstructionDataDecoder().decode(instruction.data),
   };

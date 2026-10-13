@@ -3,14 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import type { LevelId, LevelsView } from "../levels/course-status";
 
-export type RootSection = "levels" | "research-labs" | "profile";
+export type RootSection =
+  | "levels"
+  | "vulnerabilities"
+  | "research-labs"
+  | "breach-rooms"
+  | "profile"
+  | "beta-access";
 
 function isLevelView(value: string | null): value is LevelId {
   return (
     value === "level0" ||
     value === "level1" ||
     value === "level2" ||
-    value === "level3"
+    value === "level3" ||
+    value === "level4" ||
+    value === "level5"
   );
 }
 
@@ -26,8 +34,18 @@ function getInitialRouteState(): {
   const section = params.get("section");
   const level = params.get("level");
 
-  if (section === "profile" || section === "research-labs") {
+  if (
+    section === "profile" ||
+    section === "research-labs" ||
+    section === "breach-rooms" ||
+    section === "vulnerabilities" ||
+    section === "beta-access"
+  ) {
     return { section, view: "landing" };
+  }
+
+  if (level === "level0") {
+    return { section: "levels", view: "level1" };
   }
 
   if (isLevelView(level)) {
@@ -51,7 +69,11 @@ function buildRouteUrl(section: RootSection, view: LevelsView) {
 }
 
 export function useLevelRoute() {
-  const initialRouteState = useMemo(() => getInitialRouteState(), []);
+  const initialRouteState = useMemo(
+    () => ({ section: "levels" as RootSection, view: "landing" as LevelsView }),
+    []
+  );
+  const [hasHydratedRoute, setHasHydratedRoute] = useState(false);
   const [activeSection, setActiveSection] = useState<RootSection>(
     initialRouteState.section
   );
@@ -60,13 +82,26 @@ export function useLevelRoute() {
   );
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const nextState = getInitialRouteState();
+      setActiveSection(nextState.section);
+      setActiveLevelsView(nextState.view);
+      setHasHydratedRoute(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedRoute) return;
+
     const nextUrl = buildRouteUrl(activeSection, activeLevelsView);
     const currentUrl = `${window.location.pathname}${window.location.search}`;
 
     if (currentUrl !== nextUrl) {
       window.history.replaceState(null, "", nextUrl);
     }
-  }, [activeLevelsView, activeSection]);
+  }, [activeLevelsView, activeSection, hasHydratedRoute]);
 
   useEffect(() => {
     const handlePopState = () => {

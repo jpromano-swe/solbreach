@@ -31,7 +31,7 @@ type WalletContextValue = {
   wallet: WalletSession | undefined;
   signer: TransactionSigner | undefined;
   error: unknown;
-  connect: (connectorId: string) => Promise<void>;
+  connect: (connectorId: string) => Promise<WalletSession>;
   disconnect: () => Promise<void>;
   isReady: boolean;
 };
@@ -101,9 +101,11 @@ export function WalletProvider({ children }: PropsWithChildren) {
       setSession(s);
       setStatus(WALLET_STATUS.CONNECTED);
       localStorage.setItem(STORAGE_KEY, connectorId);
+      return s;
     } catch (err) {
       setError(err);
       setStatus(WALLET_STATUS.ERROR);
+      throw err;
     }
   }, []);
 

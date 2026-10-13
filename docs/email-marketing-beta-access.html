@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>SolBreach Private Beta</title>
+    <style>
+      html,
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        background: #050606 !important;
+      }
+
+      table,
+      td {
+        border-collapse: collapse !important;
+      }
+
+      img {
+        border: 0;
+        display: block;
+        height: auto;
+        line-height: 100%;
+        outline: none;
+        text-decoration: none;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .email-card {
+        width: 100%;
+        max-width: 660px;
+      }
+
+      .section-padding {
+        padding-left: 48px;
+        padding-right: 48px;
+      }
+
+      .feature-cell {
+        width: 50%;
+        vertical-align: top;
+      }
+
+      .split-cell {
+        width: 50%;
+        vertical-align: middle;
+      }
+
+      @media screen and (max-width: 660px) {
+        .section-padding {
+          padding-left: 24px !important;
+          padding-right: 24px !important;
+        }
+
+        .hero-title {
+          font-size: 38px !important;
+          line-height: 43px !important;
+        }
+
+        .feature-cell,
+        .split-cell {
+          display: block !important;
+          width: 100% !important;
+        }
+
+        .feature-left,
+        .feature-right,
+        .split-copy,
+        .split-art {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+
+        .feature-cell {
+          padding-bottom: 30px !important;
+        }
+
+        .split-copy {
+          padding-top: 28px !important;
+          padding-bottom: 0 !important;
+          text-align: center !important;
+        }
+
+        .split-art {
+          padding-top: 28px !important;
+          text-align: center !important;
+        }
+
+        .mobile-art-first {
+          display: table-header-group !important;
+        }
+
+        .mobile-copy-last {
+          display: table-footer-group !important;
+        }
+
+        .full-width-button {
+          display: block !important;
+          text-align: center !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Replace provider placeholders such as {{first_name}} and {{unsubscribe_url}} if needed. -->
+    <div
+      style="
+        display: none;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        color: transparent;
+      "
+    >
+      Practice finding real Solana security issues before shipping to
+      production.
+    </div>
+
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      border="0"
+      bgcolor="#050606"
+      style="width: 100%; background: #050606"
+    >
+      <tr>
+        <td align="center" style="padding: 30px 12px">
+          <table
+            role="presentation"
+            class="email-card"
+            width="660"
+            cellspacing="0"
+            cellpadding="0"
+            border="0"
+            bgcolor="#101112"
+            style="
+              width: 100%;
+              max-width: 660px;
+              overflow: hidden;
+              border: 1px solid #262626;
+              border-radius: 8px;
+              background: #101112;
+            "
+          >
+            <tr>
+              <td
+                class="section-padding"
+                align="center"
+                style="padding-top: 30px; padding-bottom: 18px"
+              >
+                <a
+                  href="https://solbreach.com"
+                  target="_blank"
+                  style="text-decoration: none"
+                >
+                  <img
+                    src="https://www.solbreach.com/logo_crop.png"
+                    width="190"
+                    alt="SolBreach"
+                    style="width: 190px; max-width: 64%; height: auto"
+                  />
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td
+                class="section-padding"
+                align="center"
+                style="
+                  padding-top: 0;
+                  padding-bottom: 42px;
+                  color: #71717a;
+                  font-family: Arial, Helvetica, sans-serif;
+                  font-size: 11px;
+                  line-height: 16px;
+                "
+              >
+                <a
+                  href="{{view_in_browser_url}}"
+                  target="_blank"
+                  style="color: #8b8b94; text-decoration: underline"
+                  >View this email in your browser</a
+                >
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="section-padding"
+                align="center"
+                style="padding-bottom: 24px"
+              >
+                <p
+                  style="
+                    margin: 0 0 18px;
+                    color: #b892ff;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 2.5px;
+                    line-height: 17px;
+                    text-transform: uppercase;
+                  "
+                >
+                  Private beta
+                </p>
+                <h1
+                  class="hero-title"
+                  style="
+                    margin: 0;
+                    max-width: 540px;
+                    color: #fafafa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 50px;
+                    font-weight: 700;
+                    letter-spacing: -1.8px;
+                    line-height: 55px;
+                  "
+                >
+                  Learn to find what others
+                  <span style="color: #14f195; font-style: italic">miss.</span>
+                </h1>
+                <p
+                  style="
+                    margin: 22px auto 0;
+                    max-width: 500px;
+                    color: #a1a1aa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 16px;
+                    line-height: 26px;
+                  "
+                >
+                  Practice finding real security issues, prove they matter, and
+                  learn how to fix vulnerable Solana programs before shipping to
+                  production.
+                </p>
+
+                <table
+                  role="presentation"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                  style="margin-top: 28px"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      bgcolor="#9945ff"
+                      style="border-radius: 6px; background: #9945ff"
+                    >
+                      <a
+                        class="full-width-button"
+                        href="https://beta.solbreach.com/onboarding"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 15px 25px;
+                          color: #ffffff;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 14px;
+                          font-weight: 700;
+                          line-height: 18px;
+                          text-decoration: none;
+                        "
+                        >Request Beta Access&nbsp;&nbsp;&#8594;</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding: 6px 24px 54px">
+                <img
+                  src="https://beta.solbreach.com/vulnerabilities/01-account-substitution.png"
+                  width="390"
+                  alt="The Illusionist account substitution module"
+                  style="width: 390px; max-width: 92%; height: auto"
+                />
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="section-padding"
+                align="center"
+                style="padding-bottom: 34px"
+              >
+                <h2
+                  style="
+                    margin: 0;
+                    color: #fafafa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 30px;
+                    font-weight: 700;
+                    letter-spacing: -0.8px;
+                    line-height: 37px;
+                  "
+                >
+                  What do you practice?
+                </h2>
+                <p
+                  style="
+                    margin: 10px auto 0;
+                    max-width: 450px;
+                    color: #8b8b94;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 14px;
+                    line-height: 23px;
+                  "
+                >
+                  Build judgment across the complete Solana security workflow.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="section-padding" style="padding-bottom: 16px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                >
+                  <tr>
+                    <td
+                      class="feature-cell feature-left"
+                      align="center"
+                      style="padding: 0 20px 34px 0"
+                    >
+                      <table
+                        role="presentation"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+                          <td
+                            align="center"
+                            bgcolor="#1a1026"
+                            style="
+                              width: 44px;
+                              height: 44px;
+                              border: 1px solid #573087;
+                              border-radius: 50%;
+                              color: #c7a6ff;
+                              font-family: Arial, Helvetica, sans-serif;
+                              font-size: 15px;
+                              font-weight: 700;
+                            "
+                          >
+                            01
+                          </td>
+                        </tr>
+                      </table>
+                      <h3
+                        style="
+                          margin: 15px 0 8px;
+                          color: #fafafa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 17px;
+                          line-height: 23px;
+                        "
+                      >
+                        Vulnerability Modules
+                      </h3>
+                      <p
+                        style="
+                          margin: 0;
+                          color: #8b8b94;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 13px;
+                          line-height: 21px;
+                        "
+                      >
+                        Learn one Solana exploit family at a time through guided
+                        challenges.
+                      </p>
+                    </td>
+                    <td
+                      class="feature-cell feature-right"
+                      align="center"
+                      style="padding: 0 0 34px 20px"
+                    >
+                      <table
+                        role="presentation"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+                          <td
+                            align="center"
+                            bgcolor="#071d17"
+                            style="
+                              width: 44px;
+                              height: 44px;
+                              border: 1px solid #17684c;
+                              border-radius: 50%;
+                              color: #8fffd0;
+                              font-family: Arial, Helvetica, sans-serif;
+                              font-size: 15px;
+                              font-weight: 700;
+                            "
+                          >
+                            02
+                          </td>
+                        </tr>
+                      </table>
+                      <h3
+                        style="
+                          margin: 15px 0 8px;
+                          color: #fafafa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 17px;
+                          line-height: 23px;
+                        "
+                      >
+                        Research Labs
+                      </h3>
+                      <p
+                        style="
+                          margin: 0;
+                          color: #8b8b94;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 13px;
+                          line-height: 21px;
+                        "
+                      >
+                        Inspect a protocol, exploit it, verify impact, and build
+                        a finding report.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      class="feature-cell feature-left"
+                      align="center"
+                      style="padding: 0 20px 34px 0"
+                    >
+                      <table
+                        role="presentation"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+                          <td
+                            align="center"
+                            bgcolor="#071d17"
+                            style="
+                              width: 44px;
+                              height: 44px;
+                              border: 1px solid #17684c;
+                              border-radius: 50%;
+                              color: #8fffd0;
+                              font-family: Arial, Helvetica, sans-serif;
+                              font-size: 15px;
+                              font-weight: 700;
+                            "
+                          >
+                            03
+                          </td>
+                        </tr>
+                      </table>
+                      <h3
+                        style="
+                          margin: 15px 0 8px;
+                          color: #fafafa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 17px;
+                          line-height: 23px;
+                        "
+                      >
+                        Deterministic Evidence
+                      </h3>
+                      <p
+                        style="
+                          margin: 0;
+                          color: #8b8b94;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 13px;
+                          line-height: 21px;
+                        "
+                      >
+                        Trace account state and unlock progress only after
+                        proving the impact.
+                      </p>
+                    </td>
+                    <td
+                      class="feature-cell feature-right"
+                      align="center"
+                      style="padding: 0 0 34px 20px"
+                    >
+                      <table
+                        role="presentation"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+                          <td
+                            align="center"
+                            bgcolor="#1a1026"
+                            style="
+                              width: 44px;
+                              height: 44px;
+                              border: 1px solid #573087;
+                              border-radius: 50%;
+                              color: #c7a6ff;
+                              font-family: Arial, Helvetica, sans-serif;
+                              font-size: 15px;
+                              font-weight: 700;
+                            "
+                          >
+                            04
+                          </td>
+                        </tr>
+                      </table>
+                      <h3
+                        style="
+                          margin: 15px 0 8px;
+                          color: #fafafa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 17px;
+                          line-height: 23px;
+                        "
+                      >
+                        Verifiable Progress
+                      </h3>
+                      <p
+                        style="
+                          margin: 0;
+                          color: #8b8b94;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 13px;
+                          line-height: 21px;
+                        "
+                      >
+                        Collect badges and wallet-bound certificates for
+                        completed work.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding: 0 24px 58px">
+                <table
+                  role="presentation"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      style="border: 1px solid #3f3f46; border-radius: 6px"
+                    >
+                      <a
+                        href="https://solbreach.gitbook.io/documentation"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 13px 22px;
+                          color: #e4e4e7;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 13px;
+                          font-weight: 700;
+                          line-height: 17px;
+                          text-decoration: none;
+                        "
+                        >Read the Documentation</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                style="
+                  height: 1px;
+                  background: #262626;
+                  font-size: 1px;
+                  line-height: 1px;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="section-padding"
+                align="center"
+                style="padding-top: 54px; padding-bottom: 36px"
+              >
+                <p
+                  style="
+                    margin: 0 0 12px;
+                    color: #14f195;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 2.2px;
+                    text-transform: uppercase;
+                  "
+                >
+                  Beyond the challenge
+                </p>
+                <h2
+                  style="
+                    margin: 0;
+                    color: #fafafa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 31px;
+                    font-weight: 700;
+                    letter-spacing: -0.9px;
+                    line-height: 38px;
+                  "
+                >
+                  Turn exploits into security judgment.
+                </h2>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="section-padding" style="padding-bottom: 46px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                >
+                  <tr>
+                    <td
+                      class="split-cell split-art"
+                      align="center"
+                      style="padding-right: 28px"
+                    >
+                      <img
+                        src="https://beta.solbreach.com/badges/badge-level-1.png"
+                        width="210"
+                        alt="Account Substitution badge"
+                        style="width: 210px; max-width: 90%; height: auto"
+                      />
+                    </td>
+                    <td
+                      class="split-cell split-copy"
+                      style="padding-left: 12px"
+                    >
+                      <p
+                        style="
+                          margin: 0 0 9px;
+                          color: #b892ff;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 11px;
+                          font-weight: 700;
+                          letter-spacing: 1.8px;
+                          text-transform: uppercase;
+                        "
+                      >
+                        Learn the pattern
+                      </p>
+                      <h3
+                        style="
+                          margin: 0;
+                          color: #fafafa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 23px;
+                          line-height: 29px;
+                        "
+                      >
+                        Recognize account substitution before it becomes an
+                        exploit.
+                      </h3>
+                      <p
+                        style="
+                          margin: 14px 0 0;
+                          color: #8b8b94;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 14px;
+                          line-height: 23px;
+                        "
+                      >
+                        Reconstruct the vulnerable account path, execute it, and
+                        understand which validation was missing.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="section-padding" style="padding-bottom: 54px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                >
+                  <tr>
+                    <td
+                      class="split-cell split-copy mobile-copy-last"
+                      style="padding-right: 20px"
+                    >
+                      <p
+                        style="
+                          margin: 0 0 9px;
+                          color: #14f195;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 11px;
+                          font-weight: 700;
+                          letter-spacing: 1.8px;
+                          text-transform: uppercase;
+                        "
+                      >
+                        Prove the result
+                      </p>
+                      <h3
+                        style="
+                          margin: 0;
+                          color: #fafafa;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 23px;
+                          line-height: 29px;
+                        "
+                      >
+                        Follow the evidence from state change to finding report.
+                      </h3>
+                      <p
+                        style="
+                          margin: 14px 0 0;
+                          color: #8b8b94;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 14px;
+                          line-height: 23px;
+                        "
+                      >
+                        Research Labs connect root cause, transaction evidence,
+                        protocol impact, mitigation, and validated completion.
+                      </p>
+                    </td>
+                    <td
+                      class="split-cell split-art mobile-art-first"
+                      align="center"
+                      style="padding-left: 28px"
+                    >
+                      <img
+                        src="https://beta.solbreach.com/certificates/level-1.png"
+                        width="228"
+                        alt="The Illusionist Research Lab certificate"
+                        style="width: 228px; max-width: 90%; height: auto"
+                      />
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="section-padding" style="padding-bottom: 58px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                  bgcolor="#0b0c0d"
+                  style="
+                    border: 1px solid #262626;
+                    border-radius: 8px;
+                    background: #0b0c0d;
+                  "
+                >
+                  <tr>
+                    <td style="padding: 30px 32px">
+                      <p
+                        style="
+                          margin: 0;
+                          color: #b892ff;
+                          font-family:
+                            Georgia, &quot;Times New Roman&quot;, serif;
+                          font-size: 42px;
+                          line-height: 24px;
+                        "
+                      >
+                        &ldquo;
+                      </p>
+                      <p
+                        style="
+                          margin: 10px 0 0;
+                          color: #e4e4e7;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 21px;
+                          font-weight: 600;
+                          line-height: 31px;
+                        "
+                      >
+                        Security knowledge becomes useful when you can recognize
+                        the bug, prove the impact, and explain the fix.
+                      </p>
+                      <p
+                        style="
+                          margin: 18px 0 0;
+                          color: #71717a;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 12px;
+                          line-height: 19px;
+                        "
+                      >
+                        The SolBreach training approach
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="section-padding"
+                align="center"
+                bgcolor="#0b0c0d"
+                style="
+                  padding-top: 52px;
+                  padding-bottom: 54px;
+                  background: #0b0c0d;
+                "
+              >
+                <h2
+                  style="
+                    margin: 0;
+                    color: #fafafa;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 32px;
+                    font-weight: 700;
+                    letter-spacing: -0.9px;
+                    line-height: 39px;
+                  "
+                >
+                  Ready to test your security instincts?
+                </h2>
+                <p
+                  style="
+                    margin: 13px auto 0;
+                    max-width: 440px;
+                    color: #8b8b94;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 14px;
+                    line-height: 23px;
+                  "
+                >
+                  Closed-beta access is limited. Complete the short application
+                  so we can place you in the right testing group.
+                </p>
+                <table
+                  role="presentation"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                  style="margin-top: 25px"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      bgcolor="#9945ff"
+                      style="border-radius: 6px; background: #9945ff"
+                    >
+                      <a
+                        class="full-width-button"
+                        href="https://beta.solbreach.com/onboarding"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 15px 25px;
+                          color: #ffffff;
+                          font-family: Arial, Helvetica, sans-serif;
+                          font-size: 14px;
+                          font-weight: 700;
+                          line-height: 18px;
+                          text-decoration: none;
+                        "
+                        >Request Beta Access&nbsp;&nbsp;&#8594;</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="section-padding"
+                align="center"
+                style="padding-top: 32px; padding-bottom: 34px"
+              >
+                <img
+                  src="https://www.solbreach.com/logo_crop.png"
+                  width="150"
+                  alt="SolBreach"
+                  style="width: 150px; max-width: 52%; height: auto"
+                />
+                <p
+                  style="
+                    margin: 20px 0 0;
+                    color: #52525b;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 11px;
+                    line-height: 18px;
+                  "
+                >
+                  <a
+                    href="https://solbreach.com"
+                    target="_blank"
+                    style="color: #8b8b94; text-decoration: underline"
+                    >Website</a
+                  >
+                  &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+                  <a
+                    href="https://solbreach.gitbook.io/documentation"
+                    target="_blank"
+                    style="color: #8b8b94; text-decoration: underline"
+                    >Documentation</a
+                  >
+                  &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+                  <a
+                    href="https://x.com/solbreach_app"
+                    target="_blank"
+                    style="color: #8b8b94; text-decoration: underline"
+                    >@solbreach_app</a
+                  >
+                </p>
+                <p
+                  style="
+                    margin: 12px 0 0;
+                    color: #3f3f46;
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 10px;
+                    line-height: 17px;
+                  "
+                >
+                  You received this email because you expressed interest in
+                  SolBreach.<br />
+                  <a
+                    href="{{unsubscribe_url}}"
+                    target="_blank"
+                    style="color: #71717a; text-decoration: underline"
+                    >Unsubscribe</a
+                  >
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

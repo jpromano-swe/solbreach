@@ -22,4 +22,6 @@ pub enum VaultError {
     CertificateAssetAlreadyRecorded,
     #[msg("The signer is not allowed to bind certificate assets")]
     UnauthorizedCertificationAuthority,
+    #[msg("Only the program upgrade authority may initialize global configuration")]
+    UnauthorizedInitialization,
 }

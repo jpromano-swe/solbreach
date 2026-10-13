@@ -1,180 +1,859 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+
 import {
-  Award,
-  BarChart3,
-  Check,
-  Clock3,
-  LockKeyhole,
-} from "lucide-react";
+  ensureBackendWalletAuth,
+  type Level1AuthSession,
+} from "../lib/levels/level1-backend";
+import { trackAnalyticsEvent, type AnalyticsEventName } from "../lib/analytics";
+import {
+  applyTerminalEvents,
+  createResearchLabSession,
+  FALLBACK_RESEARCH_LABS,
+  fetchResearchLabTerminal,
+  getResearchLab,
+  listResearchLabs,
+  resetResearchLabSession,
+  type ResearchLabManifest,
+  type ResearchLabReport,
+  type ResearchLabSession,
+} from "../lib/research-labs/lab-state";
+import { useWallet } from "../lib/wallet/context";
+import { ResearchLabCatalog } from "./research-labs/catalog";
+import { buildAccountEvidence } from "./research-labs/account-evidence";
+import { LabContextPanel } from "./research-labs/context-panel";
+import { getResearchLabAdapter } from "./research-labs/lab-adapters";
+import {
+  LabScenarioBriefing,
+  ResearchLabSessionHeader,
+} from "./research-labs/lab-shell";
+import { ResearchLabWorkspace } from "./research-labs/workspace";
+import { useFindingReview } from "./research-labs/use-finding-review";
+import { useResearchLabReport } from "./research-labs/use-research-lab-report";
+import { useResearchLabTransactions } from "./research-labs/use-research-lab-transactions";
+import type {
+  ExecuteExploitView,
+  LabPhase,
+  SandboxStatus,
+  WorkspaceTab,
+} from "./research-labs/types";
 
-const RESEARCH_LABS = [
-  {
-    title: "Vault Mirage",
-    difficulty: "Intermediate",
-    experienceTime: "2-4 hours",
-    certificationAwarded: "Yes",
-    description:
-      "Oracle manipulation and vault health factor distortion leading to under-collateralized liquidations and potential treasury drain.",
-    objectives: [
-      "Analyze account logic",
-      "Trace oracle price dependency",
-      "Manipulate health factor",
-      "Drain the protocol treasury",
-    ],
-  },
-  {
-    title: "Governance Takeover",
-    difficulty: "Advanced",
-    experienceTime: "3-5 hours",
-    certificationAwarded: "Yes",
-    description:
-      "Social engineering and durable nonce abuse to gain governance authority and execute malicious proposals.",
-    objectives: [
-      "Analyze governance flow",
-      "Abuse durable nonce",
-      "Escalate governance authority",
-      "Execute malicious proposal",
-    ],
-  },
-  {
-    title: "Lending Market Manipulation",
-    difficulty: "Intermediate",
-    experienceTime: "2-3 hours",
-    certificationAwarded: "Yes",
-    description:
-      "Price manipulation and collateral validation flaw used to drain lending market liquidity.",
-    objectives: [
-      "Manipulate oracle price",
-      "Review collateral validation",
-      "Borrow against inflated value",
-      "Drain lending pool",
-    ],
-  },
-];
+const BASE_TABS: WorkspaceTab[] = ["inspect", "exploit"];
 
-export function ResearchLabsSection() {
+// Research lab motion storyboard:
+//   000ms old section fades down/out while new section slides up/in
+//   180ms previous section unmounts; new section owns the surface
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Research Labs request failed.";
+  }
+}
+
+export function ResearchLabsSection({
+  isCollectingLevel1Badge,
+  menuResetKey = 0,
+  mintingResearchLabCertificateLevel,
+  level1BadgeCollected,
+  level1BadgeEarned,
+  level2BadgeCollected,
+  level3BadgeCollected,
+  powerUserBadgeEarned,
+  researchLabCertificateMintedByLevel,
+  onBadgeStateChanged,
+  onContinueToLevel2,
+  onContinueToLevel3,
+  onGoToLevel1Module,
+  onGoToLevel2Module,
+  onGoToLevel3Module,
+  onMintResearchLabCertificate,
+}: {
+  isCollectingLevel1Badge: boolean;
+  menuResetKey?: number;
+  mintingResearchLabCertificateLevel: 1 | 2 | 3 | null;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
+  level2BadgeCollected: boolean;
+  level3BadgeCollected: boolean;
+  powerUserBadgeEarned: boolean;
+  researchLabCertificateMintedByLevel: Partial<Record<1 | 2 | 3, boolean>>;
+  onBadgeStateChanged?: () => void;
+  onContinueToLevel2: () => void;
+  onContinueToLevel3: () => void;
+  onGoToLevel1Module: () => void;
+  onGoToLevel2Module: () => void;
+  onGoToLevel3Module: () => void;
+  onMintResearchLabCertificate: (options: {
+    certificateLevel: 1 | 2 | 3;
+    researchLabAccessToken: string;
+    researchLabSessionId: string;
+  }) => Promise<void>;
+}) {
+  const { status: walletStatus, wallet } = useWallet();
+  const [backendAuth, setBackendAuth] = useState<Level1AuthSession | null>(
+    null
+  );
+  const [labs, setLabs] = useState<ResearchLabManifest[]>(
+    FALLBACK_RESEARCH_LABS
+  );
+  const [isCatalogLoading, setIsCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [activeLab, setActiveLab] = useState<ResearchLabManifest | null>(null);
+  const [session, setSession] = useState<ResearchLabSession | null>(null);
+  const [activeFilePath, setActiveFilePath] = useState("");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("inspect");
+  const [executeExploitView, setExecuteExploitView] =
+    useState<ExecuteExploitView>("HYPOTHESIS");
+  const [revealedHints, setRevealedHints] = useState<string[]>([]);
+  const menuResetKeyRef = useRef(menuResetKey);
+  const trackedViewEventsRef = useRef<Set<string>>(new Set());
+
+  const activeBackendAuth =
+    backendAuth &&
+    walletStatus === "connected" &&
+    wallet?.account.address === backendAuth.walletAddress
+      ? backendAuth
+      : null;
+  const isBackendAuthenticated = Boolean(activeBackendAuth?.accessToken);
+  const activeAdapter = getResearchLabAdapter(activeLab);
+  const isPrerequisiteBadgeCollected = useCallback(
+    (level: 1 | 2 | 3) => {
+      if (level === 3) return level3BadgeCollected;
+      if (level === 2) return level2BadgeCollected;
+      return level1BadgeCollected;
+    },
+    [level1BadgeCollected, level2BadgeCollected, level3BadgeCollected]
+  );
+  const goToPrerequisiteModule = useCallback(
+    (level: 1 | 2 | 3) => {
+      if (level === 3) {
+        onGoToLevel3Module();
+        return;
+      }
+
+      if (level === 2) {
+        onGoToLevel2Module();
+        return;
+      }
+
+      onGoToLevel1Module();
+    },
+    [onGoToLevel1Module, onGoToLevel2Module, onGoToLevel3Module]
+  );
+  const activePrerequisiteBadgeCollected =
+    isPrerequisiteBadgeCollected(activeAdapter.prerequisiteBadgeLevel);
+  const activeCertificateLevel = activeAdapter.certificate.level;
+  const activeResearchLabCertificateMinted = Boolean(
+    researchLabCertificateMintedByLevel[activeCertificateLevel]
+  );
+  const isMintingActiveResearchLabCertificate =
+    mintingResearchLabCertificateLevel === activeCertificateLevel;
+
+  const ensureLabAuth = useCallback(async () => {
+    if (walletStatus !== "connected" || !wallet) {
+      throw new Error("Connect your wallet before opening Research Labs.");
+    }
+
+    const auth = await ensureBackendWalletAuth(wallet);
+    setBackendAuth(auth);
+    return auth;
+  }, [wallet, walletStatus]);
+
+  const getActiveAuth = useCallback(
+    async () => activeBackendAuth ?? (await ensureLabAuth()),
+    [activeBackendAuth, ensureLabAuth]
+  );
+
+  const {
+    auditReportStage,
+    isReportSaving,
+    isReportSubmitting,
+    loadReport,
+    populateReportDefaults,
+    report,
+    reportFields,
+    resetReport,
+    saveReportDraft,
+    setAuditReportStage,
+    setReportFields,
+    submitReport,
+  } = useResearchLabReport({
+    activeLab,
+    getAuth: getActiveAuth,
+    onSessionChange: setSession,
+    session,
+  });
+
+  const resolveDefaultFilePath = useCallback(
+    (
+      lab: ResearchLabManifest | null,
+      currentSession: ResearchLabSession | null,
+      selectedPath?: string
+    ) => {
+      if (!lab || !currentSession) return "";
+
+      return (
+        (selectedPath
+          ? currentSession.fileEntries.find(
+              (file) => file.path === selectedPath
+            )?.path
+          : undefined) ??
+        currentSession.fileEntries.find((file) => file.path === lab.entryFile)
+          ?.path ??
+        currentSession.fileEntries[0]?.path ??
+        lab.entryFile ??
+        ""
+      );
+    },
+    []
+  );
+
+  const {
+    criticalAnsweredCount,
+    criticalTotal,
+    openFindingReport,
+    questionnaireAnswers,
+    questionnaireResult,
+    reportOpened,
+    resetFindingReview,
+    retryQuestionIds,
+    retryQuestionnaire,
+    reviewIndex,
+    reviewMode,
+    reviewOptionOrder,
+    visibleReviewQuestions,
+    reviewStarted,
+    reviewStepCurrent,
+    reviewStepTotal,
+    setReviewIndex,
+    startFindingReview,
+    submitQuestionnaire,
+    updateQuestionnaireAnswer,
+  } = useFindingReview({
+    getAuth: getActiveAuth,
+    loadReport,
+    onOpenReportTab: () => setActiveTab("report"),
+    onSessionChange: setSession,
+    onPopulateReportDefaults: populateReportDefaults,
+    onResetAuditReportStage: () => setAuditReportStage("BUILDER"),
+    questionnaire: activeAdapter.questionnaire,
+    session,
+  });
+
+  const activeFile = useMemo(() => {
+    if (!activeLab || !session) return null;
+
+    const resolvedPath = resolveDefaultFilePath(
+      activeLab,
+      session,
+      activeFilePath
+    );
+
+    return (
+      session.fileEntries.find((file) => file.path === resolvedPath) ?? null
+    );
+  }, [activeFilePath, activeLab, resolveDefaultFilePath, session]);
+
+  const activeFileContent =
+    activeFile && session
+      ? (session.files[activeFile.path] ?? activeFile.content)
+      : "";
+
+  const impactVerified = Boolean(
+    session?.impactVerified ??
+    session?.labCompleted ??
+    (report?.status === "accepted" ? true : false)
+  );
+  const reportUnlocked = Boolean(
+    session?.reportUnlocked ??
+    (report?.status === "draft" ||
+      report?.status === "retry" ||
+      report?.status === "accepted")
+  );
+  const findingReviewPassed = Boolean(
+    session?.findingReviewPassed ??
+    (report?.status === "accepted" || session?.labCompleted)
+  );
+  const availableTabs = useMemo<WorkspaceTab[]>(
+    () => (impactVerified ? [...BASE_TABS, "report"] : BASE_TABS),
+    [impactVerified]
+  );
+  const resolvedActiveTab = availableTabs.includes(activeTab)
+    ? activeTab
+    : activeTab === "verify" || activeTab === "report"
+      ? "exploit"
+      : "inspect";
+  const changeWorkspaceTab = useCallback(
+    (tab: WorkspaceTab) => {
+      if (tab === "report" && !impactVerified) {
+        setActiveTab("exploit");
+        return;
+      }
+
+      setActiveTab(tab);
+    },
+    [impactVerified]
+  );
+
+  const trackLabEvent = useCallback(
+    (
+      eventName: AnalyticsEventName,
+      properties?: Record<string, string | number | boolean | null | undefined>
+    ) => {
+      trackAnalyticsEvent({
+        eventName,
+        labId: activeLab?.id ?? null,
+        properties,
+        sessionId: session?.sessionId ?? null,
+        walletAddress: wallet?.account.address ?? null,
+      });
+    },
+    [activeLab?.id, session?.sessionId, wallet?.account.address]
+  );
+
+  useEffect(() => {
+    trackAnalyticsEvent({
+      eventName: "research_labs_catalog_viewed",
+      walletAddress: wallet?.account.address ?? null,
+    });
+  }, [wallet?.account.address]);
+
+  useEffect(() => {
+    if (!activeLab || !session) return;
+    if (activeAdapter.code !== "RL1") return;
+
+    const baseProperties = {
+      activeTab: resolvedActiveTab,
+      executeExploitView,
+    };
+    const events: Array<{
+      eventName: AnalyticsEventName;
+      properties?: Record<string, string | number | boolean | null | undefined>;
+      key: string;
+    }> = [];
+
+    if (resolvedActiveTab === "inspect") {
+      events.push({
+        eventName: "rl1_inspect_viewed",
+        key: `${session.sessionId}:rl1_inspect_viewed`,
+        properties: baseProperties,
+      });
+      events.push({
+        eventName: "rl1_account_state_viewed",
+        key: `${session.sessionId}:rl1_account_state_viewed`,
+        properties: baseProperties,
+      });
+
+      if (activeFile?.path) {
+        events.push({
+          eventName: "rl1_source_file_opened",
+          key: `${session.sessionId}:rl1_source_file_opened:${activeFile.path}`,
+          properties: {
+            ...baseProperties,
+            filePath: activeFile.path,
+          },
+        });
+      }
+    }
+
+    if (resolvedActiveTab === "exploit") {
+      events.push({
+        eventName:
+          executeExploitView === "EVIDENCE_REVIEW"
+            ? "rl1_evidence_review_viewed"
+            : "rl1_exploit_interface_viewed",
+        key: `${session.sessionId}:${
+          executeExploitView === "EVIDENCE_REVIEW"
+            ? "rl1_evidence_review_viewed"
+            : "rl1_exploit_interface_viewed"
+        }`,
+        properties: baseProperties,
+      });
+    }
+
+    if (resolvedActiveTab === "report") {
+      events.push({
+        eventName: "rl1_report_finding_viewed",
+        key: `${session.sessionId}:rl1_report_finding_viewed`,
+        properties: baseProperties,
+      });
+    }
+
+    for (const event of events) {
+      if (trackedViewEventsRef.current.has(event.key)) continue;
+      trackedViewEventsRef.current.add(event.key);
+      trackAnalyticsEvent({
+        eventName: event.eventName,
+        labId: activeLab.id,
+        properties: event.properties,
+        sessionId: session.sessionId,
+        walletAddress: wallet?.account.address ?? null,
+      });
+    }
+  }, [
+    activeFile?.path,
+    activeAdapter.code,
+    activeLab,
+    executeExploitView,
+    resolvedActiveTab,
+    session,
+    wallet?.account.address,
+  ]);
+
+  const loadCatalog = useCallback(async () => {
+    setIsCatalogLoading(true);
+    setCatalogError(null);
+    try {
+      const auth = await ensureLabAuth();
+      const nextLabs = await listResearchLabs(auth.accessToken);
+      setLabs(nextLabs.length ? nextLabs : FALLBACK_RESEARCH_LABS);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      setCatalogError(message);
+      toast.error(message);
+    } finally {
+      setIsCatalogLoading(false);
+    }
+  }, [ensureLabAuth]);
+
+  const pollTerminal = useCallback(
+    async (
+      auth: Level1AuthSession,
+      currentSession: ResearchLabSession,
+      afterSequence = currentSession.latestTerminalSequence
+    ) => {
+      const terminal = await fetchResearchLabTerminal({
+        accessToken: auth.accessToken,
+        afterSequence,
+        sessionId: currentSession.sessionId,
+      });
+      const nextSession = applyTerminalEvents(
+        currentSession,
+        terminal.events,
+        terminal.latestSequence
+      );
+      setSession(nextSession);
+      return nextSession;
+    },
+    [setSession]
+  );
+
+  const {
+    evidenceAccounts,
+    executeTransaction,
+    isRunning,
+    proveImpact,
+    resetTransactions,
+    txResults,
+  } = useResearchLabTransactions({
+    activeLab,
+    getAuth: getActiveAuth,
+    loadReport,
+    onConsoleClose: () => undefined,
+    onConsoleOpen: () => undefined,
+    onSessionChange: setSession,
+    pollTerminal,
+    session,
+  });
+
+  const resetLocalState = useCallback(() => {
+    setActiveFilePath("");
+    setActiveTab("inspect");
+    setExecuteExploitView("HYPOTHESIS");
+    setRevealedHints([]);
+    resetReport();
+    resetTransactions();
+    resetFindingReview();
+  }, [resetFindingReview, resetReport, resetTransactions]);
+
+  useEffect(() => {
+    if (menuResetKey === menuResetKeyRef.current) return;
+
+    menuResetKeyRef.current = menuResetKey;
+    resetLocalState();
+    setActiveLab(null);
+    setSession(null);
+  }, [menuResetKey, resetLocalState]);
+
+  const sandboxStatus = deriveSandboxStatus(session, isRunning);
+  const phase = deriveLabPhase({
+    activeTab: resolvedActiveTab,
+    executeExploitView,
+    impactVerified,
+    isRunning,
+    report,
+    session,
+  });
+
+  const openLab = async (lab: ResearchLabManifest) => {
+    const adapter = getResearchLabAdapter(lab);
+    const prerequisiteCollected = isPrerequisiteBadgeCollected(
+      adapter.prerequisiteBadgeLevel
+    );
+    if (!prerequisiteCollected) {
+      toast.message(
+        `Collect the Level ${adapter.prerequisiteBadgeLevel} badge before opening this Research Lab.`
+      );
+      goToPrerequisiteModule(adapter.prerequisiteBadgeLevel);
+      return;
+    }
+
+    setIsCatalogLoading(true);
+    setCatalogError(null);
+    try {
+      const auth = activeBackendAuth;
+      if (!auth?.accessToken) {
+        throw new Error(
+          "Authenticate your wallet before opening a Research Lab."
+        );
+      }
+
+      resetLocalState();
+      const labDetail = await getResearchLab(auth.accessToken, lab.id);
+      const nextSession = await createResearchLabSession(
+        auth.accessToken,
+        labDetail.id
+      );
+      const nextLab = { ...labDetail, files: nextSession.fileEntries };
+
+      setActiveLab(nextLab);
+      setSession(nextSession);
+      setActiveFilePath(resolveDefaultFilePath(nextLab, nextSession));
+      await pollTerminal(auth, nextSession, 0);
+      await loadReport(auth, nextSession);
+      trackAnalyticsEvent({
+        eventName: "research_lab_opened",
+        labId: nextLab.id,
+        properties: {
+          labSlug: nextLab.slug,
+          labTitle: nextLab.title,
+        },
+        sessionId: nextSession.sessionId,
+        walletAddress: auth.walletAddress,
+      });
+      toast.success("Research lab session created");
+    } catch (error) {
+      const message = getErrorMessage(error);
+      setCatalogError(message);
+      toast.error(message);
+    } finally {
+      setIsCatalogLoading(false);
+    }
+  };
+
+  const resetEnvironment = useCallback(async () => {
+    if (!activeLab || !session) return;
+    try {
+      const auth = await getActiveAuth();
+      resetLocalState();
+      const nextSession = await resetResearchLabSession(
+        auth.accessToken,
+        session.sessionId
+      );
+      const nextLab = { ...activeLab, files: nextSession.fileEntries };
+      setSession(nextSession);
+      setActiveLab(nextLab);
+      setActiveFilePath(resolveDefaultFilePath(nextLab, nextSession));
+      await loadReport(auth, nextSession);
+      toast.message("Sandbox session reset");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  }, [
+    activeLab,
+    getActiveAuth,
+    loadReport,
+    resetLocalState,
+    resolveDefaultFilePath,
+    session,
+  ]);
+
+  const leaveLab = () => {
+    resetLocalState();
+    setActiveLab(null);
+    setSession(null);
+  };
+
+  const revealHint = () => {
+    if (!activeLab) return;
+    const nextHint = activeLab.hints.find(
+      (hint) => !revealedHints.includes(hint.id)
+    );
+    if (!nextHint) return;
+    if (activeAdapter.code === "RL1") {
+      trackLabEvent("rl1_hint_revealed", {
+        hintId: nextHint.id,
+        hintIndex: revealedHints.length + 1,
+      });
+    }
+    setRevealedHints([...revealedHints, nextHint.id]);
+  };
+
+  const openExploitFromContext = () => {
+    if (activeAdapter.code === "RL1") {
+      trackLabEvent("rl1_try_exploit_clicked");
+    }
+    setActiveTab("exploit");
+  };
+
+  const openFindingReportWithAnalytics = () => {
+    if (activeAdapter.code === "RL1") {
+      trackLabEvent("rl1_audit_report_opened");
+    }
+    openFindingReport();
+  };
+
+  const submitReportAndRefreshBadges = useCallback(
+    async (options?: Parameters<typeof submitReport>[0]) => {
+      const submitted = await submitReport(options);
+      if (submitted?.status === "accepted" && submitted.labCompleted) {
+        onBadgeStateChanged?.();
+      }
+      return submitted;
+    },
+    [onBadgeStateChanged, submitReport]
+  );
+
+  const mintActiveResearchLabCertificate = useCallback(async () => {
+    if (!session) {
+      toast.error("Open an active Research Lab session before minting.");
+      return;
+    }
+    const auth = await getActiveAuth();
+    await onMintResearchLabCertificate({
+      certificateLevel: activeCertificateLevel,
+      researchLabAccessToken: auth.accessToken,
+      researchLabSessionId: session.sessionId,
+    });
+  }, [
+    activeCertificateLevel,
+    getActiveAuth,
+    onMintResearchLabCertificate,
+    session,
+  ]);
+
+  const openNextModuleFromLab = useCallback(() => {
+    if (activeAdapter.prerequisiteBadgeLevel === 1) {
+      onContinueToLevel2();
+      return;
+    }
+
+    onContinueToLevel3();
+  }, [
+    activeAdapter.prerequisiteBadgeLevel,
+    onContinueToLevel2,
+    onContinueToLevel3,
+  ]);
+
+  if (!activeLab || !session) {
+    return (
+      <ResearchLabCatalog
+        catalogError={catalogError}
+        isAuthenticated={isBackendAuthenticated}
+        isLoading={isCatalogLoading}
+        labs={labs}
+        level1BadgeCollected={level1BadgeCollected}
+        level2BadgeCollected={level2BadgeCollected}
+        level3BadgeCollected={level3BadgeCollected}
+        researchLabCertificateMintedByLevel={
+          researchLabCertificateMintedByLevel
+        }
+        onLoadCatalog={loadCatalog}
+        onGoToLevel1Module={onGoToLevel1Module}
+        onGoToLevel2Module={onGoToLevel2Module}
+        onGoToLevel3Module={onGoToLevel3Module}
+        onOpenLab={openLab}
+        walletStatus={walletStatus}
+      />
+    );
+  }
+
   return (
-    <section className="space-y-8">
-      <div className="max-w-3xl space-y-4">
-        <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
-          Research Labs
-        </h1>
-        <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-          Practice incident research as a structured security workflow: trace
-          the failure mode, map the exploit path, and prepare for certification.
-        </p>
-      </div>
+    <section className="relative min-h-[calc(100vh-88px)] overflow-x-hidden border-t border-white/10 bg-[#070808] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(153,69,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(20,241,149,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-40" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_52%_8%,rgba(153,69,255,0.12),transparent_32%),radial-gradient(circle_at_78%_24%,rgba(20,241,149,0.08),transparent_34%)]" />
 
-      <div className="divide-y divide-border overflow-hidden rounded-[28px] border border-border bg-card/70 shadow-[0_24px_90px_-70px_rgba(0,0,0,0.9)]">
-        {RESEARCH_LABS.map((lab) => (
-          <article
-            key={lab.title}
-            className="grid gap-0 lg:grid-cols-[0.92fr_0.9fr_1.18fr]"
-          >
-            <div className="flex min-h-[220px] flex-col justify-between gap-8 p-6">
-              <div className="flex items-start justify-between gap-4">
-                <h2 className="text-2xl font-semibold tracking-[-0.05em]">
-                  {lab.title}
-                </h2>
-                <span className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-yellow-300/25 bg-yellow-400/10 px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-yellow-200 shadow-[0_0_28px_-12px_rgba(250,204,21,0.95)]">
-                  TBD
-                </span>
-              </div>
+      <div className="relative mx-auto flex min-h-[calc(100vh-88px)] max-w-[1800px] flex-col px-5 pb-5 pt-4 2xl:px-7">
+        <ResearchLabSessionHeader
+          lab={activeLab}
+          phase={phase}
+          sandboxStatus={sandboxStatus}
+          onBack={leaveLab}
+          onReset={resetEnvironment}
+          onLeave={leaveLab}
+        />
 
-              <div className="grid gap-4 text-xs text-muted sm:grid-cols-3">
-                <LabMetric
-                  icon={<BarChart3 className="h-4 w-4" aria-hidden="true" />}
-                  label="Difficulty"
-                  value={lab.difficulty}
-                />
-                <LabMetric
-                  icon={<Clock3 className="h-4 w-4" aria-hidden="true" />}
-                  label="Exp-Time"
-                  value={lab.experienceTime}
-                />
-                <LabMetric
-                  icon={<Award className="h-4 w-4" aria-hidden="true" />}
-                  label="Certification Awarded"
-                  value={lab.certificationAwarded}
-                />
-              </div>
-            </div>
+        <LabScenarioBriefing lab={activeLab} phase={phase} />
 
-            <div className="border-t border-border p-6 lg:border-l lg:border-t-0">
-              <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted">
-                Description
-              </p>
-              <p className="mt-5 max-w-prose text-sm leading-7 text-muted sm:text-base">
-                {lab.description}
-              </p>
-            </div>
+        <div className="mt-3 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
+          <ResearchLabWorkspace
+            lab={activeLab}
+            activeFile={activeFile}
+            activeFileContent={activeFileContent}
+            activeTab={resolvedActiveTab}
+            accounts={buildAccountEvidence(session, impactVerified)}
+            auditReportStage={auditReportStage}
+            availableTabs={availableTabs}
+            impactVerified={impactVerified}
+            inspectHintRevealed={revealedHints.includes(
+              activeAdapter.inspectHintId
+            )}
+            findingReviewPassed={findingReviewPassed}
+            files={session.fileEntries}
+            isRunning={isRunning}
+            questionnaireAnswers={questionnaireAnswers}
+            questionnaireResult={questionnaireResult}
+            reportOpened={reportOpened}
+            retryQuestionIds={retryQuestionIds}
+            reviewIndex={reviewIndex}
+            reviewMode={reviewMode}
+            reviewOptionOrder={reviewOptionOrder}
+            reviewQuestions={visibleReviewQuestions}
+            reviewStarted={reviewStarted}
+            report={report}
+            reportFields={reportFields}
+            level1BadgeCollected={activePrerequisiteBadgeCollected}
+            researchLabCertificateMinted={activeResearchLabCertificateMinted}
+            isMintingResearchLabCertificate={
+              isMintingActiveResearchLabCertificate
+            }
+            txResults={txResults}
+            evidenceAccounts={evidenceAccounts}
+            explorerAccessToken={activeBackendAuth?.accessToken ?? null}
+            explorerSessionId={session.sessionId}
+            userWalletAddress={
+              activeBackendAuth?.walletAddress ?? wallet?.account.address ?? ""
+            }
+            executeExploitView={executeExploitView}
+            onChangeReportFields={setReportFields}
+            onChangeAuditReportStage={setAuditReportStage}
+            onChangeExecuteExploitView={setExecuteExploitView}
+            onProveImpact={proveImpact}
+            onExecuteTransaction={executeTransaction}
+            onQuestionnaireAnswer={updateQuestionnaireAnswer}
+            onQuestionnaireRetry={retryQuestionnaire}
+            onQuestionnaireSubmit={submitQuestionnaire}
+            onOpenFindingReport={
+              impactVerified
+                ? openFindingReportWithAnalytics
+                : () => setActiveTab("exploit")
+            }
+            onReviewIndexChange={setReviewIndex}
+            onReviewStart={startFindingReview}
+            onSaveReport={saveReportDraft}
+            onSubmitReport={submitReportAndRefreshBadges}
+            onMintResearchLabCertificate={mintActiveResearchLabCertificate}
+            onSelectFile={setActiveFilePath}
+            onTabChange={changeWorkspaceTab}
+            isReportSaving={isReportSaving}
+            isReportSubmitting={isReportSubmitting}
+          />
 
-            <div className="border-t border-border p-6 lg:border-l lg:border-t-0">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted">
-                  Objectives
-                </p>
-                <p className="text-xs font-medium text-muted">
-                  0 / {lab.objectives.length} completed
-                </p>
-              </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                {lab.objectives.map((objective) => (
-                  <div key={objective} className="flex items-center gap-3">
-                    <span
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-border bg-background/80 text-transparent"
-                      aria-hidden="true"
-                    >
-                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                    </span>
-                    <span className="text-sm leading-6 text-foreground">
-                      {objective}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 flex justify-start lg:justify-end">
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex min-h-11 w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-border bg-muted/20 px-4 text-sm font-medium text-muted/55 sm:w-auto sm:min-w-44"
-                >
-                  <LockKeyhole className="h-4 w-4" aria-hidden="true" />
-                  Start Researching
-                </button>
-              </div>
-            </div>
-          </article>
-        ))}
+          <LabContextPanel
+            activeFile={activeFile}
+            lab={activeLab}
+            phase={phase}
+            executeExploitView={executeExploitView}
+            auditReportStage={auditReportStage}
+            findingReviewPassed={findingReviewPassed}
+            impactVerified={impactVerified}
+            isCollectingLevel1Badge={
+              activeAdapter.code === "RL1" && isCollectingLevel1Badge
+            }
+            isMintingResearchLabCertificate={
+              isMintingActiveResearchLabCertificate
+            }
+            level1BadgeCollected={activePrerequisiteBadgeCollected}
+            level1BadgeEarned={
+              activePrerequisiteBadgeCollected ||
+              (activeAdapter.code === "RL1" && level1BadgeEarned) ||
+              Boolean(report?.status === "accepted" || session.labCompleted)
+            }
+            powerUserBadgeEarned={powerUserBadgeEarned}
+            researchLabCertificateMinted={activeResearchLabCertificateMinted}
+            reportUnlocked={reportUnlocked}
+            questionnaireResult={questionnaireResult}
+            report={report}
+            reportOpened={reportOpened}
+            retryQuestionIds={retryQuestionIds}
+            reviewMode={reviewMode}
+            reviewStarted={reviewStarted}
+            reviewStepCurrent={reviewStepCurrent}
+            reviewStepTotal={reviewStepTotal}
+            criticalAnsweredCount={criticalAnsweredCount}
+            criticalTotal={criticalTotal}
+            revealedHints={revealedHints}
+            session={session}
+            txResults={txResults}
+            onOpenExploit={openExploitFromContext}
+            onOpenReport={
+              impactVerified
+                ? openFindingReportWithAnalytics
+                : () => setActiveTab("exploit")
+            }
+            onRevealHint={revealHint}
+            onRetryReview={retryQuestionnaire}
+            onContinueToLevel2={openNextModuleFromLab}
+            onMintResearchLabCertificate={mintActiveResearchLabCertificate}
+          />
+        </div>
       </div>
     </section>
   );
 }
 
-function LabMetric({
-  icon,
-  label,
-  value,
+function deriveLabPhase({
+  activeTab,
+  executeExploitView,
+  impactVerified,
+  isRunning,
+  report,
+  session,
 }: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-start gap-2.5">
-      <span className="mt-0.5 text-muted" aria-hidden="true">
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[11px] leading-4 text-muted">{label}</span>
-        <span className="mt-0.5 block text-sm font-medium leading-5 text-foreground">
-          {value}
-        </span>
-      </span>
-    </div>
-  );
+  activeTab: WorkspaceTab;
+  executeExploitView: ExecuteExploitView;
+  impactVerified: boolean;
+  isRunning: boolean;
+  report: ResearchLabReport | null;
+  session: ResearchLabSession | null;
+}): LabPhase {
+  if (session?.labCompleted || report?.status === "accepted")
+    return "COMPLETED";
+  if (activeTab === "report") return "SUBMIT_FINDING";
+  if (
+    activeTab === "verify" ||
+    (activeTab === "exploit" && executeExploitView === "EVIDENCE_REVIEW") ||
+    isRunning ||
+    session?.status === "running_tests" ||
+    session?.status === "failed"
+  ) {
+    return "VERIFY_IMPACT";
+  }
+  if (activeTab === "exploit") return "EXECUTE_EXPLOIT";
+  if (impactVerified && activeTab !== "inspect") return "SUBMIT_FINDING";
+  return "INSPECT";
+}
+
+function deriveSandboxStatus(
+  session: ResearchLabSession | null,
+  isRunning: boolean
+): SandboxStatus {
+  if (isRunning || session?.status === "running_tests") return "RUNNING";
+  switch (session?.status) {
+    case "provisioning":
+      return "PROVISIONING";
+    case "expired":
+      return "EXPIRED";
+    case "error":
+      return "ERROR";
+    default:
+      return "READY";
+  }
 }

@@ -24,6 +24,7 @@
 .DS_Store
 *.pem
 .agents/
+/docs/
 
 # debug
 npm-debug.log*
@@ -33,6 +34,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -50,3 +52,6 @@ test-ledger/
 
 # local Solana keypairs
 .keys/
+
+# local Breach Room scaffolds live in a separate repo later
+/local-breach-rooms/

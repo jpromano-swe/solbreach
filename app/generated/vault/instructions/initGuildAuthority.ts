@@ -12,6 +12,7 @@ import {
   fixEncoderSize,
   getBytesDecoder,
   getBytesEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   getU64Decoder,
@@ -54,6 +55,7 @@ export type InitGuildAuthorityInstruction<
   TAccountBountyVault extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgramData extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -75,6 +77,9 @@ export type InitGuildAuthorityInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgramData extends string
+        ? ReadonlyAccount<TAccountProgramData>
+        : TAccountProgramData,
       ...TRemainingAccounts,
     ]
   >;
@@ -124,12 +129,14 @@ export type InitGuildAuthorityAsyncInput<
   TAccountRewardMint extends string = string,
   TAccountBountyVault extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgramData extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   guildAuthority?: Address<TAccountGuildAuthority>;
   rewardMint: Address<TAccountRewardMint>;
   bountyVault: Address<TAccountBountyVault>;
   systemProgram?: Address<TAccountSystemProgram>;
+  programData?: Address<TAccountProgramData>;
   bountyAmount: InitGuildAuthorityInstructionDataArgs["bountyAmount"];
 };
 
@@ -139,6 +146,7 @@ export async function getInitGuildAuthorityInstructionAsync<
   TAccountRewardMint extends string,
   TAccountBountyVault extends string,
   TAccountSystemProgram extends string,
+  TAccountProgramData extends string,
   TProgramAddress extends Address = typeof VAULT_PROGRAM_ADDRESS,
 >(
   input: InitGuildAuthorityAsyncInput<
@@ -146,7 +154,8 @@ export async function getInitGuildAuthorityInstructionAsync<
     TAccountGuildAuthority,
     TAccountRewardMint,
     TAccountBountyVault,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -156,7 +165,8 @@ export async function getInitGuildAuthorityInstructionAsync<
     TAccountGuildAuthority,
     TAccountRewardMint,
     TAccountBountyVault,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >
 > {
   // Program address.
@@ -169,6 +179,7 @@ export async function getInitGuildAuthorityInstructionAsync<
     rewardMint: { value: input.rewardMint ?? null, isWritable: false },
     bountyVault: { value: input.bountyVault ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    programData: { value: input.programData ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -186,6 +197,21 @@ export async function getInitGuildAuthorityInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.programData.value) {
+    accounts.programData.value = await getProgramDerivedAddress({
+      programAddress:
+        "BPFLoaderUpgradeab1e11111111111111111111111" as Address<"BPFLoaderUpgradeab1e11111111111111111111111">,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            8, 148, 145, 199, 224, 76, 159, 200, 189, 95, 92, 137, 43, 241, 144,
+            112, 48, 112, 248, 230, 106, 91, 206, 120, 170, 69, 223, 75, 83, 36,
+            161, 17,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -195,6 +221,7 @@ export async function getInitGuildAuthorityInstructionAsync<
       getAccountMeta(accounts.rewardMint),
       getAccountMeta(accounts.bountyVault),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.programData),
     ],
     data: getInitGuildAuthorityInstructionDataEncoder().encode(
       args as InitGuildAuthorityInstructionDataArgs,
@@ -206,7 +233,8 @@ export async function getInitGuildAuthorityInstructionAsync<
     TAccountGuildAuthority,
     TAccountRewardMint,
     TAccountBountyVault,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >);
 }
 
@@ -216,12 +244,14 @@ export type InitGuildAuthorityInput<
   TAccountRewardMint extends string = string,
   TAccountBountyVault extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgramData extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   guildAuthority: Address<TAccountGuildAuthority>;
   rewardMint: Address<TAccountRewardMint>;
   bountyVault: Address<TAccountBountyVault>;
   systemProgram?: Address<TAccountSystemProgram>;
+  programData: Address<TAccountProgramData>;
   bountyAmount: InitGuildAuthorityInstructionDataArgs["bountyAmount"];
 };
 
@@ -231,6 +261,7 @@ export function getInitGuildAuthorityInstruction<
   TAccountRewardMint extends string,
   TAccountBountyVault extends string,
   TAccountSystemProgram extends string,
+  TAccountProgramData extends string,
   TProgramAddress extends Address = typeof VAULT_PROGRAM_ADDRESS,
 >(
   input: InitGuildAuthorityInput<
@@ -238,7 +269,8 @@ export function getInitGuildAuthorityInstruction<
     TAccountGuildAuthority,
     TAccountRewardMint,
     TAccountBountyVault,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >,
   config?: { programAddress?: TProgramAddress },
 ): InitGuildAuthorityInstruction<
@@ -247,7 +279,8 @@ export function getInitGuildAuthorityInstruction<
   TAccountGuildAuthority,
   TAccountRewardMint,
   TAccountBountyVault,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgramData
 > {
   // Program address.
   const programAddress = config?.programAddress ?? VAULT_PROGRAM_ADDRESS;
@@ -259,6 +292,7 @@ export function getInitGuildAuthorityInstruction<
     rewardMint: { value: input.rewardMint ?? null, isWritable: false },
     bountyVault: { value: input.bountyVault ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    programData: { value: input.programData ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -282,6 +316,7 @@ export function getInitGuildAuthorityInstruction<
       getAccountMeta(accounts.rewardMint),
       getAccountMeta(accounts.bountyVault),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.programData),
     ],
     data: getInitGuildAuthorityInstructionDataEncoder().encode(
       args as InitGuildAuthorityInstructionDataArgs,
@@ -293,7 +328,8 @@ export function getInitGuildAuthorityInstruction<
     TAccountGuildAuthority,
     TAccountRewardMint,
     TAccountBountyVault,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >);
 }
 
@@ -308,6 +344,7 @@ export type ParsedInitGuildAuthorityInstruction<
     rewardMint: TAccountMetas[2];
     bountyVault: TAccountMetas[3];
     systemProgram: TAccountMetas[4];
+    programData: TAccountMetas[5];
   };
   data: InitGuildAuthorityInstructionData;
 };
@@ -320,7 +357,7 @@ export function parseInitGuildAuthorityInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedInitGuildAuthorityInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -338,6 +375,7 @@ export function parseInitGuildAuthorityInstruction<
       rewardMint: getNextAccount(),
       bountyVault: getNextAccount(),
       systemProgram: getNextAccount(),
+      programData: getNextAccount(),
     },
     data: getInitGuildAuthorityInstructionDataDecoder().decode(
       instruction.data,

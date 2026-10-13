@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ELK from "elkjs/lib/elk.bundled.js";
 import {
   ArrowRight,
@@ -26,7 +26,14 @@ import {
   type ReactFlowInstance,
 } from "@xyflow/react";
 import { type Address } from "@solana/kit";
-import { SkeletonLine, compactAddress } from "./level-ui";
+import {
+  AnimatedInstructionLine,
+  ProtocolVisualizationHeader,
+  SkeletonLine,
+  compactAddress,
+  useRejectedFlowPulse,
+} from "./level-ui";
+import { CertificateMintLoader } from "./certificate-mint-loader";
 
 type Level3Snapshot = {
   guildAuthorityPda: Address;
@@ -63,7 +70,9 @@ type GraphAccount = {
   id: string;
   inactive?: boolean;
   label: string;
+  revealed?: boolean;
   relation?: string;
+  stageReveal?: boolean;
   tone: NodeTone;
   value: string;
 };
@@ -116,6 +125,15 @@ const FOCUS_LABELS: Record<FocusKey, string> = {
   vault: "Bounty Vault",
 };
 
+const OBSERVE_REVEAL_STEPS: Record<string, number> = {
+  external: 2,
+  guild: 1,
+  reward: 4,
+  stats: 5,
+  vault: 3,
+  wallet: 0,
+};
+
 const INSPECT_CODE = [
   "pub external_program: UncheckedAccount<'info>,",
   "",
@@ -163,6 +181,7 @@ export function Level3Panel({
   const [observeRunId, setObserveRunId] = useState(0);
   const [observeStep, setObserveStep] = useState(0);
   const [manipulationTested, setManipulationTested] = useState(false);
+  const [flowRejectionTrigger, setFlowRejectionTrigger] = useState(0);
   const [activeFocus, setActiveFocus] = useState<FocusKey>("target");
   const [focusSequence, setFocusSequence] = useState<FocusKey[]>(
     startsComplete ? FOCUS_SEQUENCE : []
@@ -176,11 +195,13 @@ export function Level3Panel({
   });
 
   const isConnected = status === "connected";
-  const exploitReady =
-    manipulationTested &&
+  const manipulationPathReady =
     manipulation.cpiTarget === "attacker" &&
     manipulation.forwardedSigner === "with-guild-signer" &&
     manipulation.rewardDestination === "player-reward";
+  const exploitReady = manipulationTested && manipulationPathReady;
+  const manipulationRejected =
+    labStage === 2 && manipulationTested && !manipulationPathReady;
   const effectiveCompleted =
     level3Completed || delegated || backendExecution.completed;
   const focusSequenceComplete = focusSequence.length === FOCUS_SEQUENCE.length;
@@ -347,6 +368,7 @@ export function Level3Panel({
               onContinue={() => handleStageChange(3)}
               onTest={() => {
                 setManipulationTested(true);
+                setFlowRejectionTrigger((current) => current + 1);
               }}
             />
           ) : (
@@ -370,10 +392,13 @@ export function Level3Panel({
             activeFocus={activeFocus}
             effectiveCompleted={effectiveCompleted}
             exploitReady={exploitReady}
+            flowRejected={manipulationRejected}
+            flowRejectionTrigger={flowRejectionTrigger}
             focusSequenceComplete={focusSequenceComplete}
             labStage={labStage}
             manipulationTested={manipulationTested}
             observeStarted={observeStarted}
+            observeStep={observeStep}
           />
         }
         right={
@@ -411,9 +436,6 @@ function Level3Header({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-end">
       <div className="max-w-3xl space-y-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Arbitrary CPI and delegated signer abuse
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           Level 3: The Trojan Horse
         </h1>
@@ -635,12 +657,14 @@ function ManipulationPanel({
         />
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/72 p-4">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
-          What just happened?
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted">{response}</p>
-        <div className="mt-5 space-y-3">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold leading-6 text-foreground">
+            What just happened?
+          </p>
+          <p className="text-sm leading-6 text-muted">{response}</p>
+        </div>
+        <div className="space-y-3">
           <button
             type="button"
             onClick={onTest}
@@ -732,6 +756,9 @@ function InspectPanel({
   sequenceFeedback: string | null;
   sequenceMiss: SequenceMiss | null;
 }) {
+  const [backendRequestMode, setBackendRequestMode] = useState<
+    "prepare" | "execute" | null
+  >(null);
   const canRun = exploitReady && focusSequenceComplete && !effectiveCompleted;
   const actionDisabled =
     isSending ||
@@ -822,16 +849,18 @@ function InspectPanel({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/70 p-4">
-        <p className="text-[11px] uppercase tracking-[0.26em] text-muted">
+      <div className="space-y-2 px-1">
+        <p className="text-sm font-semibold leading-6 text-foreground">
           Exploit sequence
         </p>
-        <p className="mt-3 text-sm leading-6 text-muted">
-          {sequenceFeedback ??
+        <AnimatedInstructionLine
+          text={
+            sequenceFeedback ??
             (exploitReady
               ? "Map each dependency before executing the delegated CPI."
-              : "Test the attacker CPI path before mapping execution.")}
-        </p>
+              : "Test the attacker CPI path before mapping execution.")
+          }
+        />
         {backendExecution.error ? (
           <p className="mt-3 text-sm leading-6 text-red-200">
             {backendExecution.error}
@@ -846,15 +875,36 @@ function InspectPanel({
       <button
         type="button"
         onClick={() => {
-          void (backendExecution.challengeReady
-            ? backendExecution.onRun()
-            : backendExecution.onPrepare());
+          const requestMode = backendExecution.challengeReady
+            ? "execute"
+            : "prepare";
+          setBackendRequestMode(requestMode);
+          void (
+            requestMode === "execute"
+              ? backendExecution.onRun()
+              : backendExecution.onPrepare()
+          ).finally(() => setBackendRequestMode(null));
         }}
         disabled={actionDisabled}
         className="min-h-12 w-full rounded-full bg-foreground px-5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45"
       >
         {actionLabel}
       </button>
+      {backendRequestMode ? (
+        <CertificateMintLoader
+          description={
+            backendRequestMode === "prepare"
+              ? "Waiting for the backend to unlock dependency mapping."
+              : "Waiting for the backend to verify the delegated CPI flow."
+          }
+          label={
+            backendRequestMode === "prepare"
+              ? "Preparing exploit challenge..."
+              : "Executing exploit..."
+          }
+          variant="modal"
+        />
+      ) : null}
     </section>
   );
 }
@@ -864,19 +914,25 @@ function ProtocolTopology({
   activeFocus,
   effectiveCompleted,
   exploitReady,
+  flowRejected,
+  flowRejectionTrigger,
   focusSequenceComplete,
   labStage,
   manipulationTested,
   observeStarted,
+  observeStep,
 }: {
   accounts: GraphAccount[];
   activeFocus: FocusKey;
   effectiveCompleted: boolean;
   exploitReady: boolean;
+  flowRejected: boolean;
+  flowRejectionTrigger: number;
   focusSequenceComplete: boolean;
   labStage: LabStage;
   manipulationTested: boolean;
   observeStarted: boolean;
+  observeStep: number;
 }) {
   const [layoutNodes, setLayoutNodes] = useState<Node<GraphNodeData>[]>([]);
   const [layoutEdges, setLayoutEdges] = useState<Edge[]>([]);
@@ -884,12 +940,21 @@ function ProtocolTopology({
     Node<GraphNodeData>,
     Edge
   > | null>(null);
+  const fittedStageRef = useRef<LabStage | null>(null);
+  const [layoutStage, setLayoutStage] = useState<LabStage | null>(null);
+  const rejectionPulseActive = useRejectedFlowPulse({
+    rejected: flowRejected,
+    trigger: flowRejectionTrigger,
+  });
   const showExploitMessage =
     labStage === 2 && exploitReady && manipulationTested;
-  const messageTarget = layoutNodes.find((node) => node.id === "external");
+  const messageTarget = layoutNodes.find((node) => node.id === "reward");
   const messagePosition =
     showExploitMessage && messageTarget
-      ? { x: messageTarget.position.x + 270, y: messageTarget.position.y + 2 }
+      ? {
+          x: messageTarget.position.x + (messageTarget.width ?? 244) + 36,
+          y: messageTarget.position.y + 4,
+        }
       : null;
 
   const graph = useMemo(
@@ -955,6 +1020,7 @@ function ProtocolTopology({
         })
       );
       setLayoutEdges(graph.edges);
+      setLayoutStage(labStage);
     }
 
     void layoutGraph();
@@ -962,10 +1028,13 @@ function ProtocolTopology({
     return () => {
       cancelled = true;
     };
-  }, [graph]);
+  }, [graph, labStage]);
 
   useEffect(() => {
     if (!flowInstance || layoutNodes.length === 0) return;
+    if (layoutStage !== labStage || fittedStageRef.current === labStage) return;
+
+    fittedStageRef.current = labStage;
 
     const timer = window.setTimeout(() => {
       void flowInstance.fitView({
@@ -977,24 +1046,85 @@ function ProtocolTopology({
     }, 40);
 
     return () => window.clearTimeout(timer);
-  }, [flowInstance, labStage, layoutEdges.length, layoutNodes]);
+  }, [flowInstance, labStage, layoutNodes.length, layoutStage]);
+
+  const isObserveStage = labStage === 1;
+  const visibleNodeIds = useMemo(
+    () =>
+      new Set(
+        layoutNodes
+          .filter((node) => {
+            if (!isObserveStage) return true;
+            const revealStep = OBSERVE_REVEAL_STEPS[node.id] ?? 0;
+            return observeStep >= revealStep;
+          })
+          .map((node) => node.id)
+      ),
+    [isObserveStage, layoutNodes, observeStep]
+  );
+  const renderedNodes = useMemo(
+    () =>
+      layoutNodes.map((node) => {
+        const revealStep = OBSERVE_REVEAL_STEPS[node.id] ?? 0;
+        const revealed = !isObserveStage || visibleNodeIds.has(node.id);
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            revealed,
+            stageReveal:
+              isObserveStage && observeStarted && revealed && revealStep > 0,
+          },
+        };
+      }),
+    [isObserveStage, layoutNodes, observeStarted, visibleNodeIds]
+  );
+  const renderedEdges = useMemo(
+    () =>
+      layoutEdges.map((edge) => {
+        const revealed =
+          !isObserveStage ||
+          (observeStarted &&
+            visibleNodeIds.has(edge.source) &&
+            visibleNodeIds.has(edge.target));
+        const active = revealed && (Boolean(edge.animated) || isObserveStage);
+
+        return {
+          ...edge,
+          animated: active,
+          className: active
+            ? [edge.className, "level1-flow-line"].filter(Boolean).join(" ")
+            : undefined,
+          style: {
+            ...edge.style,
+            opacity: revealed ? (edge.style?.opacity ?? 1) : 0,
+            strokeDasharray: isObserveStage && revealed ? "2 10" : undefined,
+            strokeLinecap: isObserveStage ? ("round" as const) : undefined,
+          },
+        };
+      }),
+    [isObserveStage, layoutEdges, observeStarted, visibleNodeIds]
+  );
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/72">
-      <div className="border-b border-border px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Interactive protocol topology
-        </p>
-      </div>
+    <section
+      className={`overflow-hidden rounded-[28px] border border-border bg-card/72 ${
+        rejectionPulseActive ? "protocol-visualization-rejected" : ""
+      }`}
+    >
+      <ProtocolVisualizationHeader
+        label="Interactive protocol topology"
+        rejected={flowRejected}
+      />
       <div className="level1-flow h-[720px]">
         <ReactFlow
           colorMode="dark"
-          edges={layoutEdges}
-          fitView
+          edges={renderedEdges}
           maxZoom={1.15}
           minZoom={0.35}
           nodeTypes={{ protocol: ProtocolNode }}
-          nodes={layoutNodes}
+          nodes={renderedNodes}
           nodesDraggable={false}
           nodesFocusable={false}
           onInit={setFlowInstance}
@@ -1008,17 +1138,19 @@ function ProtocolTopology({
           {messagePosition ? (
             <ViewportPortal>
               <div
-                className="level1-activity-entry pointer-events-none absolute w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md"
+                className="pointer-events-none absolute"
                 style={{
                   transform: `translate(${messagePosition.x}px, ${messagePosition.y}px)`,
                 }}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
-                  Protocol vulnerable:
-                </p>
-                <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
-                  Guild signer forwarded into attacker CPI
-                </p>
+                <div className="level1-activity-entry w-[250px] rounded-[18px] border border-amber-300/24 bg-amber-300/[0.08] p-4 shadow-[0_22px_60px_-34px_rgba(250,204,21,0.9)] backdrop-blur-md">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/70">
+                    Vulnerable Protocol:
+                  </p>
+                  <p className="mt-2 text-sm font-semibold leading-5 text-foreground">
+                    Guild signer forwarded into attacker CPI
+                  </p>
+                </div>
               </div>
             </ViewportPortal>
           ) : null}
@@ -1035,6 +1167,10 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
       : data.tone === "valid" || data.tone === "trusted"
         ? "level1-protocol-node-official"
         : "";
+  const revealClass = data.stageReveal
+    ? "level1-protocol-node-stage-reveal"
+    : "";
+  const hiddenClass = data.revealed === false ? "opacity-0" : "";
   const Icon =
     data.icon === "code"
       ? Code2
@@ -1050,7 +1186,9 @@ function ProtocolNode({ data }: NodeProps<Node<GraphNodeData>>) {
     <div
       className={`level1-protocol-node ${toneClass} ${
         data.active ? "level1-protocol-node-active" : ""
-      } ${data.inactive ? "level1-protocol-node-inactive" : ""} min-h-[112px] w-[244px] rounded-[20px] border p-4`}
+      } ${
+        data.inactive ? "level1-protocol-node-inactive" : ""
+      } ${revealClass} ${hiddenClass} min-h-[112px] w-[244px] rounded-[20px] border p-4`}
     >
       <Handle type="target" position={Position.Top} />
       <div className="flex items-start gap-3">
@@ -1161,10 +1299,8 @@ function ActivityRow({
 function Level3StateFooter({
   certificate,
   isLoading,
-  isMinting,
   level3Completed,
   level3Error,
-  onMint,
   status,
 }: {
   certificate?: LevelCertificateSnapshot;
@@ -1208,27 +1344,13 @@ function Level3StateFooter({
       ) : null}
 
       {level3Completed || certificate?.minted ? (
-        <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
-            Certification unlocked
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Level 3 verification is recorded. Mint the wallet-bound
-            certification for this delegated CPI path.
-          </p>
-          <button
-            type="button"
-            onClick={onMint}
-            disabled={certificate?.minted || isMinting}
-            className="mt-4 inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
-          >
-            {certificate?.minted
-              ? "Level 3 cNFT minted"
-              : isMinting
-                ? "Minting..."
-                : "Unlock Certification"}
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled
+          className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          Badge Earned
+        </button>
       ) : null}
     </div>
   );

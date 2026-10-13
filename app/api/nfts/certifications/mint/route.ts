@@ -5,40 +5,52 @@ import {
   mintCertificateAsset,
   type MintCertificateCluster,
 } from "@/app/lib/nft/certification-server";
+import { applyNgrokBypassHeader } from "@/app/lib/backend/ngrok";
 
 export const runtime = "nodejs";
 
-const SOLBREACH_BACKEND_URL = "https://api-solbreach.56.125.190.174.nip.io";
+function getSolbreachBackendUrl() {
+  const backendUrl =
+    process.env.SOLBREACH_BACKEND_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+  if (!backendUrl) {
+    throw new Error(
+      "SOLBREACH_BACKEND_URL or NEXT_PUBLIC_API_BASE_URL must be configured."
+    );
+  }
+
+  return backendUrl.replace(/\/+$/, "");
+}
+
 const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 type MintRequestBody = {
-  backendAccessToken?: string;
   cluster?: MintCertificateCluster;
   level?: number;
   merkleTree?: string;
   mintAuthorizationSignature?: string;
+  mintAuthorizationIssuedAt?: number;
+  mintAuthorizationNonce?: string;
   player?: string;
+  researchLabSessionId?: string;
   rpcUrl?: string;
 };
 
-const CLUSTERS = new Set<MintCertificateCluster>([
-  "devnet",
-  "localnet",
-  "mainnet-beta",
-]);
+const RESEARCH_LAB_CERTIFICATE_LEVELS: Record<string, number> = {
+  "rl1-account-substitution": 1,
+  "rl2-yield-hijack": 2,
+  "rl3-arbitrary-cpi": 3,
+};
 
 function parseCluster(value: unknown): MintCertificateCluster {
-  const cluster = (
-    typeof value === "string" ? value : "devnet"
-  ) as MintCertificateCluster;
-  if (!CLUSTERS.has(cluster)) {
-    throw new Error("Cluster must be devnet, localnet, or mainnet-beta.");
-  }
-  return cluster;
+  if (value !== "devnet")
+    throw new Error("Certificate minting is only available on devnet.");
+  return "devnet";
 }
 
 function parseLevel(value: unknown) {
-  const level = Number(value);
+  const level = typeof value === "number" ? value : NaN;
   if (!Number.isInteger(level) || level < 0 || level > 3) {
     throw new Error("Level must be an integer from 0 to 3.");
   }
@@ -57,19 +69,6 @@ function parsePublicKey(value: unknown, label: string) {
   }
 }
 
-function parseSignature(value: unknown, label: string) {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`${label} is required.`);
-  }
-
-  const signature = value.trim();
-  if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) {
-    throw new Error(`${label} is invalid.`);
-  }
-
-  return signature;
-}
-
 function publicBaseUrl(request: NextRequest) {
   return (
     process.env.APP_BASE_URL?.trim() ||
@@ -80,6 +79,8 @@ function publicBaseUrl(request: NextRequest) {
 }
 
 async function canMintBackendLevel1Certificate(accessToken: unknown) {
+  const backendUrl = getSolbreachBackendUrl();
+
   if (typeof accessToken !== "string" || !accessToken.trim()) {
     return {
       completed: false,
@@ -87,12 +88,16 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
     };
   }
 
+  const headers = new Headers({
+    authorization: `Bearer ${accessToken}`,
+  });
+  applyNgrokBypassHeader(headers, backendUrl);
+
   const response = await fetch(
-    `${SOLBREACH_BACKEND_URL}/api/v1/levels/${LEVEL_1_BACKEND_ID}/status`,
+    `${backendUrl}/api/v1/levels/${LEVEL_1_BACKEND_ID}/status`,
     {
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-      },
+      headers,
+      cache: "no-store",
     }
   );
 
@@ -112,46 +117,180 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
   };
 }
 
+async function canMintResearchLabCertificate({
+  accessToken,
+  level,
+  sessionId,
+}: {
+  accessToken: unknown;
+  level: number;
+  sessionId: unknown;
+}) {
+  const backendUrl = getSolbreachBackendUrl();
+
+  if (typeof accessToken !== "string" || !accessToken.trim()) {
+    return {
+      completed: false,
+      reason: "Research Lab session token is missing.",
+    };
+  }
+
+  if (typeof sessionId !== "string" || !sessionId.trim()) {
+    return {
+      completed: false,
+      reason: "Research Lab session id is missing.",
+    };
+  }
+
+  const headers = new Headers({
+    authorization: `Bearer ${accessToken}`,
+  });
+  applyNgrokBypassHeader(headers, backendUrl);
+
+  const response = await fetch(
+    `${backendUrl}/api/v1/research-labs/sessions/${encodeURIComponent(
+      sessionId
+    )}`,
+    { headers, cache: "no-store" }
+  );
+
+  if (!response.ok) {
+    return {
+      completed: false,
+      reason: `Research Lab session check failed with ${response.status}.`,
+    };
+  }
+
+  const payload = (await response.json()) as {
+    success?: boolean;
+    data?: Record<string, unknown>;
+  } & Record<string, unknown>;
+  const session =
+    payload && typeof payload === "object" && "data" in payload
+      ? payload.data
+      : payload;
+  const reportStatus =
+    typeof session?.report_status === "string"
+      ? session.report_status
+      : typeof session?.reportStatus === "string"
+        ? session.reportStatus
+        : null;
+  const labId =
+    typeof session?.lab_id === "string"
+      ? session.lab_id
+      : typeof session?.labId === "string"
+        ? session.labId
+        : null;
+  const sessionStatus =
+    typeof session?.status === "string" ? session.status : null;
+  const expectedLevel = labId
+    ? RESEARCH_LAB_CERTIFICATE_LEVELS[labId]
+    : undefined;
+  if (expectedLevel !== level) {
+    return {
+      completed: false,
+      reason: labId
+        ? `Research Lab ${labId} cannot mint Level ${level} certification.`
+        : "Research Lab session did not include a lab id.",
+    };
+  }
+
+  const completed = Boolean(
+    session?.lab_completed ||
+    session?.labCompleted ||
+    session?.certificate_unlockable ||
+    session?.certificateUnlockable ||
+    reportStatus === "accepted" ||
+    sessionStatus === "passed"
+  );
+
+  return {
+    completed,
+    reason: completed
+      ? null
+      : "Research Lab completion is not ready for certification minting.",
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as MintRequestBody;
     const level = parseLevel(body.level);
+    const cluster = parseCluster(body.cluster);
+    const player = parsePublicKey(body.player, "Player");
+    const accessToken = request.headers
+      .get("authorization")
+      ?.replace(/^Bearer\s+/i, "");
+    if (!accessToken?.trim()) {
+      return NextResponse.json(
+        { error: "A backend session is required for every certificate level." },
+        { status: 401 }
+      );
+    }
+    const backendUrl = getSolbreachBackendUrl();
+    const headers = new Headers({
+      authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    });
+    applyNgrokBypassHeader(headers, backendUrl);
+    // The backend verifies Ed25519 ownership, expiry, nonce replay and a durable
+    // per-wallet rate limit before any server authority can be used.
+    const authorization = await fetch(
+      `${backendUrl}/api/v1/certificates/mint-authorization`,
+      {
+        method: "POST",
+        headers,
+        cache: "no-store",
+        body: JSON.stringify({
+          player,
+          level,
+          cluster,
+          signature: body.mintAuthorizationSignature,
+          issued_at: body.mintAuthorizationIssuedAt,
+          nonce: body.mintAuthorizationNonce,
+        }),
+      }
+    );
+    if (!authorization.ok) {
+      return NextResponse.json(
+        {
+          error:
+            authorization.status === 429
+              ? "Too many certificate mint attempts. Try again in ten minutes."
+              : "Wallet mint authorization was rejected. Sign a fresh request with the session wallet.",
+        },
+        { status: authorization.status >= 500 ? 503 : authorization.status }
+      );
+    }
+    const authorized = await authorization.json();
+    if (
+      authorized.authorized !== true ||
+      authorized.wallet_address !== player ||
+      authorized.level !== level
+    ) {
+      throw new Error("Backend returned an invalid mint authorization.");
+    }
     const backendLevel1 =
       level === 1
-        ? await canMintBackendLevel1Certificate(body.backendAccessToken)
-        : { completed: false, reason: null };
-    const allowMissingCertificate = level === 1 && backendLevel1.completed;
-
-    if (level === 1 && body.backendAccessToken && !backendLevel1.completed) {
-      throw new Error(
-        backendLevel1.reason ??
-          "Level 1 backend completion could not be verified."
-      );
-    }
-
-    if (allowMissingCertificate) {
-      parseSignature(
-        body.mintAuthorizationSignature,
-        "Level 1 mint authorization signature"
-      );
-    }
-
+        ? await canMintBackendLevel1Certificate(accessToken)
+        : { completed: false };
+    const researchLabCompletion =
+      !backendLevel1.completed && body.researchLabSessionId
+        ? await canMintResearchLabCertificate({
+            accessToken,
+            level,
+            sessionId: body.researchLabSessionId,
+          })
+        : { completed: false };
     const result = await mintCertificateAsset({
-      allowMissingCertificate,
+      allowMissingCertificate:
+        backendLevel1.completed || researchLabCompletion.completed,
       level,
-      player: parsePublicKey(body.player, "Player"),
-      cluster: parseCluster(body.cluster),
+      player,
+      cluster,
       baseUrl: publicBaseUrl(request),
-      merkleTree:
-        typeof body.merkleTree === "string" && body.merkleTree.trim()
-          ? parsePublicKey(body.merkleTree, "Merkle tree")
-          : undefined,
-      rpcUrl:
-        typeof body.rpcUrl === "string" && body.rpcUrl.trim()
-          ? body.rpcUrl
-          : undefined,
+      // RPC and Merkle tree are exclusively server configuration.
     });
-
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

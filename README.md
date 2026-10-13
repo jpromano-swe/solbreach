@@ -33,16 +33,16 @@ and [backend-testing](https://github.com/jpromano-swe/solbreach-backend/tree/bac
 They are the starting points for this setup; source availability does not establish
 which revision is deployed to the beta or to devnet.
 
-| Experience                                       | What the learner practices                                   | Where it runs / current scope                                                                                                                                           |
-| ------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Level 0 — Hello SolBreach                        | Wallet, player PDA, and transaction lifecycle                | Anchor `vault` program on devnet; progression warmup.                                                                                                                   |
-| Level 1 — The Illusionist                        | Missing mint checks and account substitution                 | Anchor `vault` program on devnet, with frontend and backend learning flows.                                                                                             |
-| Level 2 — The Identity Thief                     | Shared PDA state and missing authority checks                | Anchor `vault` program on devnet, with frontend and backend learning flows.                                                                                             |
-| Level 3 — The Trojan Horse                       | Arbitrary CPI and forwarded signer privileges                | Anchor `vault` and `mercenary` programs on devnet, with frontend and backend learning flows.                                                                            |
-| RL1 — Account Substitution                       | Counterfeit collateral, protocol credit, and treasury impact | Backend LiteSVM adapter with modeled state adjustments and a local simulation fallback; see the qualification below.                                                    |
-| RL2 — Yield Hijack                               | Static PDA collisions and reward-claim authority             | Guided Python simulation of protocol state and account changes.                                                                                                         |
-| RL3 — Arbitrary CPI                              | Unchecked CPI target and delegated payout authority          | Guided Python simulation, including the displayed build, deploy, and CPI steps.                                                                                         |
-| Breach Rooms                                     | Less-guided protocol review and finding submission           | Frontend prototype for a GitHub PR review workflow; its backend routes are absent from the reviewed backend checkout.                                                   |
+| Experience                   | What the learner practices                                   | Where it runs / current scope                                                                                         |
+| ---------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Level 0 — Hello SolBreach    | Wallet, player PDA, and transaction lifecycle                | Anchor `vault` program on devnet; progression warmup.                                                                 |
+| Level 1 — The Illusionist    | Missing mint checks and account substitution                 | Anchor `vault` program on devnet, with frontend and backend learning flows.                                           |
+| Level 2 — The Identity Thief | Shared PDA state and missing authority checks                | Anchor `vault` program on devnet, with frontend and backend learning flows.                                           |
+| Level 3 — The Trojan Horse   | Arbitrary CPI and forwarded signer privileges                | Anchor `vault` and `mercenary` programs on devnet, with frontend and backend learning flows.                          |
+| RL1 — Account Substitution   | Counterfeit collateral, protocol credit, and treasury impact | Backend LiteSVM adapter with modeled state adjustments and a local simulation fallback; see the qualification below.  |
+| RL2 — Yield Hijack           | Static PDA collisions and reward-claim authority             | Guided Python simulation of protocol state and account changes.                                                       |
+| RL3 — Arbitrary CPI          | Unchecked CPI target and delegated payout authority          | Guided Python simulation, including the displayed build, deploy, and CPI steps.                                       |
+| Breach Rooms                 | Less-guided protocol review and finding submission           | Frontend prototype for a GitHub PR review workflow; its backend routes are absent from the reviewed backend checkout. |
 
 **RL1 is a hybrid runtime.** The backend selects its LiteSVM adapter when importable
 and falls back to the local runtime on `ImportError`. The adapter loads a program
@@ -194,4 +194,3 @@ intentional challenge vulnerabilities. Completion credentials record observed
 completion; they do not establish unaided work or professional auditing ability.
 
 Built by [Juan Pablo Romano](https://github.com/jpromano-swe), Buenos Aires, Argentina.
-

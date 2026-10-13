@@ -22,7 +22,15 @@ import {
   type ReactFlowInstance,
   Position,
 } from "@xyflow/react";
-import { SkeletonLine, StatusTextRow, compactAddress } from "./level-ui";
+import {
+  AnimatedInstructionLine,
+  ProtocolVisualizationHeader,
+  SkeletonLine,
+  StatusTextRow,
+  compactAddress,
+  useRejectedFlowPulse,
+} from "./level-ui";
+import { CertificateMintLoader } from "./certificate-mint-loader";
 
 type Level1Snapshot = {
   bankPda: string;
@@ -39,14 +47,9 @@ type StageConfig = {
   description: string;
   actionLabel: string | null;
   actionKind: "primary" | "secondary";
+  actionDisabled?: boolean;
   level1Mode?: "prepare" | "sequence" | "execute" | "complete";
   onAction?: () => Promise<void>;
-};
-
-type CertificationAction = {
-  disabled: boolean;
-  label: string;
-  onMint: () => void;
 };
 
 type LabStage = 1 | 2 | 3;
@@ -72,6 +75,13 @@ type ProtocolActivityEvent = {
 };
 
 type VariableKey = "vault" | "mint" | "source" | "authority";
+type ExploitVariableRow = {
+  key: VariableKey;
+  label: string;
+  line: number;
+  prefix: string;
+  value: string;
+};
 type SequenceMiss = {
   attempted: VariableKey;
   attemptedOrder: number;
@@ -145,27 +155,64 @@ const EXPLOIT_SEQUENCE: VariableKey[] = [
   "authority",
 ];
 
+const EXPLOIT_VARIABLE_ROWS: ExploitVariableRow[] = [
+  {
+    key: "vault",
+    label: "Vault",
+    line: 1,
+    prefix: "const vault = ",
+    value: "fakeVault",
+  },
+  {
+    key: "mint",
+    label: "Mint",
+    line: 2,
+    prefix: "const mint = ",
+    value: "counterfeitMint",
+  },
+  {
+    key: "source",
+    label: "Source",
+    line: 3,
+    prefix: "const userTokenAccount = ",
+    value: "counterfeitUserTokenAccount",
+  },
+  {
+    key: "authority",
+    label: "Authority",
+    line: 4,
+    prefix: "const authority = ",
+    value: "wallet",
+  },
+];
+
 const elk = new ELK();
 
 export function Level1Panel({
   address,
-  certificationAction,
   copied,
+  isCollectingLevel1Badge,
   isLoading,
   isSending,
+  level1BadgeCollected,
+  level1BadgeEarned,
   level1Error,
   level1State,
+  onCollectLevel1Badge,
   onCopy,
   stage,
   status,
 }: {
   address?: string;
-  certificationAction?: CertificationAction;
   copied: string | null;
+  isCollectingLevel1Badge: boolean;
   isLoading: boolean;
   isSending: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
   level1Error: unknown;
   level1State?: Level1Snapshot;
+  onCollectLevel1Badge: () => void;
   onCopy: (label: string, value: string) => Promise<void>;
   onDeposit: () => Promise<void>;
   onInitBank: () => Promise<void>;
@@ -175,11 +222,10 @@ export function Level1Panel({
   status: string;
 }) {
   const startsComplete = stage.level1Mode === "complete";
-  const [labStage, setLabStage] = useState<LabStage>(
-    startsComplete ? 3 : 1
-  );
+  const [labStage, setLabStage] = useState<LabStage>(startsComplete ? 3 : 1);
   const [normalDepositObserved, setNormalDepositObserved] = useState(false);
   const [manipulationTested, setManipulationTested] = useState(false);
+  const [flowRejectionTrigger, setFlowRejectionTrigger] = useState(0);
   const [exploitPreviewed, setExploitPreviewed] = useState(startsComplete);
   const [stageOneRevealRun, setStageOneRevealRun] = useState(0);
   const [stageOneRevealStep, setStageOneRevealStep] = useState(0);
@@ -199,6 +245,17 @@ export function Level1Panel({
           vault: "official",
         }
   );
+  const [exploitPuzzleRows, setExploitPuzzleRows] = useState<
+    ExploitVariableRow[]
+  >(EXPLOIT_VARIABLE_ROWS);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setExploitPuzzleRows(getRandomizedExploitVariableRows());
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const isConnected = status === "connected";
   const exploitReady =
@@ -207,6 +264,8 @@ export function Level1Panel({
     manipulation.source === "counterfeit" &&
     manipulation.authority === "valid";
   const authorityRejected = manipulation.authority === "fake";
+  const manipulationRejected =
+    labStage === 2 && manipulationTested && !exploitReady;
   const effectiveManipulation =
     labStage === 3 ? EXPLOIT_MANIPULATION : manipulation;
   const effectiveCounterfeitPath =
@@ -282,11 +341,6 @@ export function Level1Panel({
     Number((creditedAmount * 100n) / LEVEL_1_TARGET),
     100
   );
-  const showCertificationAction =
-    Boolean(certificationAction) &&
-    (stage.level1Mode === "complete" ||
-      certificationAction?.label !== "Mint Locked");
-
   useEffect(() => {
     if (labStage !== 1 || !normalDepositObserved) return;
 
@@ -325,7 +379,9 @@ export function Level1Panel({
 
   const handleExploitVariableSelect = (key: VariableKey) => {
     if (!exploitPrepared) {
-      setSequenceFeedback("Prepare the exploit challenge before mapping dependencies.");
+      setSequenceFeedback(
+        "Prepare the exploit challenge before mapping dependencies."
+      );
       return;
     }
 
@@ -361,9 +417,7 @@ export function Level1Panel({
     setActiveVariable(key);
     setExploitSequence((current) => [...current, key]);
     setSequenceMiss(null);
-    setSequenceFeedback(
-      `${getVariableLabel(key)} dependency mapped.`
-    );
+    setSequenceFeedback(`${getVariableLabel(key)} dependency mapped.`);
   };
 
   return (
@@ -394,7 +448,10 @@ export function Level1Panel({
                 setManipulationTested(false);
               }}
               onContinue={() => handleStageChange(3)}
-              onTest={() => setManipulationTested(true)}
+              onTest={() => {
+                setManipulationTested(true);
+                setFlowRejectionTrigger((current) => current + 1);
+              }}
             />
           ) : (
             <ExploitCodeWalkthrough
@@ -418,6 +475,7 @@ export function Level1Panel({
                 }
               }}
               onVariableFocus={handleExploitVariableSelect}
+              puzzleRows={exploitPuzzleRows}
               sequenceFeedback={sequenceFeedback}
               sequenceMiss={sequenceMiss}
               stage={stage}
@@ -428,6 +486,8 @@ export function Level1Panel({
           <ProtocolVisualization
             activeVariable={labStage === 3 ? activeVariable : undefined}
             accounts={accounts}
+            flowRejected={manipulationRejected}
+            flowRejectionTrigger={flowRejectionTrigger}
             isCorrupted={
               labStage === 3 ||
               (labStage === 2 && manipulationTested && exploitReady)
@@ -453,14 +513,15 @@ export function Level1Panel({
                   <Level1StateFooter
                     copied={copied}
                     isLoading={labStage === 2 ? isLoading : false}
+                    isCollectingLevel1Badge={isCollectingLevel1Badge}
+                    level1BadgeCollected={level1BadgeCollected}
+                    level1BadgeEarned={level1BadgeEarned}
                     level1Error={labStage === 2 ? level1Error : null}
                     level1State={level1State}
+                    onCollectLevel1Badge={onCollectLevel1Badge}
                     onCopy={onCopy}
                     progress={progress}
                   />
-                  {showCertificationAction && certificationAction ? (
-                    <Level1CertificationFooter action={certificationAction} />
-                  ) : null}
                 </div>
               )
             }
@@ -481,9 +542,6 @@ function Level1Header({
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-end">
       <div className="max-w-3xl space-y-4">
-        <p className="text-[11px] uppercase tracking-[0.34em] text-muted">
-          Account substitution and forged ledger credit
-        </p>
         <h1 className="text-5xl font-semibold tracking-[-0.08em] sm:text-6xl">
           Level 1: The Illusionist
         </h1>
@@ -684,14 +742,14 @@ function ManipulationPanel({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-border bg-background/72 p-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold leading-6 text-foreground">
             What just happened?
           </p>
-          <p className="mt-3 text-sm leading-6 text-muted">{response}</p>
+          <p className="text-sm leading-6 text-muted">{response}</p>
         </div>
-        <div className="mt-5 space-y-3">
+        <div className="space-y-3">
           <button
             type="button"
             onClick={onTest}
@@ -794,6 +852,8 @@ function ProtocolSelect({
 function ProtocolVisualization({
   activeVariable,
   accounts,
+  flowRejected,
+  flowRejectionTrigger,
   isCorrupted,
   manipulation,
   mode,
@@ -802,6 +862,8 @@ function ProtocolVisualization({
 }: {
   activeVariable?: VariableKey;
   accounts: ProtocolAccount[];
+  flowRejected: boolean;
+  flowRejectionTrigger: number;
   isCorrupted: boolean;
   manipulation: ManipulationState;
   mode: LabStage;
@@ -816,6 +878,10 @@ function ProtocolVisualization({
     Node<ProtocolGraphNodeData>,
     Edge
   > | null>(null);
+  const rejectionPulseActive = useRejectedFlowPulse({
+    rejected: flowRejected,
+    trigger: flowRejectionTrigger,
+  });
   const graphElements = useMemo(
     () =>
       buildProtocolGraph({
@@ -917,12 +983,15 @@ function ProtocolVisualization({
   ]);
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-border bg-card/72">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-          Interactive Protocol Visualization
-        </p>
-      </div>
+    <section
+      className={`overflow-hidden rounded-[28px] border border-border bg-card/72 ${
+        rejectionPulseActive ? "protocol-visualization-rejected" : ""
+      }`}
+    >
+      <ProtocolVisualizationHeader
+        label="Interactive Protocol Visualization"
+        rejected={flowRejected}
+      />
       <div className={`relative ${canvasHeightClass}`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_35%,rgba(20,241,149,0.08),transparent_32%),radial-gradient(circle_at_70%_62%,rgba(153,69,255,0.08),transparent_30%)]" />
         <ReactFlow
@@ -1468,16 +1537,24 @@ function ProtocolActivityRow({
 
 function Level1StateFooter({
   copied,
+  isCollectingLevel1Badge,
   isLoading,
+  level1BadgeCollected,
+  level1BadgeEarned,
   level1Error,
   level1State,
+  onCollectLevel1Badge,
   onCopy,
   progress,
 }: {
   copied: string | null;
+  isCollectingLevel1Badge: boolean;
   isLoading: boolean;
+  level1BadgeCollected: boolean;
+  level1BadgeEarned: boolean;
   level1Error: unknown;
   level1State?: Level1Snapshot;
+  onCollectLevel1Badge: () => void;
   onCopy: (label: string, value: string) => Promise<void>;
   progress: number;
 }) {
@@ -1528,34 +1605,28 @@ function Level1StateFooter({
             : `Bank ${compactAddress(level1State.bankPda, 4, 4)}`}
         </button>
       ) : null}
-    </div>
-  );
-}
-
-function Level1CertificationFooter({
-  action,
-}: {
-  action: CertificationAction;
-}) {
-  return (
-    <div className="rounded-[20px] border border-emerald-400/18 bg-emerald-400/[0.045] p-4">
-      <p className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/70">
-        Certification unlocked
-      </p>
-      <p className="mt-2 text-sm leading-6 text-muted">
-        Level 1 verification is recorded. Mint the wallet-bound certification
-        for this exploit path.
-      </p>
-      <div className="mt-4">
+      {level1BadgeEarned || level1BadgeCollected ? (
         <button
           type="button"
-          onClick={action.onMint}
-          disabled={action.disabled}
-          className="inline-flex min-h-13 w-full items-center justify-center rounded-full border border-[#9945ff]/35 bg-[#9945ff] px-5 text-sm font-medium text-white shadow-[0_18px_50px_-24px_rgba(153,69,255,0.9)] transition-colors hover:bg-[#8b35f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14f195] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55"
+          onClick={onCollectLevel1Badge}
+          disabled={
+            level1BadgeCollected ||
+            isCollectingLevel1Badge ||
+            !level1BadgeEarned
+          }
+          className={`min-h-10 w-full rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed ${
+            level1BadgeCollected || !level1BadgeEarned
+              ? "border border-border bg-accent text-muted"
+              : "bg-purple-500 text-white hover:bg-purple-400"
+          }`}
         >
-          {action.label}
+          {level1BadgeCollected
+            ? "Badge collected"
+            : isCollectingLevel1Badge
+              ? "Collecting..."
+              : "Collect Badge"}
         </button>
-      </div>
+      ) : null}
     </div>
   );
 }
@@ -1642,6 +1713,7 @@ function ExploitCodeWalkthrough({
   isSending,
   onExecute,
   onVariableFocus,
+  puzzleRows,
   sequenceFeedback,
   sequenceMiss,
   stage,
@@ -1654,42 +1726,16 @@ function ExploitCodeWalkthrough({
   isSending: boolean;
   onExecute: () => Promise<void> | void;
   onVariableFocus: (key: VariableKey) => void;
+  puzzleRows: ExploitVariableRow[];
   sequenceFeedback: string | null;
   sequenceMiss: SequenceMiss | null;
   stage: StageConfig;
 }) {
+  const [backendRequestMode, setBackendRequestMode] = useState<
+    "prepare" | "execute" | null
+  >(null);
   const activeSet = new Set(activeCodeLines);
   const activeContext = getExploitVariableContext(activeVariable);
-  const variableRows = [
-    {
-      key: "vault" as const,
-      label: "Vault",
-      line: 1,
-      prefix: "const vault = ",
-      value: "fakeVault",
-    },
-    {
-      key: "mint" as const,
-      label: "Mint",
-      line: 2,
-      prefix: "const mint = ",
-      value: "counterfeitMint",
-    },
-    {
-      key: "source" as const,
-      label: "Source",
-      line: 3,
-      prefix: "const userTokenAccount = ",
-      value: "counterfeitUserTokenAccount",
-    },
-    {
-      key: "authority" as const,
-      label: "Authority",
-      line: 4,
-      prefix: "const authority = ",
-      value: "wallet",
-    },
-  ];
   const remainingLines = EXPLOIT_CODE.slice(4);
 
   return (
@@ -1701,7 +1747,7 @@ function ExploitCodeWalkthrough({
       </div>
       <div className="space-y-4 p-5">
         <div className="grid grid-cols-2 gap-2">
-          {variableRows.map(({ key, label }) => {
+          {puzzleRows.map(({ key, label }) => {
             const mappedIndex = exploitSequence.indexOf(key);
             const rejected = sequenceMiss?.attempted === key;
             const badgeLabel =
@@ -1729,7 +1775,7 @@ function ExploitCodeWalkthrough({
 
         <pre className="overflow-x-auto rounded-[20px] border border-border bg-background/74 p-4 font-mono text-[13px] leading-7">
           <code className="block min-w-max">
-            {variableRows.map(({ key, line, prefix, value }) => {
+            {EXPLOIT_VARIABLE_ROWS.map(({ key, line, prefix, value }) => {
               const isActive = activeVariable === key;
               const mapped = exploitSequence.includes(key);
               return (
@@ -1754,8 +1800,8 @@ function ExploitCodeWalkthrough({
                         mapped
                           ? "bg-emerald-400/10 text-emerald-100 ring-1 ring-emerald-300/18"
                           : isActive
-                          ? "bg-emerald-400/12 text-emerald-100"
-                          : "text-foreground hover:bg-accent"
+                            ? "bg-emerald-400/12 text-emerald-100"
+                            : "text-foreground hover:bg-accent"
                       } disabled:cursor-not-allowed disabled:opacity-45`}
                     >
                       {value}
@@ -1787,38 +1833,104 @@ function ExploitCodeWalkthrough({
           </code>
         </pre>
 
-        <div className="rounded-[20px] border border-border bg-background/55 p-4">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-muted">
+        <div className="px-1">
+          <p className="text-sm font-semibold leading-6 text-foreground">
             Exploit sequence
           </p>
-          <p className="mt-2 text-sm font-medium">
-            {exploitPrepared
-              ? activeContext.title
-              : "Prepare the challenge to unlock dependency mapping."}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            {sequenceFeedback ?? activeContext.detail}
-          </p>
+          <div className="mt-2">
+            <AnimatedInstructionLine
+              text={
+                sequenceFeedback ??
+                (exploitPrepared
+                  ? activeContext.detail
+                  : "Prepare the challenge to unlock dependency mapping.")
+              }
+            />
+          </div>
         </div>
 
-        <div className="rounded-[20px] border border-emerald-400/12 bg-emerald-400/[0.035] p-4">
-          <p className="text-sm leading-6 text-muted">{stage.description}</p>
-          {stage.actionLabel ? (
-            <div className="mt-4">
-              <ExecutionButton
-                disabled={
-                  isSending ||
-                  (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
-                }
-                label={isSending ? "Submitting instruction" : stage.actionLabel}
-                onClick={onExecute}
-              />
-            </div>
-          ) : null}
-        </div>
+        {stage.description || stage.actionLabel ? (
+          <div className="rounded-[20px] border border-emerald-400/12 bg-emerald-400/[0.035] p-4">
+            {stage.description ? (
+              <p className="text-sm leading-6 text-muted">
+                {stage.description}
+              </p>
+            ) : null}
+            {stage.actionLabel ? (
+              <div className="mt-4">
+                <ExecutionButton
+                  disabled={
+                    Boolean(stage.actionDisabled) ||
+                    isSending ||
+                    (stage.level1Mode !== "prepare" && !exploitSequenceComplete)
+                  }
+                  label={
+                    isSending ? "Submitting instruction" : stage.actionLabel
+                  }
+                  onClick={async () => {
+                    setBackendRequestMode(
+                      stage.level1Mode === "prepare" ? "prepare" : "execute"
+                    );
+                    try {
+                      await onExecute();
+                    } finally {
+                      setBackendRequestMode(null);
+                    }
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+      {backendRequestMode ? (
+        <CertificateMintLoader
+          description={
+            backendRequestMode === "prepare"
+              ? "Waiting for the backend to unlock dependency mapping."
+              : "Waiting for the backend to verify the mapped exploit flow."
+          }
+          label={
+            backendRequestMode === "prepare"
+              ? "Preparing exploit challenge..."
+              : "Executing exploit..."
+          }
+          variant="modal"
+        />
+      ) : null}
     </section>
   );
+}
+
+function getRandomizedExploitVariableRows() {
+  const rows = [...EXPLOIT_VARIABLE_ROWS];
+
+  for (let index = rows.length - 1; index > 0; index -= 1) {
+    const randomIndex = getRandomIndex(index + 1);
+    [rows[index], rows[randomIndex]] = [rows[randomIndex], rows[index]];
+  }
+
+  if (
+    rows.every((row, index) => row.key === EXPLOIT_VARIABLE_ROWS[index].key)
+  ) {
+    [rows[0], rows[1]] = [rows[1], rows[0]];
+  }
+
+  return rows;
+}
+
+function getRandomIndex(maxExclusive: number) {
+  if (
+    typeof window !== "undefined" &&
+    window.crypto &&
+    "getRandomValues" in window.crypto
+  ) {
+    const values = new Uint32Array(1);
+    window.crypto.getRandomValues(values);
+    return values[0] % maxExclusive;
+  }
+
+  return Math.floor(Math.random() * maxExclusive);
 }
 
 function buildProtocolAccounts({
@@ -2073,7 +2185,8 @@ function buildProtocolActivity({
   if (!exploitPrepared) {
     return [
       {
-        detail: "Start the backend session and receive deterministic challenge accounts.",
+        detail:
+          "Start the backend session and receive deterministic challenge accounts.",
         title: "Prepare For Exploit required",
         tone: "active",
       },
@@ -2180,10 +2293,7 @@ function getVariableLabel(activeVariable: VariableKey) {
   return "Authority";
 }
 
-function getSequenceMissReason({
-  attempted,
-  expected,
-}: SequenceMiss): string {
+function getSequenceMissReason({ attempted, expected }: SequenceMiss): string {
   if (attempted === "authority") {
     return "Authority validation cannot occur before source substitution.";
   }

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { HeaderCourseNav, type CourseLevelTarget } from "./course-nav";
+import { WalletButton } from "./wallet-button";
 import type { RootSection } from "../lib/hooks/use-level-route";
 import type { LevelsView } from "../lib/levels/course-status";
 
@@ -11,7 +12,11 @@ export function AppHeader({
   onOpenLanding,
   onOpenProfile,
   onSelectLevel,
+  onSelectBreachRooms,
   onSelectResearchLabs,
+  onSelectVulnerabilities,
+  profileDisplayName,
+  profileImageSrc,
   walletStatus,
 }: {
   activeLevelsView: LevelsView;
@@ -19,12 +24,20 @@ export function AppHeader({
   onOpenLanding: () => void;
   onOpenProfile: () => void;
   onSelectLevel: (level: CourseLevelTarget) => void;
+  onSelectBreachRooms: () => void;
   onSelectResearchLabs: () => void;
+  onSelectVulnerabilities: () => void;
+  profileDisplayName?: string;
+  profileImageSrc?: string;
   walletStatus: string;
 }) {
+  const isLandingView =
+    activeSection === "levels" && activeLevelsView === "landing";
+  const showAppWallet = !isLandingView;
+
   return (
     <header className="sticky top-0 z-20 border-b border-border/80 bg-background/88 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+      <div className="flex w-full flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
         <div className="flex justify-center lg:justify-start">
           <button
             type="button"
@@ -37,7 +50,11 @@ export function AppHeader({
               alt="SolBreach"
               width={1480}
               height={304}
-              className="h-20 w-auto sm:h-20 lg:h-20"
+              className={
+                isLandingView
+                  ? "h-10 w-auto sm:h-11 lg:h-12"
+                  : "h-14 w-auto sm:h-16 lg:h-16"
+              }
               priority
             />
           </button>
@@ -45,7 +62,9 @@ export function AppHeader({
 
         {activeSection !== "levels" || activeLevelsView !== "landing" ? (
           <HeaderCourseNav
+            onSelectBreachRooms={onSelectBreachRooms}
             onSelectResearchLabs={onSelectResearchLabs}
+            onSelectVulnerabilities={onSelectVulnerabilities}
             onSelectLevel={onSelectLevel}
           />
         ) : (
@@ -53,15 +72,20 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-center gap-2 sm:gap-3 lg:justify-self-end">
-          {walletStatus === "connected" ? (
+          {showAppWallet ? (
+            <WalletButton
+              isProfileActive={activeSection === "profile"}
+              onOpenProfile={onOpenProfile}
+              profileDisplayName={profileDisplayName}
+              profileImageSrc={profileImageSrc}
+              disconnectedButtonClassName="min-h-11 rounded-2xl border border-primary/35 bg-primary/15 px-5 text-sm font-semibold text-primary shadow-[0_18px_52px_-30px_rgba(153,69,255,0.85)] transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              connectedButtonClassName="min-w-[12rem] border-[#9945ff]/35 bg-[#152033]/95"
+            />
+          ) : walletStatus === "connected" ? (
             <button
               type="button"
               onClick={onOpenProfile}
-              className={`min-h-11 rounded-full border px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                activeSection === "profile"
-                  ? "border-foreground/20 bg-foreground text-background"
-                  : "border-border bg-card/70 text-foreground hover:bg-accent"
-              }`}
+              className="min-h-11 rounded-full border border-border bg-card/70 px-4 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               My Profile
             </button>

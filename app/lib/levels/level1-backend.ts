@@ -5,19 +5,27 @@ import {
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
+import { applyNgrokBypassHeader } from "../backend/ngrok";
 import type { WalletSession } from "../wallet/types";
 
-export const SOLBREACH_BACKEND_URL =
-  "https://api-solbreach.56.125.190.174.nip.io";
+const envApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+if (!envApiBaseUrl) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured.");
+}
+
+export const SOLBREACH_BACKEND_URL = envApiBaseUrl.replace(/\/+$/, "");
 export const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
-const AUTH_STORAGE_KEY = "solbreach.level1.backendAuth";
+const AUTH_STORAGE_KEY = "solbreach.backend.walletAuth";
 const LOG_PREFIX = "[SolBreach Level 1]";
+const backendAuthInFlight = new Map<string, Promise<Level1AuthSession>>();
 
 export type Level1AuthSession = {
   accessToken: string;
   refreshToken: string;
+  role?: string;
   walletAddress: string;
 };
 
@@ -63,13 +71,30 @@ export type Level1SubmitResponse = {
 };
 
 type AuthResponse = {
+  user?: {
+    role?: string;
+    wallet_address?: string | null;
+  };
   tokens: {
     access_token: string;
     refresh_token: string;
   };
 };
 
+type WalletNonceResponse = {
+  wallet_address: string;
+  nonce: string;
+  message: string;
+  expires_at: string;
+};
+
 function getStoredAuth(walletAddress: string): Level1AuthSession | null {
+  const parsed = readStoredBackendWalletAuth();
+  if (!parsed || parsed.walletAddress !== walletAddress) return null;
+  return parsed;
+}
+
+export function readStoredBackendWalletAuth(): Level1AuthSession | null {
   if (typeof window === "undefined") return null;
 
   try {
@@ -77,7 +102,16 @@ function getStoredAuth(walletAddress: string): Level1AuthSession | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Level1AuthSession;
-    return parsed.walletAddress === walletAddress ? parsed : null;
+    if (!parsed.walletAddress || !parsed.accessToken || !parsed.refreshToken) {
+      return null;
+    }
+
+    if (isJwtExpiredOrNearExpiry(parsed.accessToken)) {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+
+    return parsed;
   } catch {
     return null;
   }
@@ -88,33 +122,52 @@ function storeAuth(session: Level1AuthSession) {
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 }
 
-function demoCredentials(walletAddress: string) {
-  const normalized = walletAddress.toLowerCase();
-  const suffix = normalized.slice(0, 16);
+export function clearBackendWalletAuth(walletAddress?: string) {
+  if (typeof window === "undefined") return;
 
-  return {
-    email: `demo-${suffix}@solbreach.app`,
-    password: "SolBreachDemo2026!",
-    username: `demo_${normalized.slice(0, 12)}`,
-  };
+  if (!walletAddress) {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    return;
+  }
+
+  const stored = getStoredAuth(walletAddress);
+  if (stored?.walletAddress === walletAddress) {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+}
+
+export function isBackendAuthError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : JSON.stringify(error);
+
+  return /unauthorized|invalid token|missing bearer|not authenticated|401/i.test(
+    message
+  );
 }
 
 async function backendRequest<T>(
   path: string,
   options: RequestInit & { accessToken?: string } = {}
 ): Promise<T> {
-  const headers = new Headers(options.headers);
+  const { accessToken, ...fetchOptions } = options;
+  const headers = new Headers(fetchOptions.headers);
 
-  if (!headers.has("content-type") && options.body) {
+  if (!headers.has("content-type") && fetchOptions.body) {
     headers.set("content-type", "application/json");
   }
 
-  if (options.accessToken) {
-    headers.set("authorization", `Bearer ${options.accessToken}`);
+  if (accessToken) {
+    headers.set("authorization", `Bearer ${accessToken}`);
   }
 
+  applyNgrokBypassHeader(headers, SOLBREACH_BACKEND_URL);
+
   const response = await fetch(`${SOLBREACH_BACKEND_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
@@ -132,51 +185,117 @@ async function backendRequest<T>(
             : JSON.stringify(body.detail ?? body)) ||
           response.statusText
         : response.statusText;
-    throw new Error(message);
+    throw new Error(
+      response.status === 401 ? `Unauthorized: ${message}` : message
+    );
   }
 
   return body as T;
 }
 
-async function loginLevel1Demo(walletAddress: string) {
-  const credentials = demoCredentials(walletAddress);
-  const auth = await backendRequest<AuthResponse>("/api/v1/auth/login", {
+async function requestWalletNonce(walletAddress: string) {
+  return backendRequest<WalletNonceResponse>("/api/v1/auth/wallet/nonce", {
+    body: JSON.stringify({ wallet_address: walletAddress }),
+    method: "POST",
+  });
+}
+
+async function verifyWalletLogin({
+  nonce,
+  signature,
+  walletAddress,
+}: {
+  nonce: string;
+  signature: string;
+  walletAddress: string;
+}) {
+  return backendRequest<AuthResponse>("/api/v1/auth/wallet/verify", {
     body: JSON.stringify({
-      email: credentials.email,
-      password: credentials.password,
+      nonce,
+      signature,
+      wallet_address: walletAddress,
     }),
     method: "POST",
   });
-
-  const session = {
-    accessToken: auth.tokens.access_token,
-    refreshToken: auth.tokens.refresh_token,
-    walletAddress,
-  };
-  storeAuth(session);
-  return session;
 }
 
-export async function ensureLevel1DemoAuth(walletAddress: string) {
-  const stored = getStoredAuth(walletAddress);
+export async function ensureBackendWalletAuth(
+  wallet: WalletSession,
+  options: { force?: boolean } = {}
+) {
+  const walletAddress = wallet.account.address;
+  const stored = options.force ? null : getStoredAuth(walletAddress);
   if (stored) return stored;
 
-  const credentials = demoCredentials(walletAddress);
+  const inFlight = backendAuthInFlight.get(walletAddress);
+  if (inFlight) return inFlight;
 
-  try {
-    const auth = await backendRequest<AuthResponse>("/api/v1/auth/register", {
-      body: JSON.stringify(credentials),
-      method: "POST",
+  if (options.force) {
+    clearBackendWalletAuth(walletAddress);
+  }
+
+  const signMessage = wallet.signMessage;
+  if (!signMessage) {
+    throw new Error(
+      "Connected wallet cannot sign authentication messages. Use a wallet with message signing support."
+    );
+  }
+
+  const authPromise = (async () => {
+    const challenge = await requestWalletNonce(walletAddress);
+    const messageBytes = new TextEncoder().encode(challenge.message);
+    const signatureBytes = await signMessage(messageBytes);
+    const signature = getBase58Decoder().decode(signatureBytes);
+    const auth = await verifyWalletLogin({
+      nonce: challenge.nonce,
+      signature,
+      walletAddress,
     });
     const session = {
       accessToken: auth.tokens.access_token,
+      role: auth.user?.role,
       refreshToken: auth.tokens.refresh_token,
       walletAddress,
     };
     storeAuth(session);
     return session;
+  })();
+
+  backendAuthInFlight.set(walletAddress, authPromise);
+
+  try {
+    return await authPromise;
+  } finally {
+    if (backendAuthInFlight.get(walletAddress) === authPromise) {
+      backendAuthInFlight.delete(walletAddress);
+    }
+  }
+}
+
+function isJwtExpiredOrNearExpiry(token: string) {
+  const payload = decodeJwtPayload(token);
+  if (!payload) return false;
+
+  const exp = typeof payload.exp === "number" ? payload.exp : undefined;
+  if (!exp) return false;
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  return exp <= nowInSeconds + 30;
+}
+
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  const payload = token.split(".")[1];
+  if (!payload || typeof window === "undefined") return null;
+
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "="
+    );
+    return JSON.parse(window.atob(padded)) as { exp?: number };
   } catch {
-    return loginLevel1Demo(walletAddress);
+    return null;
   }
 }
 
@@ -370,117 +489,6 @@ export async function executeLevel1ExploitTransaction({
     return signature;
   } catch (error) {
     logLevel1Error("exploit transaction failed", error);
-    throw error;
-  }
-}
-
-export async function authorizeLevel1CertificateMint({
-  wallet,
-}: {
-  wallet: WalletSession;
-}) {
-  try {
-    console.info(`${LOG_PREFIX} certification authorization tx start`, {
-      simulation: "one-lamport self transfer",
-      wallet: wallet.account.address,
-    });
-
-    const connection = new Connection(DEVNET_RPC_URL, "confirmed");
-    const walletPublicKey = new PublicKey(wallet.account.address);
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: walletPublicKey,
-        lamports: 1,
-        toPubkey: walletPublicKey,
-      })
-    );
-
-    console.info(`${LOG_PREFIX} certification instruction assembly success`, {
-      instructionCount: transaction.instructions.length,
-      walletSigner: walletPublicKey.toBase58(),
-    });
-
-    const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-    transaction.feePayer = walletPublicKey;
-    transaction.recentBlockhash = latestBlockhash.blockhash;
-
-    const serialized = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
-    });
-
-    const signTransaction = wallet.signTransaction;
-    const sendTransaction = wallet.sendTransaction;
-
-    if (!signTransaction && !sendTransaction) {
-      throw new Error("Connected wallet cannot sign Solana transactions.");
-    }
-
-    if (!signTransaction && sendTransaction) {
-      console.info(`${LOG_PREFIX} certification wallet sign request`, {
-        method: "signAndSendTransaction",
-        serializedBytes: serialized.length,
-      });
-      const signatureBytes = await sendTransaction(
-        new Uint8Array(serialized),
-        "solana:devnet"
-      );
-      console.info(`${LOG_PREFIX} certification wallet signature success`, {
-        signatureBytes: signatureBytes.length,
-      });
-      const signature = getBase58Decoder().decode(signatureBytes);
-      console.info(`${LOG_PREFIX} certification tx signature returned`, {
-        signature,
-      });
-      const confirmation = await connection.confirmTransaction(
-        { signature, ...latestBlockhash },
-        "confirmed"
-      );
-      console.info(
-        `${LOG_PREFIX} certification confirmTransaction success`,
-        confirmation
-      );
-      return signature;
-    }
-
-    if (!signTransaction) {
-      throw new Error("Connected wallet cannot sign Solana transactions.");
-    }
-
-    console.info(`${LOG_PREFIX} certification wallet sign request`, {
-      method: "signTransaction",
-      serializedBytes: serialized.length,
-    });
-    const signed = await signTransaction(
-      new Uint8Array(serialized),
-      "solana:devnet"
-    );
-    console.info(`${LOG_PREFIX} certification wallet signature success`, {
-      signedBytes: signed.length,
-    });
-
-    console.info(`${LOG_PREFIX} certification sendRawTransaction start`, {
-      signedBytes: signed.length,
-    });
-    const signature = await connection.sendRawTransaction(signed, {
-      maxRetries: 3,
-      skipPreflight: false,
-    });
-    console.info(`${LOG_PREFIX} certification tx signature returned`, {
-      signature,
-    });
-
-    const confirmation = await connection.confirmTransaction(
-      { signature, ...latestBlockhash },
-      "confirmed"
-    );
-    console.info(
-      `${LOG_PREFIX} certification confirmTransaction success`,
-      confirmation
-    );
-    return signature;
-  } catch (error) {
-    logLevel1Error("certification authorization failed", error);
     throw error;
   }
 }

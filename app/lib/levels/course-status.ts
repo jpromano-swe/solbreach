@@ -1,4 +1,10 @@
-export type LevelId = "level0" | "level1" | "level2" | "level3";
+export type LevelId =
+  | "level0"
+  | "level1"
+  | "level2"
+  | "level3"
+  | "level4"
+  | "level5";
 export type LevelsView = "landing" | LevelId;
 export type LevelStatus =
   | "ready"
@@ -50,6 +56,8 @@ export function buildLevelTiles({
   level3DelegationReady,
   level3HasGuildAuthority,
   level3HasLevelState,
+  level4Completed,
+  level5Completed,
 }: {
   level0Completed?: boolean;
   level0HasLevelState?: boolean;
@@ -64,6 +72,8 @@ export function buildLevelTiles({
   level3DelegationReady: boolean;
   level3HasGuildAuthority?: boolean;
   level3HasLevelState?: boolean;
+  level4Completed?: boolean;
+  level5Completed?: boolean;
 }): LevelTileConfig[] {
   const level0Status: LevelStatus = level0Completed
     ? "cleared"
@@ -71,9 +81,7 @@ export function buildLevelTiles({
       ? "live"
       : "ready";
 
-  const level1Status: LevelStatus = !level0Completed
-    ? "locked"
-    : level1Completed
+  const level1Status: LevelStatus = level1Completed
       ? "cleared"
       : level1DepositReady
         ? "armed"
@@ -81,9 +89,7 @@ export function buildLevelTiles({
           ? "live"
           : "ready";
 
-  const level2Status: LevelStatus = !level0Completed
-    ? "locked"
-    : level2Completed
+  const level2Status: LevelStatus = level2Completed
       ? "cleared"
       : level2Hijacked
         ? "armed"
@@ -91,9 +97,7 @@ export function buildLevelTiles({
           ? "live"
           : "ready";
 
-  const level3Status: LevelStatus = !level0Completed
-    ? "locked"
-    : level3Completed
+  const level3Status: LevelStatus = level3Completed
       ? "cleared"
       : level3DelegationReady
         ? "armed"
@@ -133,6 +137,22 @@ export function buildLevelTiles({
       title: "Trojan Horse",
       status: level3Status,
       summary: "Abuse arbitrary CPI and the forwarded guild signer.",
+    },
+    {
+      id: "level4",
+      index: "04",
+      label: "Data matching",
+      title: "Mirror Trap",
+      status: level4Completed ? "cleared" : "ready",
+      summary: "Match stored account data before protocol state changes.",
+    },
+    {
+      id: "level5",
+      index: "05",
+      label: "Address reuse",
+      title: "Time Traveler",
+      status: level5Completed ? "cleared" : "ready",
+      summary: "Reuse a deterministic PDA address through unsafe lifecycle handling.",
     },
   ];
 }
