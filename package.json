@@ -14,9 +14,9 @@
     "init:certification-authority": "node scripts/init-certification-authority.mjs",
     "lint": "eslint",
     "mint:certificate": "node scripts/mint-level-certificate.mjs",
-    "operator": "node scripts/solbreach-operator.mjs",
     "setup": "npm run anchor-build && npm run codama:js",
-    "start": "next start"
+    "start": "next start",
+    "test:security": "playwright test --config=playwright.security.config.ts"
   },
   "description": "Gamified Solana security training with Anchor CTF levels",
   "keywords": [

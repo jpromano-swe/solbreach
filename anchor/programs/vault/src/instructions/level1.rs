@@ -20,6 +20,16 @@ pub struct InitBankConfig<'info> {
 
     pub expected_mint: Account<'info, Mint>,
     pub system_program: Program<'info, System>,
+
+    #[account(
+        seeds = [crate::ID.as_ref()],
+        bump,
+        seeds::program = anchor_lang::solana_program::bpf_loader_upgradeable::ID,
+        constraint = program_data.upgrade_authority_address == Some(admin.key())
+            @ VaultError::UnauthorizedInitialization,
+    )]
+    pub program_data: Account<'info, ProgramData>,
+
 }
 
 pub fn init_bank(ctx: Context<InitBankConfig>) -> Result<()> {

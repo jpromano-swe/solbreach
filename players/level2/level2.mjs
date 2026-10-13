@@ -1,48 +1,15 @@
 #!/usr/bin/env node
+// SolBreach Level 2: The Identity Thief — learner template (devnet only).
+// Read anchor/programs/vault/src/instructions/level2.rs first.
+// Hint: Which identity is included in the profile seeds and authorization checks?
 
-import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, "..", "..");
-const operatorPath = path.join(repoRoot, "scripts", "solbreach-operator.mjs");
-
-const HELP = `
-SolBreach player entrypoint: Level 2 / Identity Thief
-
-Usage:
-  node players/level2/level2.mjs setup [--rpc <url>] [--keypair <path>] [--initial-commander <pubkey>]
-  node players/level2/level2.mjs exploit [--rpc <url>] [--keypair <path>]
-  node players/level2/level2.mjs verify [--rpc <url>] [--keypair <path>]
-  node players/level2/level2.mjs status [--rpc <url>] [--keypair <path>]
-
-This level exploits a static PDA seed. Any signer can overwrite the single
-global profile account because the seed set omits the user pubkey.
-`.trim();
-
-main();
-
-function main() {
-  const [, , action, ...rest] = process.argv;
-
-  if (!action || action === "--help" || action === "-h") {
-    console.log(HELP);
-    process.exit(0);
-  }
-
-  runOfficialFlow(action, rest);
+export async function buildAttempt() {
+  // TODO: derive your player PDAs and inspect the initial account state.
+  // TODO: choose instruction accounts and explain why your attempt should work.
+  // TODO: build your own transaction; simulate it before requesting a signature.
+  throw new Error("Complete the TODOs before submitting a Level 2 attempt.");
 }
 
-function runOfficialFlow(action, passthroughArgs) {
-  const result = spawnSync(
-    "node",
-    [operatorPath, "level2", action, ...passthroughArgs],
-    {
-      cwd: repoRoot,
-      stdio: "inherit",
-    }
-  );
-
-  process.exit(result.status ?? 1);
-}
+console.log(
+  "Level 2: The Identity Thief. Edit buildAttempt() to construct your own attempt."
+);

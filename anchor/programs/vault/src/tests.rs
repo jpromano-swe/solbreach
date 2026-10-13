@@ -28,6 +28,28 @@ mod tests {
     const LEVEL_3_TARGET: u64 = 1;
     const MERCENARY_PROGRAM_ID: Pubkey = pubkey!("EYUQDYesXVQon3tfQavDu5gErk4oGnNmVXnQHDnCHzzv");
 
+    fn get_program_data_pda() -> Pubkey {
+        Pubkey::find_program_address(&[PROGRAM_ID.as_ref()], &solana_sdk::bpf_loader_upgradeable::ID).0
+    }
+
+    fn set_upgrade_authority(svm: &mut LiteSVM, authority: &Pubkey) {
+        let address = get_program_data_pda();
+        // LiteSVM 0.7 loads programs with the legacy loader. Model the canonical
+        // upgradeable-loader metadata separately for these authorization tests.
+        let mut data = vec![0u8; 45];
+        data[0..4].copy_from_slice(&3u32.to_le_bytes());
+        data[12] = 1;
+        data[13..45].copy_from_slice(authority.as_ref());
+        let account = solana_sdk::account::Account {
+            lamports: 1_000_000,
+            data,
+            owner: solana_sdk::bpf_loader_upgradeable::ID,
+            executable: false,
+            rent_epoch: 0,
+        };
+        svm.set_account(address, account).unwrap();
+    }
+
     fn get_user_stats_pda(user: &Pubkey) -> (Pubkey, u8) {
         Pubkey::find_program_address(&[b"stats", user.as_ref()], &PROGRAM_ID)
     }
@@ -125,6 +147,7 @@ mod tests {
                 AccountMeta::new(*bank, false),
                 AccountMeta::new_readonly(*expected_mint, false),
                 AccountMeta::new_readonly(system_program::ID, false),
+                AccountMeta::new_readonly(get_program_data_pda(), false),
             ],
             data: instruction::InitBank {}.data(),
         }
@@ -262,6 +285,7 @@ mod tests {
                 AccountMeta::new_readonly(*reward_mint, false),
                 AccountMeta::new_readonly(*bounty_vault, false),
                 AccountMeta::new_readonly(system_program::ID, false),
+                AccountMeta::new_readonly(get_program_data_pda(), false),
             ],
             data: instruction::InitGuildAuthority { bounty_amount }.data(),
         }
@@ -339,6 +363,7 @@ mod tests {
                 AccountMeta::new(*admin, true),
                 AccountMeta::new(*certification_authority, false),
                 AccountMeta::new_readonly(system_program::ID, false),
+                AccountMeta::new_readonly(get_program_data_pda(), false),
             ],
             data: instruction::InitCertificationAuthority { authority }.data(),
         }
@@ -594,6 +619,7 @@ mod tests {
         let _ = svm.add_program(PROGRAM_ID, program_bytes);
 
         let admin = Keypair::new();
+        set_upgrade_authority(&mut svm, &admin.pubkey());
         let user = Keypair::new();
         let real_mint = Keypair::new();
         let fake_mint = Keypair::new();
@@ -733,6 +759,7 @@ mod tests {
         let _ = svm.add_program(PROGRAM_ID, program_bytes);
 
         let admin = Keypair::new();
+        set_upgrade_authority(&mut svm, &admin.pubkey());
         let user = Keypair::new();
 
         svm.airdrop(&admin.pubkey(), LAMPORTS_PER_SOL).unwrap();
@@ -841,6 +868,7 @@ mod tests {
         let _ = svm.add_program(MERCENARY_PROGRAM_ID, mercenary_program_bytes);
 
         let admin = Keypair::new();
+        set_upgrade_authority(&mut svm, &admin.pubkey());
         let user = Keypair::new();
         let reward_mint = Keypair::new();
         let bounty_vault = Keypair::new();
@@ -1002,6 +1030,7 @@ mod tests {
         let _ = svm.add_program(PROGRAM_ID, program_bytes);
 
         let admin = Keypair::new();
+        set_upgrade_authority(&mut svm, &admin.pubkey());
         let user = Keypair::new();
         let merkle_tree = Keypair::new();
         let asset_id = Keypair::new();
@@ -1128,4 +1157,32 @@ mod tests {
         assert!(updated_certificate.minted_at >= certificate.claimed_at);
         assert!(!updated_certificate.transferable);
     }
+    #[test]
+    fn global_initializers_reject_non_upgrade_authority() {
+        let mut svm = LiteSVM::new();
+        svm.add_program(PROGRAM_ID, include_bytes!("../../../target/deploy/vault.so")).unwrap();
+        let admin = Keypair::new();
+        let attacker = Keypair::new();
+        set_upgrade_authority(&mut svm, &admin.pubkey());
+        svm.airdrop(&admin.pubkey(), LAMPORTS_PER_SOL).unwrap();
+        svm.airdrop(&attacker.pubkey(), LAMPORTS_PER_SOL).unwrap();
+        let mint = Keypair::new();
+        create_mint(&mut svm, &admin, &mint, &admin.pubkey());
+        let vault = Keypair::new();
+        create_token_account(&mut svm, &admin, &vault, &mint.pubkey(), &get_guild_authority_pda().0);
+        let instructions = [
+            create_init_bank_ix(&attacker.pubkey(), &get_bank_pda().0, &mint.pubkey()),
+            create_init_guild_authority_ix(&attacker.pubkey(), &get_guild_authority_pda().0, &mint.pubkey(), &vault.pubkey(), 1),
+            create_init_certification_authority_ix(&attacker.pubkey(), &get_certification_authority_pda().0, attacker.pubkey()),
+        ];
+        for ix in instructions {
+            let tx = Transaction::new_signed_with_payer(&[ix], Some(&attacker.pubkey()), &[&attacker], svm.latest_blockhash());
+            let failure = svm.send_transaction(tx).expect_err("non-admin initialization must fail");
+            assert!(failure.meta.logs.iter().any(|line| line.contains("UnauthorizedInitialization")), "{:?}", failure);
+        }
+        assert!(svm.get_account(&get_bank_pda().0).is_none());
+        assert!(svm.get_account(&get_guild_authority_pda().0).is_none());
+        assert!(svm.get_account(&get_certification_authority_pda().0).is_none());
+    }
+
 }

@@ -1,48 +1,15 @@
 #!/usr/bin/env node
+// SolBreach Level 1: The Illusionist — learner template (devnet only).
+// Read anchor/programs/vault/src/instructions/level1.rs first.
+// Hint: Which account relationships are checked before a deposit receives credit?
 
-import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, "..", "..");
-const operatorPath = path.join(repoRoot, "scripts", "solbreach-operator.mjs");
-
-const HELP = `
-SolBreach player entrypoint: Level 1 / The Illusionist
-
-Usage:
-  node players/level1/level1.mjs setup [--rpc <url>] [--keypair <path>] [--expected-mint <pubkey>] [--amount <raw-units>]
-  node players/level1/level1.mjs exploit [--rpc <url>] [--keypair <path>] [--vault <pubkey>] [--user-token-account <pubkey>] [--amount <raw-units>]
-  node players/level1/level1.mjs verify [--rpc <url>] [--keypair <path>]
-  node players/level1/level1.mjs status [--rpc <url>] [--keypair <path>]
-
-This level exploits account substitution. The vulnerable deposit path accepts
-counterfeit token accounts because it never constrains the vault mint.
-`.trim();
-
-main();
-
-function main() {
-  const [, , action, ...rest] = process.argv;
-
-  if (!action || action === "--help" || action === "-h") {
-    console.log(HELP);
-    process.exit(0);
-  }
-
-  runOfficialFlow(action, rest);
+export async function buildAttempt() {
+  // TODO: derive your player PDAs and inspect the initial account state.
+  // TODO: choose instruction accounts and explain why your attempt should work.
+  // TODO: build your own transaction; simulate it before requesting a signature.
+  throw new Error("Complete the TODOs before submitting a Level 1 attempt.");
 }
 
-function runOfficialFlow(action, passthroughArgs) {
-  const result = spawnSync(
-    "node",
-    [operatorPath, "level1", action, ...passthroughArgs],
-    {
-      cwd: repoRoot,
-      stdio: "inherit",
-    }
-  );
-
-  process.exit(result.status ?? 1);
-}
+console.log(
+  "Level 1: The Illusionist. Edit buildAttempt() to construct your own attempt."
+);

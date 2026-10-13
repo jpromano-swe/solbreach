@@ -1,48 +1,15 @@
-# Level 0: Wallet Warmup
+# Level 0: Hello SolBreach
 
-Level 0 is not a real exploit. It is the bootstrap step that creates your
-player registry and your temporary level PDA, then verifies and closes it.
+Read `anchor/programs/vault/src/instructions/level0.rs`, then edit
+`players/level0/level0.mjs`. This is an unfinished learner template.
 
-## Challenge source
+**Hint:** Find the player-specific state and explain how completion is recorded.
 
-Read:
+1. Identify the accounts and the intended security boundary.
+2. Implement your own attempt in `buildAttempt()` and simulate it on devnet.
+3. Submit with your wallet and inspect the resulting account state.
+4. Call the level's verification instruction only after meeting its objective.
+5. Explain the missing validation and propose a patch.
 
-- `anchor/programs/vault/src/instructions/level0.rs`
-- `anchor/programs/vault/src/state.rs`
-
-## Objective
-
-Mark `completed_levels[0] = true` for your wallet.
-
-## What the script does
-
-- `setup`
-  - creates `UserStats` if missing
-  - creates `Level0State` if missing
-- `verify`
-  - calls `verify_and_close_level_0`
-  - confirms the level is marked complete
-  - confirms the temporary PDA was closed
-- `status`
-  - reads the on-chain state without mutating anything
-
-## How to use it
-
-From the repo root:
-
-```bash
-node players/level0/level0.mjs setup
-node players/level0/level0.mjs verify
-node players/level0/level0.mjs status
-```
-
-Optional flags:
-
-```bash
-node players/level0/level0.mjs status --rpc https://api.devnet.solana.com --keypair ~/.config/solana/id.json
-```
-
-## When to edit this file
-
-Usually never. This level is meant to bootstrap the wallet so the exploit
-levels can run afterward.
+The template does not execute an exploit or automatically award a certificate.
+Use the guided beta at [beta.solbreach.com](https://beta.solbreach.com) for onboarding.

@@ -51,8 +51,7 @@ export function parseSharedOptions(argv) {
       DEFAULT_KEYPAIR_PATH,
     rpcUrl:
       process.env.SOLANA_RPC_URL ?? process.env.RPC_URL ?? DEFAULT_RPC_URL,
-    vaultProgramId:
-      process.env.VAULT_PROGRAM_ID ?? DEFAULT_VAULT_PROGRAM_ID,
+    vaultProgramId: process.env.VAULT_PROGRAM_ID ?? DEFAULT_VAULT_PROGRAM_ID,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -132,7 +131,11 @@ export function vaultProgramId(options) {
 }
 
 export function discriminator(name) {
-  return crypto.createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
+  return crypto
+    .createHash("sha256")
+    .update(`global:${name}`)
+    .digest()
+    .subarray(0, 8);
 }
 
 export function encodePubkey(publicKey) {
@@ -160,21 +163,21 @@ export function encodeU64(value) {
 export function findUserStatsPda(programId, player) {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("stats"), player.toBuffer()],
-    programId,
+    programId
   );
 }
 
 export function findCertificationAuthorityPda(programId) {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("certification_authority")],
-    programId,
+    programId
   );
 }
 
 export function findCertificatePda(programId, player, level) {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("certificate"), player.toBuffer(), Buffer.from([level])],
-    programId,
+    programId
   );
 }
 
@@ -255,9 +258,14 @@ export async function sendInstruction(connection, payer, instruction) {
     lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
   }).add(instruction);
 
-  const signature = await sendAndConfirmTransaction(connection, transaction, [payer], {
-    commitment: "confirmed",
-  });
+  const signature = await sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [payer],
+    {
+      commitment: "confirmed",
+    }
+  );
 
   return signature;
 }

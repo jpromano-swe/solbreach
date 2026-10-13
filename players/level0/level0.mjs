@@ -1,47 +1,15 @@
 #!/usr/bin/env node
+// SolBreach Level 0: Hello SolBreach — learner template (devnet only).
+// Read anchor/programs/vault/src/instructions/level0.rs first.
+// Hint: Find the player-specific state and explain how completion is recorded.
 
-import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, "..", "..");
-const operatorPath = path.join(repoRoot, "scripts", "solbreach-operator.mjs");
-
-const HELP = `
-SolBreach player entrypoint: Level 0
-
-Usage:
-  node players/level0/level0.mjs setup [--rpc <url>] [--keypair <path>]
-  node players/level0/level0.mjs verify [--rpc <url>] [--keypair <path>]
-  node players/level0/level0.mjs status [--rpc <url>] [--keypair <path>]
-
-This is the wallet warmup level. It bootstraps your UserStats PDA and your
-temporary Level0State PDA, then verifies and closes the level instance.
-`.trim();
-
-main();
-
-function main() {
-  const [, , action, ...rest] = process.argv;
-
-  if (!action || action === "--help" || action === "-h") {
-    console.log(HELP);
-    process.exit(0);
-  }
-
-  runOfficialFlow(action, rest);
+export async function buildAttempt() {
+  // TODO: derive your player PDAs and inspect the initial account state.
+  // TODO: choose instruction accounts and explain why your attempt should work.
+  // TODO: build your own transaction; simulate it before requesting a signature.
+  throw new Error("Complete the TODOs before submitting a Level 0 attempt.");
 }
 
-function runOfficialFlow(action, passthroughArgs) {
-  const result = spawnSync(
-    "node",
-    [operatorPath, "level0", action, ...passthroughArgs],
-    {
-      cwd: repoRoot,
-      stdio: "inherit",
-    }
-  );
-
-  process.exit(result.status ?? 1);
-}
+console.log(
+  "Level 0: Hello SolBreach. Edit buildAttempt() to construct your own attempt."
+);

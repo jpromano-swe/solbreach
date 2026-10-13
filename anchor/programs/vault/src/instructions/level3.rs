@@ -31,6 +31,16 @@ pub struct InitGuildAuthority<'info> {
     pub bounty_vault: Account<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
+
+    #[account(
+        seeds = [crate::ID.as_ref()],
+        bump,
+        seeds::program = anchor_lang::solana_program::bpf_loader_upgradeable::ID,
+        constraint = program_data.upgrade_authority_address == Some(admin.key())
+            @ VaultError::UnauthorizedInitialization,
+    )]
+    pub program_data: Account<'info, ProgramData>,
+
 }
 
 pub fn init_guild_authority(ctx: Context<InitGuildAuthority>, bounty_amount: u64) -> Result<()> {

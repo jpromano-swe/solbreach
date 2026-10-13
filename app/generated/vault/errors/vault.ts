@@ -34,6 +34,8 @@ export const VAULT_ERROR__LEVEL_NOT_COMPLETED = 0x1777; // 6007
 export const VAULT_ERROR__CERTIFICATE_ASSET_ALREADY_RECORDED = 0x1778; // 6008
 /** UnauthorizedCertificationAuthority: The signer is not allowed to bind certificate assets */
 export const VAULT_ERROR__UNAUTHORIZED_CERTIFICATION_AUTHORITY = 0x1779; // 6009
+/** UnauthorizedInitialization: Only the program upgrade authority may initialize global configuration */
+export const VAULT_ERROR__UNAUTHORIZED_INITIALIZATION = 0x177a; // 6010
 
 export type VaultError =
   | typeof VAULT_ERROR__CERTIFICATE_ASSET_ALREADY_RECORDED
@@ -45,7 +47,8 @@ export type VaultError =
   | typeof VAULT_ERROR__LEVEL_ALREADY_COMPLETED
   | typeof VAULT_ERROR__LEVEL_NOT_COMPLETED
   | typeof VAULT_ERROR__MISSING_GUILD_AUTHORITY_SIGNER
-  | typeof VAULT_ERROR__UNAUTHORIZED_CERTIFICATION_AUTHORITY;
+  | typeof VAULT_ERROR__UNAUTHORIZED_CERTIFICATION_AUTHORITY
+  | typeof VAULT_ERROR__UNAUTHORIZED_INITIALIZATION;
 
 let vaultErrorMessages: Record<VaultError, string> | undefined;
 if (process.env.NODE_ENV !== "production") {
@@ -60,6 +63,7 @@ if (process.env.NODE_ENV !== "production") {
     [VAULT_ERROR__LEVEL_NOT_COMPLETED]: `This player has not completed the requested level yet`,
     [VAULT_ERROR__MISSING_GUILD_AUTHORITY_SIGNER]: `The guild authority signer was not forwarded into the delegated CPI`,
     [VAULT_ERROR__UNAUTHORIZED_CERTIFICATION_AUTHORITY]: `The signer is not allowed to bind certificate assets`,
+    [VAULT_ERROR__UNAUTHORIZED_INITIALIZATION]: `Only the program upgrade authority may initialize global configuration`,
   };
 }
 

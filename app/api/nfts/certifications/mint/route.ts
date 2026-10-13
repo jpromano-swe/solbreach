@@ -26,13 +26,13 @@ function getSolbreachBackendUrl() {
 const LEVEL_1_BACKEND_ID = "96d2111d-bb01-5a1b-9536-57331fed473e";
 
 type MintRequestBody = {
-  backendAccessToken?: string;
   cluster?: MintCertificateCluster;
   level?: number;
   merkleTree?: string;
   mintAuthorizationSignature?: string;
+  mintAuthorizationIssuedAt?: number;
+  mintAuthorizationNonce?: string;
   player?: string;
-  researchLabAccessToken?: string;
   researchLabSessionId?: string;
   rpcUrl?: string;
 };
@@ -43,24 +43,14 @@ const RESEARCH_LAB_CERTIFICATE_LEVELS: Record<string, number> = {
   "rl3-arbitrary-cpi": 3,
 };
 
-const CLUSTERS = new Set<MintCertificateCluster>([
-  "devnet",
-  "localnet",
-  "mainnet-beta",
-]);
-
 function parseCluster(value: unknown): MintCertificateCluster {
-  const cluster = (
-    typeof value === "string" ? value : "devnet"
-  ) as MintCertificateCluster;
-  if (!CLUSTERS.has(cluster)) {
-    throw new Error("Cluster must be devnet, localnet, or mainnet-beta.");
-  }
-  return cluster;
+  if (value !== "devnet")
+    throw new Error("Certificate minting is only available on devnet.");
+  return "devnet";
 }
 
 function parseLevel(value: unknown) {
-  const level = Number(value);
+  const level = typeof value === "number" ? value : NaN;
   if (!Number.isInteger(level) || level < 0 || level > 3) {
     throw new Error("Level must be an integer from 0 to 3.");
   }
@@ -77,19 +67,6 @@ function parsePublicKey(value: unknown, label: string) {
   } catch {
     throw new Error(`${label} is invalid.`);
   }
-}
-
-function parseSignature(value: unknown, label: string) {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`${label} is required.`);
-  }
-
-  const signature = value.trim();
-  if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) {
-    throw new Error(`${label} is invalid.`);
-  }
-
-  return signature;
 }
 
 function publicBaseUrl(request: NextRequest) {
@@ -120,6 +97,7 @@ async function canMintBackendLevel1Certificate(accessToken: unknown) {
     `${backendUrl}/api/v1/levels/${LEVEL_1_BACKEND_ID}/status`,
     {
       headers,
+      cache: "no-store",
     }
   );
 
@@ -173,7 +151,7 @@ async function canMintResearchLabCertificate({
     `${backendUrl}/api/v1/research-labs/sessions/${encodeURIComponent(
       sessionId
     )}`,
-    { headers }
+    { headers, cache: "no-store" }
   );
 
   if (!response.ok) {
@@ -238,58 +216,81 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as MintRequestBody;
     const level = parseLevel(body.level);
+    const cluster = parseCluster(body.cluster);
+    const player = parsePublicKey(body.player, "Player");
+    const accessToken = request.headers
+      .get("authorization")
+      ?.replace(/^Bearer\s+/i, "");
+    if (!accessToken?.trim()) {
+      return NextResponse.json(
+        { error: "A backend session is required for every certificate level." },
+        { status: 401 }
+      );
+    }
+    const backendUrl = getSolbreachBackendUrl();
+    const headers = new Headers({
+      authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    });
+    applyNgrokBypassHeader(headers, backendUrl);
+    // The backend verifies Ed25519 ownership, expiry, nonce replay and a durable
+    // per-wallet rate limit before any server authority can be used.
+    const authorization = await fetch(
+      `${backendUrl}/api/v1/certificates/mint-authorization`,
+      {
+        method: "POST",
+        headers,
+        cache: "no-store",
+        body: JSON.stringify({
+          player,
+          level,
+          cluster,
+          signature: body.mintAuthorizationSignature,
+          issued_at: body.mintAuthorizationIssuedAt,
+          nonce: body.mintAuthorizationNonce,
+        }),
+      }
+    );
+    if (!authorization.ok) {
+      return NextResponse.json(
+        {
+          error:
+            authorization.status === 429
+              ? "Too many certificate mint attempts. Try again in ten minutes."
+              : "Wallet mint authorization was rejected. Sign a fresh request with the session wallet.",
+        },
+        { status: authorization.status >= 500 ? 503 : authorization.status }
+      );
+    }
+    const authorized = await authorization.json();
+    if (
+      authorized.authorized !== true ||
+      authorized.wallet_address !== player ||
+      authorized.level !== level
+    ) {
+      throw new Error("Backend returned an invalid mint authorization.");
+    }
     const backendLevel1 =
       level === 1
-        ? await canMintBackendLevel1Certificate(body.backendAccessToken)
-        : { completed: false, reason: null };
+        ? await canMintBackendLevel1Certificate(accessToken)
+        : { completed: false };
     const researchLabCompletion =
-      !backendLevel1.completed &&
-      (body.researchLabAccessToken || body.researchLabSessionId)
+      !backendLevel1.completed && body.researchLabSessionId
         ? await canMintResearchLabCertificate({
-            accessToken: body.researchLabAccessToken,
+            accessToken,
             level,
             sessionId: body.researchLabSessionId,
           })
-        : { completed: false, reason: null };
-    const level1CompletionVerified =
-      backendLevel1.completed || researchLabCompletion.completed;
-
-    if (
-      (body.backendAccessToken ||
-        body.researchLabAccessToken ||
-        body.researchLabSessionId) &&
-      !level1CompletionVerified
-    ) {
-      throw new Error(
-        backendLevel1.reason ??
-          researchLabCompletion.reason ??
-          "Certification completion could not be verified."
-      );
-    }
-
-    if (level1CompletionVerified) {
-      parseSignature(
-        body.mintAuthorizationSignature,
-        `Level ${level} mint authorization signature`
-      );
-    }
-
+        : { completed: false };
     const result = await mintCertificateAsset({
-      allowMissingCertificate: level1CompletionVerified,
+      allowMissingCertificate:
+        backendLevel1.completed || researchLabCompletion.completed,
       level,
-      player: parsePublicKey(body.player, "Player"),
-      cluster: parseCluster(body.cluster),
+      player,
+      cluster,
       baseUrl: publicBaseUrl(request),
-      merkleTree:
-        typeof body.merkleTree === "string" && body.merkleTree.trim()
-          ? parsePublicKey(body.merkleTree, "Merkle tree")
-          : undefined,
-      rpcUrl:
-        typeof body.rpcUrl === "string" && body.rpcUrl.trim()
-          ? body.rpcUrl
-          : undefined,
+      // RPC and Merkle tree are exclusively server configuration.
     });
-
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

@@ -61,13 +61,8 @@ function loadAuthorityKeypair() {
   );
 }
 
-function rpcUrlFromInput(rpcUrl?: string) {
-  return (
-    rpcUrl ??
-    process.env.SOLANA_RPC_URL ??
-    process.env.RPC_URL ??
-    DEFAULT_RPC_URL
-  );
+function serverRpcUrl() {
+  return process.env.SOLANA_RPC_URL ?? process.env.RPC_URL ?? DEFAULT_RPC_URL;
 }
 
 function vaultProgramId() {
@@ -76,11 +71,11 @@ function vaultProgramId() {
   );
 }
 
-function merkleTreeFromInput(merkleTree?: string) {
-  const value = merkleTree ?? process.env.MERKLE_TREE_ADDRESS?.trim();
+function serverMerkleTree() {
+  const value = process.env.MERKLE_TREE_ADDRESS?.trim();
   if (!value) {
     throw new Error(
-      "Merkle tree address is missing. Set MERKLE_TREE_ADDRESS or provide merkleTree in the request."
+      "Merkle tree address is missing. Set MERKLE_TREE_ADDRESS on the server."
     );
   }
   return new PublicKey(value);
@@ -313,9 +308,9 @@ export async function mintCertificateAsset(params: {
   cluster: MintCertificateCluster;
   baseUrl: string;
   allowMissingCertificate?: boolean;
-  merkleTree?: string;
-  rpcUrl?: string;
 }) {
+  if (params.cluster !== "devnet")
+    throw new Error("Certificate minting is restricted to devnet.");
   const level = params.level;
   if (!Number.isInteger(level) || level < 0 || level > 3) {
     throw new Error("Level must be an integer from 0 to 3.");
@@ -323,11 +318,17 @@ export async function mintCertificateAsset(params: {
 
   const player = new PublicKey(params.player);
   const programId = vaultProgramId();
-  const merkleTree = merkleTreeFromInput(params.merkleTree);
-  const rpcUrl = rpcUrlFromInput(params.rpcUrl);
+  const merkleTree = serverMerkleTree();
+  const rpcUrl = serverRpcUrl();
   const signer = loadAuthorityKeypair();
   const connection = new Connection(rpcUrl, "confirmed");
 
+  // Fail closed even if a server RPC is accidentally configured for another network.
+  if (
+    (await connection.getGenesisHash()) !== "EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+  ) {
+    throw new Error("The certificate server RPC must point to Solana devnet.");
+  }
   const [certificatePda] = findCertificatePda(programId, player, level);
   const certificateAccount = await connection.getAccountInfo(
     certificatePda,
@@ -343,19 +344,23 @@ export async function mintCertificateAsset(params: {
   let shouldRecordCertificateAsset = false;
 
   if (certificateAccount) {
-    try {
-      certificate = parseLevelCertificateAccount(certificateAccount.data);
-      shouldRecordCertificateAsset = true;
-    } catch (error) {
-      if (!params.allowMissingCertificate) {
-        throw error;
-      }
-
-      console.warn(
-        `Certificate PDA ${certificatePda.toBase58()} exists but is not initialized as a LevelCertificate. Skipping on-chain asset recording for backend-completed Level ${level}.`,
-        error
+    const expectedDiscriminator = crypto
+      .createHash("sha256")
+      .update("account:LevelCertificate")
+      .digest()
+      .subarray(0, 8);
+    if (
+      !certificateAccount.owner.equals(programId) ||
+      !certificateAccount.data.subarray(0, 8).equals(expectedDiscriminator) ||
+      !certificateAccount.data.subarray(8, 40).equals(player.toBuffer()) ||
+      certificateAccount.data[104] !== level
+    ) {
+      throw new Error(
+        "Certificate account owner, type, player or level is invalid."
       );
     }
+    certificate = parseLevelCertificateAccount(certificateAccount.data);
+    shouldRecordCertificateAsset = true;
   }
 
   if (certificate?.minted) {

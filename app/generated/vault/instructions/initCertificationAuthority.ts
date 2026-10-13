@@ -14,6 +14,7 @@ import {
   getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
@@ -52,6 +53,7 @@ export type InitCertificationAuthorityInstruction<
   TAccountCertificationAuthority extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgramData extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -67,6 +69,9 @@ export type InitCertificationAuthorityInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgramData extends string
+        ? ReadonlyAccount<TAccountProgramData>
+        : TAccountProgramData,
       ...TRemainingAccounts,
     ]
   >;
@@ -114,10 +119,12 @@ export type InitCertificationAuthorityAsyncInput<
   TAccountAdmin extends string = string,
   TAccountCertificationAuthority extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgramData extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   certificationAuthority?: Address<TAccountCertificationAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
+  programData?: Address<TAccountProgramData>;
   authority: InitCertificationAuthorityInstructionDataArgs["authority"];
 };
 
@@ -125,12 +132,14 @@ export async function getInitCertificationAuthorityInstructionAsync<
   TAccountAdmin extends string,
   TAccountCertificationAuthority extends string,
   TAccountSystemProgram extends string,
+  TAccountProgramData extends string,
   TProgramAddress extends Address = typeof VAULT_PROGRAM_ADDRESS,
 >(
   input: InitCertificationAuthorityAsyncInput<
     TAccountAdmin,
     TAccountCertificationAuthority,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -138,7 +147,8 @@ export async function getInitCertificationAuthorityInstructionAsync<
     TProgramAddress,
     TAccountAdmin,
     TAccountCertificationAuthority,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >
 > {
   // Program address.
@@ -152,6 +162,7 @@ export async function getInitCertificationAuthorityInstructionAsync<
       isWritable: true,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    programData: { value: input.programData ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -170,6 +181,21 @@ export async function getInitCertificationAuthorityInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.programData.value) {
+    accounts.programData.value = await getProgramDerivedAddress({
+      programAddress:
+        "BPFLoaderUpgradeab1e11111111111111111111111" as Address<"BPFLoaderUpgradeab1e11111111111111111111111">,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            8, 148, 145, 199, 224, 76, 159, 200, 189, 95, 92, 137, 43, 241, 144,
+            112, 48, 112, 248, 230, 106, 91, 206, 120, 170, 69, 223, 75, 83, 36,
+            161, 17,
+          ]),
+        ),
+      ],
+    });
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -177,6 +203,7 @@ export async function getInitCertificationAuthorityInstructionAsync<
       getAccountMeta(accounts.admin),
       getAccountMeta(accounts.certificationAuthority),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.programData),
     ],
     data: getInitCertificationAuthorityInstructionDataEncoder().encode(
       args as InitCertificationAuthorityInstructionDataArgs,
@@ -186,7 +213,8 @@ export async function getInitCertificationAuthorityInstructionAsync<
     TProgramAddress,
     TAccountAdmin,
     TAccountCertificationAuthority,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >);
 }
 
@@ -194,10 +222,12 @@ export type InitCertificationAuthorityInput<
   TAccountAdmin extends string = string,
   TAccountCertificationAuthority extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgramData extends string = string,
 > = {
   admin: TransactionSigner<TAccountAdmin>;
   certificationAuthority: Address<TAccountCertificationAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
+  programData: Address<TAccountProgramData>;
   authority: InitCertificationAuthorityInstructionDataArgs["authority"];
 };
 
@@ -205,19 +235,22 @@ export function getInitCertificationAuthorityInstruction<
   TAccountAdmin extends string,
   TAccountCertificationAuthority extends string,
   TAccountSystemProgram extends string,
+  TAccountProgramData extends string,
   TProgramAddress extends Address = typeof VAULT_PROGRAM_ADDRESS,
 >(
   input: InitCertificationAuthorityInput<
     TAccountAdmin,
     TAccountCertificationAuthority,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >,
   config?: { programAddress?: TProgramAddress },
 ): InitCertificationAuthorityInstruction<
   TProgramAddress,
   TAccountAdmin,
   TAccountCertificationAuthority,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgramData
 > {
   // Program address.
   const programAddress = config?.programAddress ?? VAULT_PROGRAM_ADDRESS;
@@ -230,6 +263,7 @@ export function getInitCertificationAuthorityInstruction<
       isWritable: true,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    programData: { value: input.programData ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -251,6 +285,7 @@ export function getInitCertificationAuthorityInstruction<
       getAccountMeta(accounts.admin),
       getAccountMeta(accounts.certificationAuthority),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.programData),
     ],
     data: getInitCertificationAuthorityInstructionDataEncoder().encode(
       args as InitCertificationAuthorityInstructionDataArgs,
@@ -260,7 +295,8 @@ export function getInitCertificationAuthorityInstruction<
     TProgramAddress,
     TAccountAdmin,
     TAccountCertificationAuthority,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgramData
   >);
 }
 
@@ -273,6 +309,7 @@ export type ParsedInitCertificationAuthorityInstruction<
     admin: TAccountMetas[0];
     certificationAuthority: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
+    programData: TAccountMetas[3];
   };
   data: InitCertificationAuthorityInstructionData;
 };
@@ -285,7 +322,7 @@ export function parseInitCertificationAuthorityInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedInitCertificationAuthorityInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 4) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -301,6 +338,7 @@ export function parseInitCertificationAuthorityInstruction<
       admin: getNextAccount(),
       certificationAuthority: getNextAccount(),
       systemProgram: getNextAccount(),
+      programData: getNextAccount(),
     },
     data: getInitCertificationAuthorityInstructionDataDecoder().decode(
       instruction.data,
