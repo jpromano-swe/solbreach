@@ -47,14 +47,14 @@ const FOOTER_COLUMNS = [
   },
 ];
 
-export function SiteFooter({ documentationUrl }: { documentationUrl: string }) {
+export function SiteFooter({ repositoryUrl }: { repositoryUrl: string }) {
   const columns = FOOTER_COLUMNS.map((column) =>
     column.title === "Company"
       ? {
           ...column,
           links: column.links.map((link) =>
             link.label === "Documentation"
-              ? { ...link, href: documentationUrl }
+              ? { ...link, href: repositoryUrl }
               : link,
           ),
         }
@@ -67,7 +67,7 @@ export function SiteFooter({ documentationUrl }: { documentationUrl: string }) {
         aria-hidden="true"
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"
       />
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 pb-14 pt-36 md:grid-cols-[1.35fr_repeat(3,0.75fr)] sm:pt-40 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl gap-10 px-6 pb-14 pt-36 sm:pt-40 md:grid-cols-[1.35fr_repeat(3,0.75fr)] lg:px-8">
         <div className="max-w-sm">
           <Image
             src="/logo_crop.png"

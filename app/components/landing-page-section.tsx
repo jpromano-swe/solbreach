@@ -43,6 +43,21 @@ const LANDING_RUST_CODE_KEYWORDS = new Set([
   "vec",
 ]);
 
+const PARTNER_LOGOS = [
+  {
+    name: "SuperteamAR",
+    src: "/partners_logos/lZw-I2Cb_400x400.jpg",
+  },
+  {
+    name: "Waylearn",
+    src: "/partners_logos/image-removebg-preview (4).png",
+  },
+  {
+    name: "Dev3Pack",
+    src: "/partners_logos/icon_transparent.png",
+  },
+];
+
 const HERO_TITLE = "Security Training Layer";
 const HERO_SUBTITLE_LINES = [
   "Practice finding real security issues and learn to fix",
@@ -59,11 +74,17 @@ export function LandingPageSection({
   enableAppEntry,
   onPlayNow,
   documentationUrl,
+  repositoryUrl,
 }: {
-  enableAppEntry: boolean;
-  onPlayNow: () => void;
-  documentationUrl: string;
+  documentationUrl?: string;
+  enableAppEntry?: boolean;
+  onPlayNow?: () => void;
+  repositoryUrl?: string;
 }) {
+  const resolvedDocumentationUrl =
+    documentationUrl ??
+    repositoryUrl ??
+    "https://solbreach.gitbook.io/documentation";
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const heroRootRef = useRef<HTMLDivElement>(null);
   const heroLevelsPreviewRef = useRef<HTMLDivElement>(null);
@@ -77,7 +98,7 @@ export function LandingPageSection({
     const titleKicker = heroTitleKickerRef.current;
     const primaryCta = heroPrimaryCtaRef.current;
     const subtitleLines = heroSubtitleLineRefs.current.filter(
-      (line): line is HTMLParagraphElement => Boolean(line)
+      (line): line is HTMLParagraphElement => Boolean(line),
     );
     const levelsPreview = heroLevelsPreviewRef.current;
     if (
@@ -104,12 +125,8 @@ export function LandingPageSection({
 
     const ctx = gsap.context(() => {
       const titleChars = gsap.utils.toArray<HTMLElement>(
-        ".landing-hero-title-char"
+        ".landing-hero-title-char",
       );
-      const titleGlowActive =
-        "0 0 10px rgba(0, 255, 102, 0.95), 0 0 26px rgba(20, 241, 149, 0.3)";
-      const titleGlowIdle =
-        "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)";
 
       gsap.set(titleChars, { opacity: 0, textShadow: "none" });
       gsap.set(titleKicker, { autoAlpha: 0, y: 10 });
@@ -121,25 +138,26 @@ export function LandingPageSection({
       });
 
       const tl = gsap.timeline();
-      const titleCharStagger = 0.049;
+      const titleCharStagger = 0.074;
       const titleSequenceDuration =
-        (titleChars.length - 1) * titleCharStagger + 0.084;
+        (titleChars.length - 1) * titleCharStagger + 0.126;
       titleChars.forEach((char, index) => {
         tl.set(char, { opacity: 0 }, 0)
-          .to(char, { duration: 0.021, opacity: 1 }, index * titleCharStagger)
+          .to(char, { duration: 0.032, opacity: 1 }, index * titleCharStagger)
           .to(
             char,
-            { duration: 0.012, opacity: 0.3 },
-            index * titleCharStagger + 0.021
+            { duration: 0.018, opacity: 0.3 },
+            index * titleCharStagger + 0.032,
           )
           .to(
             char,
             {
-              duration: 0.04,
+              duration: 0.06,
               opacity: 1,
-              textShadow: titleGlowActive,
+              textShadow:
+                "0 0 10px rgba(0, 255, 102, 0.95), 0 0 26px rgba(20, 241, 149, 0.3)",
             },
-            index * titleCharStagger + 0.032
+            index * titleCharStagger + 0.048,
           );
       });
 
@@ -151,7 +169,7 @@ export function LandingPageSection({
           autoAlpha: 1,
           y: 0,
         },
-        titleSequenceDuration + 0.12
+        titleSequenceDuration + 0.12,
       );
 
       const subtitleLineStagger = 0.8;
@@ -167,7 +185,7 @@ export function LandingPageSection({
             autoAlpha: 1,
             y: 0,
           },
-          lineStartAt
+          lineStartAt,
         ).to(
           line,
           {
@@ -178,7 +196,7 @@ export function LandingPageSection({
               value: HERO_SUBTITLE_LINES[index] ?? "",
             } as { chars: string; value: string },
           },
-          lineStartAt
+          lineStartAt,
         );
       });
 
@@ -199,7 +217,7 @@ export function LandingPageSection({
           scale: 1,
           y: 0,
         },
-        ctaStartAt
+        ctaStartAt,
       ).to(
         levelsPreview,
         {
@@ -208,24 +226,30 @@ export function LandingPageSection({
           autoAlpha: 1,
           y: 0,
         },
-        levelsStartAt
+        levelsStartAt,
       );
 
+      gsap.set(titleChars, {
+        delay: dynamicLoopsStartAt,
+        textShadow:
+          "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)",
+      });
       gsap.fromTo(
         titleChars,
         {
-          textShadow: titleGlowActive,
+          textShadow:
+            "0 0 0px rgba(20, 241, 149, 0), 0 0 0px rgba(20, 241, 149, 0)",
         },
         {
           delay: dynamicLoopsStartAt,
-          duration: 1.87,
+          duration: 2.8,
           ease: "sine.inOut",
-          immediateRender: false,
           repeat: -1,
           stagger: 0,
-          textShadow: titleGlowIdle,
+          textShadow:
+            "0 0 10px rgba(0, 255, 102, 0.46), 0 0 24px rgba(20, 241, 149, 0.18)",
           yoyo: true,
-        }
+        },
       );
 
       gsap
@@ -268,12 +292,12 @@ export function LandingPageSection({
   }, []);
 
   const handleRequestBetaAccess = () => {
-    if (enableAppEntry) {
+    if (enableAppEntry && onPlayNow) {
       onPlayNow();
       return;
     }
 
-    window.location.assign("/onboarding");
+    window.location.assign("https://beta.solbreach.com/onboarding");
   };
   const heroSlides = [
     {
@@ -335,10 +359,7 @@ Bind collateral mint and vault accounts to protocol config.`,
 
   return (
     <section className="space-y-10">
-      <div
-        ref={heroRootRef}
-        className="mx-auto max-w-4xl space-y-4 text-center"
-      >
+      <div ref={heroRootRef} className="mx-auto max-w-4xl space-y-4 text-center">
         <h1 className="mx-auto max-w-5xl text-balance pb-2 pt-6 text-5xl font-medium leading-none tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl">
           <span
             ref={heroTitleLineRef}
@@ -407,16 +428,56 @@ Bind collateral mint and vault accounts to protocol config.`,
           Build your security mindset
         </h2>
         <p className="mt-4 text-base leading-7 text-muted sm:text-lg">
-          Develop the judgement to identify, prove, and communicate real
-          security risks.
+          Develop the judgement to identify, prove, and communicate real security
+          risks.
         </p>
       </div>
 
       <FeatureShowcaseSection />
+      <PartnerTrustSection />
       <LandingCtaSection
         onGetStarted={handleRequestBetaAccess}
-        documentationUrl={documentationUrl}
+        documentationUrl={resolvedDocumentationUrl}
       />
+    </section>
+  );
+}
+
+function PartnerTrustSection() {
+  return (
+    <section
+      className="relative isolate overflow-hidden pb-16 pt-24 sm:pb-20 sm:pt-32"
+      aria-labelledby="partner-trust-title"
+    >
+      <div className="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6">
+        <h2
+          id="partner-trust-title"
+          className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl"
+        >
+          Trusted by leading teams worldwide
+        </h2>
+
+        <div className="mt-20 grid gap-12 sm:grid-cols-3 sm:gap-14">
+          {PARTNER_LOGOS.map((partner, index) => (
+            <div
+              className="solbreach-partner-float flex flex-col items-center gap-5"
+              data-float-index={index}
+              key={partner.name}
+            >
+              <Image
+                src={partner.src}
+                alt={`${partner.name} logo`}
+                width={192}
+                height={192}
+                className="h-32 w-32 object-contain drop-shadow-[0_22px_54px_rgba(0,0,0,0.45)] sm:h-44 sm:w-44 lg:h-48 lg:w-48"
+              />
+              <p className="text-base font-semibold text-foreground">
+                {partner.name}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
@@ -857,8 +918,8 @@ function FeatureShowcaseSection() {
         </FeaturePreview>
         <FeaturePreview
           tint="mixed"
-          title="Breach Rooms · Roadmap"
-          description="Planned cohort audit practice and assessment. The current interface is a preview under development."
+          title="Breach Rooms"
+          description="Audit environment designed to obtain first-flight experiences and learn to rely on the auditor tool-kit."
         >
           <BreachRoomsPreview />
         </FeaturePreview>
@@ -1097,7 +1158,7 @@ function BreachRoomsPreview() {
           Breach Rooms
         </div>
         <span className="rounded-full border border-[#9945ff]/30 bg-[#9945ff]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200">
-          Roadmap
+          TBD
         </span>
       </div>
       <div className="flex flex-1 flex-col justify-center gap-4 p-6">

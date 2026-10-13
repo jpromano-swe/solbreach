@@ -1,4 +1,6 @@
-# SolBreach
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jpromano-swe/solbreach/research-labs-frontend/public/logo_crop.png" alt="SolBreach" width="420" />
+</p>
 
 **Hands-on security training for Solana developers: inspect vulnerable programs, exploit them, verify impact, and explain the fix.**
 
@@ -12,7 +14,7 @@ the root cause, evidence, and mitigation in an audit-style report.
 ## Try it
 
 1. Open [beta.solbreach.com](https://beta.solbreach.com) and request beta access or
-   redeem an invitation code. The project currently documents `WAYLEARN` as a beta
+   redeem an invitation code. The project currently documents `COLOSSEUM-BETA` as a beta
    code; availability depends on the access service.
 2. Complete onboarding and connect a Solana wallet configured for **devnet**.
 3. Start with the warmup and guided vulnerability modules, then investigate a Research Lab.
