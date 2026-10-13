@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/jpromano-swe/solbreach/research-labs-frontend/public/logo_crop.png" alt="SolBreach" width="420" />
 </p>
 
-**Hands-on security training for Solana developers: inspect vulnerable programs, exploit them, verify impact, and explain the fix.**
+# **Security Training Layer for Solana builders.**
 
 [Try the beta](https://beta.solbreach.com) · [Pitch](https://youtu.be/4CunhIXPDro) · [Demo](https://youtu.be/kPHk-jrA4Xk) · [Website](https://solbreach.com) · [Documentation](https://solbreach.gitbook.io/documentation) · [Backend](https://github.com/jpromano-swe/solbreach-backend/tree/backend-testing)
 
@@ -33,17 +33,16 @@ and [backend-testing](https://github.com/jpromano-swe/solbreach-backend/tree/bac
 They are the starting points for this setup; source availability does not establish
 which revision is deployed to the beta or to devnet.
 
-| Experience                                       | What the learner practices                                   | Where it runs / current scope                                                                                                                                           |
-| ------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Level 0 — Hello SolBreach                        | Wallet, player PDA, and transaction lifecycle                | Anchor `vault` program on devnet; progression warmup.                                                                                                                   |
-| Level 1 — The Illusionist                        | Missing mint checks and account substitution                 | Anchor `vault` program on devnet, with frontend and backend learning flows.                                                                                             |
-| Level 2 — The Identity Thief                     | Shared PDA state and missing authority checks                | Anchor `vault` program on devnet, with frontend and backend learning flows.                                                                                             |
-| Level 3 — The Trojan Horse                       | Arbitrary CPI and forwarded signer privileges                | Anchor `vault` and `mercenary` programs on devnet, with frontend and backend learning flows.                                                                            |
-| RL1 — Account Substitution                       | Counterfeit collateral, protocol credit, and treasury impact | Backend LiteSVM adapter with modeled state adjustments and a local simulation fallback; see the qualification below.                                                    |
-| RL2 — Yield Hijack                               | Static PDA collisions and reward-claim authority             | Guided Python simulation of protocol state and account changes.                                                                                                         |
-| RL3 — Arbitrary CPI                              | Unchecked CPI target and delegated payout authority          | Guided Python simulation, including the displayed build, deploy, and CPI steps.                                                                                         |
-| Levels 4–5 — The Mirror Trap / The Time Traveler | Data matching and unsafe PDA address reuse                   | Frontend flows exist, but matching backend level definitions and Anchor instructions are absent from the reviewed checkout. End-to-end availability is not established. |
-| Breach Rooms                                     | Less-guided protocol review and finding submission           | Frontend prototype for a GitHub PR review workflow; its backend routes are absent from the reviewed backend checkout.                                                   |
+| Experience                   | What the learner practices                                   | Where it runs / current scope                                                                                         |
+| ---------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Level 0 — Hello SolBreach    | Wallet, player PDA, and transaction lifecycle                | Anchor `vault` program on devnet; progression warmup.                                                                 |
+| Level 1 — The Illusionist    | Missing mint checks and account substitution                 | Anchor `vault` program on devnet, with frontend and backend learning flows.                                           |
+| Level 2 — The Identity Thief | Shared PDA state and missing authority checks                | Anchor `vault` program on devnet, with frontend and backend learning flows.                                           |
+| Level 3 — The Trojan Horse   | Arbitrary CPI and forwarded signer privileges                | Anchor `vault` and `mercenary` programs on devnet, with frontend and backend learning flows.                          |
+| RL1 — Account Substitution   | Counterfeit collateral, protocol credit, and treasury impact | Backend LiteSVM adapter with modeled state adjustments and a local simulation fallback; see the qualification below.  |
+| RL2 — Yield Hijack           | Static PDA collisions and reward-claim authority             | Guided Python simulation of protocol state and account changes.                                                       |
+| RL3 — Arbitrary CPI          | Unchecked CPI target and delegated payout authority          | Guided Python simulation, including the displayed build, deploy, and CPI steps.                                       |
+| Breach Rooms                 | Less-guided protocol review and finding submission           | Frontend prototype for a GitHub PR review workflow; its backend routes are absent from the reviewed backend checkout. |
 
 **RL1 is a hybrid runtime.** The backend selects its LiteSVM adapter when importable
 and falls back to the local runtime on `ImportError`. The adapter loads a program
@@ -102,10 +101,6 @@ does not upgrade the deployed programs. To inspect a completed challenge, open i
 actual transaction in Solana Explorer with `cluster=devnet`; use the mint transaction
 and asset ID returned by the certificate flow to inspect the cNFT.
 
-A curated successful exploit transaction, minted cNFT example, and Colosseum project
-URL still need to be added to this README. The program address links above identify
-the programs; they do not substitute for those completion examples.
-
 ## Who pays
 
 The proposed model keeps introductory learning free for developers and sells
@@ -160,8 +155,7 @@ Minting requires a configured tree and authority; starting the frontend does not
 provision them. Keep secrets out of `NEXT_PUBLIC_` variables and Git. The mint server
 checks the devnet genesis hash and owns RPC/tree configuration.
 
-Apply backend migration `202610120001` before using this frontend. Certificate minting
-requires a backend session linked to the recipient wallet and a signed authorization
+Certificate minting requires a backend session linked to the recipient wallet and a signed authorization
 message. Messages expire after five minutes, are single-use, and have a persisted
 limit of five attempts per wallet per ten minutes. A failed mint consumes its
 authorization; retry with a new signed message. Completion is checked separately
