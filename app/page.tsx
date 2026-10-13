@@ -65,7 +65,67 @@ const DEFAULT_LEVEL_3_BOUNTY_VAULT = "";
 const DEFAULT_LEVEL_3_EXTERNAL_PROGRAM = "";
 const DEFAULT_LEVEL_3_REWARD_ACCOUNT = "";
 const DEFAULT_LEVEL_3_REWARD_MINT = "";
-const SOLBREACH_DOCUMENTATION_URL = "https://solbreach.gitbook.io/documentation";
+const SOLBREACH_DOCUMENTATION_URL =
+  "https://solbreach.gitbook.io/documentation";
+const ENABLE_APP_ENTRY = process.env.NEXT_PUBLIC_ENABLE_APP_ENTRY === "true";
+
+type ResearchLabCertificateLevel = 1 | 2 | 3;
+type ResearchLabCertificateMintDialogState = {
+  description: string;
+  label: string;
+};
+type ProfileIdentity = {
+  address?: string;
+  avatarSrc?: string;
+  name: string;
+};
+
+const PROFILE_IDENTITY_STORAGE_PREFIX = "solbreach-profile";
+
+const RESEARCH_LAB_CERTIFICATE_DETAILS: Record<
+  ResearchLabCertificateLevel,
+  {
+    certificateId: string;
+    certificateNumber: number;
+    description: string;
+    imageUri: string;
+    metadataUri: string;
+    nextLevel: "level1" | "level2" | "level3";
+    title: string;
+  }
+> = {
+  1: {
+    certificateId: "solbreach-level-1",
+    certificateNumber: 1,
+    description:
+      "You completed the Account Substitution lab, proved how unbound collateral accounts can create illegitimate credit, and minted the Research Lab certificate.",
+    imageUri: "/nfts/level-1-nobg.png",
+    metadataUri: "/certificates/metadata/level-1.json",
+    nextLevel: "level2",
+    title: "The Illusionist",
+  },
+  2: {
+    certificateId: "solbreach-level-2",
+    certificateNumber: 2,
+    description:
+      "You completed the Yield Hijack lab, proved how static PDA derivation can expose a staking position, and minted the Research Lab certificate.",
+    imageUri: "/nfts/level-2-nobg.png",
+    metadataUri: "/certificates/metadata/level-2.json",
+    nextLevel: "level3",
+    title: "The Identity Thief",
+  },
+  3: {
+    certificateId: "solbreach-level-3",
+    certificateNumber: 3,
+    description:
+      "You completed the Delegated CPI lab, proved the exploit path, and minted the Research Lab certificate.",
+    imageUri: "/nfts/level-3-nobg.png",
+    metadataUri: "/certificates/metadata/level-3.json",
+    nextLevel: "level3",
+    title: "The Trojan Horse",
+  },
+};
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -932,7 +992,9 @@ export default function Home() {
             <div className="space-y-8">
               {activeLevelsView === "landing" ? (
                 <LandingPageSection
-                  repositoryUrl={SOLBREACH_DOCUMENTATION_URL}
+                  enableAppEntry={ENABLE_APP_ENTRY}
+                  onPlayNow={openBetaAccess}
+                  documentationUrl={SOLBREACH_DOCUMENTATION_URL}
                 />
               ) : activeGuide && activeLevelStatus ? (
                 <div className="space-y-8">
